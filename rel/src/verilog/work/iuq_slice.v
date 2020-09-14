@@ -1,0 +1,1002 @@
+// © IBM Corp. 2020
+// This softcore is licensed under and subject to the terms of the CC-BY 4.0
+// license (https://creativecommons.org/licenses/by/4.0/legalcode). 
+// Additional rights, including the right to physically implement a softcore 
+// that is compliant with the required sections of the Power ISA 
+// Specification, will be available at no cost via the OpenPOWER Foundation. 
+// This README will be updated with additional information when OpenPOWER's 
+// license is available.
+
+`timescale 1 ns / 1 ns
+
+
+`include "tri_a2o.vh"
+
+
+
+
+module iuq_slice(
+   inout                          vdd,
+   inout                          gnd,
+   input [0:`NCLK_WIDTH-1]        nclk,
+   input                          pc_iu_sg_2,
+   input                          pc_iu_func_sl_thold_2,
+   input                          clkoff_b,
+   input                          act_dis,
+   input                          tc_ac_ccflush_dc,
+   input                          d_mode,
+   input                          delay_lclkr,
+   input                          mpw1_b,
+   input                          mpw2_b,
+   input [0:6]                    scan_in,
+   output [0:6]                   scan_out,
+
+   input                          pc_iu_event_bus_enable,
+   output                         perf_iu5_stall,
+   output                         perf_iu5_cpl_credit_stall,
+   output                         perf_iu5_gpr_credit_stall,
+   output                         perf_iu5_cr_credit_stall,
+   output                         perf_iu5_lr_credit_stall,
+   output                         perf_iu5_ctr_credit_stall,
+   output                         perf_iu5_xer_credit_stall,
+   output                         perf_iu5_br_hold_stall,
+   output                         perf_iu5_axu_hold_stall,
+   
+   input                          cp_iu_iu4_flush,
+   input                          cp_flush_into_uc,
+   
+   input                          xu_iu_epcr_dgtmi,
+   input                          xu_iu_msrp_uclep,
+   input                          xu_iu_msr_pr,
+   input                          xu_iu_msr_gs,
+   input                          xu_iu_msr_ucle,
+   input                          xu_iu_ccr2_ucode_dis,
+   
+   input                          spr_high_pri_mask,
+   input                          spr_cpcr_we,
+   input [0:6]                    spr_cpcr3_cp_cnt,
+   input [0:6]                    spr_cpcr5_cp_cnt,
+   input                          spr_single_issue,
+   input [0:31]                   spr_dec_mask,
+   input [0:31]                   spr_dec_match,
+   input [0:7]                    iu_au_config_iucr,
+   input                          mm_iu_tlbwe_binv,
+   
+   output                         ib_rm_rdy,
+   input                          rm_ib_iu3_val,
+   input [0:35]                   rm_ib_iu3_instr,
+   
+   input [0:3]                    uc_ib_iu3_invalid,
+   
+   output [0:(`IBUFF_DEPTH/4)-1]   ib_ic_need_fetch,
+   
+   input [62-`EFF_IFAR_WIDTH:61]   bp_ib_iu3_ifar,
+   input [0:3]                    bp_ib_iu3_val,
+   input [0:`IBUFF_INSTR_WIDTH-1]  bp_ib_iu3_0_instr,
+   input [0:`IBUFF_INSTR_WIDTH-1]  bp_ib_iu3_1_instr,
+   input [0:`IBUFF_INSTR_WIDTH-1]  bp_ib_iu3_2_instr,
+   input [0:`IBUFF_INSTR_WIDTH-1]  bp_ib_iu3_3_instr,
+   input [62-`EFF_IFAR_WIDTH:61]   bp_ib_iu3_bta,
+   
+   output                         ib_uc_rdy,
+   input [0:1]                    uc_ib_val,
+   input                          uc_ib_done,
+   input [0:31]                   uc_ib_instr0,
+   input [0:31]                   uc_ib_instr1,
+   input [62-`EFF_IFAR_WIDTH:61]   uc_ib_ifar0,
+   input [62-`EFF_IFAR_WIDTH:61]   uc_ib_ifar1,
+   input [0:3]                    uc_ib_ext0,
+   input [0:3]                    uc_ib_ext1,
+   
+   input                          cp_rn_i0_axu_exception_val,
+   input [0:3]                    cp_rn_i0_axu_exception,
+   input                          cp_rn_i1_axu_exception_val,
+   input [0:3]                    cp_rn_i1_axu_exception,
+   input                          cp_rn_empty,
+   input                          cp_rn_i0_v,
+   input [0:`ITAG_SIZE_ENC-1]      cp_rn_i0_itag,
+   input                          cp_rn_i0_t1_v,
+   input [0:2]                    cp_rn_i0_t1_t,
+   input [0:`GPR_POOL_ENC-1]       cp_rn_i0_t1_p,
+   input [0:`GPR_POOL_ENC-1]       cp_rn_i0_t1_a,
+   input                          cp_rn_i0_t2_v,
+   input [0:2]                    cp_rn_i0_t2_t,
+   input [0:`GPR_POOL_ENC-1]       cp_rn_i0_t2_p,
+   input [0:`GPR_POOL_ENC-1]       cp_rn_i0_t2_a,
+   input                          cp_rn_i0_t3_v,
+   input [0:2]                    cp_rn_i0_t3_t,
+   input [0:`GPR_POOL_ENC-1]       cp_rn_i0_t3_p,
+   input [0:`GPR_POOL_ENC-1]       cp_rn_i0_t3_a,
+   
+   input                          cp_rn_i1_v,
+   input [0:`ITAG_SIZE_ENC-1]      cp_rn_i1_itag,
+   input                          cp_rn_i1_t1_v,
+   input [0:2]                    cp_rn_i1_t1_t,
+   input [0:`GPR_POOL_ENC-1]       cp_rn_i1_t1_p,
+   input [0:`GPR_POOL_ENC-1]       cp_rn_i1_t1_a,
+   input                          cp_rn_i1_t2_v,
+   input [0:2]                    cp_rn_i1_t2_t,
+   input [0:`GPR_POOL_ENC-1]       cp_rn_i1_t2_p,
+   input [0:`GPR_POOL_ENC-1]       cp_rn_i1_t2_a,
+   input                          cp_rn_i1_t3_v,
+   input [0:2]                    cp_rn_i1_t3_t,
+   input [0:`GPR_POOL_ENC-1]       cp_rn_i1_t3_p,
+   input [0:`GPR_POOL_ENC-1]       cp_rn_i1_t3_a,
+   
+   input                          iu_flush,
+   input                          cp_flush,
+   input                          br_iu_redirect,
+   input			  uc_ib_iu3_flush_all,
+   input                          cp_rn_uc_credit_free,
+   
+   input                          fdis_frn_iu6_stall,
+   
+   output                         frn_fdis_iu6_i0_vld,
+   output [0:`ITAG_SIZE_ENC-1]     frn_fdis_iu6_i0_itag,
+   output [0:2]                   frn_fdis_iu6_i0_ucode,
+   output [0:`UCODE_ENTRIES_ENC-1] frn_fdis_iu6_i0_ucode_cnt,
+   output                         frn_fdis_iu6_i0_2ucode,
+   output                         frn_fdis_iu6_i0_fuse_nop,
+   output                         frn_fdis_iu6_i0_rte_lq,
+   output                         frn_fdis_iu6_i0_rte_sq,
+   output                         frn_fdis_iu6_i0_rte_fx0,
+   output                         frn_fdis_iu6_i0_rte_fx1,
+   output                         frn_fdis_iu6_i0_rte_axu0,
+   output                         frn_fdis_iu6_i0_rte_axu1,
+   output                         frn_fdis_iu6_i0_valop,
+   output                         frn_fdis_iu6_i0_ord,
+   output                         frn_fdis_iu6_i0_cord,
+   output [0:2]                   frn_fdis_iu6_i0_error,
+   output [0:19]                  frn_fdis_iu6_i0_fusion,
+   output                         frn_fdis_iu6_i0_spec,
+   output                         frn_fdis_iu6_i0_type_fp,
+   output                         frn_fdis_iu6_i0_type_ap,
+   output                         frn_fdis_iu6_i0_type_spv,
+   output                         frn_fdis_iu6_i0_type_st,
+   output                         frn_fdis_iu6_i0_async_block,
+   output                         frn_fdis_iu6_i0_np1_flush,
+   output                         frn_fdis_iu6_i0_core_block,
+   output                         frn_fdis_iu6_i0_isram,
+   output                         frn_fdis_iu6_i0_isload,
+   output                         frn_fdis_iu6_i0_isstore,
+   output [0:31]                  frn_fdis_iu6_i0_instr,
+   output [62-`EFF_IFAR_WIDTH:61]  frn_fdis_iu6_i0_ifar,
+   output [62-`EFF_IFAR_WIDTH:61]  frn_fdis_iu6_i0_bta,
+   output                         frn_fdis_iu6_i0_br_pred,
+   output                         frn_fdis_iu6_i0_bh_update,
+   output [0:1]                   frn_fdis_iu6_i0_bh0_hist,
+   output [0:1]                   frn_fdis_iu6_i0_bh1_hist,
+   output [0:1]                   frn_fdis_iu6_i0_bh2_hist,
+   output [0:17]                   frn_fdis_iu6_i0_gshare,
+   output [0:2]                   frn_fdis_iu6_i0_ls_ptr,
+   output                         frn_fdis_iu6_i0_match,
+   output                         frn_fdis_iu6_i0_btb_entry,
+   output [0:1]                   frn_fdis_iu6_i0_btb_hist,
+   output                         frn_fdis_iu6_i0_bta_val,
+   output [0:3]                   frn_fdis_iu6_i0_ilat,
+   output                         frn_fdis_iu6_i0_t1_v,
+   output [0:2]                   frn_fdis_iu6_i0_t1_t,
+   output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_t1_a,
+   output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_t1_p,
+   output                         frn_fdis_iu6_i0_t2_v,
+   output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_t2_a,
+   output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_t2_p,
+   output [0:2]                   frn_fdis_iu6_i0_t2_t,
+   output                         frn_fdis_iu6_i0_t3_v,
+   output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_t3_a,
+   output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_t3_p,
+   output [0:2]                   frn_fdis_iu6_i0_t3_t,
+   output                         frn_fdis_iu6_i0_s1_v,
+   output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_s1_a,
+   output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_s1_p,
+   output [0:`ITAG_SIZE_ENC-1]     frn_fdis_iu6_i0_s1_itag,
+   output [0:2]                   frn_fdis_iu6_i0_s1_t,
+   output                         frn_fdis_iu6_i0_s2_v,
+   output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_s2_a,
+   output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_s2_p,
+   output [0:`ITAG_SIZE_ENC-1]     frn_fdis_iu6_i0_s2_itag,
+   output [0:2]                   frn_fdis_iu6_i0_s2_t,
+   output                         frn_fdis_iu6_i0_s3_v,
+   output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_s3_a,
+   output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_s3_p,
+   output [0:`ITAG_SIZE_ENC-1]     frn_fdis_iu6_i0_s3_itag,
+   output [0:2]                   frn_fdis_iu6_i0_s3_t,
+   
+   output                         frn_fdis_iu6_i1_vld,
+   output [0:`ITAG_SIZE_ENC-1]     frn_fdis_iu6_i1_itag,
+   output [0:2]                   frn_fdis_iu6_i1_ucode,
+   output [0:`UCODE_ENTRIES_ENC-1] frn_fdis_iu6_i1_ucode_cnt,
+   output                         frn_fdis_iu6_i1_fuse_nop,
+   output                         frn_fdis_iu6_i1_rte_lq,
+   output                         frn_fdis_iu6_i1_rte_sq,
+   output                         frn_fdis_iu6_i1_rte_fx0,
+   output                         frn_fdis_iu6_i1_rte_fx1,
+   output                         frn_fdis_iu6_i1_rte_axu0,
+   output                         frn_fdis_iu6_i1_rte_axu1,
+   output                         frn_fdis_iu6_i1_valop,
+   output                         frn_fdis_iu6_i1_ord,
+   output                         frn_fdis_iu6_i1_cord,
+   output [0:2]                   frn_fdis_iu6_i1_error,
+   output [0:19]                  frn_fdis_iu6_i1_fusion,
+   output                         frn_fdis_iu6_i1_spec,
+   output                         frn_fdis_iu6_i1_type_fp,
+   output                         frn_fdis_iu6_i1_type_ap,
+   output                         frn_fdis_iu6_i1_type_spv,
+   output                         frn_fdis_iu6_i1_type_st,
+   output                         frn_fdis_iu6_i1_async_block,
+   output                         frn_fdis_iu6_i1_np1_flush,
+   output                         frn_fdis_iu6_i1_core_block,
+   output                         frn_fdis_iu6_i1_isram,
+   output                         frn_fdis_iu6_i1_isload,
+   output                         frn_fdis_iu6_i1_isstore,
+   output [0:31]                  frn_fdis_iu6_i1_instr,
+   output [62-`EFF_IFAR_WIDTH:61]  frn_fdis_iu6_i1_ifar,
+   output [62-`EFF_IFAR_WIDTH:61]  frn_fdis_iu6_i1_bta,
+   output                         frn_fdis_iu6_i1_br_pred,
+   output                         frn_fdis_iu6_i1_bh_update,
+   output [0:1]                   frn_fdis_iu6_i1_bh0_hist,
+   output [0:1]                   frn_fdis_iu6_i1_bh1_hist,
+   output [0:1]                   frn_fdis_iu6_i1_bh2_hist,
+   output [0:17]                   frn_fdis_iu6_i1_gshare,
+   output [0:2]                   frn_fdis_iu6_i1_ls_ptr,
+   output                         frn_fdis_iu6_i1_match,
+   output                         frn_fdis_iu6_i1_btb_entry,
+   output [0:1]                   frn_fdis_iu6_i1_btb_hist,
+   output                         frn_fdis_iu6_i1_bta_val,
+   output [0:3]                   frn_fdis_iu6_i1_ilat,
+   output                         frn_fdis_iu6_i1_t1_v,
+   output [0:2]                   frn_fdis_iu6_i1_t1_t,
+   output [0:`GPR_POOL_ENC-1]     frn_fdis_iu6_i1_t1_a,
+   output [0:`GPR_POOL_ENC-1]     frn_fdis_iu6_i1_t1_p,
+   output                         frn_fdis_iu6_i1_t2_v,
+   output [0:`GPR_POOL_ENC-1]     frn_fdis_iu6_i1_t2_a,
+   output [0:`GPR_POOL_ENC-1]     frn_fdis_iu6_i1_t2_p,
+   output [0:2]                   frn_fdis_iu6_i1_t2_t,
+   output                         frn_fdis_iu6_i1_t3_v,
+   output [0:`GPR_POOL_ENC-1]     frn_fdis_iu6_i1_t3_a,
+   output [0:`GPR_POOL_ENC-1]     frn_fdis_iu6_i1_t3_p,
+   output [0:2]                   frn_fdis_iu6_i1_t3_t,
+   output                         frn_fdis_iu6_i1_s1_v,
+   output [0:`GPR_POOL_ENC-1]     frn_fdis_iu6_i1_s1_a,
+   output [0:`GPR_POOL_ENC-1]     frn_fdis_iu6_i1_s1_p,
+   output [0:`ITAG_SIZE_ENC-1]    frn_fdis_iu6_i1_s1_itag,
+   output [0:2]                   frn_fdis_iu6_i1_s1_t,
+   output                         frn_fdis_iu6_i1_s1_dep_hit,
+   output                         frn_fdis_iu6_i1_s2_v,
+   output [0:`GPR_POOL_ENC-1]     frn_fdis_iu6_i1_s2_a,
+   output [0:`GPR_POOL_ENC-1]     frn_fdis_iu6_i1_s2_p,
+   output [0:`ITAG_SIZE_ENC-1]    frn_fdis_iu6_i1_s2_itag,
+   output [0:2]                   frn_fdis_iu6_i1_s2_t,
+   output                         frn_fdis_iu6_i1_s2_dep_hit,
+   output                         frn_fdis_iu6_i1_s3_v,
+   output [0:`GPR_POOL_ENC-1]     frn_fdis_iu6_i1_s3_a,
+   output [0:`GPR_POOL_ENC-1]     frn_fdis_iu6_i1_s3_p,
+   output [0:`ITAG_SIZE_ENC-1]    frn_fdis_iu6_i1_s3_itag,
+   output [0:2]                   frn_fdis_iu6_i1_s3_t,
+   output                         frn_fdis_iu6_i1_s3_dep_hit
+
+   );
+   
+      wire                           ib_id_iu4_0_valid;
+      wire [62-`EFF_IFAR_WIDTH:61]    ib_id_iu4_0_ifar;
+      wire [62-`EFF_IFAR_WIDTH:61]    ib_id_iu4_0_bta;
+      wire [0:69]                    ib_id_iu4_0_instr;
+      wire [0:2]                     ib_id_iu4_0_ucode;
+      wire [0:3]                     ib_id_iu4_0_ucode_ext;
+      wire                           ib_id_iu4_0_isram;
+      wire                           ib_id_iu4_0_fuse_val;
+      wire [0:31]                    ib_id_iu4_0_fuse_data;
+      wire                           ib_id_iu4_1_valid;
+      wire [62-`EFF_IFAR_WIDTH:61]    ib_id_iu4_1_ifar;
+      wire [62-`EFF_IFAR_WIDTH:61]    ib_id_iu4_1_bta;
+      wire [0:69]                    ib_id_iu4_1_instr;
+      wire [0:2]                     ib_id_iu4_1_ucode;
+      wire [0:3]                     ib_id_iu4_1_ucode_ext;
+      wire                           ib_id_iu4_1_isram;
+      wire                           ib_id_iu4_1_fuse_val;
+      wire [0:31]                    ib_id_iu4_1_fuse_data;
+      wire                           id_ib_iu4_stall;
+      
+      wire                           fdec_frn_iu5_i0_vld;
+      wire [0:2]                     fdec_frn_iu5_i0_ucode;
+      wire                           fdec_frn_iu5_i0_2ucode;
+      wire                           fdec_frn_iu5_i0_fuse_nop;
+      wire                           fdec_frn_iu5_i0_rte_lq;
+      wire                           fdec_frn_iu5_i0_rte_sq;
+      wire                           fdec_frn_iu5_i0_rte_fx0;
+      wire                           fdec_frn_iu5_i0_rte_fx1;
+      wire                           fdec_frn_iu5_i0_rte_axu0;
+      wire                           fdec_frn_iu5_i0_rte_axu1;
+      wire                           fdec_frn_iu5_i0_valop;
+      wire                           fdec_frn_iu5_i0_ord;
+      wire                           fdec_frn_iu5_i0_cord;
+      wire [0:2]                     fdec_frn_iu5_i0_error;
+      wire [0:19]                    fdec_frn_iu5_i0_fusion;
+      wire                           fdec_frn_iu5_i0_spec;
+      wire                           fdec_frn_iu5_i0_type_fp;
+      wire                           fdec_frn_iu5_i0_type_ap;
+      wire                           fdec_frn_iu5_i0_type_spv;
+      wire                           fdec_frn_iu5_i0_type_st;
+      wire                           fdec_frn_iu5_i0_async_block;
+      wire                           fdec_frn_iu5_i0_np1_flush;
+      wire                           fdec_frn_iu5_i0_core_block;
+      wire                           fdec_frn_iu5_i0_isram;
+      wire                           fdec_frn_iu5_i0_isload;
+      wire                           fdec_frn_iu5_i0_isstore;
+      wire [0:31]                    fdec_frn_iu5_i0_instr;
+      wire [62-`EFF_IFAR_WIDTH:61]    fdec_frn_iu5_i0_ifar;
+      wire [62-`EFF_IFAR_WIDTH:61]    fdec_frn_iu5_i0_bta;
+      wire [0:3]                     fdec_frn_iu5_i0_ilat;
+      wire                           fdec_frn_iu5_i0_t1_v;
+      wire [0:2]                     fdec_frn_iu5_i0_t1_t;
+      wire [0:`GPR_POOL_ENC-1]        fdec_frn_iu5_i0_t1_a;
+      wire                           fdec_frn_iu5_i0_t2_v;
+      wire [0:`GPR_POOL_ENC-1]        fdec_frn_iu5_i0_t2_a;
+      wire [0:2]                     fdec_frn_iu5_i0_t2_t;
+      wire                           fdec_frn_iu5_i0_t3_v;
+      wire [0:`GPR_POOL_ENC-1]        fdec_frn_iu5_i0_t3_a;
+      wire [0:2]                     fdec_frn_iu5_i0_t3_t;
+      wire                           fdec_frn_iu5_i0_s1_v;
+      wire [0:`GPR_POOL_ENC-1]        fdec_frn_iu5_i0_s1_a;
+      wire [0:2]                     fdec_frn_iu5_i0_s1_t;
+      wire                           fdec_frn_iu5_i0_s2_v;
+      wire [0:`GPR_POOL_ENC-1]        fdec_frn_iu5_i0_s2_a;
+      wire [0:2]                     fdec_frn_iu5_i0_s2_t;
+      wire                           fdec_frn_iu5_i0_s3_v;
+      wire [0:`GPR_POOL_ENC-1]        fdec_frn_iu5_i0_s3_a;
+      wire [0:2]                     fdec_frn_iu5_i0_s3_t;
+      wire                           fdec_frn_iu5_i0_br_pred;
+      wire                           fdec_frn_iu5_i0_bh_update;
+      wire [0:1]                     fdec_frn_iu5_i0_bh0_hist;
+      wire [0:1]                     fdec_frn_iu5_i0_bh1_hist;
+      wire [0:1]                     fdec_frn_iu5_i0_bh2_hist;
+      wire [0:17]                     fdec_frn_iu5_i0_gshare;
+      wire [0:2]                     fdec_frn_iu5_i0_ls_ptr;
+      wire                           fdec_frn_iu5_i0_match;
+      wire                           fdec_frn_iu5_i0_btb_entry;
+      wire [0:1]                     fdec_frn_iu5_i0_btb_hist;
+      wire                           fdec_frn_iu5_i0_bta_val;
+      wire                           fdec_frn_iu5_i1_vld;
+      wire [0:2]                     fdec_frn_iu5_i1_ucode;
+      wire                           fdec_frn_iu5_i1_fuse_nop;
+      wire                           fdec_frn_iu5_i1_rte_lq;
+      wire                           fdec_frn_iu5_i1_rte_sq;
+      wire                           fdec_frn_iu5_i1_rte_fx0;
+      wire                           fdec_frn_iu5_i1_rte_fx1;
+      wire                           fdec_frn_iu5_i1_rte_axu0;
+      wire                           fdec_frn_iu5_i1_rte_axu1;
+      wire                           fdec_frn_iu5_i1_valop;
+      wire                           fdec_frn_iu5_i1_ord;
+      wire                           fdec_frn_iu5_i1_cord;
+      wire [0:2]                     fdec_frn_iu5_i1_error;
+      wire [0:19]                    fdec_frn_iu5_i1_fusion;
+      wire                           fdec_frn_iu5_i1_spec;
+      wire                           fdec_frn_iu5_i1_type_fp;
+      wire                           fdec_frn_iu5_i1_type_ap;
+      wire                           fdec_frn_iu5_i1_type_spv;
+      wire                           fdec_frn_iu5_i1_type_st;
+      wire                           fdec_frn_iu5_i1_async_block;
+      wire                           fdec_frn_iu5_i1_np1_flush;
+      wire                           fdec_frn_iu5_i1_core_block;
+      wire                           fdec_frn_iu5_i1_isram;
+      wire                           fdec_frn_iu5_i1_isload;
+      wire                           fdec_frn_iu5_i1_isstore;
+      wire [0:31]                    fdec_frn_iu5_i1_instr;
+      wire [62-`EFF_IFAR_WIDTH:61]    fdec_frn_iu5_i1_ifar;
+      wire [62-`EFF_IFAR_WIDTH:61]    fdec_frn_iu5_i1_bta;
+      wire [0:3]                     fdec_frn_iu5_i1_ilat;
+      wire                           fdec_frn_iu5_i1_t1_v;
+      wire [0:2]                     fdec_frn_iu5_i1_t1_t;
+      wire [0:`GPR_POOL_ENC-1]        fdec_frn_iu5_i1_t1_a;
+      wire                           fdec_frn_iu5_i1_t2_v;
+      wire [0:`GPR_POOL_ENC-1]        fdec_frn_iu5_i1_t2_a;
+      wire [0:2]                     fdec_frn_iu5_i1_t2_t;
+      wire                           fdec_frn_iu5_i1_t3_v;
+      wire [0:`GPR_POOL_ENC-1]        fdec_frn_iu5_i1_t3_a;
+      wire [0:2]                     fdec_frn_iu5_i1_t3_t;
+      wire                           fdec_frn_iu5_i1_s1_v;
+      wire [0:`GPR_POOL_ENC-1]        fdec_frn_iu5_i1_s1_a;
+      wire [0:2]                     fdec_frn_iu5_i1_s1_t;
+      wire                           fdec_frn_iu5_i1_s2_v;
+      wire [0:`GPR_POOL_ENC-1]        fdec_frn_iu5_i1_s2_a;
+      wire [0:2]                     fdec_frn_iu5_i1_s2_t;
+      wire                           fdec_frn_iu5_i1_s3_v;
+      wire [0:`GPR_POOL_ENC-1]        fdec_frn_iu5_i1_s3_a;
+      wire [0:2]                     fdec_frn_iu5_i1_s3_t;
+      wire                           fdec_frn_iu5_i1_br_pred;
+      wire                           fdec_frn_iu5_i1_bh_update;
+      wire [0:1]                     fdec_frn_iu5_i1_bh0_hist;
+      wire [0:1]                     fdec_frn_iu5_i1_bh1_hist;
+      wire [0:1]                     fdec_frn_iu5_i1_bh2_hist;
+      wire [0:17]                     fdec_frn_iu5_i1_gshare;
+      wire [0:2]                     fdec_frn_iu5_i1_ls_ptr;
+      wire                           fdec_frn_iu5_i1_match;
+      wire                           fdec_frn_iu5_i1_btb_entry;
+      wire [0:1]                     fdec_frn_iu5_i1_btb_hist;
+      wire                           fdec_frn_iu5_i1_bta_val;
+      
+      wire                           frn_fdec_iu5_stall;
+      
+      
+      iuq_ibuf  iuq_ibuf0(
+         .vdd(vdd),
+         .gnd(gnd),
+         .nclk(nclk),
+         .pc_iu_sg_2(pc_iu_sg_2),
+         .pc_iu_func_sl_thold_2(pc_iu_func_sl_thold_2),
+         .clkoff_b(clkoff_b),
+         .act_dis(act_dis),
+         .tc_ac_ccflush_dc(tc_ac_ccflush_dc),
+         .d_mode(d_mode),
+         .delay_lclkr(delay_lclkr),
+         .mpw1_b(mpw1_b),
+         .mpw2_b(mpw2_b),
+         .scan_in(scan_in[6]),
+         .scan_out(scan_out[6]),
+         .ib_rm_rdy(ib_rm_rdy),
+         .rm_ib_iu3_val(rm_ib_iu3_val),
+         .rm_ib_iu3_instr(rm_ib_iu3_instr),
+         .uc_ib_iu3_invalid(uc_ib_iu3_invalid),
+         .cp_iu_iu3_flush(iu_flush),
+         .cp_flush_into_uc(cp_flush_into_uc),
+         .br_iu_redirect(br_iu_redirect),
+         .uc_ib_iu3_flush_all(uc_ib_iu3_flush_all),
+         .id_ib_iu4_stall(id_ib_iu4_stall),
+         .ib_ic_need_fetch(ib_ic_need_fetch),
+         .bp_ib_iu3_ifar(bp_ib_iu3_ifar),
+         .bp_ib_iu3_val(bp_ib_iu3_val),
+         .bp_ib_iu3_0_instr(bp_ib_iu3_0_instr),
+         .bp_ib_iu3_1_instr(bp_ib_iu3_1_instr),
+         .bp_ib_iu3_2_instr(bp_ib_iu3_2_instr),
+         .bp_ib_iu3_3_instr(bp_ib_iu3_3_instr),
+         .bp_ib_iu3_bta(bp_ib_iu3_bta),
+         .ib_uc_rdy(ib_uc_rdy),
+         .uc_ib_val(uc_ib_val),
+         .uc_ib_done(uc_ib_done),
+         .uc_ib_instr0(uc_ib_instr0),
+         .uc_ib_instr1(uc_ib_instr1),
+         .uc_ib_ifar0(uc_ib_ifar0),
+         .uc_ib_ifar1(uc_ib_ifar1),
+         .uc_ib_ext0(uc_ib_ext0),
+         .uc_ib_ext1(uc_ib_ext1),
+         .ib_id_iu4_0_valid(ib_id_iu4_0_valid),
+         .ib_id_iu4_0_ifar(ib_id_iu4_0_ifar),
+         .ib_id_iu4_0_bta(ib_id_iu4_0_bta),
+         .ib_id_iu4_0_instr(ib_id_iu4_0_instr),
+         .ib_id_iu4_0_ucode(ib_id_iu4_0_ucode),
+         .ib_id_iu4_0_ucode_ext(ib_id_iu4_0_ucode_ext),
+         .ib_id_iu4_0_isram(ib_id_iu4_0_isram),
+         .ib_id_iu4_0_fuse_data(ib_id_iu4_0_fuse_data),
+         .ib_id_iu4_0_fuse_val(ib_id_iu4_0_fuse_val),
+         .ib_id_iu4_1_valid(ib_id_iu4_1_valid),
+         .ib_id_iu4_1_ifar(ib_id_iu4_1_ifar),
+         .ib_id_iu4_1_bta(ib_id_iu4_1_bta),
+         .ib_id_iu4_1_instr(ib_id_iu4_1_instr),
+         .ib_id_iu4_1_ucode(ib_id_iu4_1_ucode),
+         .ib_id_iu4_1_ucode_ext(ib_id_iu4_1_ucode_ext),
+         .ib_id_iu4_1_isram(ib_id_iu4_1_isram),
+         .ib_id_iu4_1_fuse_data(ib_id_iu4_1_fuse_data),
+         .ib_id_iu4_1_fuse_val(ib_id_iu4_1_fuse_val)
+      );
+      
+      
+      iuq_dec_top  dec_top0(
+         .vdd(vdd),
+         .gnd(gnd),
+         .nclk(nclk),
+         .pc_iu_sg_2(pc_iu_sg_2),
+         .pc_iu_func_sl_thold_2(pc_iu_func_sl_thold_2),
+         .clkoff_b(clkoff_b),
+         .act_dis(act_dis),
+         .tc_ac_ccflush_dc(tc_ac_ccflush_dc),
+         .d_mode(d_mode),
+         .delay_lclkr(delay_lclkr),
+         .mpw1_b(mpw1_b),
+         .mpw2_b(mpw2_b),
+         .scan_in(scan_in[0:3]),
+         .scan_out(scan_out[0:3]),
+         
+         .xu_iu_epcr_dgtmi(xu_iu_epcr_dgtmi),
+         .xu_iu_msrp_uclep(tc_ac_ccflush_dc),
+         .xu_iu_msr_pr(xu_iu_msr_pr),
+         .xu_iu_msr_gs(xu_iu_msr_gs),
+         .xu_iu_msr_ucle(xu_iu_msr_ucle),
+         .xu_iu_ccr2_ucode_dis(xu_iu_ccr2_ucode_dis),
+         
+         .spr_dec_mask(spr_dec_mask),
+         .spr_dec_match(spr_dec_match),
+         .iu_au_config_iucr(iu_au_config_iucr),
+         .mm_iu_tlbwe_binv(mm_iu_tlbwe_binv),
+         
+         .cp_iu_iu4_flush(cp_iu_iu4_flush),
+         .uc_ib_iu3_flush_all(uc_ib_iu3_flush_all),
+         .br_iu_redirect(br_iu_redirect),
+         
+         .ib_id_iu4_0_valid(ib_id_iu4_0_valid),
+         .ib_id_iu4_0_ifar(ib_id_iu4_0_ifar),
+         .ib_id_iu4_0_bta(ib_id_iu4_0_bta),
+         .ib_id_iu4_0_instr(ib_id_iu4_0_instr),
+         .ib_id_iu4_0_ucode(ib_id_iu4_0_ucode),
+         .ib_id_iu4_0_ucode_ext(ib_id_iu4_0_ucode_ext),
+         .ib_id_iu4_0_isram(ib_id_iu4_0_isram),
+         .ib_id_iu4_0_fuse_data(ib_id_iu4_0_fuse_data),
+         .ib_id_iu4_0_fuse_val(ib_id_iu4_0_fuse_val),
+         
+         .ib_id_iu4_1_valid(ib_id_iu4_1_valid),
+         .ib_id_iu4_1_ifar(ib_id_iu4_1_ifar),
+         .ib_id_iu4_1_bta(ib_id_iu4_1_bta),
+         .ib_id_iu4_1_instr(ib_id_iu4_1_instr),
+         .ib_id_iu4_1_ucode(ib_id_iu4_1_ucode),
+         .ib_id_iu4_1_ucode_ext(ib_id_iu4_1_ucode_ext),
+         .ib_id_iu4_1_isram(ib_id_iu4_1_isram),
+         .ib_id_iu4_1_fuse_data(ib_id_iu4_1_fuse_data),
+         .ib_id_iu4_1_fuse_val(ib_id_iu4_1_fuse_val),
+         
+         .id_ib_iu4_stall(id_ib_iu4_stall),
+         
+         .fdec_frn_iu5_i0_vld(fdec_frn_iu5_i0_vld),
+         .fdec_frn_iu5_i0_ucode(fdec_frn_iu5_i0_ucode),
+         .fdec_frn_iu5_i0_2ucode(fdec_frn_iu5_i0_2ucode),
+         .fdec_frn_iu5_i0_fuse_nop(fdec_frn_iu5_i0_fuse_nop),
+         .fdec_frn_iu5_i0_rte_lq(fdec_frn_iu5_i0_rte_lq),
+         .fdec_frn_iu5_i0_rte_sq(fdec_frn_iu5_i0_rte_sq),
+         .fdec_frn_iu5_i0_rte_fx0(fdec_frn_iu5_i0_rte_fx0),
+         .fdec_frn_iu5_i0_rte_fx1(fdec_frn_iu5_i0_rte_fx1),
+         .fdec_frn_iu5_i0_rte_axu0(fdec_frn_iu5_i0_rte_axu0),
+         .fdec_frn_iu5_i0_rte_axu1(fdec_frn_iu5_i0_rte_axu1),
+         .fdec_frn_iu5_i0_valop(fdec_frn_iu5_i0_valop),
+         .fdec_frn_iu5_i0_ord(fdec_frn_iu5_i0_ord),
+         .fdec_frn_iu5_i0_cord(fdec_frn_iu5_i0_cord),
+         .fdec_frn_iu5_i0_error(fdec_frn_iu5_i0_error),
+         .fdec_frn_iu5_i0_fusion(fdec_frn_iu5_i0_fusion),
+         .fdec_frn_iu5_i0_spec(fdec_frn_iu5_i0_spec),
+         .fdec_frn_iu5_i0_type_fp(fdec_frn_iu5_i0_type_fp),
+         .fdec_frn_iu5_i0_type_ap(fdec_frn_iu5_i0_type_ap),
+         .fdec_frn_iu5_i0_type_spv(fdec_frn_iu5_i0_type_spv),
+         .fdec_frn_iu5_i0_type_st(fdec_frn_iu5_i0_type_st),
+         .fdec_frn_iu5_i0_async_block(fdec_frn_iu5_i0_async_block),
+         .fdec_frn_iu5_i0_np1_flush(fdec_frn_iu5_i0_np1_flush),
+         .fdec_frn_iu5_i0_core_block(fdec_frn_iu5_i0_core_block),
+         .fdec_frn_iu5_i0_isram(fdec_frn_iu5_i0_isram),
+         .fdec_frn_iu5_i0_isload(fdec_frn_iu5_i0_isload),
+         .fdec_frn_iu5_i0_isstore(fdec_frn_iu5_i0_isstore),
+         .fdec_frn_iu5_i0_instr(fdec_frn_iu5_i0_instr),
+         .fdec_frn_iu5_i0_ifar(fdec_frn_iu5_i0_ifar),
+         .fdec_frn_iu5_i0_bta(fdec_frn_iu5_i0_bta),
+         .fdec_frn_iu5_i0_ilat(fdec_frn_iu5_i0_ilat),
+         .fdec_frn_iu5_i0_t1_v(fdec_frn_iu5_i0_t1_v),
+         .fdec_frn_iu5_i0_t1_t(fdec_frn_iu5_i0_t1_t),
+         .fdec_frn_iu5_i0_t1_a(fdec_frn_iu5_i0_t1_a),
+         .fdec_frn_iu5_i0_t2_v(fdec_frn_iu5_i0_t2_v),
+         .fdec_frn_iu5_i0_t2_a(fdec_frn_iu5_i0_t2_a),
+         .fdec_frn_iu5_i0_t2_t(fdec_frn_iu5_i0_t2_t),
+         .fdec_frn_iu5_i0_t3_v(fdec_frn_iu5_i0_t3_v),
+         .fdec_frn_iu5_i0_t3_a(fdec_frn_iu5_i0_t3_a),
+         .fdec_frn_iu5_i0_t3_t(fdec_frn_iu5_i0_t3_t),
+         .fdec_frn_iu5_i0_s1_v(fdec_frn_iu5_i0_s1_v),
+         .fdec_frn_iu5_i0_s1_a(fdec_frn_iu5_i0_s1_a),
+         .fdec_frn_iu5_i0_s1_t(fdec_frn_iu5_i0_s1_t),
+         .fdec_frn_iu5_i0_s2_v(fdec_frn_iu5_i0_s2_v),
+         .fdec_frn_iu5_i0_s2_a(fdec_frn_iu5_i0_s2_a),
+         .fdec_frn_iu5_i0_s2_t(fdec_frn_iu5_i0_s2_t),
+         .fdec_frn_iu5_i0_s3_v(fdec_frn_iu5_i0_s3_v),
+         .fdec_frn_iu5_i0_s3_a(fdec_frn_iu5_i0_s3_a),
+         .fdec_frn_iu5_i0_s3_t(fdec_frn_iu5_i0_s3_t),
+         .fdec_frn_iu5_i0_br_pred(fdec_frn_iu5_i0_br_pred),
+         .fdec_frn_iu5_i0_bh_update(fdec_frn_iu5_i0_bh_update),
+         .fdec_frn_iu5_i0_bh0_hist(fdec_frn_iu5_i0_bh0_hist),
+         .fdec_frn_iu5_i0_bh1_hist(fdec_frn_iu5_i0_bh1_hist),
+         .fdec_frn_iu5_i0_bh2_hist(fdec_frn_iu5_i0_bh2_hist),
+         .fdec_frn_iu5_i0_gshare(fdec_frn_iu5_i0_gshare),
+         .fdec_frn_iu5_i0_ls_ptr(fdec_frn_iu5_i0_ls_ptr),
+         .fdec_frn_iu5_i0_match(fdec_frn_iu5_i0_match),
+         .fdec_frn_iu5_i0_btb_entry(fdec_frn_iu5_i0_btb_entry),
+         .fdec_frn_iu5_i0_btb_hist(fdec_frn_iu5_i0_btb_hist),
+         .fdec_frn_iu5_i0_bta_val(fdec_frn_iu5_i0_bta_val),
+         
+         .fdec_frn_iu5_i1_vld(fdec_frn_iu5_i1_vld),
+         .fdec_frn_iu5_i1_ucode(fdec_frn_iu5_i1_ucode),
+         .fdec_frn_iu5_i1_fuse_nop(fdec_frn_iu5_i1_fuse_nop),
+         .fdec_frn_iu5_i1_rte_lq(fdec_frn_iu5_i1_rte_lq),
+         .fdec_frn_iu5_i1_rte_sq(fdec_frn_iu5_i1_rte_sq),
+         .fdec_frn_iu5_i1_rte_fx0(fdec_frn_iu5_i1_rte_fx0),
+         .fdec_frn_iu5_i1_rte_fx1(fdec_frn_iu5_i1_rte_fx1),
+         .fdec_frn_iu5_i1_rte_axu0(fdec_frn_iu5_i1_rte_axu0),
+         .fdec_frn_iu5_i1_rte_axu1(fdec_frn_iu5_i1_rte_axu1),
+         .fdec_frn_iu5_i1_valop(fdec_frn_iu5_i1_valop),
+         .fdec_frn_iu5_i1_ord(fdec_frn_iu5_i1_ord),
+         .fdec_frn_iu5_i1_cord(fdec_frn_iu5_i1_cord),
+         .fdec_frn_iu5_i1_error(fdec_frn_iu5_i1_error),
+         .fdec_frn_iu5_i1_fusion(fdec_frn_iu5_i1_fusion),
+         .fdec_frn_iu5_i1_spec(fdec_frn_iu5_i1_spec),
+         .fdec_frn_iu5_i1_type_fp(fdec_frn_iu5_i1_type_fp),
+         .fdec_frn_iu5_i1_type_ap(fdec_frn_iu5_i1_type_ap),
+         .fdec_frn_iu5_i1_type_spv(fdec_frn_iu5_i1_type_spv),
+         .fdec_frn_iu5_i1_type_st(fdec_frn_iu5_i1_type_st),
+         .fdec_frn_iu5_i1_async_block(fdec_frn_iu5_i1_async_block),
+         .fdec_frn_iu5_i1_np1_flush(fdec_frn_iu5_i1_np1_flush),
+         .fdec_frn_iu5_i1_core_block(fdec_frn_iu5_i1_core_block),
+         .fdec_frn_iu5_i1_isram(fdec_frn_iu5_i1_isram),
+         .fdec_frn_iu5_i1_isload(fdec_frn_iu5_i1_isload),
+         .fdec_frn_iu5_i1_isstore(fdec_frn_iu5_i1_isstore),
+         .fdec_frn_iu5_i1_instr(fdec_frn_iu5_i1_instr),
+         .fdec_frn_iu5_i1_ifar(fdec_frn_iu5_i1_ifar),
+         .fdec_frn_iu5_i1_bta(fdec_frn_iu5_i1_bta),
+         .fdec_frn_iu5_i1_ilat(fdec_frn_iu5_i1_ilat),
+         .fdec_frn_iu5_i1_t1_v(fdec_frn_iu5_i1_t1_v),
+         .fdec_frn_iu5_i1_t1_t(fdec_frn_iu5_i1_t1_t),
+         .fdec_frn_iu5_i1_t1_a(fdec_frn_iu5_i1_t1_a),
+         .fdec_frn_iu5_i1_t2_v(fdec_frn_iu5_i1_t2_v),
+         .fdec_frn_iu5_i1_t2_a(fdec_frn_iu5_i1_t2_a),
+         .fdec_frn_iu5_i1_t2_t(fdec_frn_iu5_i1_t2_t),
+         .fdec_frn_iu5_i1_t3_v(fdec_frn_iu5_i1_t3_v),
+         .fdec_frn_iu5_i1_t3_a(fdec_frn_iu5_i1_t3_a),
+         .fdec_frn_iu5_i1_t3_t(fdec_frn_iu5_i1_t3_t),
+         .fdec_frn_iu5_i1_s1_v(fdec_frn_iu5_i1_s1_v),
+         .fdec_frn_iu5_i1_s1_a(fdec_frn_iu5_i1_s1_a),
+         .fdec_frn_iu5_i1_s1_t(fdec_frn_iu5_i1_s1_t),
+         .fdec_frn_iu5_i1_s2_v(fdec_frn_iu5_i1_s2_v),
+         .fdec_frn_iu5_i1_s2_a(fdec_frn_iu5_i1_s2_a),
+         .fdec_frn_iu5_i1_s2_t(fdec_frn_iu5_i1_s2_t),
+         .fdec_frn_iu5_i1_s3_v(fdec_frn_iu5_i1_s3_v),
+         .fdec_frn_iu5_i1_s3_a(fdec_frn_iu5_i1_s3_a),
+         .fdec_frn_iu5_i1_s3_t(fdec_frn_iu5_i1_s3_t),
+         .fdec_frn_iu5_i1_br_pred(fdec_frn_iu5_i1_br_pred),
+         .fdec_frn_iu5_i1_bh_update(fdec_frn_iu5_i1_bh_update),
+         .fdec_frn_iu5_i1_bh0_hist(fdec_frn_iu5_i1_bh0_hist),
+         .fdec_frn_iu5_i1_bh1_hist(fdec_frn_iu5_i1_bh1_hist),
+         .fdec_frn_iu5_i1_bh2_hist(fdec_frn_iu5_i1_bh2_hist),
+         .fdec_frn_iu5_i1_gshare(fdec_frn_iu5_i1_gshare),
+         .fdec_frn_iu5_i1_ls_ptr(fdec_frn_iu5_i1_ls_ptr),
+         .fdec_frn_iu5_i1_match(fdec_frn_iu5_i1_match),
+         .fdec_frn_iu5_i1_btb_entry(fdec_frn_iu5_i1_btb_entry),
+         .fdec_frn_iu5_i1_btb_hist(fdec_frn_iu5_i1_btb_hist),
+         .fdec_frn_iu5_i1_bta_val(fdec_frn_iu5_i1_bta_val),
+         
+         .frn_fdec_iu5_stall(frn_fdec_iu5_stall)
+      );
+      
+      
+      iuq_rn_top  rn_top0(
+         .vdd(vdd),
+         .gnd(gnd),
+         .nclk(nclk),
+         .pc_iu_func_sl_thold_2(pc_iu_func_sl_thold_2),
+         .pc_iu_sg_2(pc_iu_sg_2),
+         .clkoff_b(clkoff_b),
+         .act_dis(act_dis),
+         .tc_ac_ccflush_dc(tc_ac_ccflush_dc),
+         .d_mode(d_mode),
+         .delay_lclkr(delay_lclkr),
+         .mpw1_b(mpw1_b),
+         .mpw2_b(mpw2_b),
+         .func_scan_in(scan_in[4:5]),
+         .func_scan_out(scan_out[4:5]),
+
+         .pc_iu_event_bus_enable(pc_iu_event_bus_enable),
+         .perf_iu5_stall(perf_iu5_stall),
+         .perf_iu5_cpl_credit_stall(perf_iu5_cpl_credit_stall),
+         .perf_iu5_gpr_credit_stall(perf_iu5_gpr_credit_stall),
+         .perf_iu5_cr_credit_stall(perf_iu5_cr_credit_stall),
+         .perf_iu5_lr_credit_stall(perf_iu5_lr_credit_stall),
+         .perf_iu5_ctr_credit_stall(perf_iu5_ctr_credit_stall),
+         .perf_iu5_xer_credit_stall(perf_iu5_xer_credit_stall),
+         .perf_iu5_br_hold_stall(perf_iu5_br_hold_stall),
+         .perf_iu5_axu_hold_stall(perf_iu5_axu_hold_stall),
+         
+         .fdec_frn_iu5_i0_vld(fdec_frn_iu5_i0_vld),
+         .fdec_frn_iu5_i0_ucode(fdec_frn_iu5_i0_ucode),
+         .fdec_frn_iu5_i0_2ucode(fdec_frn_iu5_i0_2ucode),
+         .fdec_frn_iu5_i0_fuse_nop(fdec_frn_iu5_i0_fuse_nop),
+         .fdec_frn_iu5_i0_rte_lq(fdec_frn_iu5_i0_rte_lq),
+         .fdec_frn_iu5_i0_rte_sq(fdec_frn_iu5_i0_rte_sq),
+         .fdec_frn_iu5_i0_rte_fx0(fdec_frn_iu5_i0_rte_fx0),
+         .fdec_frn_iu5_i0_rte_fx1(fdec_frn_iu5_i0_rte_fx1),
+         .fdec_frn_iu5_i0_rte_axu0(fdec_frn_iu5_i0_rte_axu0),
+         .fdec_frn_iu5_i0_rte_axu1(fdec_frn_iu5_i0_rte_axu1),
+         .fdec_frn_iu5_i0_valop(fdec_frn_iu5_i0_valop),
+         .fdec_frn_iu5_i0_ord(fdec_frn_iu5_i0_ord),
+         .fdec_frn_iu5_i0_cord(fdec_frn_iu5_i0_cord),
+         .fdec_frn_iu5_i0_error(fdec_frn_iu5_i0_error),
+         .fdec_frn_iu5_i0_fusion(fdec_frn_iu5_i0_fusion),
+         .fdec_frn_iu5_i0_spec(fdec_frn_iu5_i0_spec),
+         .fdec_frn_iu5_i0_type_fp(fdec_frn_iu5_i0_type_fp),
+         .fdec_frn_iu5_i0_type_ap(fdec_frn_iu5_i0_type_ap),
+         .fdec_frn_iu5_i0_type_spv(fdec_frn_iu5_i0_type_spv),
+         .fdec_frn_iu5_i0_type_st(fdec_frn_iu5_i0_type_st),
+         .fdec_frn_iu5_i0_async_block(fdec_frn_iu5_i0_async_block),
+         .fdec_frn_iu5_i0_np1_flush(fdec_frn_iu5_i0_np1_flush),
+         .fdec_frn_iu5_i0_core_block(fdec_frn_iu5_i0_core_block),
+         .fdec_frn_iu5_i0_isram(fdec_frn_iu5_i0_isram),
+         .fdec_frn_iu5_i0_isload(fdec_frn_iu5_i0_isload),
+         .fdec_frn_iu5_i0_isstore(fdec_frn_iu5_i0_isstore),
+         .fdec_frn_iu5_i0_instr(fdec_frn_iu5_i0_instr),
+         .fdec_frn_iu5_i0_ifar(fdec_frn_iu5_i0_ifar),
+         .fdec_frn_iu5_i0_bta(fdec_frn_iu5_i0_bta),
+         .fdec_frn_iu5_i0_br_pred(fdec_frn_iu5_i0_br_pred),
+         .fdec_frn_iu5_i0_bh_update(fdec_frn_iu5_i0_bh_update),
+         .fdec_frn_iu5_i0_bh0_hist(fdec_frn_iu5_i0_bh0_hist),
+         .fdec_frn_iu5_i0_bh1_hist(fdec_frn_iu5_i0_bh1_hist),
+         .fdec_frn_iu5_i0_bh2_hist(fdec_frn_iu5_i0_bh2_hist),
+         .fdec_frn_iu5_i0_gshare(fdec_frn_iu5_i0_gshare),
+         .fdec_frn_iu5_i0_ls_ptr(fdec_frn_iu5_i0_ls_ptr),
+         .fdec_frn_iu5_i0_match(fdec_frn_iu5_i0_match),
+         .fdec_frn_iu5_i0_btb_entry(fdec_frn_iu5_i0_btb_entry),
+         .fdec_frn_iu5_i0_btb_hist(fdec_frn_iu5_i0_btb_hist),
+         .fdec_frn_iu5_i0_bta_val(fdec_frn_iu5_i0_bta_val),
+         .fdec_frn_iu5_i0_ilat(fdec_frn_iu5_i0_ilat),
+         .fdec_frn_iu5_i0_t1_v(fdec_frn_iu5_i0_t1_v),
+         .fdec_frn_iu5_i0_t1_t(fdec_frn_iu5_i0_t1_t),
+         .fdec_frn_iu5_i0_t1_a(fdec_frn_iu5_i0_t1_a),
+         .fdec_frn_iu5_i0_t2_v(fdec_frn_iu5_i0_t2_v),
+         .fdec_frn_iu5_i0_t2_a(fdec_frn_iu5_i0_t2_a),
+         .fdec_frn_iu5_i0_t2_t(fdec_frn_iu5_i0_t2_t),
+         .fdec_frn_iu5_i0_t3_v(fdec_frn_iu5_i0_t3_v),
+         .fdec_frn_iu5_i0_t3_a(fdec_frn_iu5_i0_t3_a),
+         .fdec_frn_iu5_i0_t3_t(fdec_frn_iu5_i0_t3_t),
+         .fdec_frn_iu5_i0_s1_v(fdec_frn_iu5_i0_s1_v),
+         .fdec_frn_iu5_i0_s1_a(fdec_frn_iu5_i0_s1_a),
+         .fdec_frn_iu5_i0_s1_t(fdec_frn_iu5_i0_s1_t),
+         .fdec_frn_iu5_i0_s2_v(fdec_frn_iu5_i0_s2_v),
+         .fdec_frn_iu5_i0_s2_a(fdec_frn_iu5_i0_s2_a),
+         .fdec_frn_iu5_i0_s2_t(fdec_frn_iu5_i0_s2_t),
+         .fdec_frn_iu5_i0_s3_v(fdec_frn_iu5_i0_s3_v),
+         .fdec_frn_iu5_i0_s3_a(fdec_frn_iu5_i0_s3_a),
+         .fdec_frn_iu5_i0_s3_t(fdec_frn_iu5_i0_s3_t),
+         
+         .fdec_frn_iu5_i1_vld(fdec_frn_iu5_i1_vld),
+         .fdec_frn_iu5_i1_ucode(fdec_frn_iu5_i1_ucode),
+         .fdec_frn_iu5_i1_fuse_nop(fdec_frn_iu5_i1_fuse_nop),
+         .fdec_frn_iu5_i1_rte_lq(fdec_frn_iu5_i1_rte_lq),
+         .fdec_frn_iu5_i1_rte_sq(fdec_frn_iu5_i1_rte_sq),
+         .fdec_frn_iu5_i1_rte_fx0(fdec_frn_iu5_i1_rte_fx0),
+         .fdec_frn_iu5_i1_rte_fx1(fdec_frn_iu5_i1_rte_fx1),
+         .fdec_frn_iu5_i1_rte_axu0(fdec_frn_iu5_i1_rte_axu0),
+         .fdec_frn_iu5_i1_rte_axu1(fdec_frn_iu5_i1_rte_axu1),
+         .fdec_frn_iu5_i1_valop(fdec_frn_iu5_i1_valop),
+         .fdec_frn_iu5_i1_ord(fdec_frn_iu5_i1_ord),
+         .fdec_frn_iu5_i1_cord(fdec_frn_iu5_i1_cord),
+         .fdec_frn_iu5_i1_error(fdec_frn_iu5_i1_error),
+         .fdec_frn_iu5_i1_fusion(fdec_frn_iu5_i1_fusion),
+         .fdec_frn_iu5_i1_spec(fdec_frn_iu5_i1_spec),
+         .fdec_frn_iu5_i1_type_fp(fdec_frn_iu5_i1_type_fp),
+         .fdec_frn_iu5_i1_type_ap(fdec_frn_iu5_i1_type_ap),
+         .fdec_frn_iu5_i1_type_spv(fdec_frn_iu5_i1_type_spv),
+         .fdec_frn_iu5_i1_type_st(fdec_frn_iu5_i1_type_st),
+         .fdec_frn_iu5_i1_async_block(fdec_frn_iu5_i1_async_block),
+         .fdec_frn_iu5_i1_np1_flush(fdec_frn_iu5_i1_np1_flush),
+         .fdec_frn_iu5_i1_core_block(fdec_frn_iu5_i1_core_block),
+         .fdec_frn_iu5_i1_isram(fdec_frn_iu5_i1_isram),
+         .fdec_frn_iu5_i1_isload(fdec_frn_iu5_i1_isload),
+         .fdec_frn_iu5_i1_isstore(fdec_frn_iu5_i1_isstore),
+         .fdec_frn_iu5_i1_instr(fdec_frn_iu5_i1_instr),
+         .fdec_frn_iu5_i1_ifar(fdec_frn_iu5_i1_ifar),
+         .fdec_frn_iu5_i1_bta(fdec_frn_iu5_i1_bta),
+         .fdec_frn_iu5_i1_br_pred(fdec_frn_iu5_i1_br_pred),
+         .fdec_frn_iu5_i1_bh_update(fdec_frn_iu5_i1_bh_update),
+         .fdec_frn_iu5_i1_bh0_hist(fdec_frn_iu5_i1_bh0_hist),
+         .fdec_frn_iu5_i1_bh1_hist(fdec_frn_iu5_i1_bh1_hist),
+         .fdec_frn_iu5_i1_bh2_hist(fdec_frn_iu5_i1_bh2_hist),
+         .fdec_frn_iu5_i1_gshare(fdec_frn_iu5_i1_gshare),
+         .fdec_frn_iu5_i1_ls_ptr(fdec_frn_iu5_i1_ls_ptr),
+         .fdec_frn_iu5_i1_match(fdec_frn_iu5_i1_match),
+         .fdec_frn_iu5_i1_btb_entry(fdec_frn_iu5_i1_btb_entry),
+         .fdec_frn_iu5_i1_btb_hist(fdec_frn_iu5_i1_btb_hist),
+         .fdec_frn_iu5_i1_bta_val(fdec_frn_iu5_i1_bta_val),
+         .fdec_frn_iu5_i1_ilat(fdec_frn_iu5_i1_ilat),
+         .fdec_frn_iu5_i1_t1_v(fdec_frn_iu5_i1_t1_v),
+         .fdec_frn_iu5_i1_t1_t(fdec_frn_iu5_i1_t1_t),
+         .fdec_frn_iu5_i1_t1_a(fdec_frn_iu5_i1_t1_a),
+         .fdec_frn_iu5_i1_t2_v(fdec_frn_iu5_i1_t2_v),
+         .fdec_frn_iu5_i1_t2_a(fdec_frn_iu5_i1_t2_a),
+         .fdec_frn_iu5_i1_t2_t(fdec_frn_iu5_i1_t2_t),
+         .fdec_frn_iu5_i1_t3_v(fdec_frn_iu5_i1_t3_v),
+         .fdec_frn_iu5_i1_t3_a(fdec_frn_iu5_i1_t3_a),
+         .fdec_frn_iu5_i1_t3_t(fdec_frn_iu5_i1_t3_t),
+         .fdec_frn_iu5_i1_s1_v(fdec_frn_iu5_i1_s1_v),
+         .fdec_frn_iu5_i1_s1_a(fdec_frn_iu5_i1_s1_a),
+         .fdec_frn_iu5_i1_s1_t(fdec_frn_iu5_i1_s1_t),
+         .fdec_frn_iu5_i1_s2_v(fdec_frn_iu5_i1_s2_v),
+         .fdec_frn_iu5_i1_s2_a(fdec_frn_iu5_i1_s2_a),
+         .fdec_frn_iu5_i1_s2_t(fdec_frn_iu5_i1_s2_t),
+         .fdec_frn_iu5_i1_s3_v(fdec_frn_iu5_i1_s3_v),
+         .fdec_frn_iu5_i1_s3_a(fdec_frn_iu5_i1_s3_a),
+         .fdec_frn_iu5_i1_s3_t(fdec_frn_iu5_i1_s3_t),
+         
+         .spr_high_pri_mask(spr_high_pri_mask),
+         .spr_cpcr_we(spr_cpcr_we),
+         .spr_cpcr3_cp_cnt(spr_cpcr3_cp_cnt),
+         .spr_cpcr5_cp_cnt(spr_cpcr5_cp_cnt),
+         .spr_single_issue(spr_single_issue),
+         
+         .frn_fdec_iu5_stall(frn_fdec_iu5_stall),
+         
+         .fdis_frn_iu6_stall(fdis_frn_iu6_stall),
+         
+         .cp_rn_i0_axu_exception_val(cp_rn_i0_axu_exception_val),
+         .cp_rn_i0_axu_exception(cp_rn_i0_axu_exception),
+         .cp_rn_i1_axu_exception_val(cp_rn_i1_axu_exception_val),
+         .cp_rn_i1_axu_exception(cp_rn_i1_axu_exception),
+         .cp_rn_empty(cp_rn_empty),
+         .cp_rn_i0_v(cp_rn_i0_v),
+         .cp_rn_i0_itag(cp_rn_i0_itag),
+         .cp_rn_i0_t1_v(cp_rn_i0_t1_v),
+         .cp_rn_i0_t1_t(cp_rn_i0_t1_t),
+         .cp_rn_i0_t1_p(cp_rn_i0_t1_p),
+         .cp_rn_i0_t1_a(cp_rn_i0_t1_a),
+         .cp_rn_i0_t2_v(cp_rn_i0_t2_v),
+         .cp_rn_i0_t2_t(cp_rn_i0_t2_t),
+         .cp_rn_i0_t2_p(cp_rn_i0_t2_p),
+         .cp_rn_i0_t2_a(cp_rn_i0_t2_a),
+         .cp_rn_i0_t3_v(cp_rn_i0_t3_v),
+         .cp_rn_i0_t3_t(cp_rn_i0_t3_t),
+         .cp_rn_i0_t3_p(cp_rn_i0_t3_p),
+         .cp_rn_i0_t3_a(cp_rn_i0_t3_a),
+         
+         .cp_rn_i1_v(cp_rn_i1_v),
+         .cp_rn_i1_itag(cp_rn_i1_itag),
+         .cp_rn_i1_t1_v(cp_rn_i1_t1_v),
+         .cp_rn_i1_t1_t(cp_rn_i1_t1_t),
+         .cp_rn_i1_t1_p(cp_rn_i1_t1_p),
+         .cp_rn_i1_t1_a(cp_rn_i1_t1_a),
+         .cp_rn_i1_t2_v(cp_rn_i1_t2_v),
+         .cp_rn_i1_t2_t(cp_rn_i1_t2_t),
+         .cp_rn_i1_t2_p(cp_rn_i1_t2_p),
+         .cp_rn_i1_t2_a(cp_rn_i1_t2_a),
+         .cp_rn_i1_t3_v(cp_rn_i1_t3_v),
+         .cp_rn_i1_t3_t(cp_rn_i1_t3_t),
+         .cp_rn_i1_t3_p(cp_rn_i1_t3_p),
+         .cp_rn_i1_t3_a(cp_rn_i1_t3_a),
+         
+         .cp_flush(cp_flush),
+         .cp_flush_into_uc(cp_flush_into_uc),
+         .br_iu_redirect(br_iu_redirect),
+         .cp_rn_uc_credit_free(cp_rn_uc_credit_free),
+         
+         .frn_fdis_iu6_i0_vld(frn_fdis_iu6_i0_vld),
+         .frn_fdis_iu6_i0_itag(frn_fdis_iu6_i0_itag),
+         .frn_fdis_iu6_i0_ucode(frn_fdis_iu6_i0_ucode),
+         .frn_fdis_iu6_i0_ucode_cnt(frn_fdis_iu6_i0_ucode_cnt),
+         .frn_fdis_iu6_i0_2ucode(frn_fdis_iu6_i0_2ucode),
+         .frn_fdis_iu6_i0_fuse_nop(frn_fdis_iu6_i0_fuse_nop),
+         .frn_fdis_iu6_i0_rte_lq(frn_fdis_iu6_i0_rte_lq),
+         .frn_fdis_iu6_i0_rte_sq(frn_fdis_iu6_i0_rte_sq),
+         .frn_fdis_iu6_i0_rte_fx0(frn_fdis_iu6_i0_rte_fx0),
+         .frn_fdis_iu6_i0_rte_fx1(frn_fdis_iu6_i0_rte_fx1),
+         .frn_fdis_iu6_i0_rte_axu0(frn_fdis_iu6_i0_rte_axu0),
+         .frn_fdis_iu6_i0_rte_axu1(frn_fdis_iu6_i0_rte_axu1),
+         .frn_fdis_iu6_i0_valop(frn_fdis_iu6_i0_valop),
+         .frn_fdis_iu6_i0_ord(frn_fdis_iu6_i0_ord),
+         .frn_fdis_iu6_i0_cord(frn_fdis_iu6_i0_cord),
+         .frn_fdis_iu6_i0_error(frn_fdis_iu6_i0_error),
+         .frn_fdis_iu6_i0_fusion(frn_fdis_iu6_i0_fusion),
+         .frn_fdis_iu6_i0_spec(frn_fdis_iu6_i0_spec),
+         .frn_fdis_iu6_i0_type_fp(frn_fdis_iu6_i0_type_fp),
+         .frn_fdis_iu6_i0_type_ap(frn_fdis_iu6_i0_type_ap),
+         .frn_fdis_iu6_i0_type_spv(frn_fdis_iu6_i0_type_spv),
+         .frn_fdis_iu6_i0_type_st(frn_fdis_iu6_i0_type_st),
+         .frn_fdis_iu6_i0_async_block(frn_fdis_iu6_i0_async_block),
+         .frn_fdis_iu6_i0_np1_flush(frn_fdis_iu6_i0_np1_flush),
+         .frn_fdis_iu6_i0_core_block(frn_fdis_iu6_i0_core_block),
+         .frn_fdis_iu6_i0_isram(frn_fdis_iu6_i0_isram),
+         .frn_fdis_iu6_i0_isload(frn_fdis_iu6_i0_isload),
+         .frn_fdis_iu6_i0_isstore(frn_fdis_iu6_i0_isstore),
+         .frn_fdis_iu6_i0_instr(frn_fdis_iu6_i0_instr),
+         .frn_fdis_iu6_i0_ifar(frn_fdis_iu6_i0_ifar),
+         .frn_fdis_iu6_i0_bta(frn_fdis_iu6_i0_bta),
+         .frn_fdis_iu6_i0_br_pred(frn_fdis_iu6_i0_br_pred),
+         .frn_fdis_iu6_i0_bh_update(frn_fdis_iu6_i0_bh_update),
+         .frn_fdis_iu6_i0_bh0_hist(frn_fdis_iu6_i0_bh0_hist),
+         .frn_fdis_iu6_i0_bh1_hist(frn_fdis_iu6_i0_bh1_hist),
+         .frn_fdis_iu6_i0_bh2_hist(frn_fdis_iu6_i0_bh2_hist),
+         .frn_fdis_iu6_i0_gshare(frn_fdis_iu6_i0_gshare),
+         .frn_fdis_iu6_i0_ls_ptr(frn_fdis_iu6_i0_ls_ptr),
+         .frn_fdis_iu6_i0_match(frn_fdis_iu6_i0_match),
+         .frn_fdis_iu6_i0_btb_entry(frn_fdis_iu6_i0_btb_entry),
+         .frn_fdis_iu6_i0_btb_hist(frn_fdis_iu6_i0_btb_hist),
+         .frn_fdis_iu6_i0_bta_val(frn_fdis_iu6_i0_bta_val),
+         .frn_fdis_iu6_i0_ilat(frn_fdis_iu6_i0_ilat),
+         .frn_fdis_iu6_i0_t1_v(frn_fdis_iu6_i0_t1_v),
+         .frn_fdis_iu6_i0_t1_t(frn_fdis_iu6_i0_t1_t),
+         .frn_fdis_iu6_i0_t1_a(frn_fdis_iu6_i0_t1_a),
+         .frn_fdis_iu6_i0_t1_p(frn_fdis_iu6_i0_t1_p),
+         .frn_fdis_iu6_i0_t2_v(frn_fdis_iu6_i0_t2_v),
+         .frn_fdis_iu6_i0_t2_a(frn_fdis_iu6_i0_t2_a),
+         .frn_fdis_iu6_i0_t2_p(frn_fdis_iu6_i0_t2_p),
+         .frn_fdis_iu6_i0_t2_t(frn_fdis_iu6_i0_t2_t),
+         .frn_fdis_iu6_i0_t3_v(frn_fdis_iu6_i0_t3_v),
+         .frn_fdis_iu6_i0_t3_a(frn_fdis_iu6_i0_t3_a),
+         .frn_fdis_iu6_i0_t3_p(frn_fdis_iu6_i0_t3_p),
+         .frn_fdis_iu6_i0_t3_t(frn_fdis_iu6_i0_t3_t),
+         .frn_fdis_iu6_i0_s1_v(frn_fdis_iu6_i0_s1_v),
+         .frn_fdis_iu6_i0_s1_a(frn_fdis_iu6_i0_s1_a),
+         .frn_fdis_iu6_i0_s1_p(frn_fdis_iu6_i0_s1_p),
+         .frn_fdis_iu6_i0_s1_itag(frn_fdis_iu6_i0_s1_itag),
+         .frn_fdis_iu6_i0_s1_t(frn_fdis_iu6_i0_s1_t),
+         .frn_fdis_iu6_i0_s2_v(frn_fdis_iu6_i0_s2_v),
+         .frn_fdis_iu6_i0_s2_a(frn_fdis_iu6_i0_s2_a),
+         .frn_fdis_iu6_i0_s2_p(frn_fdis_iu6_i0_s2_p),
+         .frn_fdis_iu6_i0_s2_itag(frn_fdis_iu6_i0_s2_itag),
+         .frn_fdis_iu6_i0_s2_t(frn_fdis_iu6_i0_s2_t),
+         .frn_fdis_iu6_i0_s3_v(frn_fdis_iu6_i0_s3_v),
+         .frn_fdis_iu6_i0_s3_a(frn_fdis_iu6_i0_s3_a),
+         .frn_fdis_iu6_i0_s3_p(frn_fdis_iu6_i0_s3_p),
+         .frn_fdis_iu6_i0_s3_itag(frn_fdis_iu6_i0_s3_itag),
+         .frn_fdis_iu6_i0_s3_t(frn_fdis_iu6_i0_s3_t),
+         
+         .frn_fdis_iu6_i1_vld(frn_fdis_iu6_i1_vld),
+         .frn_fdis_iu6_i1_itag(frn_fdis_iu6_i1_itag),
+         .frn_fdis_iu6_i1_ucode(frn_fdis_iu6_i1_ucode),
+         .frn_fdis_iu6_i1_ucode_cnt(frn_fdis_iu6_i1_ucode_cnt),
+         .frn_fdis_iu6_i1_fuse_nop(frn_fdis_iu6_i1_fuse_nop),
+         .frn_fdis_iu6_i1_rte_lq(frn_fdis_iu6_i1_rte_lq),
+         .frn_fdis_iu6_i1_rte_sq(frn_fdis_iu6_i1_rte_sq),
+         .frn_fdis_iu6_i1_rte_fx0(frn_fdis_iu6_i1_rte_fx0),
+         .frn_fdis_iu6_i1_rte_fx1(frn_fdis_iu6_i1_rte_fx1),
+         .frn_fdis_iu6_i1_rte_axu0(frn_fdis_iu6_i1_rte_axu0),
+         .frn_fdis_iu6_i1_rte_axu1(frn_fdis_iu6_i1_rte_axu1),
+         .frn_fdis_iu6_i1_valop(frn_fdis_iu6_i1_valop),
+         .frn_fdis_iu6_i1_ord(frn_fdis_iu6_i1_ord),
+         .frn_fdis_iu6_i1_cord(frn_fdis_iu6_i1_cord),
+         .frn_fdis_iu6_i1_error(frn_fdis_iu6_i1_error),
+         .frn_fdis_iu6_i1_fusion(frn_fdis_iu6_i1_fusion),
+         .frn_fdis_iu6_i1_spec(frn_fdis_iu6_i1_spec),
+         .frn_fdis_iu6_i1_type_fp(frn_fdis_iu6_i1_type_fp),
+         .frn_fdis_iu6_i1_type_ap(frn_fdis_iu6_i1_type_ap),
+         .frn_fdis_iu6_i1_type_spv(frn_fdis_iu6_i1_type_spv),
+         .frn_fdis_iu6_i1_type_st(frn_fdis_iu6_i1_type_st),
+         .frn_fdis_iu6_i1_async_block(frn_fdis_iu6_i1_async_block),
+         .frn_fdis_iu6_i1_np1_flush(frn_fdis_iu6_i1_np1_flush),
+         .frn_fdis_iu6_i1_core_block(frn_fdis_iu6_i1_core_block),
+         .frn_fdis_iu6_i1_isram(frn_fdis_iu6_i1_isram),
+         .frn_fdis_iu6_i1_isload(frn_fdis_iu6_i1_isload),
+         .frn_fdis_iu6_i1_isstore(frn_fdis_iu6_i1_isstore),
+         .frn_fdis_iu6_i1_instr(frn_fdis_iu6_i1_instr),
+         .frn_fdis_iu6_i1_ifar(frn_fdis_iu6_i1_ifar),
+         .frn_fdis_iu6_i1_bta(frn_fdis_iu6_i1_bta),
+         .frn_fdis_iu6_i1_br_pred(frn_fdis_iu6_i1_br_pred),
+         .frn_fdis_iu6_i1_bh_update(frn_fdis_iu6_i1_bh_update),
+         .frn_fdis_iu6_i1_bh0_hist(frn_fdis_iu6_i1_bh0_hist),
+         .frn_fdis_iu6_i1_bh1_hist(frn_fdis_iu6_i1_bh1_hist),
+         .frn_fdis_iu6_i1_bh2_hist(frn_fdis_iu6_i1_bh2_hist),
+         .frn_fdis_iu6_i1_gshare(frn_fdis_iu6_i1_gshare),
+         .frn_fdis_iu6_i1_ls_ptr(frn_fdis_iu6_i1_ls_ptr),
+         .frn_fdis_iu6_i1_match(frn_fdis_iu6_i1_match),
+         .frn_fdis_iu6_i1_btb_entry(frn_fdis_iu6_i1_btb_entry),
+         .frn_fdis_iu6_i1_btb_hist(frn_fdis_iu6_i1_btb_hist),
+         .frn_fdis_iu6_i1_bta_val(frn_fdis_iu6_i1_bta_val),
+         .frn_fdis_iu6_i1_ilat(frn_fdis_iu6_i1_ilat),
+         .frn_fdis_iu6_i1_t1_v(frn_fdis_iu6_i1_t1_v),
+         .frn_fdis_iu6_i1_t1_t(frn_fdis_iu6_i1_t1_t),
+         .frn_fdis_iu6_i1_t1_a(frn_fdis_iu6_i1_t1_a),
+         .frn_fdis_iu6_i1_t1_p(frn_fdis_iu6_i1_t1_p),
+         .frn_fdis_iu6_i1_t2_v(frn_fdis_iu6_i1_t2_v),
+         .frn_fdis_iu6_i1_t2_a(frn_fdis_iu6_i1_t2_a),
+         .frn_fdis_iu6_i1_t2_p(frn_fdis_iu6_i1_t2_p),
+         .frn_fdis_iu6_i1_t2_t(frn_fdis_iu6_i1_t2_t),
+         .frn_fdis_iu6_i1_t3_v(frn_fdis_iu6_i1_t3_v),
+         .frn_fdis_iu6_i1_t3_a(frn_fdis_iu6_i1_t3_a),
+         .frn_fdis_iu6_i1_t3_p(frn_fdis_iu6_i1_t3_p),
+         .frn_fdis_iu6_i1_t3_t(frn_fdis_iu6_i1_t3_t),
+         .frn_fdis_iu6_i1_s1_v(frn_fdis_iu6_i1_s1_v),
+         .frn_fdis_iu6_i1_s1_a(frn_fdis_iu6_i1_s1_a),
+         .frn_fdis_iu6_i1_s1_p(frn_fdis_iu6_i1_s1_p),
+         .frn_fdis_iu6_i1_s1_itag(frn_fdis_iu6_i1_s1_itag),
+         .frn_fdis_iu6_i1_s1_t(frn_fdis_iu6_i1_s1_t),
+         .frn_fdis_iu6_i1_s1_dep_hit(frn_fdis_iu6_i1_s1_dep_hit),
+         .frn_fdis_iu6_i1_s2_v(frn_fdis_iu6_i1_s2_v),
+         .frn_fdis_iu6_i1_s2_a(frn_fdis_iu6_i1_s2_a),
+         .frn_fdis_iu6_i1_s2_p(frn_fdis_iu6_i1_s2_p),
+         .frn_fdis_iu6_i1_s2_itag(frn_fdis_iu6_i1_s2_itag),
+         .frn_fdis_iu6_i1_s2_t(frn_fdis_iu6_i1_s2_t),
+         .frn_fdis_iu6_i1_s2_dep_hit(frn_fdis_iu6_i1_s2_dep_hit),
+         .frn_fdis_iu6_i1_s3_v(frn_fdis_iu6_i1_s3_v),
+         .frn_fdis_iu6_i1_s3_a(frn_fdis_iu6_i1_s3_a),
+         .frn_fdis_iu6_i1_s3_p(frn_fdis_iu6_i1_s3_p),
+         .frn_fdis_iu6_i1_s3_itag(frn_fdis_iu6_i1_s3_itag),
+         .frn_fdis_iu6_i1_s3_t(frn_fdis_iu6_i1_s3_t),
+         .frn_fdis_iu6_i1_s3_dep_hit(frn_fdis_iu6_i1_s3_dep_hit)
+      );
+      
+
+endmodule
