@@ -1,0 +1,2 @@
+# Help GitHub correctly report the project language
+*.v linguist-language=Verilog
