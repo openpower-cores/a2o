@@ -7,8 +7,8 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
-
-
+// input phase is importent
+// (change X (B) by switching xor/xnor )
 
 
 module lq_agen_csmux(
@@ -18,12 +18,12 @@ module lq_agen_csmux(
    sum
 );
 
-input [0:7]     sum_0;		
+input [0:7]     sum_0;		// after xor
 input [0:7]     sum_1;
 input           ci_b;
 
 output [0:7]    sum;
-               
+
 wire [0:7]      sum0_b;
 
 wire [0:7]      sum1_b;
@@ -34,38 +34,19 @@ wire            int_ci_t;
 
 wire            int_ci_b;
 
+//assign int_ci = (~ci_b);
 tri_inv int_ci_0 (.y(int_ci), .a(ci_b));
 
+//assign int_ci_t = (~ci_b);
 tri_inv int_ci_t_0 (.y(int_ci_t), .a(ci_b));
 
+//assign int_ci_b = (~int_ci_t);
 tri_inv int_ci_b_0 (.y(int_ci_b), .a(int_ci_t));
 
+//assign sum0_b[0] = (~(sum_0[0] & int_ci_b));
 tri_nand2 #(.WIDTH(8)) sum0_b_0 (.y(sum0_b[0:7]), .a(sum_0[0:7]), .b({8{int_ci_b}}));
 
-
-
-
-
-
-
-
-tri_nand2 #(.WIDTH(8)) sum1_b_0 (.y(sum1_b[0:7]), .a(sum_1[0:7]), .b({8{int_ci}}));
-
-
-
-
-
-
-
-
+//assign sum[0] = (~(sum0_b[0] & sum1_b[0]));
 tri_nand2 #(.WIDTH(8)) sum0 (.y(sum[0:7]), .a(sum0_b[0:7]), .b(sum1_b[0:7]));
 
-
-
-
-
-
-
-   
 endmodule
-

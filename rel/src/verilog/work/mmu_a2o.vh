@@ -7,21 +7,35 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+// *!****************************************************************
+// *! FILENAME    : mmu_a2o.vh
+// *! DESCRIPTION : Constants for a2o mmu
+// *! CONTENTS    :
+// *!
+// *!****************************************************************
 
 `ifndef _mmu_a2o_vh_
 `define _mmu_a2o_vh_
-`define  EXPAND_TYPE  2       
-`define  EXPAND_TLB_TYPE  2   
+`define  EXPAND_TYPE  2       // 0 = ibm (Umbra), 1 = non-ibm, 2 = ibm (MPG)
+`define  EXPAND_TLB_TYPE  2   // 0 = erat-only, 1 = tlb logic, 2 = tlb array
 
+// Use this line for A2o core.  Comment out for A2i design.
 `define A2O
+// comment out this line to compile for erat-only mode
 `define TLB
+// uncomment this line to compile for category E.MF (Embedded.MMU Freescale)
 `define CAT_EMF
+// uncomment this line to compile for category E.LRAT (Embedded.Logical to Real Address Translate)
 `define CAT_LRAT
+// uncomment this line to compile for category E.PT (Embedded.Page Table)
 `define CAT_EPT
+// uncomment this line to compile for wait on completion exception taken before spr updates occur
 `define WAIT_UPDATES
 
+// Use this line for 2 mmu h/w thread.  Comment out for 1 thread design.
 `define MM_THREADS2
 
+// set this variable for internal thread-wise generates
 `ifdef MM_THREADS2
     `define  MM_THREADS  2
     `define  MM_THREADS_POOL_ENC  1
@@ -32,7 +46,7 @@
 
 
 
-`define            THDID_WIDTH             4    
+`define            THDID_WIDTH             4    // this is a pre-defined tag field width
 `define            PID_WIDTH               14
 `define            PID_WIDTH_ERAT          8
 `define            LPID_WIDTH              8
@@ -51,8 +65,8 @@
 `define            RS_DATA_WIDTH           64
 `define            DATA_OUT_WIDTH          64
 `define            ERROR_WIDTH             3
-`define            TLB_NUM_ENTRY                512 
-`define            TLB_NUM_ENTRY_LOG2           9 
+`define            TLB_NUM_ENTRY                512
+`define            TLB_NUM_ENTRY_LOG2           9
 `define            TLB_WAYS                     4
 `define            TLB_ADDR_WIDTH               7
 `define            TLB_WAY_WIDTH           168
@@ -71,10 +85,10 @@
 `define            SPR_ADDR_WIDTH          10
 `define            SPR_DATA_WIDTH          64
 `define            DEBUG_TRIGGER_WIDTH     12
-`define            PERF_EVENT_WIDTH        4   
+`define            PERF_EVENT_WIDTH        4   // events per thread
 `define            REAL_ADDR_WIDTH         42
-`define            RPN_WIDTH               30  
-`define            PTE_WIDTH               64  
+`define            RPN_WIDTH               30  // real_addr_WIDTH-12
+`define            PTE_WIDTH               64  // page table entry
 `define            CHECK_PARITY            1
 
 `ifdef A2O
@@ -82,25 +96,44 @@
 `define            ITAG_SIZE_ENC            7
 `define            EMQ_ENTRIES              4
 `define            TLB_TAG_WIDTH            122
-`define            MESR1_WIDTH     24   
+`define            MESR1_WIDTH     24   // 4 x 6 bits, 1 of 64 events
 `define            MESR2_WIDTH     24
-`define            PERF_MUX_WIDTH  64   
-`else            
+`define            PERF_MUX_WIDTH  64   // events per bus bit
+`else
 `define            DEBUG_TRACE_WIDTH       88
 `define            TLB_TAG_WIDTH            110
-`define            MESR1_WIDTH     20   
+`define            MESR1_WIDTH     20   // 4 x 5 bits, 1 of 32 events
 `define            MESR2_WIDTH     20
-`define            PERF_MUX_WIDTH  32   
+`define            PERF_MUX_WIDTH  32   // events per bus bit
 `endif
 
+//tlb_tagx_d <= ([0:51]  epn &
+//               [52:65] pid &
+//               [66:67] IS &
+//               [68:69] Class &
+//               [70:73] state (pr,gs,as,cm) &
+//               [74:77] thdid &
+//               [78:81] size &
+//               [82:83] derat_miss/ierat_miss &
+//               [84:85] tlbsx/tlbsrx &
+//               [86:87] inval_snoop/tlbre &
+//               [88:89] tlbwe/ptereload &
+//               [90:97] lpid &
+//               [98] indirect
+//               [99] atsel &
+//               [100:102] esel &
+//               [103:105] hes/wq(0:1) &
+//               [106:107] lrat/pt &
+//               [108] record form
+//               [109] endflag
 `define   tagpos_epn        0
-`define   tagpos_pid        52 
-`define   tagpos_is         66 
+`define   tagpos_pid        52 // 14 bits
+`define   tagpos_is         66
 `define   tagpos_class      68
-`define   tagpos_state      70 
-`define   tagpos_thdid      74 
-`define   tagpos_size       78 
-`define   tagpos_type       82 
+`define   tagpos_state      70 // state: 0:pr 1:gs 2:as 3:cm
+`define   tagpos_thdid      74
+`define   tagpos_size       78
+`define   tagpos_type       82 // derat,ierat,tlbsx,tlbsrx,snoop,tlbre,tlbwe,ptereload
 `define   tagpos_lpid       90
 `define   tagpos_ind        98
 `define   tagpos_atsel      99
@@ -109,32 +142,34 @@
 `define   tagpos_wq         104
 `define   tagpos_lrat       106
 `define   tagpos_pt         107
-`define   tagpos_recform    108 
+`define   tagpos_recform    108
 `define   tagpos_endflag    109
-`ifdef A2O 
-`define   tagpos_itag       110 
+`ifdef A2O
+`define   tagpos_itag       110
 `define   tagpos_nonspec    117
 `define   tagpos_emq        118
-`endif 
+`endif
 
-`define   tagpos_type_derat       `tagpos_type 
-`define   tagpos_type_ierat       `tagpos_type+1 
-`define   tagpos_type_tlbsx       `tagpos_type+2 
-`define   tagpos_type_tlbsrx      `tagpos_type+3 
-`define   tagpos_type_snoop       `tagpos_type+4 
-`define   tagpos_type_tlbre       `tagpos_type+5 
-`define   tagpos_type_tlbwe       `tagpos_type+6 
-`define   tagpos_type_ptereload   `tagpos_type+7 
-`define   tagpos_pr               `tagpos_state   
-`define   tagpos_gs               `tagpos_state+1 
-`define   tagpos_as               `tagpos_state+2 
-`define   tagpos_cm               `tagpos_state+3 
+// derat,ierat,tlbsx,tlbsrx,snoop,tlbre,tlbwe,ptereload
+`define   tagpos_type_derat       `tagpos_type
+`define   tagpos_type_ierat       `tagpos_type+1
+`define   tagpos_type_tlbsx       `tagpos_type+2
+`define   tagpos_type_tlbsrx      `tagpos_type+3
+`define   tagpos_type_snoop       `tagpos_type+4
+`define   tagpos_type_tlbre       `tagpos_type+5
+`define   tagpos_type_tlbwe       `tagpos_type+6
+`define   tagpos_type_ptereload   `tagpos_type+7
+// state: 0:pr 1:gs 2:as 3:cm
+`define   tagpos_pr               `tagpos_state
+`define   tagpos_gs               `tagpos_state+1
+`define   tagpos_as               `tagpos_state+2
+`define   tagpos_cm               `tagpos_state+3
 
 `define   waypos_epn        0
-`define   waypos_size       52 
-`define   waypos_thdid      56 
+`define   waypos_size       52
+`define   waypos_thdid      56
 `define   waypos_class      60
-`define   waypos_extclass   62 
+`define   waypos_extclass   62
 `define   waypos_lpid       66
 `define   waypos_xbit       84
 `define   waypos_tstmode4k  85
@@ -149,7 +184,7 @@
 `define   waypos_usxwr      134
 `define   waypos_gs         140
 `define   waypos_ts         141
-`define   waypos_tid        144   
+`define   waypos_tid        144   // 14 bits
 
 `define   eratpos_epn        0
 `define   eratpos_x          52
@@ -172,19 +207,19 @@
 `define   eratpos_usxwr      116
 `define   eratpos_gs         122
 `define   eratpos_ts         123
-`define   eratpos_tid        124   
-      
+`define   eratpos_tid        124   // 8 bits
+
 `define   ptepos_rpn        0
 `define   ptepos_wimge      40
 `define   ptepos_r          45
 `define   ptepos_ubits      46
 `define   ptepos_sw0        50
 `define   ptepos_c          51
-`define   ptepos_size       52 
+`define   ptepos_size       52
 `define   ptepos_usxwr      56
 `define   ptepos_sw1        62
 `define   ptepos_valid      63
 
 
-`endif  
-
+// Do NOT add any defines below this line
+`endif  //_mmu_a2o_vh_

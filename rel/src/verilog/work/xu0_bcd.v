@@ -7,14 +7,21 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//*****************************************************************************
+//  Description:  XU BCD Assist Instructions
+//
+//*****************************************************************************
 `include "tri_a2o.vh"
 
 module xu0_bcd(
+   // Clocks
    input [0:`NCLK_WIDTH-1] nclk,
-   
+
+   // Power
    inout                    vdd,
    inout                    gnd,
-   
+
+   // Pervasive
    input                    d_mode_dc,
    input                    delay_lclkr_dc,
    input                    mpw1_dc_b,
@@ -24,24 +31,29 @@ module xu0_bcd(
    input                    sg_0,
    input                    scan_in,
    output                   scan_out,
-   
+
+   // Decode Inputs
    input                    dec_bcd_ex1_val,
    input                    dec_bcd_ex1_is_addg6s,
    input                    dec_bcd_ex1_is_cdtbcd,
-   
+
+   // Source Data
    input [64-`GPR_WIDTH:63]  byp_bcd_ex2_rs1,
    input [64-`GPR_WIDTH:63]  byp_bcd_ex2_rs2,
-   
+
+   // Target Data
    output [64-`GPR_WIDTH:63] bcd_byp_ex3_rt,
    output                   bcd_byp_ex3_done
 );
-   
-   wire                     ex2_val_q;		
-   wire                     ex2_is_addg6s_q;		
-   wire                     ex2_is_cdtbcd_q;		
-   wire [64-`GPR_WIDTH:63]  ex3_bcd_rt_q;      
+
+   // Latches
+   wire                     ex2_val_q;		// input=>dec_bcd_ex1_val              ,act=>1'b1
+   wire                     ex2_is_addg6s_q;		// input=>dec_bcd_ex1_is_addg6s        ,act=>dec_bcd_ex1_val
+   wire                     ex2_is_cdtbcd_q;		// input=>dec_bcd_ex1_is_cdtbcd        ,act=>dec_bcd_ex1_val
+   wire [64-`GPR_WIDTH:63]  ex3_bcd_rt_q;      // input=>ex2_bcd_rt                   ,act=>ex2_val_q
    wire [64-`GPR_WIDTH:63]  ex2_bcd_rt;
-   wire                     ex3_val_q;		
+   wire                     ex3_val_q;		// input=>ex2_val_q                    ,act=>1'b1
+   // Scanchains
    localparam               ex2_val_offset = 0;
    localparam               ex2_is_addg6s_offset = ex2_val_offset + 1;
    localparam               ex2_is_cdtbcd_offset = ex2_is_addg6s_offset + 1;
@@ -67,9 +79,12 @@ module xu0_bcd(
    wire [0:63]              ex2_dtbcd_rt;
    wire [0:63]              ex2_sixes_rt;
 
+    // synopsys translate_off
     (* analysis_not_referenced="true" *)
+    // synopsys translate_on
    wire unused;
 
+   // BCD to DPD
 
    xu0_bcd_bcdtd bcdtd00(
       .a(byp_bcd_ex2_rs1[8:19]),
@@ -93,6 +108,7 @@ module xu0_bcd(
    assign ex2_bcdtd_rt[0:11]  = {12{1'b0}};
    assign ex2_bcdtd_rt[32:43] = {12{1'b0}};
 
+   // DPD to BCD
 
    xu0_bcd_dtbcd dtbcd00(
       .a(byp_bcd_ex2_rs1[12:21]),
@@ -116,23 +132,30 @@ module xu0_bcd(
    assign ex2_dtbcd_rt[0:7]   = {8{1'b0}};
    assign ex2_dtbcd_rt[32:39] = {8{1'b0}};
 
+   // ADDG6S
    assign p0[00:62] = byp_bcd_ex2_rs1[00:62] ^ byp_bcd_ex2_rs2[00:62];
    assign g0[00:63] = byp_bcd_ex2_rs1[00:63] & byp_bcd_ex2_rs2[00:63];
+   // L1 (1)
    assign g1[00:62] = (p0[00:62] & g0[01:63]) | g0[00:62];
    assign g1[63:63] = g0[63:63];
    assign p1[00:61] = p0[00:61] & p0[01:62];
+   // L2 (2)
    assign g2[00:61] = (p1[00:61] & g1[02:63]) | g1[00:61];
    assign g2[62:63] = g1[62:63];
    assign p2[00:59] = p1[00:59] & p1[02:61];
+   // L3 (4)
    assign g3[00:59] = (p2[00:59] & g2[04:63]) | g2[00:59];
    assign g3[60:63] = g2[60:63];
    assign p3[00:55] = p2[00:55] & p2[04:59];
+   // L4 (8)
    assign g4[00:55] = (p3[00:55] & g3[08:63]) | g3[00:55];
    assign g4[56:63] = g3[56:63];
    assign p4[00:47] = p3[00:47] & p3[08:55];
+   // L5 (16)
    assign g5[00:47] = (p4[00:47] & g4[16:63]) | g4[00:47];
    assign g5[48:63] = g4[48:63];
    assign p5[00:31] = p4[00:31] & p4[16:47];
+   // L6 (32)
    assign g6[00:31] = (p5[00:31] & g5[32:63]) | g5[00:31];
    assign g6[32:63] = g5[32:63];
 
@@ -140,18 +163,24 @@ module xu0_bcd(
       genvar                   b;
       for (b = 0; b <= 15; b = b + 1)
       begin : nibble
-         assign ex2_sixes_rt[4 * b:4 * b + 3] = (g6[b * 4] == 1'b0) ? 4'b0110 : 
+         assign ex2_sixes_rt[4 * b:4 * b + 3] = (g6[b * 4] == 1'b0) ? 4'b0110 :
                                                 4'b0000;
       end
    endgenerate
+   //!! bugspray include: tri_a2o.bil
+   //!! %for(i=0;i<16;++i)
+   //!!     [count; scenarios.addg6s_n%(i)_0  ; bugclk] : (pri2) <= ex2_val_q and ex2_is_addg6s_q and not g6(%(i*4));
+   //!!     [count; scenarios.addg6s_n%(i)_1  ; bugclk] : (pri2) <= ex2_val_q and ex2_is_addg6s_q and     g6(%(i*4));
+   //!! %end
 
-   assign ex2_bcd_rt = ({ex2_is_addg6s_q, ex2_is_cdtbcd_q} == 2'b10) ? ex2_sixes_rt : 
-                       ({ex2_is_addg6s_q, ex2_is_cdtbcd_q} == 2'b01) ? ex2_dtbcd_rt : 
+   assign ex2_bcd_rt = ({ex2_is_addg6s_q, ex2_is_cdtbcd_q} == 2'b10) ? ex2_sixes_rt :
+                       ({ex2_is_addg6s_q, ex2_is_cdtbcd_q} == 2'b01) ? ex2_dtbcd_rt :
                        ex2_bcdtd_rt;
    assign bcd_byp_ex3_rt = ex3_bcd_rt_q;
    assign bcd_byp_ex3_done = ex3_val_q;
 
 
+   // Latches
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ex2_val_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -249,5 +278,5 @@ module xu0_bcd(
                     (|g6[29:31]) | (|g6[33:35]) | (|g6[37:39]) | (|g6[41:43]) | (|g6[45:47]) | (|g6[49:51]) | (|g6[53:55]) |
                     (|g6[57:59]) | (|g6[61:63]);
 
-         
+
 endmodule

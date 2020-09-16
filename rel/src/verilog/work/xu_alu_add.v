@@ -8,13 +8,22 @@
 // license is available.
 
 
+//  Description:  XU Adder
+//
+//*****************************************************************************
 `include "tri_a2o.vh"
 module xu_alu_add
 (
+   //-------------------------------------------------------------------
+   // Clocks & Power
+   //-------------------------------------------------------------------
    input [0:`NCLK_WIDTH-1]  nclk,
    inout                    vdd,
    inout                    gnd,
-   
+
+   //-------------------------------------------------------------------
+   // Pervasive
+   //-------------------------------------------------------------------
    input                    delay_lclkr_dc,
    input                    mpw1_dc_b,
    input                    mpw2_dc_b,
@@ -23,30 +32,44 @@ module xu_alu_add
    input                    sg_0,
    input                    scan_in,
    output                   scan_out,
-   
+
+   //-------------------------------------------------------------------
+   // Decode Interface
+   //-------------------------------------------------------------------
    input                    ex1_act,
    input                    ex2_msb_64b_sel,
    input [0:`GPR_WIDTH/8-1]  dec_alu_ex1_add_rs1_inv,
    input                    dec_alu_ex2_add_ci,
-   
+
+   //-------------------------------------------------------------------
+   // Bypass Interface
+   //-------------------------------------------------------------------
    input [64-`GPR_WIDTH:63]  ex2_rs1,
    input [64-`GPR_WIDTH:63]  ex2_rs2,
-   
-   (* NO_MODIFICATION="TRUE" *)     
-   output [64-`GPR_WIDTH:63] ex2_add_rt,		
-   (* NO_MODIFICATION="TRUE" *)     
-   output                   ex2_add_ovf,		
+
+   //-------------------------------------------------------------------
+   // Target Data
+   //-------------------------------------------------------------------
+   (* NO_MODIFICATION="TRUE" *)     // ex2_add_rt
+   // NET_DATA="PLANES=/C1 C2/"     // ex2_add_rt
+   output [64-`GPR_WIDTH:63] ex2_add_rt,		// Add result
+   (* NO_MODIFICATION="TRUE" *)     // ex2_add_ovf
+   output                   ex2_add_ovf,		// Add overflow
+   // Add carry
    output                   ex2_add_ca
 );
 
 
    localparam                msb = 64-`GPR_WIDTH;
-   wire [64-`GPR_WIDTH:63]   ex2_rs1_inv_b_q;		
+   // Latches
+   wire [64-`GPR_WIDTH:63]   ex2_rs1_inv_b_q;		//input=>ex1_rs1_inv,                  act=>ex1_act
    wire [64-`GPR_WIDTH:63]   ex1_rs1_inv;
+   // Scanchain
    localparam               ex2_rs1_inv_b_offset = 0;
    localparam               scan_right = ex2_rs1_inv_b_offset + `GPR_WIDTH;
    wire [0:scan_right-1]    siv;
    wire [0:scan_right-1]    sov;
+   // Signals
    wire [0:`NCLK_WIDTH-1]   ex1_rs0_inv_lclk;
    wire                     ex1_rs0_inv_d1clk;
    wire                     ex1_rs0_inv_d2clk;
@@ -59,51 +82,67 @@ module xu_alu_add
    wire                     ex2_aop_32;
    wire                     ex2_bop_00;
    wire                     ex2_bop_32;
-   (* NO_MODIFICATION="TRUE" *) 
+   // synopsys translate_off
+   (* NO_MODIFICATION="TRUE" *) // ex2_sgn00_32
+   // synopsys translate_on
    wire                     ex2_sgn00_32;
    wire                     ex2_sgn11_32;
-   (* NO_MODIFICATION="TRUE" *) 
+   // synopsys translate_off
+   (* NO_MODIFICATION="TRUE" *) // ex2_sgn00_64
+   // synopsys translate_on
    wire                     ex2_sgn00_64;
    wire                     ex2_sgn11_64;
    wire                     ex2_cout_32;
    wire                     ex2_cout_00;
-   (* NO_MODIFICATION="TRUE" *) 
+   // synopsys translate_off
+   (* NO_MODIFICATION="TRUE" *) // ex2_ovf32_00_b
+   // synopsys translate_on
    wire                     ex2_ovf32_00_b;
    wire                     ex2_ovf32_11_b;
-   (* NO_MODIFICATION="TRUE" *) 
+   // synopsys translate_off
+   (* NO_MODIFICATION="TRUE" *) // ex2_ovf64_00_b
+   // synopsys translate_on
    wire                     ex2_ovf64_00_b;
    wire                     ex2_ovf64_11_b;
    wire [64-`GPR_WIDTH:63]   ex2_add_rslt;
    wire [64-`GPR_WIDTH:63]   ex2_rs1_inv_q;
 
-   generate 
+   generate
    genvar i;
       for (i=0; i<`GPR_WIDTH; i=i+1) begin : ex1_rs1_inv_gen
          assign ex1_rs1_inv[i] = dec_alu_ex1_add_rs1_inv[i % (`GPR_WIDTH/8)];
       end
    endgenerate
 
-   (* BLOCK_DATA="LOGIC_STYLE=/DIRECT/REPOWER_MODE=/NONE/CUE_BTR=/INV_X3M_A12TH/   " *)
+   // synopsys translate_off
+   // synopsys translate_on
    assign ex2_rs1_inv_q = (~ex2_rs1_inv_b_q);
 
    assign ex2_rs1_b = (~ex2_rs1);
    assign ex2_rs2_b = (~ex2_rs2);
 
-   (* BLOCK_DATA="LOGIC_STYLE=/DIRECT/REPOWER_MODE=/NONE/CUE_BTR=/XOR2_X3M_A12TH/  " *)
-   assign ex2_x_b = ex2_rs1_b ^ ex2_rs1_inv_q;		
+   // synopsys translate_off
+   // synopsys translate_on
+   assign ex2_x_b = ex2_rs1_b ^ ex2_rs1_inv_q;		// xor2_x2m --w=12
 
-   (* BLOCK_DATA="LOGIC_STYLE=/DIRECT/REPOWER_MODE=/NONE/CUE_BTR=/INV_X1M_A12TH/   " *)
-   assign ex2_y = (~ex2_rs2_b);		
-   (* BLOCK_DATA="LOGIC_STYLE=/DIRECT/REPOWER_MODE=/NONE/CUE_BTR=/INV_X3M_A12TH/   " *)
-   assign ex2_y_b = (~ex2_y);		
+   // synopsys translate_off
+   // synopsys translate_on
+   assign ex2_y = (~ex2_rs2_b);		// inv_x1m --w=4
+   // synopsys translate_off
+   // synopsys translate_on
+   assign ex2_y_b = (~ex2_y);		// inv_x2m --w=4
 
-   (* BLOCK_DATA="LOGIC_STYLE=/DIRECT/CUE_BTR=/INV_X0P5M_A12TH/   " *)
+   // synopsys translate_off
+   // synopsys translate_on
    assign ex2_aop_00 = (~ex2_x_b[msb]);
-   (* BLOCK_DATA="LOGIC_STYLE=/DIRECT/CUE_BTR=/INV_X0P5M_A12TH/   " *)
+   // synopsys translate_off
+   // synopsys translate_on
    assign ex2_aop_32 = (~ex2_x_b[32]);
-   (* BLOCK_DATA="LOGIC_STYLE=/DIRECT/CUE_BTR=/INV_X0P5M_A12TH/   " *)
+   // synopsys translate_off
+   // synopsys translate_on
    assign ex2_bop_00 = (~ex2_y_b[msb]);
-   (* BLOCK_DATA="LOGIC_STYLE=/DIRECT/CUE_BTR=/INV_X0P5M_A12TH/   " *)
+   // synopsys translate_off
+   // synopsys translate_on
    assign ex2_bop_32 = (~ex2_y_b[32]);
 
 
@@ -118,6 +157,7 @@ module xu_alu_add
 
    assign ex2_add_rt = ex2_add_rslt;
 
+   // Overflow occurs when the sign bit of the inputs differs from the sign of the result
    assign ex2_sgn00_32 = (~ex2_msb_64b_sel) & (~ex2_aop_32) & (~ex2_bop_32);
    assign ex2_sgn11_32 = (~ex2_msb_64b_sel) &   ex2_aop_32  &   ex2_bop_32;
    assign ex2_sgn00_64 =   ex2_msb_64b_sel  & (~ex2_aop_00) & (~ex2_bop_00);
@@ -130,6 +170,9 @@ module xu_alu_add
 
    assign ex2_add_ovf = (~(ex2_ovf64_00_b & ex2_ovf64_11_b & ex2_ovf32_00_b & ex2_ovf32_11_b));
 
+   //-------------------------------------------------------------------
+   // Latch instances
+   //-------------------------------------------------------------------
 
    assign ex2_add_ca = (ex2_msb_64b_sel == 1'b1) ? ex2_cout_00 : ex2_cout_32;
 
@@ -163,6 +206,6 @@ module xu_alu_add
 
    assign siv[0:scan_right-1] = {sov[1:scan_right-1], scan_in};
    assign scan_out = sov[0];
-   
+
 
 endmodule

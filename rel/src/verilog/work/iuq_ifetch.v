@@ -7,10 +7,15 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
-
+//********************************************************************
+//*
+//* TITLE: Instruction Fetch RLM wrapper
+//*
+//* NAME: iuq_ifetch.v
+//*
+//*********************************************************************
 
 `include "tri_a2o.vh"
-
 
 module iuq_ifetch(
     (* pin_data="PIN_FUNCTION=/G_CLK/" *)
@@ -22,8 +27,8 @@ module iuq_ifetch(
 
    input                             pc_iu_func_sl_thold_2,
    input                             pc_iu_func_slp_sl_thold_2,
-   input                             pc_iu_func_nsl_thold_2,		
-   input                             pc_iu_cfg_slp_sl_thold_2,		
+   input                             pc_iu_func_nsl_thold_2,		// added for custom cam
+   input                             pc_iu_cfg_slp_sl_thold_2,		// for boot config slats
    input                             pc_iu_regf_slp_sl_thold_2,
    input                             pc_iu_time_sl_thold_2,
    input                             pc_iu_abst_sl_thold_2,
@@ -113,7 +118,7 @@ module iuq_ifetch(
    input                             an_ac_atpg_en_dc,
    input                             an_ac_grffence_en_dc,
 
-   input                             pc_iu_bo_enable_3,		
+   input                             pc_iu_bo_enable_3,		// bolt-on ABIST
    input                             pc_iu_bo_reset,
    input                             pc_iu_bo_unload,
    input                             pc_iu_bo_repair,
@@ -122,14 +127,17 @@ module iuq_ifetch(
    output [0:3]                      iu_pc_bo_fail,
    output [0:3]                      iu_pc_bo_diagout,
 
+   // ICBI Interface to IU
    input [0:`THREADS-1]              lq_iu_icbi_val,
    input [64-`REAL_IFAR_WIDTH:57]    lq_iu_icbi_addr,
    output [0:`THREADS-1]             iu_lq_icbi_complete,
    input                             lq_iu_ici_val,
    output                            iu_lq_spr_iucr0_icbi_ack,
 
+   // ERAT
    input                             pc_iu_init_reset,
 
+   // XU IERAT interface
    input [0:`THREADS-1]              xu_iu_val,
    input                             xu_iu_is_eratre,
    input                             xu_iu_is_eratwe,
@@ -151,7 +159,7 @@ module iuq_ifetch(
    input [0:`THREADS-1]              xu_iu_msr_is,
    input                             xu_iu_hid_mmu_mode,
    input                             xu_iu_spr_ccr2_ifrat,
-   input [0:8]                       xu_iu_spr_ccr2_ifratsc,		
+   input [0:8]                       xu_iu_spr_ccr2_ifratsc,		// 0:4: wimge, 5:8: u0:3
    input                             xu_iu_xucr4_mmu_mchk,
    output [64-`GPR_WIDTH:63]         iu_xu_ex5_data,
 
@@ -185,11 +193,13 @@ module iuq_ifetch(
    input [62-`EFF_IFAR_ARCH:51]      mm_iu_ierat_snoop_vpn,
    output                            iu_mm_ierat_snoop_ack,
 
+   // MMU Connections
    input [0:`THREADS-1]              mm_iu_hold_req,
    input [0:`THREADS-1]              mm_iu_hold_done,
    input [0:`THREADS-1]              mm_iu_bus_snoop_hold_req,
    input [0:`THREADS-1]              mm_iu_bus_snoop_hold_done,
 
+   // SELECT, DIR, & MISS
    input [0:`THREADS-1]              pc_iu_pm_fetch_halt,
    input [0:`THREADS-1]              xu_iu_run_thread,
    input [0:`THREADS-1]              cp_ic_stop,
@@ -218,7 +228,7 @@ module iuq_ifetch(
 
    input                             an_ac_back_inv,
    input [64-`REAL_IFAR_WIDTH:57]    an_ac_back_inv_addr,
-   input                             an_ac_back_inv_target,		
+   input                             an_ac_back_inv_target,		// connect to bit(0)
 
    output [0:`THREADS-1]             iu_lq_request,
    output [0:1]                      iu_lq_ctag,
@@ -233,6 +243,7 @@ module iuq_ifetch(
    input                             an_ac_reld_ecc_err,
    input                             an_ac_reld_ecc_err_ue,
 
+   //Instruction Buffer
    input [0:`IBUFF_DEPTH/4-1]        ib_ic_t0_need_fetch,
  `ifndef THREADS1
    input [0:`IBUFF_DEPTH/4-1]        ib_ic_t1_need_fetch,
@@ -243,6 +254,8 @@ module iuq_ifetch(
    output [0:`THREADS-1]             iu_xu_icache_quiesce,
    output [0:`THREADS-1]             iu_pc_icache_quiesce,
 
+   //---------Branch Predict
+   //in from bht
    input [0:1]                       iu2_0_bh0_rd_data,
    input [0:1]                       iu2_1_bh0_rd_data,
    input [0:1]                       iu2_2_bh0_rd_data,
@@ -258,6 +271,7 @@ module iuq_ifetch(
    input                             iu2_2_bh2_rd_data,
    input                             iu2_3_bh2_rd_data,
 
+   //out to bht
    output reg [0:9]                  iu0_bh0_rd_addr,
    output reg [0:9]                  iu0_bh1_rd_addr,
    output reg [0:8]                  iu0_bh2_rd_addr,
@@ -274,6 +288,7 @@ module iuq_ifetch(
    output reg [0:3]                  ex5_bh1_wr_act,
    output reg [0:3]                  ex5_bh2_wr_act,
 
+   //in/out to btb
    output reg [0:5]                  iu0_btb_rd_addr,
    output reg                        iu0_btb_rd_act,
    input [0:63]			     iu2_btb_rd_data,
@@ -281,10 +296,12 @@ module iuq_ifetch(
    output reg                        ex5_btb_wr_act,
    output reg [0:63]	             ex5_btb_wr_data,
 
+   //iu3
    output [0:3]                       bp_ib_iu3_t0_val,
    output [62-`EFF_IFAR_WIDTH:61]     bp_ib_iu3_t0_ifar,
    output [62-`EFF_IFAR_WIDTH:61]     bp_ib_iu3_t0_bta,
 
+   //iu3 instruction(0:31) +
    output [0:69]                      bp_ib_iu3_t0_0_instr,
    output [0:69]                      bp_ib_iu3_t0_1_instr,
    output [0:69]                      bp_ib_iu3_t0_2_instr,
@@ -294,12 +311,14 @@ module iuq_ifetch(
    output [62-`EFF_IFAR_WIDTH:61]     bp_ib_iu3_t1_ifar,
    output [62-`EFF_IFAR_WIDTH:61]     bp_ib_iu3_t1_bta,
 
+   //iu3 instruction(0:31) +
    output [0:69]                      bp_ib_iu3_t1_0_instr,
    output [0:69]                      bp_ib_iu3_t1_1_instr,
    output [0:69]                      bp_ib_iu3_t1_2_instr,
    output [0:69]                      bp_ib_iu3_t1_3_instr,
  `endif
 
+   //ex4 update
    input [0:`THREADS-1]              cp_bp_val,
    input [62-`EFF_IFAR_WIDTH:61]     cp_bp_t0_ifar,
    input [0:1]                       cp_bp_t0_bh0_hist,
@@ -333,6 +352,7 @@ module iuq_ifetch(
  `endif
    input [0:`THREADS-1]              cp_bp_btb_entry,
 
+   //config bits
    input [0:17]                      br_iu_gshare,
    input [0:2]                       br_iu_ls_ptr,
    input [62-`EFF_IFAR_WIDTH:61]     br_iu_ls_data,
@@ -354,6 +374,7 @@ module iuq_ifetch(
     (* pin_data ="PIN_FUNCTION=/SCAN_OUT/" *)
    output [0:2*`THREADS-1]           bp_scan_out,
 
+   //-------------RAM
    input [0:31]                      pc_iu_ram_instr,
    input [0:3]                       pc_iu_ram_instr_ext,
    input                             pc_iu_ram_issue,
@@ -369,6 +390,7 @@ module iuq_ifetch(
    input                             ram_scan_in,
    output                            ram_scan_out,
 
+   //-------------UCode
    input [0:`THREADS-1]              uc_scan_in,
    output [0:`THREADS-1]             uc_scan_out,
 
@@ -403,6 +425,8 @@ module iuq_ifetch(
    output [0:3]                      uc_ib_t1_ext1,
  `endif
 
+   //--------------SPR
+   // inputs from xx
    input                             iu_slowspr_val_in,
    input                             iu_slowspr_rw_in,
    input [0:1]                       iu_slowspr_etid_in,
@@ -410,6 +434,7 @@ module iuq_ifetch(
    input [64-`GPR_WIDTH:63]          iu_slowspr_data_in,
    input                             iu_slowspr_done_in,
 
+   // outputs to xx
    output                            iu_slowspr_val_out,
    output                            iu_slowspr_rw_out,
    output [0:1]                      iu_slowspr_etid_out,
@@ -443,21 +468,21 @@ module iuq_ifetch(
    output [62-`EFF_IFAR_ARCH:61]     spr_iac4,
 
    output [0:`THREADS-1]             spr_cpcr_we,
-   
+
    output [0:4]                      spr_t0_cpcr2_fx0_cnt,
    output [0:4]                      spr_t0_cpcr2_fx1_cnt,
    output [0:4]                      spr_t0_cpcr2_lq_cnt,
    output [0:4]                      spr_t0_cpcr2_sq_cnt,
    output [0:4]                      spr_t0_cpcr3_fu0_cnt,
    output [0:4]                      spr_t0_cpcr3_fu1_cnt,
-   output [0:6]                      spr_t0_cpcr3_cp_cnt,   
+   output [0:6]                      spr_t0_cpcr3_cp_cnt,
    output [0:4]                      spr_t0_cpcr4_fx0_cnt,
    output [0:4]                      spr_t0_cpcr4_fx1_cnt,
    output [0:4]                      spr_t0_cpcr4_lq_cnt,
    output [0:4]                      spr_t0_cpcr4_sq_cnt,
    output [0:4]                      spr_t0_cpcr5_fu0_cnt,
    output [0:4]                      spr_t0_cpcr5_fu1_cnt,
-   output [0:6]                      spr_t0_cpcr5_cp_cnt,   
+   output [0:6]                      spr_t0_cpcr5_cp_cnt,
  `ifndef THREADS1
    output [0:4]                      spr_t1_cpcr2_fx0_cnt,
    output [0:4]                      spr_t1_cpcr2_fx1_cnt,
@@ -465,14 +490,14 @@ module iuq_ifetch(
    output [0:4]                      spr_t1_cpcr2_sq_cnt,
    output [0:4]                      spr_t1_cpcr3_fu0_cnt,
    output [0:4]                      spr_t1_cpcr3_fu1_cnt,
-   output [0:6]                      spr_t1_cpcr3_cp_cnt,   
+   output [0:6]                      spr_t1_cpcr3_cp_cnt,
    output [0:4]                      spr_t1_cpcr4_fx0_cnt,
    output [0:4]                      spr_t1_cpcr4_fx1_cnt,
    output [0:4]                      spr_t1_cpcr4_lq_cnt,
    output [0:4]                      spr_t1_cpcr4_sq_cnt,
    output [0:4]                      spr_t1_cpcr5_fu0_cnt,
    output [0:4]                      spr_t1_cpcr5_fu1_cnt,
-   output [0:6]                      spr_t1_cpcr5_cp_cnt,   
+   output [0:6]                      spr_t1_cpcr5_cp_cnt,
  `endif
    output [0:4]                      spr_cpcr0_fx0_cnt,
    output [0:4]                      spr_cpcr0_fx1_cnt,
@@ -497,11 +522,13 @@ module iuq_ifetch(
    input                             spr_scan_in,
    output                            spr_scan_out,
 
+   //---Performance
    input                             pc_iu_event_bus_enable,
    input [0:2]			     pc_iu_event_count_mode,
    input [0:4*`THREADS-1]            event_bus_in,
    output [0:4*`THREADS-1]           event_bus_out,
 
+   //---Debug
     (* pin_data ="PIN_FUNCTION=/SCAN_IN/" *)
    input                             dbg1_scan_in,
     (* pin_data ="PIN_FUNCTION=/SCAN_OUT/" *)
@@ -633,7 +660,6 @@ module iuq_ifetch(
    wire                              vdd;
    wire                              gnd;
 
-
    assign vdd = 1'b1;
    assign gnd = 1'b0;
 
@@ -693,14 +719,14 @@ module iuq_ifetch(
       .spr_t0_cpcr2_sq_cnt(spr_t0_cpcr2_sq_cnt),
       .spr_t0_cpcr3_fu0_cnt(spr_t0_cpcr3_fu0_cnt),
       .spr_t0_cpcr3_fu1_cnt(spr_t0_cpcr3_fu1_cnt),
-      .spr_t0_cpcr3_cp_cnt(spr_t0_cpcr3_cp_cnt),   
+      .spr_t0_cpcr3_cp_cnt(spr_t0_cpcr3_cp_cnt),
       .spr_t0_cpcr4_fx0_cnt(spr_t0_cpcr4_fx0_cnt),
       .spr_t0_cpcr4_fx1_cnt(spr_t0_cpcr4_fx1_cnt),
       .spr_t0_cpcr4_lq_cnt(spr_t0_cpcr4_lq_cnt),
       .spr_t0_cpcr4_sq_cnt(spr_t0_cpcr4_sq_cnt),
       .spr_t0_cpcr5_fu0_cnt(spr_t0_cpcr5_fu0_cnt),
       .spr_t0_cpcr5_fu1_cnt(spr_t0_cpcr5_fu1_cnt),
-      .spr_t0_cpcr5_cp_cnt(spr_t0_cpcr5_cp_cnt),   
+      .spr_t0_cpcr5_cp_cnt(spr_t0_cpcr5_cp_cnt),
    `ifndef THREADS1
       .spr_t1_cpcr2_fx0_cnt(spr_t1_cpcr2_fx0_cnt),
       .spr_t1_cpcr2_fx1_cnt(spr_t1_cpcr2_fx1_cnt),
@@ -708,14 +734,14 @@ module iuq_ifetch(
       .spr_t1_cpcr2_sq_cnt(spr_t1_cpcr2_sq_cnt),
       .spr_t1_cpcr3_fu0_cnt(spr_t1_cpcr3_fu0_cnt),
       .spr_t1_cpcr3_fu1_cnt(spr_t1_cpcr3_fu1_cnt),
-      .spr_t1_cpcr3_cp_cnt(spr_t1_cpcr3_cp_cnt),   
+      .spr_t1_cpcr3_cp_cnt(spr_t1_cpcr3_cp_cnt),
       .spr_t1_cpcr4_fx0_cnt(spr_t1_cpcr4_fx0_cnt),
       .spr_t1_cpcr4_fx1_cnt(spr_t1_cpcr4_fx1_cnt),
       .spr_t1_cpcr4_lq_cnt(spr_t1_cpcr4_lq_cnt),
       .spr_t1_cpcr4_sq_cnt(spr_t1_cpcr4_sq_cnt),
       .spr_t1_cpcr5_fu0_cnt(spr_t1_cpcr5_fu0_cnt),
       .spr_t1_cpcr5_fu1_cnt(spr_t1_cpcr5_fu1_cnt),
-      .spr_t1_cpcr5_cp_cnt(spr_t1_cpcr5_cp_cnt),   
+      .spr_t1_cpcr5_cp_cnt(spr_t1_cpcr5_cp_cnt),
    `endif
       .spr_cpcr0_fx0_cnt(spr_cpcr0_fx0_cnt),
       .spr_cpcr0_fx1_cnt(spr_cpcr0_fx1_cnt),
@@ -759,7 +785,7 @@ module iuq_ifetch(
 
 
    iuq_ic  iuq_ic0(
-      .vcs(vdd),	
+      .vcs(vdd),
       .vdd(vdd),
       .gnd(gnd),
       .nclk(nclk),
@@ -1094,7 +1120,7 @@ module iuq_ifetch(
                .iu_flush(iu_flush[i]),
                .br_iu_redirect(br_iu_redirect[i]),
                .cp_flush(cp_flush[i]),
-               .ib_ic_iu4_redirect(1'b0),		
+               .ib_ic_iu4_redirect(1'b0),
                .uc_iu4_flush(uc_iu4_flush[i]),
                .spr_bp_config(spr_bp_config),
                .spr_bp_size(spr_bp_size),
@@ -1128,7 +1154,8 @@ module iuq_ifetch(
    endgenerate
 
 
-
+/*   always @(iu0_bh0_rd_addr_int or iu0_bh0_rd_act_int or iu0_bh1_rd_addr_int or iu0_bh1_rd_act_int or iu0_bh2_rd_addr_int or iu0_bh2_rd_act_int or ex5_bh0_wr_data_int or ex5_bh0_wr_act_int or ex5_bh1_wr_data_int or ex5_bh1_wr_act_int or ex5_bh2_wr_data_int or ex5_bh2_wr_act_int or ex5_bh0_wr_addr_int or ex5_bh1_wr_addr_int or ex5_bh2_wr_addr_int or iu0_btb_rd_addr_int or iu0_btb_rd_act_int or ex5_btb_wr_addr_int or ex5_btb_wr_act_int or ex5_btb_wr_data_int or bp_ib_iu3_ifar or bp_ib_iu3_val_int or bp_ib_iu3_bta or bp_ib_iu3_0_instr or bp_ib_iu3_1_instr or bp_ib_iu3_2_instr or bp_ib_iu3_3_instr)
+*/
    always @ (*)
    begin: or_proc
       reg [0:9]                         iu0_bh0_rd_addr_calc;
@@ -1178,8 +1205,6 @@ module iuq_ifetch(
       for (i = 0; i < `THREADS; i = i + 1)
       begin
 
-
-
          iu0_bh0_rd_addr_calc = iu0_bh0_rd_addr_calc | (iu0_bh0_rd_addr_int[i] & {10{ic_bp_iu0_val[i]}});
          iu0_bh1_rd_addr_calc = iu0_bh1_rd_addr_calc | (iu0_bh1_rd_addr_int[i] & {10{ic_bp_iu0_val[i]}});
          iu0_bh2_rd_addr_calc = iu0_bh2_rd_addr_calc | (iu0_bh2_rd_addr_int[i] & {9{ic_bp_iu0_val[i]}});
@@ -1226,6 +1251,7 @@ module iuq_ifetch(
       iu0_btb_rd_act <= iu0_btb_rd_act_calc;
    end
 
+   // For Verilog lack of 2-D ports
    assign bp_ib_iu3_t0_val  = bp_ib_iu3_val_int[0];
    assign bp_ib_iu3_t0_ifar = bp_ib_iu3_ifar[0];
    assign bp_ib_iu3_t0_bta  = bp_ib_iu3_bta[0];
@@ -1368,6 +1394,7 @@ module iuq_ifetch(
    end
    endgenerate
 
+   //??? Temp - Need to connect
    assign unit_dbg_data0 = bp_ib_iu3_0_instr[0][0:31];
    assign unit_dbg_data1 = bp_ib_iu3_1_instr[0][0:31];
    assign unit_dbg_data2 = bp_ib_iu3_2_instr[0][0:31];
@@ -1425,4 +1452,3 @@ module iuq_ifetch(
    );
 
 endmodule
-

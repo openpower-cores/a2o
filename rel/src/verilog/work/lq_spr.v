@@ -10,7 +10,6 @@
 
 `include "tri_a2o.vh"
 
-
 module lq_spr
 #(
    parameter                  hvmode = 1,
@@ -47,6 +46,7 @@ module lq_spr
    input                      ex3_data_val,
    input [64-`GPR_WIDTH:63]      ex3_eff_addr,
 
+   // SlowSPR Interface
    input                      slowspr_val_in,
    input                      slowspr_rw_in,
    input [0:1]                slowspr_etid_in,
@@ -61,6 +61,7 @@ module lq_spr
    output [64-`GPR_WIDTH:63]     slowspr_data_out,
    output                     slowspr_done_out,
 
+   // DAC
    input                      ex2_is_any_load_dac,
    input                      ex2_is_any_store_dac,
 
@@ -71,6 +72,7 @@ module lq_spr
    output                     spr_dcc_ex4_dacrw3_cmpr,
    output                     spr_dcc_ex4_dacrw4_cmpr,
 
+   // SPRs
    input [0:`THREADS-1]       spr_msr_pr,
    input [0:`THREADS-1]       spr_msr_gs,
    input [0:`THREADS-1]       spr_msr_ds,
@@ -137,28 +139,30 @@ module lq_spr
 	output [0:14*`THREADS-1]            spr_epsc_epid,
 	output [0:32*`THREADS-1]            spr_hacop_ct,
 
+   // Power
    inout                      vdd,
    inout                      gnd
 );
 
 
 localparam                 tiup = 1'b1;
-wire                       slowspr_val_in_q;		   
-wire                       slowspr_rw_in_q;		   
-wire [0:1]                 slowspr_etid_in_q;		
-wire [0:9]                 slowspr_addr_in_q;		
-wire [64-`GPR_WIDTH:63]       slowspr_data_in_q;		
-wire                       slowspr_done_in_q;		
-wire                       slowspr_val_out_q;		
-wire                       slowspr_rw_out_q;		   
-wire [0:1]                 slowspr_etid_out_q;		
-wire [0:9]                 slowspr_addr_out_q;		
-wire [64-`GPR_WIDTH:63]       slowspr_data_out_q;		
+wire                       slowspr_val_in_q;		   // input=>slowspr_val_in      ,act=>tiup              ,scan=>Y ,sleep=>N, ring=>func
+wire                       slowspr_rw_in_q;		   // input=>slowspr_rw_in       ,act=>slowspr_act_in    ,scan=>Y ,sleep=>N, ring=>func
+wire [0:1]                 slowspr_etid_in_q;		// input=>slowspr_etid_in     ,act=>slowspr_act_in    ,scan=>Y ,sleep=>N, ring=>func
+wire [0:9]                 slowspr_addr_in_q;		// input=>slowspr_addr_in     ,act=>slowspr_act_in    ,scan=>Y ,sleep=>N, ring=>func
+wire [64-`GPR_WIDTH:63]       slowspr_data_in_q;		// input=>slowspr_data_in     ,act=>slowspr_act_in    ,scan=>Y ,sleep=>N, ring=>func
+wire                       slowspr_done_in_q;		// input=>slowspr_done_in     ,act=>tiup              ,scan=>Y ,sleep=>N, ring=>func
+wire                       slowspr_val_out_q;		// input=>slowspr_val_in_q    ,act=>tiup              ,scan=>Y ,sleep=>N, ring=>func
+wire                       slowspr_rw_out_q;		   // input=>slowspr_rw_in_q     ,act=>slowspr_val_in_q  ,scan=>Y ,sleep=>N, ring=>func
+wire [0:1]                 slowspr_etid_out_q;		// input=>slowspr_etid_in_q   ,act=>slowspr_val_in_q  ,scan=>Y ,sleep=>N, ring=>func
+wire [0:9]                 slowspr_addr_out_q;		// input=>slowspr_addr_in_q   ,act=>slowspr_val_in_q  ,scan=>Y ,sleep=>N, ring=>func
+wire [64-`GPR_WIDTH:63]       slowspr_data_out_q;		// input=>slowspr_data_out_d  ,act=>slowspr_val_in_q  ,scan=>Y ,sleep=>N, ring=>func
 wire [64-`GPR_WIDTH:63]       slowspr_data_out_d;
-wire                       slowspr_done_out_q;		
+wire                       slowspr_done_out_q;		// input=>slowspr_done_out_d  ,act=>tiup              ,scan=>Y ,sleep=>N, ring=>func
 wire                       slowspr_done_out_d;
-wire [0:`THREADS-1]        flush_q;		            
+wire [0:`THREADS-1]        flush_q;		            // input=>flush               ,act=>tiup              ,scan=>Y ,sleep=>N, ring=>func
 
+// Scanchain
 parameter                  slowspr_val_in_offset = `THREADS + 1;
 parameter                  slowspr_rw_in_offset = slowspr_val_in_offset + 1;
 parameter                  slowspr_etid_in_offset = slowspr_rw_in_offset + 1;
@@ -175,6 +179,7 @@ parameter                  flush_offset = slowspr_done_out_offset + 1;
 parameter                  scan_right = flush_offset + `THREADS;
 wire [0:scan_right-1]      siv;
 wire [0:scan_right-1]      sov;
+// Signals
 wire                       slowspr_act_in;
 wire [0:`THREADS-1]        slowspr_val_tid;
 wire [0:3]                 slowspr_tid;
@@ -204,16 +209,16 @@ wire                       slowspr_val_in_gate;
 wire                       slowspr_val_in_stg;
 reg [0:`GPR_WIDTH-1]          tspr_tid_mux;
 
-assign slowspr_tid = (slowspr_etid_in_q == 2'b00) ? 4'b1000 : 
-                     (slowspr_etid_in_q == 2'b01) ? 4'b0100 : 
-                     (slowspr_etid_in_q == 2'b10) ? 4'b0010 : 
-                     (slowspr_etid_in_q == 2'b11) ? 4'b0001 : 
+assign slowspr_tid = (slowspr_etid_in_q == 2'b00) ? 4'b1000 :
+                     (slowspr_etid_in_q == 2'b01) ? 4'b0100 :
+                     (slowspr_etid_in_q == 2'b10) ? 4'b0010 :
+                     (slowspr_etid_in_q == 2'b11) ? 4'b0001 :
                      4'b0000;
 
-assign slowspr_tid_in = (slowspr_etid_in == 2'b00) ? 4'b1000 : 
-                        (slowspr_etid_in == 2'b01) ? 4'b0100 : 
-                        (slowspr_etid_in == 2'b10) ? 4'b0010 : 
-                        (slowspr_etid_in == 2'b11) ? 4'b0001 : 
+assign slowspr_tid_in = (slowspr_etid_in == 2'b00) ? 4'b1000 :
+                        (slowspr_etid_in == 2'b01) ? 4'b0100 :
+                        (slowspr_etid_in == 2'b10) ? 4'b0010 :
+                        (slowspr_etid_in == 2'b11) ? 4'b0001 :
                         4'b0000;
 
 assign slowspr_val_tid = slowspr_tid[0:`THREADS-1] & {`THREADS{slowspr_val_in_q}};
@@ -264,17 +269,19 @@ lq_spr_cspr #(.hvmode(hvmode), .a2mode(a2mode)) lq_spr_cspr(
    .scan_out(sov[`THREADS]),
    .ccfg_scan_in(ccfg_scan_in),
    .ccfg_scan_out(ccfg_scan_out),
-   
+
    .flush(flush_q),
    .ex1_valid(ex1_valid),
    .ex3_data_val(ex3_data_val),
    .ex3_eff_addr(ex3_eff_addr),
+   // SlowSPR Interface
    .slowspr_val_in(slowspr_val_in_q),
    .slowspr_rw_in(slowspr_rw_in_q),
    .slowspr_addr_in(slowspr_addr_in_q),
    .slowspr_data_in(slowspr_data_in_q),
    .cspr_done(cspr_done),
    .cspr_rt(cspr_rt),
+   // DAC
    .ex2_is_any_load_dac(ex2_is_any_load_dac),
    .ex2_is_any_store_dac(ex2_is_any_store_dac),
    .spr_dcc_ex4_dvc1_en(spr_dcc_ex4_dvc1_en),
@@ -283,7 +290,8 @@ lq_spr_cspr #(.hvmode(hvmode), .a2mode(a2mode)) lq_spr_cspr(
    .spr_dcc_ex4_dacrw2_cmpr(spr_dcc_ex4_dacrw2_cmpr),
    .spr_dcc_ex4_dacrw3_cmpr(spr_dcc_ex4_dacrw3_cmpr),
    .spr_dcc_ex4_dacrw4_cmpr(spr_dcc_ex4_dacrw4_cmpr),
-   
+
+   // SPRs
    .spr_msr_pr(spr_msr_pr),
    .spr_msr_gs(spr_msr_gs),
    .spr_msr_ds(spr_msr_ds),
@@ -316,7 +324,7 @@ lq_spr_cspr #(.hvmode(hvmode), .a2mode(a2mode)) lq_spr_cspr(
    .tspr_cspr_dbcr2_dvc2m(tspr_cspr_dbcr2_dvc2m),
    .tspr_cspr_dbcr2_dvc1be(tspr_cspr_dbcr2_dvc1be),
    .tspr_cspr_dbcr2_dvc2be(tspr_cspr_dbcr2_dvc2be),
-   
+
 		.spr_dvc1(spr_dvc1),
 		.spr_dvc2(spr_dvc2),
 		.spr_lesr1_muxseleb0(spr_lesr1_muxseleb0),
@@ -340,6 +348,7 @@ lq_spr_cspr #(.hvmode(hvmode), .a2mode(a2mode)) lq_spr_cspr(
 		.spr_xucr2_rmt0(spr_xucr2_rmt0),
 		.spr_xudbg0_way(spr_xudbg0_way),
 		.spr_xudbg0_row(spr_xudbg0_row),
+   // Power
    .vdd(vdd),
    .gnd(gnd)
 );
@@ -358,12 +367,14 @@ generate begin : thread
             .sg_0(sg_0),
             .scan_in(siv[t]),
             .scan_out(sov[t]),
+            // SlowSPR Interface
             .slowspr_val_in(slowspr_val_tid[t]),
             .slowspr_rw_in(slowspr_rw_in_q),
             .slowspr_addr_in(slowspr_addr_in_q),
             .slowspr_data_in(slowspr_data_in_q),
             .tspr_done(tspr_done[t]),
             .tspr_rt(tspr_rt[t]),
+            // SPRs
             .cspr_tspr_msr_pr(cspr_tspr_msr_pr[t]),
             .cspr_tspr_msr_gs(cspr_tspr_msr_gs[t]),
             .tspr_cspr_dbcr2_dac1us(tspr_cspr_dbcr2_dac1us[t*2:2*(t+1)-1]),
@@ -399,6 +410,7 @@ generate begin : thread
 		.spr_epsc_elpid(spr_epsc_elpid[8*t : 8*(t+1)-1]),
 		.spr_epsc_epid(spr_epsc_epid[14*t : 14*(t+1)-1]),
 		.spr_hacop_ct(spr_hacop_ct[32*t : 32*(t+1)-1]),
+            // Power
             .vdd(vdd),
             .gnd(gnd)
          );
@@ -642,5 +654,5 @@ tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0), .NEEDS_SRESET(1)) flush_latch(
 
 assign siv[0:scan_right - 1] = {sov[1:scan_right - 1], scan_in};
 assign scan_out = sov[0];
-   
+
 endmodule

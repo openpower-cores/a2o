@@ -7,9 +7,15 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//********************************************************************
+//*
+//* TITLE: Instruction Unit Debug
+//*
+//* NAME: iuq_dbg.v
+//*
+//*********************************************************************
 
 `include "tri_a2o.vh"
-
 
 module iuq_dbg(
    inout                            vdd,
@@ -17,7 +23,7 @@ module iuq_dbg(
 
     (* pin_data ="PIN_FUNCTION=/G_CLK/" *)
    input [0:`NCLK_WIDTH-1]          nclk,
-   input                            thold_2,   
+   input                            thold_2,   // Connect to slp if unit uses slp
    input                            pc_iu_sg_2,
    input                            clkoff_b,
    input                            act_dis,
@@ -48,7 +54,6 @@ module iuq_dbg(
    input [0:31]                     unit_dbg_data14,
    input [0:31]                     unit_dbg_data15,
 
-
    input                            pc_iu_trace_bus_enable,
    input [0:10]                     pc_iu_debug_mux_ctrls,
 
@@ -73,7 +78,6 @@ module iuq_dbg(
    wire [0:31]                      trace_data_out_d;
    wire [0:31]                      trace_data_out_q;
 
-
    wire [0:3]                       coretrace_ctrls_out_d;
    wire [0:3]                       coretrace_ctrls_out_q;
 
@@ -89,10 +93,13 @@ module iuq_dbg(
 
    wire                             tiup;
 
+   //BEGIN
 
    assign  tiup = 1'b1;
 
    tri_debug_mux16  dbg_mux0(
+       //.vd(vdd),
+       //.gd(gnd),
        .select_bits(debug_mux_ctrls_q),
        .trace_data_in(debug_bus_in),
        .dbg_group0(unit_dbg_data0),
@@ -119,6 +126,9 @@ module iuq_dbg(
    assign debug_bus_out = trace_data_out_q;
    assign coretrace_ctrls_out = coretrace_ctrls_out_q;
 
+   //---------------------------------------------------------------------
+   // Latches
+   //---------------------------------------------------------------------
    assign trace_bus_enable_d = pc_iu_trace_bus_enable;
    assign debug_mux_ctrls_d  = pc_iu_debug_mux_ctrls;
 
@@ -176,7 +186,6 @@ module iuq_dbg(
       .dout(trace_data_out_q)
    );
 
-
    tri_rlmreg_p #(.WIDTH(4), .INIT(0)) coretrace_ctrls_out_latch(
       .vd(vdd),
       .gd(gnd),
@@ -195,6 +204,9 @@ module iuq_dbg(
       .dout(coretrace_ctrls_out_q)
    );
 
+   //---------------------------------------------------------------------
+   // pervasive thold/sg latches
+   //---------------------------------------------------------------------
    tri_plat #(.WIDTH(2)) perv_2to1_reg(
       .vd(vdd),
       .gd(gnd),
@@ -222,6 +234,9 @@ module iuq_dbg(
       .thold_b(thold_0_b)
    );
 
+   //---------------------------------------------------------------------
+   // Scan
+   //---------------------------------------------------------------------
    assign siv[0:scan_right] = {sov[1:scan_right], func_scan_in};
    assign func_scan_out = sov[0];
 

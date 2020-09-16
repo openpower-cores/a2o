@@ -9,9 +9,8 @@
 
 `timescale 1 ns / 1 ns
 
-
    `include "tri_a2o.vh"
-   
+
 module fu_alg_sh4(
    ex2_lvl1_shdcd000_b,
    ex2_lvl1_shdcd001_b,
@@ -27,6 +26,7 @@ module fu_alg_sh4(
    ex2_b_frac,
    ex2_sh_lvl2
 );
+   //--------- SHIFT CONTROLS -----------------
    input         ex2_lvl1_shdcd000_b;
    input         ex2_lvl1_shdcd001_b;
    input         ex2_lvl1_shdcd002_b;
@@ -36,19 +36,21 @@ module fu_alg_sh4(
    input         ex2_lvl2_shdcd008;
    input         ex2_lvl2_shdcd012;
    input         ex2_sel_special;
-   
+
+   //--------- SHIFT DATA -----------------
    input         ex2_b_sign;
    input [3:13]  ex2_b_expo;
    input [0:52]  ex2_b_frac;
-   
+
+   //-------- SHIFT OUTPUT ---------------
    output [0:67] ex2_sh_lvl2;
-   
-   
-   
-   
+
+   // ENTITY
+
+
    parameter     tiup = 1'b1;
    parameter     tidn = 1'b0;
-   
+
    wire [0:63]   ex2_special_fcfid;
    wire [0:55]   ex2_sh_lv1;
    wire [0:53]   ex2_sh_lv1x_b;
@@ -56,7 +58,8 @@ module fu_alg_sh4(
    wire [0:59]   ex2_sh_lv2x_b;
    wire [8:67]   ex2_sh_lv2y_b;
    wire [0:63]   ex2_sh_lv2z_b;
-   
+
+   // signal sh1v1dcd0_cp1_b  :std_ulogic;--decode signals
    wire          sh1v2dcd0_cp1;
    wire          sh1v3dcd0_cp1_b;
    wire          sh1v3dcd0_cp2_b;
@@ -64,6 +67,7 @@ module fu_alg_sh4(
    wire          sh1v4dcd0_cp2;
    wire          sh1v4dcd0_cp3;
    wire          sh1v4dcd0_cp4;
+   // signal sh1v1dcd1_cp1_b  :std_ulogic;
    wire          sh1v2dcd1_cp1;
    wire          sh1v3dcd1_cp1_b;
    wire          sh1v3dcd1_cp2_b;
@@ -71,6 +75,7 @@ module fu_alg_sh4(
    wire          sh1v4dcd1_cp2;
    wire          sh1v4dcd1_cp3;
    wire          sh1v4dcd1_cp4;
+   // signal sh1v1dcd2_cp1_b  :std_ulogic;
    wire          sh1v2dcd2_cp1;
    wire          sh1v3dcd2_cp1_b;
    wire          sh1v3dcd2_cp2_b;
@@ -78,6 +83,7 @@ module fu_alg_sh4(
    wire          sh1v4dcd2_cp2;
    wire          sh1v4dcd2_cp3;
    wire          sh1v4dcd2_cp4;
+   // signal sh1v1dcd3_cp1_b  :std_ulogic;
    wire          sh1v2dcd3_cp1;
    wire          sh1v3dcd3_cp1_b;
    wire          sh1v3dcd3_cp2_b;
@@ -125,11 +131,18 @@ module fu_alg_sh4(
    wire          sh2v4dcdpp_cp2;
    wire          sh2v4dcdpp_cp3;
    wire          sh2v4dcdpp_cp4;
-   
 
-   
-   
-   assign ex2_special_fcfid[0] = ex2_b_sign;		
+
+
+   //#-------------------------------------------------
+   //# adjust B for fcfid specials
+   //#-------------------------------------------------
+   // if implicit bit is off: exponent should be 0 instead of x001, x381 (1/897)
+   // frac(0) is the implicit bit.
+   // 0_0000_0000_0001    1
+   // 0_0011_1000_0001  897
+
+   assign ex2_special_fcfid[0] = ex2_b_sign;		// fcfid integer
    assign ex2_special_fcfid[1] = ex2_b_expo[3];
    assign ex2_special_fcfid[2] = ex2_b_expo[4] & ex2_b_frac[0];
    assign ex2_special_fcfid[3] = ex2_b_expo[5] & ex2_b_frac[0];
@@ -141,90 +154,96 @@ module fu_alg_sh4(
    assign ex2_special_fcfid[9] = ex2_b_expo[11];
    assign ex2_special_fcfid[10] = ex2_b_expo[12];
    assign ex2_special_fcfid[11] = ex2_b_expo[13] & ex2_b_frac[0];
-   assign ex2_special_fcfid[12:63] = ex2_b_frac[1:52];		
-   
-   
-   
-   
+   assign ex2_special_fcfid[12:63] = ex2_b_frac[1:52];		// fcfid integer
+
+   //#---------------------------------------
+   //# repower the selects for sh 0/1/2/3
+   //#---------------------------------------
+
+
    assign sh1v2dcd0_cp1 = (~ex2_lvl1_shdcd000_b);
    assign sh1v3dcd0_cp1_b = (~sh1v2dcd0_cp1);
    assign sh1v3dcd0_cp2_b = (~sh1v2dcd0_cp1);
-   assign sh1v4dcd0_cp1 = (~sh1v3dcd0_cp1_b);		
-   assign sh1v4dcd0_cp2 = (~sh1v3dcd0_cp1_b);		
-   assign sh1v4dcd0_cp3 = (~sh1v3dcd0_cp2_b);		
-   assign sh1v4dcd0_cp4 = (~sh1v3dcd0_cp2_b);		
-   
+   assign sh1v4dcd0_cp1 = (~sh1v3dcd0_cp1_b);		//drive 0:13
+   assign sh1v4dcd0_cp2 = (~sh1v3dcd0_cp1_b);		//drive 14:27
+   assign sh1v4dcd0_cp3 = (~sh1v3dcd0_cp2_b);		//drive 28:41
+   assign sh1v4dcd0_cp4 = (~sh1v3dcd0_cp2_b);		//drive 42:55
+
    assign sh1v2dcd1_cp1 = (~ex2_lvl1_shdcd001_b);
    assign sh1v3dcd1_cp1_b = (~sh1v2dcd1_cp1);
    assign sh1v3dcd1_cp2_b = (~sh1v2dcd1_cp1);
-   assign sh1v4dcd1_cp1 = (~sh1v3dcd1_cp1_b);		
-   assign sh1v4dcd1_cp2 = (~sh1v3dcd1_cp1_b);		
-   assign sh1v4dcd1_cp3 = (~sh1v3dcd1_cp2_b);		
-   assign sh1v4dcd1_cp4 = (~sh1v3dcd1_cp2_b);		
-   
+   assign sh1v4dcd1_cp1 = (~sh1v3dcd1_cp1_b);		//drive 0:13
+   assign sh1v4dcd1_cp2 = (~sh1v3dcd1_cp1_b);		//drive 14:27
+   assign sh1v4dcd1_cp3 = (~sh1v3dcd1_cp2_b);		//drive 28:41
+   assign sh1v4dcd1_cp4 = (~sh1v3dcd1_cp2_b);		//drive 42:55
+
    assign sh1v2dcd2_cp1 = (~ex2_lvl1_shdcd002_b);
    assign sh1v3dcd2_cp1_b = (~sh1v2dcd2_cp1);
    assign sh1v3dcd2_cp2_b = (~sh1v2dcd2_cp1);
-   assign sh1v4dcd2_cp1 = (~sh1v3dcd2_cp1_b);		
-   assign sh1v4dcd2_cp2 = (~sh1v3dcd2_cp1_b);		
-   assign sh1v4dcd2_cp3 = (~sh1v3dcd2_cp2_b);		
-   assign sh1v4dcd2_cp4 = (~sh1v3dcd2_cp2_b);		
-   
+   assign sh1v4dcd2_cp1 = (~sh1v3dcd2_cp1_b);		//drive 0:13
+   assign sh1v4dcd2_cp2 = (~sh1v3dcd2_cp1_b);		//drive 14:27
+   assign sh1v4dcd2_cp3 = (~sh1v3dcd2_cp2_b);		//drive 28:41
+   assign sh1v4dcd2_cp4 = (~sh1v3dcd2_cp2_b);		//drive 42:55
+
    assign sh1v2dcd3_cp1 = (~ex2_lvl1_shdcd003_b);
    assign sh1v3dcd3_cp1_b = (~sh1v2dcd3_cp1);
    assign sh1v3dcd3_cp2_b = (~sh1v2dcd3_cp1);
-   assign sh1v4dcd3_cp1 = (~sh1v3dcd3_cp1_b);		
-   assign sh1v4dcd3_cp2 = (~sh1v3dcd3_cp1_b);		
-   assign sh1v4dcd3_cp3 = (~sh1v3dcd3_cp2_b);		
-   assign sh1v4dcd3_cp4 = (~sh1v3dcd3_cp2_b);		
-   
-   
+   assign sh1v4dcd3_cp1 = (~sh1v3dcd3_cp1_b);		//drive 0:13
+   assign sh1v4dcd3_cp2 = (~sh1v3dcd3_cp1_b);		//drive 14:27
+   assign sh1v4dcd3_cp3 = (~sh1v3dcd3_cp2_b);		//drive 28:41
+   assign sh1v4dcd3_cp4 = (~sh1v3dcd3_cp2_b);		//drive 42:55
+
+   //#---------------------------------------
+   //# repower the selects for sh 0/4/8/12
+   //#---------------------------------------
+
    assign sh2v1dcd00_cp1_b = (~ex2_lvl2_shdcd000);
    assign sh2v2dcd00_cp1 = (~sh2v1dcd00_cp1_b);
    assign sh2v3dcd00_cp1_b = (~sh2v2dcd00_cp1);
    assign sh2v3dcd00_cp2_b = (~sh2v2dcd00_cp1);
-   assign sh2v4dcd00_cp1 = (~sh2v3dcd00_cp1_b);		
-   assign sh2v4dcd00_cp2 = (~sh2v3dcd00_cp1_b);		
-   assign sh2v4dcd00_cp3 = (~sh2v3dcd00_cp2_b);		
-   assign sh2v4dcd00_cp4 = (~sh2v3dcd00_cp2_b);		
-   
+   assign sh2v4dcd00_cp1 = (~sh2v3dcd00_cp1_b);		//drive 0:16
+   assign sh2v4dcd00_cp2 = (~sh2v3dcd00_cp1_b);		//drive 17:33
+   assign sh2v4dcd00_cp3 = (~sh2v3dcd00_cp2_b);		//drive 34:50
+   assign sh2v4dcd00_cp4 = (~sh2v3dcd00_cp2_b);		//drive 57:67
+
    assign sh2v1dcd04_cp1_b = (~ex2_lvl2_shdcd004);
    assign sh2v2dcd04_cp1 = (~sh2v1dcd04_cp1_b);
    assign sh2v3dcd04_cp1_b = (~sh2v2dcd04_cp1);
    assign sh2v3dcd04_cp2_b = (~sh2v2dcd04_cp1);
-   assign sh2v4dcd04_cp1 = (~sh2v3dcd04_cp1_b);		
-   assign sh2v4dcd04_cp2 = (~sh2v3dcd04_cp1_b);		
-   assign sh2v4dcd04_cp3 = (~sh2v3dcd04_cp2_b);		
-   assign sh2v4dcd04_cp4 = (~sh2v3dcd04_cp2_b);		
-   
+   assign sh2v4dcd04_cp1 = (~sh2v3dcd04_cp1_b);		//drive 0:16
+   assign sh2v4dcd04_cp2 = (~sh2v3dcd04_cp1_b);		//drive 17:33
+   assign sh2v4dcd04_cp3 = (~sh2v3dcd04_cp2_b);		//drive 34:50
+   assign sh2v4dcd04_cp4 = (~sh2v3dcd04_cp2_b);		//drive 57:67
+
    assign sh2v1dcd08_cp1_b = (~ex2_lvl2_shdcd008);
    assign sh2v2dcd08_cp1 = (~sh2v1dcd08_cp1_b);
    assign sh2v3dcd08_cp1_b = (~sh2v2dcd08_cp1);
    assign sh2v3dcd08_cp2_b = (~sh2v2dcd08_cp1);
-   assign sh2v4dcd08_cp1 = (~sh2v3dcd08_cp1_b);		
-   assign sh2v4dcd08_cp2 = (~sh2v3dcd08_cp1_b);		
-   assign sh2v4dcd08_cp3 = (~sh2v3dcd08_cp2_b);		
-   assign sh2v4dcd08_cp4 = (~sh2v3dcd08_cp2_b);		
-   
+   assign sh2v4dcd08_cp1 = (~sh2v3dcd08_cp1_b);		//drive 0:16
+   assign sh2v4dcd08_cp2 = (~sh2v3dcd08_cp1_b);		//drive 17:33
+   assign sh2v4dcd08_cp3 = (~sh2v3dcd08_cp2_b);		//drive 34:50
+   assign sh2v4dcd08_cp4 = (~sh2v3dcd08_cp2_b);		//drive 57:67
+
    assign sh2v1dcd12_cp1_b = (~ex2_lvl2_shdcd012);
    assign sh2v2dcd12_cp1 = (~sh2v1dcd12_cp1_b);
    assign sh2v3dcd12_cp1_b = (~sh2v2dcd12_cp1);
    assign sh2v3dcd12_cp2_b = (~sh2v2dcd12_cp1);
-   assign sh2v4dcd12_cp1 = (~sh2v3dcd12_cp1_b);		
-   assign sh2v4dcd12_cp2 = (~sh2v3dcd12_cp1_b);		
-   assign sh2v4dcd12_cp3 = (~sh2v3dcd12_cp2_b);		
-   assign sh2v4dcd12_cp4 = (~sh2v3dcd12_cp2_b);		
-   
+   assign sh2v4dcd12_cp1 = (~sh2v3dcd12_cp1_b);		//drive 0:16
+   assign sh2v4dcd12_cp2 = (~sh2v3dcd12_cp1_b);		//drive 17:33
+   assign sh2v4dcd12_cp3 = (~sh2v3dcd12_cp2_b);		//drive 34:50
+   assign sh2v4dcd12_cp4 = (~sh2v3dcd12_cp2_b);		//drive 57:67
+
    assign sh2v1dcdpp_cp1_b = (~ex2_sel_special);
    assign sh2v2dcdpp_cp1 = (~sh2v1dcdpp_cp1_b);
    assign sh2v3dcdpp_cp1_b = (~sh2v2dcdpp_cp1);
    assign sh2v3dcdpp_cp2_b = (~sh2v2dcdpp_cp1);
-   assign sh2v4dcdpp_cp1 = (~sh2v3dcdpp_cp1_b);		
-   assign sh2v4dcdpp_cp2 = (~sh2v3dcdpp_cp1_b);		
-   assign sh2v4dcdpp_cp3 = (~sh2v3dcdpp_cp2_b);		
-   assign sh2v4dcdpp_cp4 = (~sh2v3dcdpp_cp2_b);		
-   
-   
+   assign sh2v4dcdpp_cp1 = (~sh2v3dcdpp_cp1_b);		//drive 0:16
+   assign sh2v4dcdpp_cp2 = (~sh2v3dcdpp_cp1_b);		//drive 17:33
+   assign sh2v4dcdpp_cp3 = (~sh2v3dcdpp_cp2_b);		//drive 34:50
+   assign sh2v4dcdpp_cp4 = (~sh2v3dcdpp_cp2_b);		//drive 57:67
+
+   //-------------------------------------
+
    assign ex2_sh_lv1x_b[0] = (~(sh1v4dcd0_cp1 & ex2_b_frac[0]));
    assign ex2_sh_lv1x_b[1] = (~((sh1v4dcd0_cp1 & ex2_b_frac[1]) | (sh1v4dcd1_cp1 & ex2_b_frac[0])));
    assign ex2_sh_lv1x_b[2] = (~((sh1v4dcd0_cp1 & ex2_b_frac[2]) | (sh1v4dcd1_cp1 & ex2_b_frac[1])));
@@ -279,7 +298,7 @@ module fu_alg_sh4(
    assign ex2_sh_lv1x_b[51] = (~((sh1v4dcd0_cp4 & ex2_b_frac[51]) | (sh1v4dcd1_cp4 & ex2_b_frac[50])));
    assign ex2_sh_lv1x_b[52] = (~((sh1v4dcd0_cp4 & ex2_b_frac[52]) | (sh1v4dcd1_cp4 & ex2_b_frac[51])));
    assign ex2_sh_lv1x_b[53] = (~(sh1v4dcd1_cp4 & ex2_b_frac[52]));
-   
+
    assign ex2_sh_lv1y_b[2] = (~(sh1v4dcd2_cp1 & ex2_b_frac[0]));
    assign ex2_sh_lv1y_b[3] = (~((sh1v4dcd2_cp1 & ex2_b_frac[1]) | (sh1v4dcd3_cp1 & ex2_b_frac[0])));
    assign ex2_sh_lv1y_b[4] = (~((sh1v4dcd2_cp1 & ex2_b_frac[2]) | (sh1v4dcd3_cp1 & ex2_b_frac[1])));
@@ -334,7 +353,7 @@ module fu_alg_sh4(
    assign ex2_sh_lv1y_b[53] = (~((sh1v4dcd2_cp4 & ex2_b_frac[51]) | (sh1v4dcd3_cp4 & ex2_b_frac[50])));
    assign ex2_sh_lv1y_b[54] = (~((sh1v4dcd2_cp4 & ex2_b_frac[52]) | (sh1v4dcd3_cp4 & ex2_b_frac[51])));
    assign ex2_sh_lv1y_b[55] = (~(sh1v4dcd3_cp4 & ex2_b_frac[52]));
-   
+
    assign ex2_sh_lv1[0] = (~(ex2_sh_lv1x_b[0]));
    assign ex2_sh_lv1[1] = (~(ex2_sh_lv1x_b[1]));
    assign ex2_sh_lv1[2] = (~(ex2_sh_lv1x_b[2] & ex2_sh_lv1y_b[2]));
@@ -391,8 +410,9 @@ module fu_alg_sh4(
    assign ex2_sh_lv1[53] = (~(ex2_sh_lv1x_b[53] & ex2_sh_lv1y_b[53]));
    assign ex2_sh_lv1[54] = (~(ex2_sh_lv1y_b[54]));
    assign ex2_sh_lv1[55] = (~(ex2_sh_lv1y_b[55]));
-   
-   
+
+   //--------------------------------------------------------------------------------------------
+
    assign ex2_sh_lv2x_b[0] = (~(sh2v4dcd00_cp1 & ex2_sh_lv1[0]));
    assign ex2_sh_lv2x_b[1] = (~(sh2v4dcd00_cp1 & ex2_sh_lv1[1]));
    assign ex2_sh_lv2x_b[2] = (~(sh2v4dcd00_cp1 & ex2_sh_lv1[2]));
@@ -413,7 +433,7 @@ module fu_alg_sh4(
    assign ex2_sh_lv2x_b[17] = (~((sh2v4dcd00_cp2 & ex2_sh_lv1[17]) | (sh2v4dcd04_cp2 & ex2_sh_lv1[13])));
    assign ex2_sh_lv2x_b[18] = (~((sh2v4dcd00_cp2 & ex2_sh_lv1[18]) | (sh2v4dcd04_cp2 & ex2_sh_lv1[14])));
    assign ex2_sh_lv2x_b[19] = (~((sh2v4dcd00_cp2 & ex2_sh_lv1[19]) | (sh2v4dcd04_cp2 & ex2_sh_lv1[15])));
-   assign ex2_sh_lv2x_b[20] = (~((sh2v4dcd00_cp2 & ex2_sh_lv1[20]) | (sh2v4dcd04_cp2 & ex2_sh_lv1[16])));		
+   assign ex2_sh_lv2x_b[20] = (~((sh2v4dcd00_cp2 & ex2_sh_lv1[20]) | (sh2v4dcd04_cp2 & ex2_sh_lv1[16])));		//
    assign ex2_sh_lv2x_b[21] = (~((sh2v4dcd00_cp2 & ex2_sh_lv1[21]) | (sh2v4dcd04_cp2 & ex2_sh_lv1[17])));
    assign ex2_sh_lv2x_b[22] = (~((sh2v4dcd00_cp2 & ex2_sh_lv1[22]) | (sh2v4dcd04_cp2 & ex2_sh_lv1[18])));
    assign ex2_sh_lv2x_b[23] = (~((sh2v4dcd00_cp2 & ex2_sh_lv1[23]) | (sh2v4dcd04_cp2 & ex2_sh_lv1[19])));
@@ -453,7 +473,7 @@ module fu_alg_sh4(
    assign ex2_sh_lv2x_b[57] = (~(sh2v4dcd04_cp4 & ex2_sh_lv1[53]));
    assign ex2_sh_lv2x_b[58] = (~(sh2v4dcd04_cp4 & ex2_sh_lv1[54]));
    assign ex2_sh_lv2x_b[59] = (~(sh2v4dcd04_cp4 & ex2_sh_lv1[55]));
-   
+
    assign ex2_sh_lv2y_b[8] = (~(sh2v4dcd08_cp1 & ex2_sh_lv1[0]));
    assign ex2_sh_lv2y_b[9] = (~(sh2v4dcd08_cp1 & ex2_sh_lv1[1]));
    assign ex2_sh_lv2y_b[10] = (~(sh2v4dcd08_cp1 & ex2_sh_lv1[2]));
@@ -514,7 +534,7 @@ module fu_alg_sh4(
    assign ex2_sh_lv2y_b[65] = (~(sh2v4dcd12_cp4 & ex2_sh_lv1[53]));
    assign ex2_sh_lv2y_b[66] = (~(sh2v4dcd12_cp4 & ex2_sh_lv1[54]));
    assign ex2_sh_lv2y_b[67] = (~(sh2v4dcd12_cp4 & ex2_sh_lv1[55]));
-   
+
    assign ex2_sh_lv2z_b[0] = (~(sh2v4dcdpp_cp1 & ex2_special_fcfid[0]));
    assign ex2_sh_lv2z_b[1] = (~(sh2v4dcdpp_cp1 & ex2_special_fcfid[1]));
    assign ex2_sh_lv2z_b[2] = (~(sh2v4dcdpp_cp1 & ex2_special_fcfid[2]));
@@ -579,7 +599,7 @@ module fu_alg_sh4(
    assign ex2_sh_lv2z_b[61] = (~(sh2v4dcdpp_cp4 & ex2_special_fcfid[61]));
    assign ex2_sh_lv2z_b[62] = (~(sh2v4dcdpp_cp4 & ex2_special_fcfid[62]));
    assign ex2_sh_lv2z_b[63] = (~(sh2v4dcdpp_cp4 & ex2_special_fcfid[63]));
-   
+
    assign ex2_sh_lvl2[00] = (~(ex2_sh_lv2x_b[00] & ex2_sh_lv2z_b[00]));
    assign ex2_sh_lvl2[01] = (~(ex2_sh_lv2x_b[01] & ex2_sh_lv2z_b[01]));
    assign ex2_sh_lvl2[02] = (~(ex2_sh_lv2x_b[02] & ex2_sh_lv2z_b[02]));
@@ -648,5 +668,5 @@ module fu_alg_sh4(
    assign ex2_sh_lvl2[65] = (~(ex2_sh_lv2y_b[65]));
    assign ex2_sh_lvl2[66] = (~(ex2_sh_lv2y_b[66]));
    assign ex2_sh_lvl2[67] = (~(ex2_sh_lv2y_b[67]));
-   
+
 endmodule

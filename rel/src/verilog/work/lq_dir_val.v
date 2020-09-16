@@ -7,11 +7,27 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//
+//  Description:  XU LSU L1 Data Directory Valid Register Array
+//
+//*****************************************************************************
 
+// ##########################################################################################
+// Directory Valids Component
+// 1) Contains an Array of Valids
+// 2) Updates Valid bits on Reloads
+// 3) Invalidates Valid bits for Flush type commands and Back Invalidates
+// 4) Outputs Valids for Congruence Class
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Flush Way Generation
+// Want to flush a Way on the following conditions
+// 1) Invalidate Type Instruction (dcbf,dcbi,dcbz,lwarx,stwcx)
+// 2) L2 Back Invalidate
+// 3) L2 Reload and overwritting a Valid Way
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// ##########################################################################################
 
 `include "tri_a2o.vh"
-
-
 
 module lq_dir_val(
    dcc_dir_ex2_stg_act,
@@ -186,7 +202,15 @@ module lq_dir_val(
    scan_out
 );
 
+//-------------------------------------------------------------------
+// Generics
+//-------------------------------------------------------------------
+//parameter                         EXPAND_TYPE = 2;		// 0 = ibm (Umbra), 1 = non-ibm, 2 = ibm (MPG)
+//parameter                         THREADS = 2;
+//parameter                         DC_SIZE = 15;		// 14 => 16K L1D$, 15 => 32K L1D$
+//parameter                         CL_SIZE = 6;		// 6 => 64B CLINE, 7 => 128B CLINE
 
+// ACT's
 input                               dcc_dir_ex2_stg_act;
 input                               dcc_dir_ex3_stg_act;
 input                               dcc_dir_ex4_stg_act;
@@ -200,95 +224,104 @@ input                               dcc_dir_binv3_ex3_stg_act;
 input                               dcc_dir_binv4_ex4_stg_act;
 input                               dcc_dir_binv5_ex5_stg_act;
 input                               dcc_dir_binv6_ex6_stg_act;
-                                    
-input                               lsq_ctl_stq1_val;		                
-input                               lsq_ctl_stq2_blk_req;	                
-input [0:`THREADS-1]                lsq_ctl_stq1_thrd_id;               
-input [0:`THREADS-1]                lsq_ctl_rel1_thrd_id;               
-input                               lsq_ctl_stq1_ci;		                
-input                               lsq_ctl_stq1_lock_clr;              
-input                               lsq_ctl_stq1_watch_clr;             
-input                               lsq_ctl_stq1_store_val;             
-input                               lsq_ctl_stq1_inval;                 
-input                               lsq_ctl_stq1_dci_val;               
-input [0:1]                         lsq_ctl_stq1_l_fld;                 
-input [64-(`DC_SIZE-3):63-`CL_SIZE] lsq_ctl_stq1_addr;                  
-input                               lsq_ctl_rel1_clr_val;	                
-input                               lsq_ctl_rel1_set_val;	                
-input                               lsq_ctl_rel1_back_inv;	                
-input                               lsq_ctl_rel2_blk_req;	                
-input                               lsq_ctl_rel1_lock_set;              
-input                               lsq_ctl_rel1_watch_set;             
-input                               lsq_ctl_rel2_upd_val;	                
-input                               lsq_ctl_rel3_l1dump_val;		        
+
+// Reload and Store Commit Pipe
+input                               lsq_ctl_stq1_val;		                // Commit Operation is Valid
+input                               lsq_ctl_stq2_blk_req;	                // Block Store due to RV issue
+input [0:`THREADS-1]                lsq_ctl_stq1_thrd_id;
+input [0:`THREADS-1]                lsq_ctl_rel1_thrd_id;
+input                               lsq_ctl_stq1_ci;		                // Reload/Commit is Cache-Inhibited
+input                               lsq_ctl_stq1_lock_clr;
+input                               lsq_ctl_stq1_watch_clr;
+input                               lsq_ctl_stq1_store_val;
+input                               lsq_ctl_stq1_inval;
+input                               lsq_ctl_stq1_dci_val;
+input [0:1]                         lsq_ctl_stq1_l_fld;
+input [64-(`DC_SIZE-3):63-`CL_SIZE] lsq_ctl_stq1_addr;
+input                               lsq_ctl_rel1_clr_val;	                // Reload data is valid for 1st beat
+input                               lsq_ctl_rel1_set_val;	                // Reload data is valid for last beat
+input                               lsq_ctl_rel1_back_inv;	                // Reload was Back-Invalidated
+input                               lsq_ctl_rel2_blk_req;	                // Block Reload due to RV issue or Back-Invalidate
+input                               lsq_ctl_rel1_lock_set;
+input                               lsq_ctl_rel1_watch_set;
+input                               lsq_ctl_rel2_upd_val;	                // all 8 data beats have transferred without error, set valid in dir
+input                               lsq_ctl_rel3_l1dump_val;		        // Reload Complete for an L1_DUMP reload
 input                               dcc_dir_stq6_store_val;
-                                    
-input                               rel_way_clr_a;		                    
-input                               rel_way_clr_b;		                    
-input                               rel_way_clr_c;		                    
-input                               rel_way_clr_d;		                    
-input                               rel_way_clr_e;		                    
-input                               rel_way_clr_f;		                    
-input                               rel_way_clr_g;		                    
-input                               rel_way_clr_h;		                    
-                                                                            
-input                               rel_way_wen_a;		                    
-input                               rel_way_wen_b;		                    
-input                               rel_way_wen_c;		                    
-input                               rel_way_wen_d;		                    
-input                               rel_way_wen_e;		                    
-input                               rel_way_wen_f;		                    
-input                               rel_way_wen_g;		                    
-input                               rel_way_wen_h;		                    
-                                    
-input                               xu_lq_spr_xucr0_clfc;		            
-input                               spr_xucr0_dcdis;		                
-input                               spr_xucr0_cls;		                    
-                                    
-input                               dcc_dir_ex2_binv_val;		            
-input [0:`THREADS-1]                dcc_dir_ex2_thrd_id;		            
-input [64-(`DC_SIZE-3):63-`CL_SIZE] ex2_eff_addr;                         
-input                               dcc_dir_ex3_cache_acc;		            
-input                               dcc_dir_ex3_pfetch_val;                 
-input                               dcc_dir_ex3_lock_set;		            
-input                               dcc_dir_ex3_th_c;		                
-input                               dcc_dir_ex3_watch_set;		            
-input                               dcc_dir_ex3_larx_val;		            
-input                               dcc_dir_ex3_watch_chk;		            
+
+input                               rel_way_clr_a;		                    // Reload Stage2 Way A clear existing Valid
+input                               rel_way_clr_b;		                    // Reload Stage2 Way B clear existing Valid
+input                               rel_way_clr_c;		                    // Reload Stage2 Way C clear existing Valid
+input                               rel_way_clr_d;		                    // Reload Stage2 Way D clear existing Valid
+input                               rel_way_clr_e;		                    // Reload Stage2 Way E clear existing Valid
+input                               rel_way_clr_f;		                    // Reload Stage2 Way F clear existing Valid
+input                               rel_way_clr_g;		                    // Reload Stage2 Way G clear existing Valid
+input                               rel_way_clr_h;		                    // Reload Stage2 Way H clear existing Valid
+
+input                               rel_way_wen_a;		                    // Reload Stage4 Way A Write Enable
+input                               rel_way_wen_b;		                    // Reload Stage4 Way B Write Enable
+input                               rel_way_wen_c;		                    // Reload Stage4 Way C Write Enable
+input                               rel_way_wen_d;		                    // Reload Stage4 Way D Write Enable
+input                               rel_way_wen_e;		                    // Reload Stage4 Way E Write Enable
+input                               rel_way_wen_f;		                    // Reload Stage4 Way F Write Enable
+input                               rel_way_wen_g;		                    // Reload Stage4 Way G Write Enable
+input                               rel_way_wen_h;		                    // Reload Stage4 Way H Write Enable
+
+input                               xu_lq_spr_xucr0_clfc;		            // Cache Lock Bits Flash Clear
+input                               spr_xucr0_dcdis;		                // Data Cache Disable
+input                               spr_xucr0_cls;		                    // 128Byte Cacheline Mode
+
+// Execution Pipe
+input                               dcc_dir_ex2_binv_val;		            // Back-Invalidate is Valid
+input [0:`THREADS-1]                dcc_dir_ex2_thrd_id;		            // Thread ID
+input [64-(`DC_SIZE-3):63-`CL_SIZE] ex2_eff_addr;
+input                               dcc_dir_ex3_cache_acc;		            // Cache Access is Valid
+input                               dcc_dir_ex3_pfetch_val;                 // Prefetch is Valid
+input                               dcc_dir_ex3_lock_set;		            // DCBT[ST]LS Operation is valid
+input                               dcc_dir_ex3_th_c;		                // DCBT[ST]LS Operation is targeting the L1 Data Cache
+input                               dcc_dir_ex3_watch_set;		            // LDAWX Operation is valid
+input                               dcc_dir_ex3_larx_val;		            // LARX Operation is valid, the directory should be invalidated if hit
+input                               dcc_dir_ex3_watch_chk;		            // WCHK Operation is valid
 input                               dcc_dir_ex4_load_val;
-input                               derat_dir_ex4_wimge_i;		            
-                                    
-input                               fgen_ex3_stg_flush;		                
-input                               fgen_ex4_cp_flush;                      
-input                               fgen_ex4_stg_flush;		                
-input                               fgen_ex5_stg_flush;		                
+input                               derat_dir_ex4_wimge_i;		            // Cache-Inhibited Request
 
-input [0:7]                         ex4_tag_perr_way;		                
-input [0:7]                         dat_ctl_dcarr_perr_way;		            
-                                    
-input                               ex4_way_cmp_a;		                    
-input                               ex4_way_cmp_b;		                    
-input                               ex4_way_cmp_c;		                    
-input                               ex4_way_cmp_d;		                    
-input                               ex4_way_cmp_e;		                    
-input                               ex4_way_cmp_f;		                    
-input                               ex4_way_cmp_g;		                    
-input                               ex4_way_cmp_h;		                    
-                                                                          
-input                               stq3_way_cmp_a;		                    
-input                               stq3_way_cmp_b;		                    
-input                               stq3_way_cmp_c;		                    
-input                               stq3_way_cmp_d;		                    
-input                               stq3_way_cmp_e;		                    
-input                               stq3_way_cmp_f;		                    
-input                               stq3_way_cmp_g;		                    
-input                               stq3_way_cmp_h;		                    
+// Execution Pipe Flush
+input                               fgen_ex3_stg_flush;		                // ex3 Stage Flush
+input                               fgen_ex4_cp_flush;                      // ex4 CP Flush
+input                               fgen_ex4_stg_flush;		                // ex4 Stage Flush
+input                               fgen_ex5_stg_flush;		                // ex5 Stage Flush
 
+// Directory Parity Error for Execution Pipe
+input [0:7]                         ex4_tag_perr_way;		                // Directory Way with Parity Error
+input [0:7]                         dat_ctl_dcarr_perr_way;		            // Data Cache Parity on a Way
+
+// Tag Compares
+input                               ex4_way_cmp_a;		                    // Way A Compared
+input                               ex4_way_cmp_b;		                    // Way B Compared
+input                               ex4_way_cmp_c;		                    // Way C Compared
+input                               ex4_way_cmp_d;		                    // Way D Compared
+input                               ex4_way_cmp_e;		                    // Way E Compared
+input                               ex4_way_cmp_f;		                    // Way F Compared
+input                               ex4_way_cmp_g;		                    // Way G Compared
+input                               ex4_way_cmp_h;		                    // Way H Compared
+
+// Commit Pipe
+input                               stq3_way_cmp_a;		                    // Way A Compared
+input                               stq3_way_cmp_b;		                    // Way B Compared
+input                               stq3_way_cmp_c;		                    // Way C Compared
+input                               stq3_way_cmp_d;		                    // Way D Compared
+input                               stq3_way_cmp_e;		                    // Way E Compared
+input                               stq3_way_cmp_f;		                    // Way F Compared
+input                               stq3_way_cmp_g;		                    // Way G Compared
+input                               stq3_way_cmp_h;		                    // Way H Compared
+
+// Directory Parity Error for Store Commit Pipe
 input [0:7]                         stq3_tag_way_perr;
-                                    
-input                               pc_lq_inj_dcachedir_ldp_multihit;       
-input                               pc_lq_inj_dcachedir_stp_multihit;		
 
+// Multihit Error Inject
+input                               pc_lq_inj_dcachedir_ldp_multihit;       // Load Pipe Multihit Error Inject from PC
+input                               pc_lq_inj_dcachedir_stp_multihit;		// Store Pipe Multihit Error Inject from PC
+
+// L1 Directory Contents
 output [0:1+`THREADS]               dir_dcc_ex5_way_a_dir;
 output [0:1+`THREADS]               dir_dcc_ex5_way_b_dir;
 output [0:1+`THREADS]               dir_dcc_ex5_way_c_dir;
@@ -298,70 +331,79 @@ output [0:1+`THREADS]               dir_dcc_ex5_way_f_dir;
 output [0:1+`THREADS]               dir_dcc_ex5_way_g_dir;
 output [0:1+`THREADS]               dir_dcc_ex5_way_h_dir;
 
-output                              ex4_way_hit_a;		                    
-output                              ex4_way_hit_b;		                    
-output                              ex4_way_hit_c;		                    
-output                              ex4_way_hit_d;		                    
-output                              ex4_way_hit_e;		                    
-output                              ex4_way_hit_f;		                    
-output                              ex4_way_hit_g;		                    
-output                              ex4_way_hit_h;		                    
+// L1 Directory Hits
+output                              ex4_way_hit_a;		                    // Way A Hit
+output                              ex4_way_hit_b;		                    // Way B Hit
+output                              ex4_way_hit_c;		                    // Way C Hit
+output                              ex4_way_hit_d;		                    // Way D Hit
+output                              ex4_way_hit_e;		                    // Way E Hit
+output                              ex4_way_hit_f;		                    // Way F Hit
+output                              ex4_way_hit_g;		                    // Way G Hit
+output                              ex4_way_hit_h;		                    // Way H Hit
 
-output                              ex4_miss;		                        
-output                              ex4_hit;		                        
-output                              dir_dcc_ex4_set_rel_coll;		        
-output                              dir_dcc_ex4_byp_restart;		        
-output                              dir_dcc_ex5_dir_perr_det;		        
-output                              dir_dcc_ex5_dc_perr_det;		        
-output                              dir_dcc_ex5_dir_perr_flush;	      	    
-output                              dir_dcc_ex5_dc_perr_flush;	      	    
-output                              dir_dcc_ex5_multihit_det;		        
-output                              dir_dcc_ex5_multihit_flush;	      	    
-output                              dir_dcc_stq4_dir_perr_det;	      	    
-output                              dir_dcc_stq4_multihit_det;	      	    
-output                              dir_dcc_ex5_stp_flush;                  
+// ex4 Execution Pipe Command Outputs
+output                              ex4_miss;		                        // Execution Pipe operation missed in D$
+output                              ex4_hit;		                        // Execution Pipe operation hit in D$
+output                              dir_dcc_ex4_set_rel_coll;		        // Resource Conflict, should cause a reject
+output                              dir_dcc_ex4_byp_restart;		        // Directory Bypassed stage that was restarted
+output                              dir_dcc_ex5_dir_perr_det;		        // Data Directory Parity Error Detected on the LDQ Pipeline
+output                              dir_dcc_ex5_dc_perr_det;		        // Data Cache Parity Error Detected on the LDQ Pipeline
+output                              dir_dcc_ex5_dir_perr_flush;	      	    // Data Directory Parity Error Flush on the LDQ Pipeline
+output                              dir_dcc_ex5_dc_perr_flush;	      	    // Data Cache Parity Error Flush on the LDQ Pipeline
+output                              dir_dcc_ex5_multihit_det;		        // Directory Multihit Detected on the LDQ Pipeline
+output                              dir_dcc_ex5_multihit_flush;	      	    // Directory Multihit Flush on the LDQ Pipeline
+output                              dir_dcc_stq4_dir_perr_det;	      	    // Data Cache Parity Error Detected on the STQ Commit Pipeline
+output                              dir_dcc_stq4_multihit_det;	      	    // Directory Multihit Detected on the STQ Commit Pipeline
+output                              dir_dcc_ex5_stp_flush;                  // Directory Error detected on the STQ Commit Pipeline with EX5 LDP valid
 
-output [0:(`THREADS*3)+1]           ctl_perv_dir_perf_events;		        
+// Performance Events
+output [0:(`THREADS*3)+1]           ctl_perv_dir_perf_events;		        // Performance Events
 
-output                              lq_xu_spr_xucr0_cslc_xuop;		        
-output                              lq_xu_spr_xucr0_cslc_binv;		        
+// SPR status
+output                              lq_xu_spr_xucr0_cslc_xuop;		        // Invalidate type instruction invalidated lock
+output                              lq_xu_spr_xucr0_cslc_binv;		        // Back-Invalidate invalidated lock
 
-output                              dir_dcc_ex5_cr_rslt;		            
+// ex5 Execution Pipe Command Outputs
+output                              dir_dcc_ex5_cr_rslt;		            // Condition Register Results from Watch instructions
 
-output                              stq2_ddir_acc;                          
-output                              stq3_way_hit_a;		                    
-output                              stq3_way_hit_b;		                    
-output                              stq3_way_hit_c;		                    
-output                              stq3_way_hit_d;		                    
-output                              stq3_way_hit_e;		                    
-output                              stq3_way_hit_f;		                    
-output                              stq3_way_hit_g;		                    
-output                              stq3_way_hit_h;		                    
-output                              stq3_miss;		                        
-output                              stq3_hit;		                        
-output                              ctl_lsq_stq4_perr_reject;               
-output [0:7]                        ctl_dat_stq5_way_perr_inval;            
+// stq4 Recirculation Pipe Command Outputs
+output                              stq2_ddir_acc;                          // Directory Array Access is valid
+output                              stq3_way_hit_a;		                    // Way A Hit
+output                              stq3_way_hit_b;		                    // Way B Hit
+output                              stq3_way_hit_c;		                    // Way C Hit
+output                              stq3_way_hit_d;		                    // Way D Hit
+output                              stq3_way_hit_e;		                    // Way E Hit
+output                              stq3_way_hit_f;		                    // Way F Hit
+output                              stq3_way_hit_g;		                    // Way G Hit
+output                              stq3_way_hit_h;		                    // Way H Hit
+output                              stq3_miss;		                        // Recirculation Pipe operation missed in L1 D$
+output                              stq3_hit;		                        // Recirculation Pipe operation hit in L1 D$
+output                              ctl_lsq_stq4_perr_reject;               // STQ4 detected a parity error, need to reject STQ2 Commit
+output [0:7]                        ctl_dat_stq5_way_perr_inval;            // STQ5 Gate Data Cache Write due to Directory Error
 
-output                              rel_way_val_a;		                    
-output                              rel_way_val_b;		                    
-output                              rel_way_val_c;		                    
-output                              rel_way_val_d;		                    
-output                              rel_way_val_e;		                    
-output                              rel_way_val_f;		                    
-output                              rel_way_val_g;		                    
-output                              rel_way_val_h;		                    
-                                                                          
-output                              rel_way_lock_a;		                    
-output                              rel_way_lock_b;		                    
-output                              rel_way_lock_c;		                    
-output                              rel_way_lock_d;		                    
-output                              rel_way_lock_e;		                    
-output                              rel_way_lock_f;		                    
-output                              rel_way_lock_g;		                    
-output                              rel_way_lock_h;		                    
-                                    
+// Way Valids for Replacement Algorithm
+output                              rel_way_val_a;		                    // Way A Valid for Replacement algorithm
+output                              rel_way_val_b;		                    // Way B Valid for Replacement algorithm
+output                              rel_way_val_c;		                    // Way C Valid for Replacement algorithm
+output                              rel_way_val_d;		                    // Way D Valid for Replacement algorithm
+output                              rel_way_val_e;		                    // Way E Valid for Replacement algorithm
+output                              rel_way_val_f;		                    // Way F Valid for Replacement algorithm
+output                              rel_way_val_g;		                    // Way G Valid for Replacement algorithm
+output                              rel_way_val_h;		                    // Way H Valid for Replacement algorithm
 
-                       
+// Congruence Class Line Lock
+output                              rel_way_lock_a;		                    // Way A Locked Line for Replacement algorithm
+output                              rel_way_lock_b;		                    // Way B Locked Line for Replacement algorithm
+output                              rel_way_lock_c;		                    // Way C Locked Line for Replacement algorithm
+output                              rel_way_lock_d;		                    // Way D Locked Line for Replacement algorithm
+output                              rel_way_lock_e;		                    // Way E Locked Line for Replacement algorithm
+output                              rel_way_lock_f;		                    // Way F Locked Line for Replacement algorithm
+output                              rel_way_lock_g;		                    // Way G Locked Line for Replacement algorithm
+output                              rel_way_lock_h;		                    // Way H Locked Line for Replacement algorithm
+
+//pervasive
+
+
 inout                               vdd;
 
 
@@ -392,7 +434,13 @@ input [0:2]                         scan_in;
 
 output [0:2]                        scan_out;
 
+//--------------------------
+// components
+//--------------------------
 
+//--------------------------
+// signals
+//--------------------------
 parameter                         uprCClassBit = 64 - (`DC_SIZE - 3);
 parameter                         lwrCClassBit = 63 - `CL_SIZE;
 parameter                         numCClass = ((2 ** `DC_SIZE)/(2 ** `CL_SIZE))/8;
@@ -499,8 +547,8 @@ wire [0:numWays-1]                stq4_ex_ldp_err_det;
 wire [0:numWays-1]                stq2_stq4_stp_err;
 wire [0:numWays-1]                stq3_stq5_stp_err_d;
 wire [0:numWays-1]                stq3_stq5_stp_err_q;
-wire [0:numWays-1]                stq4_stq6_stp_err_d; 
-wire [0:numWays-1]                stq4_stq6_stp_err_q; 
+wire [0:numWays-1]                stq4_stq6_stp_err_d;
+wire [0:numWays-1]                stq4_stq6_stp_err_q;
 wire [0:numWays-1]                stq3_stq4_stp_err;
 wire [0:numWays-1]                stq4_stq5_stp_err_d;
 wire [0:numWays-1]                stq4_stq5_stp_err_q;
@@ -989,6 +1037,9 @@ wire [0:`THREADS-1]               lost_watch_evict_val_q;
 wire [0:`THREADS-1]               lost_watch_binv_d;
 wire [0:`THREADS-1]               lost_watch_binv_q;
 
+//--------------------------
+// constants
+//--------------------------
 parameter                         congr_cl_wA_offset = 0;
 parameter                         congr_cl_wB_offset = congr_cl_wA_offset + numCClass*dirState;
 parameter                         congr_cl_wC_offset = congr_cl_wB_offset + numCClass*dirState;
@@ -1186,9 +1237,13 @@ wire [0:scan_right]               sov;
 (* analysis_not_referenced="true" *)
 wire                              unused;
 
+//!! Bugspray Include: lq_dir_val
 assign tiup = 1'b1;
 assign unused = dcc_dir_ex3_watch_chk;
 
+// ####################################################
+// Inputs
+// ####################################################
 assign spr_xucr0_clfc_d      = xu_lq_spr_xucr0_clfc;
 assign val_finval_d          = stq4_dci_val_q;
 assign lock_finval_d         = stq4_dci_val_q | spr_xucr0_clfc_q;
@@ -1201,7 +1256,12 @@ assign rel_way_set  = {rel_way_wen_a, rel_way_wen_b, rel_way_wen_c, rel_way_wen_
 assign ex4_way_cmp  = {ex4_way_cmp_a, ex4_way_cmp_b, ex4_way_cmp_c, ex4_way_cmp_d, ex4_way_cmp_e, ex4_way_cmp_f, ex4_way_cmp_g, ex4_way_cmp_h};
 assign stq3_way_cmp = {stq3_way_cmp_a, stq3_way_cmp_b, stq3_way_cmp_c, stq3_way_cmp_d, stq3_way_cmp_e, stq3_way_cmp_f, stq3_way_cmp_g, stq3_way_cmp_h};
 
+// ####################################################
+// Execution Pipe Control
+// Port0 => Execution Pipe or Back-Invalidate
+// ####################################################
 
+// Execution and Back-Invalidate Pipeline Staging
 assign ex4_cache_acc_d  = dcc_dir_ex3_cache_acc & ~fgen_ex3_stg_flush;
 assign ex5_cache_acc_d  = ex4_cache_acc_q       & ~fgen_ex4_stg_flush;
 assign ex5_mhit_cacc_d  = ex4_cache_acc_q       & ~fgen_ex4_cp_flush;
@@ -1231,6 +1291,7 @@ assign ex6_watch_set_d = ex5_watch_set_q       & ~fgen_ex5_stg_flush;
 assign ex4_larx_val_d  = dcc_dir_ex3_larx_val  & ~fgen_ex3_stg_flush;
 assign ex7_watch_set_inval_d = ex6_watch_set_q & congr_cl_stq3_ex6_cmp_q;
 
+// Clear Watch Bit on an invalidate type op or WCLR
 assign ex4_clr_watch    = ex4_clr_val_way;
 assign ex4_set_watch    = ex4_thrd_id_q & {`THREADS{ex4_watch_set_q}};
 assign ex5_lose_watch_d = ex4_clr_watch;
@@ -1248,6 +1309,10 @@ assign inj_dirmultihit_ldp_b = ~(inj_dirmultihit_ldp_q & binv4_ex4_dir_val);
 
 assign ex5_way_hit_d = ex4_way_hit;
 
+// ####################################################
+// Execution Pipe Directory Read
+// ####################################################
+// 1-hot Congruence Class Select
 generate begin : ldpCClass
       genvar                            cclass;
       for (cclass=0; cclass<numCClass; cclass=cclass+1) begin : ldpCClass
@@ -1257,6 +1322,7 @@ generate begin : ldpCClass
    end
 endgenerate
 
+// Execution Path Directory Valid Muxing
 always @(*) begin: p0WayRd
    reg  [0:dirState-1]               wAState;
    reg  [0:dirState-1]               wBState;
@@ -1266,9 +1332,9 @@ always @(*) begin: p0WayRd
    reg  [0:dirState-1]               wFState;
    reg  [0:dirState-1]               wGState;
    reg  [0:dirState-1]               wHState;
-   
+
    (* analysis_not_referenced="true" *)
-   
+
    integer                           cclass;
    wAState = {dirState{1'b0}};
    wBState = {dirState{1'b0}};
@@ -1298,17 +1364,29 @@ always @(*) begin: p0WayRd
    p0_arr_way_rd[7] <= wHState;
 end
 
+// ####################################################
+// Execution Pipe Bypass
+// ####################################################
 
+// Determine if there is any updates in later stages to the same congruence class
 assign congr_cl_ex3_ex4_cmp_d  = (ex2_congr_cl == ex3_congr_cl_q);
 assign congr_cl_ex3_ex5_cmp_d  = (ex2_congr_cl == ex4_congr_cl_q);
 assign congr_cl_ex3_ex6_cmp_d  = (ex2_congr_cl == ex5_congr_cl_q);
 assign congr_cl_ex3_stq4_cmp_d = (ex2_congr_cl == stq3_congr_cl_q);
 assign congr_cl_ex3_stq5_cmp_d = (ex2_congr_cl == stq4_congr_cl_q);
 
-assign congr_cl_ex4_ex6_rest_d = (congr_cl_ex3_way_sel[0][3] | congr_cl_ex3_way_sel[1][3] | congr_cl_ex3_way_sel[2][3] | congr_cl_ex3_way_sel[3][3] | 
+// Check that bypassed results were restarted, want to restart instruction in LQ EX4 pipeline
+assign congr_cl_ex4_ex6_rest_d = (congr_cl_ex3_way_sel[0][3] | congr_cl_ex3_way_sel[1][3] | congr_cl_ex3_way_sel[2][3] | congr_cl_ex3_way_sel[3][3] |
                                   congr_cl_ex3_way_sel[4][3] | congr_cl_ex3_way_sel[5][3] | congr_cl_ex3_way_sel[6][3] | congr_cl_ex3_way_sel[7][3]) & fgen_ex5_stg_flush;
 assign congr_cl_ex4_byp_restart = congr_cl_ex4_ex6_rest_q & ex4_cache_en_val;
 
+// Want to only bypass from EX pipeline if operation ahead of me is
+// 1) larx,ldawx, or dcbt[st]ls, ignoring thread, not needed since these requests are
+//    guaranteed to complete, will restart EX3 instruction if op cant complete
+// 2) back-invalidate
+// Dont want to bypass from EX pipeline if my operation is a back-invalidate
+// Want to only bypass from REL pipeline if its a cacheline invalidate due to capacity miss
+// Dont want to bypass from STQ pipeline
 assign congr_cl_ex3_ex4_m  = congr_cl_ex3_ex4_cmp_q  & (ex4_xuop_upd_val   | ex4_binv_val_q) & ~ex3_binv_val_q;
 assign congr_cl_ex3_ex5_m  = congr_cl_ex3_ex5_cmp_q  & (ex5_xuop_upd_val_q | ex5_binv_val_q) & ~ex3_binv_val_q;
 assign congr_cl_ex3_ex6_m  = congr_cl_ex3_ex6_cmp_q  & p0_wren_cpy_q;
@@ -1317,55 +1395,72 @@ assign congr_cl_ex3_stq5_m = congr_cl_ex3_stq5_cmp_q & rel5_clr_stg_val_q;
 
 generate begin : ldpByp
       genvar                            ways;
-      for (ways=0; ways<numWays; ways=ways+1) begin : ldpByp     
-         assign congr_cl_ex3_way_byp[ways][0] = congr_cl_ex3_stq4_m & stq4_way_upd_q[ways];	        
-         assign congr_cl_ex3_way_byp[ways][1] = congr_cl_ex3_stq5_m & stq5_way_upd_q[ways];		    
-         assign congr_cl_ex3_way_byp[ways][2] = congr_cl_ex3_ex4_m & ex4_way_hit[ways];		        
-         assign congr_cl_ex3_way_byp[ways][3] = congr_cl_ex3_ex5_m & ex5_way_upd_q[ways];		    
-         assign congr_cl_ex3_way_byp[ways][4] = congr_cl_ex3_ex6_m & ex6_way_upd_q[ways];		    
-         
+      for (ways=0; ways<numWays; ways=ways+1) begin : ldpByp
+         // Way Bypass Calculation                                                               Should have the following priority
+         assign congr_cl_ex3_way_byp[ways][0] = congr_cl_ex3_stq4_m & stq4_way_upd_q[ways];	        // 0
+         assign congr_cl_ex3_way_byp[ways][1] = congr_cl_ex3_stq5_m & stq5_way_upd_q[ways];		    // 1
+         assign congr_cl_ex3_way_byp[ways][2] = congr_cl_ex3_ex4_m & ex4_way_hit[ways];		        // 2    <-- slowest of all of them
+         assign congr_cl_ex3_way_byp[ways][3] = congr_cl_ex3_ex5_m & ex5_way_upd_q[ways];		    // 3
+         assign congr_cl_ex3_way_byp[ways][4] = congr_cl_ex3_ex6_m & ex6_way_upd_q[ways];		    // 4
+
+         // Late Stages Priority Selection
          assign congr_cl_ex3_way_sel[ways][1] = congr_cl_ex3_way_byp[ways][0];
          assign congr_cl_ex3_way_sel[ways][2] = congr_cl_ex3_way_byp[ways][1] &    ~congr_cl_ex3_way_byp[ways][0];
          assign congr_cl_ex3_way_sel[ways][3] = congr_cl_ex3_way_byp[ways][3] & ~(|(congr_cl_ex3_way_byp[ways][0:1]));
          assign congr_cl_ex3_way_sel[ways][4] = congr_cl_ex3_way_byp[ways][4] & ~(|(congr_cl_ex3_way_byp[ways][0:1]) | congr_cl_ex3_way_byp[ways][3]);
-         
+
          assign ex3_way_arr_sel[ways] = |(congr_cl_ex3_way_byp[ways]);
-         assign ex3_way_stg_pri[ways] = (stq4_dir_way_q[ways] & {dirState{congr_cl_ex3_way_sel[ways][1]}}) | 
-                                        (stq5_dir_way_q[ways] & {dirState{congr_cl_ex3_way_sel[ways][2]}}) | 
-                                        (ex5_dir_way_q[ways]  & {dirState{congr_cl_ex3_way_sel[ways][3]}}) | 
-                                        (ex6_dir_way_q[ways]  & {dirState{congr_cl_ex3_way_sel[ways][4]}}) | 
+         assign ex3_way_stg_pri[ways] = (stq4_dir_way_q[ways] & {dirState{congr_cl_ex3_way_sel[ways][1]}}) |
+                                        (stq5_dir_way_q[ways] & {dirState{congr_cl_ex3_way_sel[ways][2]}}) |
+                                        (ex5_dir_way_q[ways]  & {dirState{congr_cl_ex3_way_sel[ways][3]}}) |
+                                        (ex6_dir_way_q[ways]  & {dirState{congr_cl_ex3_way_sel[ways][4]}}) |
                                         (p0_arr_way_rd[ways]  & {dirState{~ex3_way_arr_sel[ways]}});
-         
-         assign ex4_way_val_d[ways] = (ex4_dir_way[ways]     & {dirState{ congr_cl_ex3_way_byp[ways][2]}}) | 
+
+         assign ex4_way_val_d[ways] = (ex4_dir_way[ways]     & {dirState{ congr_cl_ex3_way_byp[ways][2]}}) |
                                       (ex3_way_stg_pri[ways] & {dirState{~congr_cl_ex3_way_byp[ways][2]}});
          assign ex5_way_val_d[ways] = ex4_way_val_q[ways];
       end
    end
 endgenerate
 
+// ####################################################
+// Execution Pipe Update Directory Logic
+// ####################################################
 generate begin : ldpCtrl
       genvar                            ways;
       for (ways=0; ways<numWays; ways=ways+1) begin : ldpCtrl
+         // Hit Detect
          assign ex4_way_hit[ways] = ex4_way_val_q[ways][0] & ex4_way_cmp[ways];
-         
+
+         // Cacheline Valid Bit
+         //                                   CLEAR VALID
          assign ex4_dir_way[ways][0] = ~ex4_clr_val_way & ex4_way_val_q[ways][0];
-         
+
+         // Cacheline Lock Bit
+         //                                  CLEAR LOCK               SET LOCK
          assign ex4_dir_way[ways][1] = (ex4_way_val_q[ways][1] & ~ex4_clr_val_way) | (ex4_way_val_q[ways][0] & ex4_lock_set_q);
-         
+
+         // Determine Lock Bit Set Per Way
          assign ex4_way_lock[ways] = ex4_way_val_q[ways][1];
-         
+
+         // Need to detect if Back-Invalidate or invalidate type instruction invalidated the lock bit
          assign ex5_clr_lck_way_d[ways] = ex4_clr_val_way & ex4_way_val_q[ways][1];
-         
+
+         // Set/Clr Watch Bit for Thread on Port0
+         // Cacheline Watch Bits
          begin : P0Watch
             genvar                            tid;
             for (tid=0; tid<`THREADS; tid=tid+1) begin : P0Watch
                assign ex4_dir_way[ways][2 + tid] = (ex4_way_val_q[ways][2 + tid] & ~ex4_clr_watch) | (ex4_way_val_q[ways][0] & ex4_set_watch[tid]);
             end
          end
-         
+
+         // Determine if a Watch Bit was lost
          assign ex5_lost_way[ways] = ex5_way_val_q[ways][2:dirState - 1] & {dirState-2{(ex5_lose_watch_q & ex5_way_hit_q[ways])}};
-         
+
+         // Determine if Updating Directory
          assign ex5_way_upd_d[ways]   = (ex4_way_hit[ways] & binv4_ex4_xuop_upd);
+         // Need to gate with ex5_xuop_perr_det so the instruction currently in ex2 doesnt bypass my instruction that will cause a flush
          assign ex5_way_upd[ways]     = (ex5_way_upd_q[ways] & ~ex5_xuop_perr_det) | ex5_way_perr_inval[ways];
          assign ex6_way_upd_d[ways]   = ex5_way_upd[ways];
          assign ex7_way_upd_d[ways]   = ex6_way_upd_q[ways];
@@ -1373,41 +1468,50 @@ generate begin : ldpCtrl
          assign ex5_dir_way_err[ways] = ex5_dir_way_q[ways] & {dirState{~ex5_way_perr_inval[ways]}};
          assign ex6_dir_way_d[ways]   = ex5_dir_way_err[ways];
          assign ex7_dir_way_d[ways]   = ex6_dir_way_q[ways][2:dirState-1];
-         
+
+         // Determine `THREADS Watch Bits Per Way
          assign ex4_way_watch[ways] = |(ex4_thrd_id_q & ex4_way_val_q[ways][2:dirState - 1]);
       end
    end
 endgenerate
 
+// Execution Pipe Hit/Miss
 assign ex4_miss =  ex4_hit_or_01234567_b;
 assign ex4_hit  = ~ex4_hit_or_01234567_b;
 
+// Invalidate Lock Bit Detect
 assign ex5_inval_clr_lock = |(ex5_clr_lck_way_q & ex5_way_upd_q);
 
+// One of the Ways has a Lock Bit set
 assign ex5_cClass_lock_set_d = |(ex4_way_lock);
 
+// Lock bit invalidated due to LARX instruction
 assign xucr0_cslc_xuop_d = ex5_inval_clr_lock & ex5_xuop_upd_val;
 
-assign xucr0_cslc_binv_d = (binv5_inval_lock_val & ex5_binv_val_q) | 
-                           ex5_perr_lock_lost_q | 
-                           ex5_multihit_lock_lost | 
-                           binv_rel_lock_lost | 
-                           stq4_inval_clr_lock | 
-                           stq4_perr_lock_lost_q | 
+// Lock bit invalidated due to Back-Invlaidate
+assign xucr0_cslc_binv_d = (binv5_inval_lock_val & ex5_binv_val_q) |
+                           ex5_perr_lock_lost_q |
+                           ex5_multihit_lock_lost |
+                           binv_rel_lock_lost |
+                           stq4_inval_clr_lock |
+                           stq4_perr_lock_lost_q |
                            stq4_multihit_lock_lost;
 
+// Watch Lost due to DCI
 assign stq4_dci_watch_lost = {`THREADS{stq4_dci_val_q}};
 
+// Watch Lost due to Back-Invalidate only
 assign ex5_watchlost_binv = binv5_inval_watch_val;
 
+// Way Watch Bits OR Reduced
 
 always @(*) begin: ldpThrdWatch
    reg  [0:`THREADS-1]               tidW;
    reg  [0:`THREADS-1]               tidWLp;
    reg  [0:`THREADS-1]               tidWLe;
-   
+
    (* analysis_not_referenced="true" *)
-   
+
    integer                           ways;
    tidW   = {`THREADS{1'b0}};
    tidWLp = {`THREADS{1'b0}};
@@ -1417,24 +1521,41 @@ always @(*) begin: ldpThrdWatch
       tidWLp = ex5_lost_way[ways]                  | tidWLp;
       tidWLe = ex4_err_way_watchlost[ways]         | tidWLe;
    end
+   // `THREADS Watching one of the ways in EX4/BINV4
    ex5_cClass_thrd_watch_d <= tidW;
-   
+
+   // Watch Lost due to Back-Invalidate or LARX
    ex5_lost_watch <= tidWLp;
-   
+
+   // Watch Lost due to Parity Error
    ex5_perr_watchlost_d <= tidWLe;
 end
 
+// Update STM_WACHTLOST valid
 assign ex5_watchlost_upd = (ex5_lost_watch & {`THREADS{ex5_xuop_upd_val}}) | ex5_watchlost_binv | ex5_multihit_watch_lost | ex5_perr_watchlost_q;
 
+// Update STM_WATCHLOST contents
 assign ex5_watchlost_set = (ex5_lost_watch & {`THREADS{ex5_xuop_upd_val}}) | ex5_watchlost_binv | ex5_multihit_watch_lost | ex5_perr_watchlost_q;
 
+// Watch Bit for LDAWX CR update
 assign ex4_curr_watch = |(ex4_way_hit & ex4_way_watch);
 
+// Current WatchLost State for WCHKALL CR update
 assign ex4_stm_watchlost_sel = |(ex4_thrd_id_q & stm_watchlost);
 
+// CR update for LDAWX and WCHKALL
 assign ex5_cr_watch_d = ~ex4_watch_set_q ? ex4_stm_watchlost_sel : ex4_curr_watch;
 
+// ####################################################
+// Back-Invalidated Watched/Locked Line detection,
+// I need to do it late since instructions ahead of a
+// back-invalidate could have set the watch/lost bit
+// Back-Invalidate does not look at instructions ahead of pipe,
+// since they might get flushed and will get bad results
+// Also includes Multihit Error Detect case
+// ####################################################
 
+// Staging out congruence class compares
 assign congr_cl_ex4_ex5_cmp_d  = congr_cl_ex3_ex4_cmp_q;
 assign congr_cl_ex4_ex6_cmp_d  = congr_cl_ex3_ex5_cmp_q;
 assign congr_cl_ex5_ex6_cmp_d  = congr_cl_ex4_ex5_cmp_q;
@@ -1443,6 +1564,7 @@ assign congr_cl_ex5_stq5_cmp_d = (ex4_congr_cl_q == stq4_congr_cl_q);
 assign congr_cl_ex5_stq6_cmp_d = (ex4_congr_cl_q == stq5_congr_cl_q);
 assign congr_cl_ex5_stq7_cmp_d = (ex4_congr_cl_q == stq6_congr_cl_q);
 
+// Ways updated in other stages
 assign binv5_ex5_way_upd = ex5_way_upd;
 assign binv6_ex6_way_upd = ex6_way_upd_q;
 assign binv7_ex7_way_upd = ex7_way_upd_q;
@@ -1450,12 +1572,13 @@ assign stq5_way_upd      = stq5_way_upd_q;
 assign stq6_way_upd      = stq6_way_upd_q;
 assign stq7_way_upd      = stq7_way_upd_q;
 
+// Data of ways updated in other stages
 always @(*) begin: binvData
    reg  [1:dirState-1]               binvD;
    reg  [1:dirState-1]               stqD;
-   
+
    (* analysis_not_referenced="true" *)
-   
+
    integer                           ways;
    binvD = {dirState-1{1'b0}};
    stqD  = {dirState-1{1'b0}};
@@ -1472,10 +1595,13 @@ assign binv7_ex7_dir_data_d = binv6_ex6_dir_data_q;
 assign stq6_dir_data_d      = stq5_dir_data;
 assign stq7_dir_data_d      = stq6_dir_data_q;
 
+// None Bypass Locked Line lost indicator
 assign binv5_inval_lck = ex5_inval_clr_lock & ex5_binv_val_q & (~binv5_coll_val);
 
+// None Bypass Watch Lost indicator
 assign binv5_inval_watch = (ex5_lost_watch & {`THREADS{(ex5_binv_val_q & (~binv5_coll_val))}});
 
+// Stage Bypass Select
 assign binv5_ex6_coll  = (ex5_binv_val_q | ex5_dir_multihit_det) & congr_cl_ex5_ex6_cmp_q  & |(ex5_way_hit_q & binv6_ex6_way_upd) & p0_wren_q;
 assign binv5_ex7_coll  = (ex5_binv_val_q | ex5_dir_multihit_det) & congr_cl_ex5_ex7_cmp_q  & |(ex5_way_hit_q & binv7_ex7_way_upd) & p0_wren_stg_q;
 assign binv5_stq5_coll = (ex5_binv_val_q | ex5_dir_multihit_det) & congr_cl_ex5_stq5_cmp_q & |(ex5_way_hit_q & stq5_way_upd) & p1_wren_q & rel5_clr_stg_val_q;
@@ -1483,22 +1609,29 @@ assign binv5_stq6_coll = (ex5_binv_val_q | ex5_dir_multihit_det) & congr_cl_ex5_
 assign binv5_stq7_coll = (ex5_binv_val_q | ex5_dir_multihit_det) & congr_cl_ex5_stq7_cmp_q & |(ex5_way_hit_q & stq7_way_upd) & stq7_wren_q;
 assign binv5_coll_val  = binv5_ex6_coll | binv5_ex7_coll | binv5_stq5_coll | binv5_stq6_coll | binv5_stq7_coll;
 
+// Priority Calculation
 assign binv5_pri_byp_sel[0] = binv5_stq5_coll;
 assign binv5_pri_byp_sel[1] = binv5_ex6_coll  & (~binv5_stq5_coll);
 assign binv5_pri_byp_sel[2] = binv5_stq6_coll & (~(binv5_stq5_coll | binv5_ex6_coll));
 assign binv5_pri_byp_sel[3] = binv5_ex7_coll  & (~(binv5_stq5_coll | binv5_ex6_coll | binv5_stq6_coll));
 assign binv5_pri_byp_sel[4] = binv5_stq7_coll & (~(binv5_stq5_coll | binv5_ex6_coll | binv5_stq6_coll | binv5_ex7_coll));
 
-assign binv5_byp_dir_data = (stq5_dir_data        & {dirState-1{binv5_pri_byp_sel[0]}}) | 
-                            (binv6_ex6_dir_data_q & {dirState-1{binv5_pri_byp_sel[1]}}) | 
-                            (stq6_dir_data_q      & {dirState-1{binv5_pri_byp_sel[2]}}) | 
-                            (binv7_ex7_dir_data_q & {dirState-1{binv5_pri_byp_sel[3]}}) | 
+// Data Bypass
+assign binv5_byp_dir_data = (stq5_dir_data        & {dirState-1{binv5_pri_byp_sel[0]}}) |
+                            (binv6_ex6_dir_data_q & {dirState-1{binv5_pri_byp_sel[1]}}) |
+                            (stq6_dir_data_q      & {dirState-1{binv5_pri_byp_sel[2]}}) |
+                            (binv7_ex7_dir_data_q & {dirState-1{binv5_pri_byp_sel[3]}}) |
                             (stq7_dir_data_q      & {dirState-1{binv5_pri_byp_sel[4]}});
 
+// Back-Invalidate invalidated a watched line
 assign binv5_inval_watch_val = (binv5_byp_dir_data[2:dirState - 1] & (~binv5_ex5_dir_data[2:dirState - 1])) | binv5_inval_watch;
 
+// Back-Invalidate invalidated a locked line
 assign binv5_inval_lock_val = (binv5_byp_dir_data[1] & (~binv5_ex5_dir_data[1])) | binv5_inval_lck;
 
+// Multihit Error Detected
+// ####################################################
+// Level 1
 assign ex4_hit_and_01_b = ~(ex4_way_hit[0] & ex4_way_hit[1]);
 assign ex4_hit_and_23_b = ~(ex4_way_hit[2] & ex4_way_hit[3]);
 assign ex4_hit_and_45_b = ~(ex4_way_hit[4] & ex4_way_hit[5]);
@@ -1508,6 +1641,7 @@ assign ex4_hit_or_23_b  = ~(ex4_way_hit[2] | ex4_way_hit[3]);
 assign ex4_hit_or_45_b  = ~(ex4_way_hit[4] | ex4_way_hit[5]);
 assign ex4_hit_or_67_b  = ~(ex4_way_hit[6] | ex4_way_hit[7]);
 
+// Level 2
 assign ex4_hit_or_0123      = ~(ex4_hit_or_01_b & ex4_hit_or_23_b);
 assign ex4_hit_or_4567      = ~(ex4_hit_or_45_b & ex4_hit_or_67_b);
 assign ex4_hit_and_0123     = ~(ex4_hit_or_01_b | ex4_hit_or_23_b);
@@ -1515,14 +1649,18 @@ assign ex4_hit_and_4567     = ~(ex4_hit_or_45_b | ex4_hit_or_67_b);
 assign ex4_multi_hit_err2_0 = ~(ex4_hit_and_01_b & ex4_hit_and_23_b);
 assign ex4_multi_hit_err2_1 = ~(ex4_hit_and_45_b & ex4_hit_and_67_b);
 
+// Level 3
 assign ex4_hit_or_01234567_b   = ~(ex4_hit_or_0123 | ex4_hit_or_4567);
 assign ex4_multi_hit_err3_b[0] = ~(ex4_hit_or_0123 & ex4_hit_or_4567);
 assign ex4_multi_hit_err3_b[1] = ~(ex4_hit_and_0123 | ex4_hit_and_4567);
 assign ex4_multi_hit_err3_b[2] = ~(ex4_multi_hit_err2_0 | ex4_multi_hit_err2_1);
 
+// Level 4
+// Multihit Error Detected
 assign ex4_dir_multihit_val_0 = ~(ex4_multi_hit_err3_b[0] & ex4_multi_hit_err3_b[1]);
 assign ex4_dir_multihit_val_1 = ~(ex4_multi_hit_err3_b[2] & inj_dirmultihit_ldp_b);
 
+// Level 5
 assign ex4_dir_multihit_val_b = ~(ex4_dir_multihit_val_0 | ex4_dir_multihit_val_1);
 
 assign ex5_dir_multihit_val_b_d =  ex4_dir_multihit_val_b;
@@ -1530,10 +1668,14 @@ assign ex5_dir_multihit_val     = ~ex5_dir_multihit_val_b_q;
 assign ex5_dir_multihit_det     = binv5_ex5_dir_val_q & ex5_dir_multihit_val;
 assign ex5_dir_multihit_flush   = ex5_mhit_cacc_q & ex5_dir_multihit_val;
 
+// Lock Bit Lost due to Multihit Error
 assign ex5_multihit_lock_lost = ex5_dir_multihit_det & ex5_cClass_lock_set_q;
 
+// Watch Lost due to Multihit Error
 assign ex5_multihit_watch_lost = ex5_cClass_thrd_watch_q & {`THREADS{(ex5_dir_multihit_det)}};
 
+// Parity Error Detect
+// ####################################################
 generate begin : ldpErrGen
       genvar                            ways;
       for (ways=0; ways<numWays; ways=ways+1) begin : ldpErrGen
@@ -1547,26 +1689,39 @@ generate begin : ldpErrGen
    end
 endgenerate
 
+// Lock Bit Lost due to Parity Error
 assign ex5_perr_lock_lost_d = |(ex4_err_lock_lost);
 
+// Parity Error Detected
 assign ex5_dir_perr_det_d   = |(ex4_dir_perr_det);
 assign ex5_dc_perr_det_d    = |(ex4_dc_perr_det);
 assign ex5_dir_perr_flush_d = |(ex4_dir_perr_det) & ex4_cache_acc_q & ~fgen_ex4_cp_flush;
 assign ex5_dc_perr_flush_d  = |(ex4_dc_perr_det)  & ex4_cache_acc_q & ~fgen_ex4_cp_flush;
 assign ex5_way_perr_det_d   = |(ex4_err_det_way);
 assign ex5_way_perr_inval   = ex5_err_det_way_q | {numWays{ex5_dir_multihit_det}};
-assign ex5_xuop_perr_det    = ex5_way_perr_det_q & ~ex5_binv_val_q; 
+assign ex5_xuop_perr_det    = ex5_way_perr_det_q & ~ex5_binv_val_q; // dont want to use ex5_xuop_val in case it was valid
 
+// Staging out Directory Error
 assign ex5_way_err_val = ex5_way_perr_det_q | ex5_dir_multihit_det;
 
+// ####################################################
+// Resource Conflict Flushes
+// ####################################################
 
+// DCTB[ST]LS/LDAWX instruction colliding with reload clear to same congruence class
+// DCTB[ST]LS/LDAWX will get restarted
 assign ex4_stq2_congr_cl_m_d     = ex3_congr_cl_q == stq1_congr_cl;
 assign ex4_stq2_set_rel_coll     = (ex4_lock_set_q | ex4_watch_set_q) & rel2_clr_stg_val & ex4_stq2_congr_cl_m_q;
 assign ex4_stq3_set_rel_coll_d   = rel2_clr_stg_val & (dcc_dir_ex3_lock_set | dcc_dir_ex3_watch_set) & (stq2_congr_cl_q == ex3_congr_cl_q);
 assign ex4_stq4_set_rel_coll_d   = rel3_clr_stg_val_q & (dcc_dir_ex3_lock_set | dcc_dir_ex3_watch_set) & (stq3_congr_cl_q == ex3_congr_cl_q);
 assign ex4_lockwatchSet_rel_coll = ex4_stq2_set_rel_coll | ex4_stq3_set_rel_coll_q | ex4_stq4_set_rel_coll_q;
 
+// ####################################################
+// Reload Pipe Control
+// Port1 => Reload or Commit
+// ####################################################
 
+// Store Commit Pipeline Staging
 assign stq2_ci_d        = lsq_ctl_stq1_ci;
 assign stq2_cen_acc_d   = lsq_ctl_stq1_lock_clr | (lsq_ctl_stq1_watch_clr & lsq_ctl_stq1_l_fld[0]) | lsq_ctl_stq1_store_val;
 assign stq2_cen_acc     = stq2_cen_acc_q & ~stq2_ci_q;
@@ -1589,9 +1744,12 @@ assign stq3_watch_clr_d = stq2_watch_clr_q & stq2_val;
 assign stq2_store_val_d = lsq_ctl_stq1_store_val;
 assign stq3_store_val_d = stq2_store_val_q & stq2_val;
 
+// Cacheline Invalidate type instructions, still invalidate if I=1
 assign stq2_inval_op_d = lsq_ctl_stq1_inval;
 assign stq3_inval_op_d = stq2_inval_op_q & stq2_val;
 
+// Watch Clear All updates STM_WATCHLOST indicator if DCDIS,
+// but does not update the watch bits in the directory
 assign stq1_watch_clr_all    = lsq_ctl_stq1_watch_clr & (~lsq_ctl_stq1_l_fld[0]);
 assign stq2_watch_clr_all_d  = stq1_watch_clr_all;
 assign stq3_watch_clr_all_d  = stq2_watch_clr_all_q & stq2_val_q & ~lsq_ctl_stq2_blk_req;
@@ -1620,6 +1778,7 @@ assign stq4_congr_cl_d = stq3_congr_cl_q;
 assign stq5_congr_cl_d = stq4_congr_cl_q;
 assign stq6_congr_cl_d = stq5_congr_cl_q;
 
+// Reload Pipeline Staging
 assign rel2_clr_stg_val_d = lsq_ctl_rel1_clr_val & ~spr_xucr0_dcdis;
 assign rel2_clr_stg_val   = rel2_clr_stg_val_q & ~lsq_ctl_rel2_blk_req;
 assign rel3_clr_stg_val_d = rel2_clr_stg_val;
@@ -1640,9 +1799,13 @@ assign rel2_watch_set_d   = lsq_ctl_rel1_watch_set;
 assign rel3_watch_set_d   = rel2_watch_set_q & rel2_set_stg_val_q & ~lsq_ctl_rel2_blk_req;
 assign rel3_watch_pipe_d  = rel2_watch_set_q;
 
+// COMMIT/Reload Pipe Update Valid
 assign stq2_dir_upd_val   = stq2_val_q & (stq2_cen_acc | stq2_inval_op_q) & ~(lsq_ctl_stq2_blk_req | spr_xucr0_dcdis);
 assign stq3_dir_upd_val_d = stq2_dir_upd_val;
 assign stq4_dir_upd_val_d = stq3_dir_upd_val_q;
+// removed rel2_set_dir_val, moved dir tag update to the set stage, was getting stale
+// tag hits when bypassing rel_set_dir stages to stq2 commit stage before the directory
+// was updated
 assign stq3_rel3_val_d    = stq2_dir_upd_val | rel2_clr_stg_val;
 assign stq4_rel4_val_d    = stq3_rel3_val_q;
 
@@ -1655,6 +1818,10 @@ assign stq3_inval_clr_watch = {`THREADS{stq3_inval_op_q}};
 assign stq3_clr_watch       = stq3_store_clr_watch | stq3_wclr_clr_watch | stq3_inval_clr_watch;
 assign stq4_way_hit_d       = stq3_way_hit;
 
+// ####################################################
+// Reload Pipe Directory Read
+// ####################################################
+// 1-hot Congruence Class Select
 generate begin : stpCClass
       genvar                            cclass;
       for (cclass=0; cclass<numCClass; cclass=cclass+1) begin : stpCClass
@@ -1664,6 +1831,7 @@ generate begin : stpCClass
    end
 endgenerate
 
+// Reload Path Directory Valid Bits Muxing
 
 always @(*) begin: p1WayRd
    reg  [0:dirState-1]               wAState;
@@ -1674,9 +1842,9 @@ always @(*) begin: p1WayRd
    reg  [0:dirState-1]               wFState;
    reg  [0:dirState-1]               wGState;
    reg  [0:dirState-1]               wHState;
-   
+
    (* analysis_not_referenced="true" *)
-   
+
    integer                           cclass;
    wAState = {dirState{1'b0}};
    wBState = {dirState{1'b0}};
@@ -1707,6 +1875,11 @@ always @(*) begin: p1WayRd
    p1_arr_way_rd[7] <= wHState;
 end
 
+// ####################################################
+// Reload/Commit Pipe Bypass
+// ####################################################
+// Determine if there is any updates in later stages to the same congruence class
+// There is no Thread Check for bypass here since everything is guaranteed to commit
 assign congr_cl_stq2_stq3_cmp_d = (stq1_congr_cl == stq2_congr_cl_q);
 assign congr_cl_stq2_stq4_cmp_d = (stq1_congr_cl == stq3_congr_cl_q);
 assign congr_cl_stq2_stq5_cmp_d = (stq1_congr_cl == stq4_congr_cl_q);
@@ -1717,68 +1890,90 @@ assign congr_cl_stq3_ex5_cmp_d  = (stq2_congr_cl_q == ex4_congr_cl_q);
 assign congr_cl_stq4_ex5_cmp_d  = (stq3_congr_cl_q == ex4_congr_cl_q);
 assign congr_cl_stq3_ex6_cmp_d  = congr_cl_stq2_ex5_cmp_q;
 
+// Dont want to bypass rel_set_dir_val to a store commit instruction when the cclass matches
+// The rel_set_dir_val has not updated the directory TAG and the bypass would cause a false hit
+// The store commit could hit against a TAG that was invalid and the reload is overwritting it
+// Reloads should bypass the rel_set_dir_val results since its used as part of the LRU calculation
 assign congr_cl_stq2_stq3_m = congr_cl_stq2_stq3_cmp_q & (stq3_rel3_val_q | (rel3_set_dir_val_q & (rel2_set_stg_val_q | rel2_clr_stg_val_q)));
 assign congr_cl_stq2_stq4_m = congr_cl_stq2_stq4_cmp_q & (stq4_rel4_val_q | (rel4_set_dir_val_q & (rel2_set_stg_val_q | rel2_clr_stg_val_q)));
-assign congr_cl_stq2_stq5_m = congr_cl_stq2_stq5_cmp_q & p1_wren_cpy_q;     
+assign congr_cl_stq2_stq5_m = congr_cl_stq2_stq5_cmp_q & p1_wren_cpy_q;     // Dont need rel5_set_dir_val check here since ldq_stq_stq4_dir_upd wont allow it
 assign congr_cl_stq2_ex5_m  = congr_cl_stq2_ex5_cmp_q & (ex5_binv_val_q | (ex5_lock_set_q & rel2_clr_stg_val_q));
 assign congr_cl_stq2_ex6_m  = congr_cl_stq2_ex6_cmp_q & p0_wren_q;
 
 generate begin : stpByp
       genvar                            ways;
       for (ways=0; ways<numWays; ways=ways+1) begin : stpByp
-         
-         assign congr_cl_stq2_way_byp[ways][0] = congr_cl_stq2_ex5_m  & ex5_way_upd_q[ways];	    
-         assign congr_cl_stq2_way_byp[ways][1] = congr_cl_stq2_ex6_m  & ex6_way_upd_q[ways];		
-         assign congr_cl_stq2_way_byp[ways][2] = congr_cl_stq2_stq3_m & stq3_way_upd[ways];		    
-         assign congr_cl_stq2_way_byp[ways][3] = congr_cl_stq2_stq4_m & stq4_way_upd_q[ways];		
-         assign congr_cl_stq2_way_byp[ways][4] = congr_cl_stq2_stq5_m & stq5_way_upd_q[ways];		
-         
+
+         // Way Bypass Calculation                                                             Should have the following priority
+         assign congr_cl_stq2_way_byp[ways][0] = congr_cl_stq2_ex5_m  & ex5_way_upd_q[ways];	    // 1
+         assign congr_cl_stq2_way_byp[ways][1] = congr_cl_stq2_ex6_m  & ex6_way_upd_q[ways];		// 2
+         assign congr_cl_stq2_way_byp[ways][2] = congr_cl_stq2_stq3_m & stq3_way_upd[ways];		    // 3    <-- slowest of all of them
+         assign congr_cl_stq2_way_byp[ways][3] = congr_cl_stq2_stq4_m & stq4_way_upd_q[ways];		// 4
+         assign congr_cl_stq2_way_byp[ways][4] = congr_cl_stq2_stq5_m & stq5_way_upd_q[ways];		// 5
+
+         // Late Stages Priority Selection
          assign congr_cl_stq2_way_sel[ways][1] = congr_cl_stq2_way_byp[ways][0];
          assign congr_cl_stq2_way_sel[ways][2] = congr_cl_stq2_way_byp[ways][1] &    ~congr_cl_stq2_way_byp[ways][0];
          assign congr_cl_stq2_way_sel[ways][3] = congr_cl_stq2_way_byp[ways][3] & ~(|(congr_cl_stq2_way_byp[ways][0:1]));
          assign congr_cl_stq2_way_sel[ways][4] = congr_cl_stq2_way_byp[ways][4] & ~(|(congr_cl_stq2_way_byp[ways][0:1]) | congr_cl_stq2_way_byp[ways][3]);
-         
+
          assign stq2_way_arr_sel[ways] = |(congr_cl_stq2_way_byp[ways]);
-         assign stq2_way_stg_pri[ways] = (ex5_dir_way_q[ways]    & {dirState{congr_cl_stq2_way_sel[ways][1]}}) | 
-                                         (ex6_dir_way_q[ways]    & {dirState{congr_cl_stq2_way_sel[ways][2]}}) | 
-                                         (stq4_dir_way_rel[ways] & {dirState{congr_cl_stq2_way_sel[ways][3]}}) | 
-                                         (stq5_dir_way_q[ways]   & {dirState{congr_cl_stq2_way_sel[ways][4]}}) | 
+         assign stq2_way_stg_pri[ways] = (ex5_dir_way_q[ways]    & {dirState{congr_cl_stq2_way_sel[ways][1]}}) |
+                                         (ex6_dir_way_q[ways]    & {dirState{congr_cl_stq2_way_sel[ways][2]}}) |
+                                         (stq4_dir_way_rel[ways] & {dirState{congr_cl_stq2_way_sel[ways][3]}}) |
+                                         (stq5_dir_way_q[ways]   & {dirState{congr_cl_stq2_way_sel[ways][4]}}) |
                                          (p1_arr_way_rd[ways]    & {dirState{    ~stq2_way_arr_sel[ways]}});
-         
-         assign stq3_way_val_d[ways] = (stq3_dir_way[ways]     & {dirState{ congr_cl_stq2_way_byp[ways][2]}}) | 
+
+         assign stq3_way_val_d[ways] = (stq3_dir_way[ways]     & {dirState{ congr_cl_stq2_way_byp[ways][2]}}) |
                                        (stq2_way_stg_pri[ways] & {dirState{~congr_cl_stq2_way_byp[ways][2]}});
          assign stq4_way_val_d[ways] = stq3_way_val_q[ways][2:dirState-1];
       end
    end
 endgenerate
 
+// ####################################################
+// Reload/Commit Directory Update
+// ####################################################
 generate begin : stpCtrl
       genvar                            ways;
       for (ways=0; ways<numWays; ways=ways+1) begin : stpCtrl
+         // Hit Detect
          assign stq3_way_hit[ways] = stq3_way_val_q[ways][0] & stq3_dir_upd_val_q & stq3_way_cmp[ways];
-         
+
+         // Invalidate/Reload Logic on Port1
+         //                                               CLEAR VALID                                             SET VALID
          assign stq3_dir_way[ways][0] = ((~(rel_way_clr[ways] | stq3_inval_op_q)) & stq3_way_val_q[ways][0]) | rel_way_set[ways];
-         
+
+         // Lock Clear/Set Logic on Port1
+         //                                               CLEAR LOCK                                              SET LOCK
          assign stq3_dir_way[ways][1] = ((~(rel_way_clr[ways] | stq3_clr_lock)) & stq3_way_val_q[ways][1]) | (rel3_lock_set_q & rel_way_set[ways]);
-         
+
+         // Determine Lock Bit Set Per Way
          assign stq3_way_lock[ways] = stq3_way_val_q[ways][1];
-         
+
+         // Need to detect if Back-Invalidate or invalidate type instruction invalidated the lock bit
          assign stq4_clr_lck_way_d[ways] = (rel_way_clr[ways] | stq3_inval_op_q) & stq3_way_val_q[ways][1];
-         
+
+         // Set/Clr Watch Bit for Thread on Port1
+         // Cacheline Watch Bits
          begin : P1Watch
             genvar                            tid;
             for (tid=0; tid<`THREADS; tid=tid+1) begin : P1Watch
                assign stq3_dir_way[ways][2 + tid] = (stq3_way_val_q[ways][2 + tid] & (~(stq3_clr_watch[tid] | rel_way_clr[ways]))) | (rel3_set_watch[tid] & rel_way_set[ways]);
             end
          end
-         
+
+         // Determine if a Watch Bit was lost
          assign stq4_lose_watch_way[ways] = (stq4_lose_watch_q & stq4_way_hit_q[ways]) | stq4_rel_way_clr_q[ways];
          assign stq4_lost_way[ways]       = stq4_way_val_q[ways][2:dirState-1] & {dirState-2{stq4_lose_watch_way[ways]}};
-         
+
+         // Lost Watch due to Reload Eviction
          assign rel_lost_watch_way_evict[ways] = stq4_way_val_q[ways][2:dirState-1] & {dirState-2{stq4_rel_way_clr_q[ways]}};
-         
+
+         // Lost EX5 Watch due to a Reload Eviction
          assign ex7_lost_watch_way_evict[ways] = ex7_dir_way_q[ways][2:dirState - 1] & {dirState-2{(ex7_watch_set_inval_q & ex7_way_upd_q[ways] & stq4_rel_way_clr_q[ways])}};
-         
+
+         // Updating due to Reload or Store Commit Instruction
          assign stq3_way_upd[ways]     = rel_way_clr[ways] | rel_way_set[ways] | (stq3_way_hit[ways] & stq3_dir_upd_val_q);
          assign stq4_way_upd_d[ways]   = stq3_way_upd[ways];
          assign stq4_way_upd[ways]     = stq4_way_upd_q[ways] | stq4_way_perr_inval[ways];
@@ -1789,6 +1984,7 @@ generate begin : stpCtrl
          assign stq4_dir_way_err[ways] = stq4_dir_way_q[ways] & {dirState{~(stq4_way_perr_inval[ways] | stq4_stq_stp_err_det[ways] | stq4_ex_ldp_err_det[ways])}};
          assign stq5_dir_way_d[ways]   = stq4_dir_way_err[ways];
 
+         // Error Detected in EX5 Load Pipe to same congruence class as store commit in STQ2 or STQ3 or STQ4
          assign stq2_ex5_ldp_err[ways]    = congr_cl_stq2_ex5_cmp_q & ex5_way_perr_inval[ways];
          assign stq3_ex6_ldp_err_d[ways]  = stq2_ex5_ldp_err[ways];
          assign stq4_ex7_ldp_err_d[ways]  = stq3_ex6_ldp_err_q[ways];
@@ -1796,42 +1992,57 @@ generate begin : stpCtrl
          assign stq4_ex6_ldp_err_d[ways]  = stq3_ex5_ldp_err[ways];
          assign stq4_ex5_ldp_err[ways]    = congr_cl_stq4_ex5_cmp_q & ex5_way_perr_inval[ways];
          assign stq4_ex_ldp_err_det[ways] = stq4_ex5_ldp_err[ways] | stq4_ex6_ldp_err_q[ways] | stq4_ex7_ldp_err_q[ways];
-         
+
+         // Error Detected in STQ4 Commit Pipe to same congruence class as store commit in STQ2 or STQ3
          assign stq2_stq4_stp_err[ways]    = congr_cl_stq2_stq4_cmp_q & stq4_way_perr_inval[ways];
          assign stq3_stq5_stp_err_d[ways]  = stq2_stq4_stp_err[ways];
          assign stq4_stq6_stp_err_d[ways]  = stq3_stq5_stp_err_q[ways];
          assign stq3_stq4_stp_err[ways]    = congr_cl_stq3_stq4_cmp_q & stq4_way_perr_inval[ways];
          assign stq4_stq5_stp_err_d[ways]  = stq3_stq4_stp_err[ways];
          assign stq4_stq_stp_err_det[ways] = stq4_stq5_stp_err_q[ways] | stq4_stq6_stp_err_q[ways];
-         
+
+         // Reload Clearing Way
          assign stq4_rel_way_clr_d[ways] = rel_way_clr[ways];
-         
+
+         // Need to set reload way valid bit when clearing the valid bit of older load
+         // in case second reload of interleaved reloads to same congruence class
+         // Dont want second reload to overwrite first reload that cleared the valid bit
+         // Second reload will choose the same way if not set by first
          assign stq4_dir_way_rel[ways][0]              = (rel2_clr_stg_val_q & stq4_rel_way_clr_q[ways]) | (stq4_dir_way_q[ways][0] & (~stq4_rel_way_clr_q[ways]));
          assign stq4_dir_way_rel[ways][1:dirState - 1] = stq4_dir_way_q[ways][1:dirState - 1];
       end
    end
 endgenerate
 
+// Recirculation Pipe Hit/Miss
 assign stq3_miss =  stq3_hit_or_01234567_b;
 assign stq3_hit  = ~stq3_hit_or_01234567_b;
 
+// Invalidate Lock Bit Detected
 assign stq4_inval_clr_lock = |(stq4_clr_lck_way_q & stq4_way_upd_q);
 
+// One of the Ways has a Lock Bit set
 assign stq4_cClass_lock_set_d = |(stq3_way_lock);
 
+// Reload Lost Lock due to Back-Invalidate of loadmissQ entry
+// rel3_upd_val indicatest that the reload completed without an ecc error
 assign rel3_way_set           = |(rel_way_set);
 assign rel3_binv_lock_lost    = rel3_lock_set_q & rel3_set_stg_val_q & rel3_way_set & rel3_back_inv_q & rel3_upd_val_q;
 assign rel3_l1dump_lock_lost  = lsq_ctl_rel3_l1dump_val & rel3_lock_pipe_q & ~spr_xucr0_dcdis;
 assign binv_rel_lock_lost     = rel3_binv_lock_lost | rel3_l1dump_lock_lost;
 
+// Determine if Watch was lost due to a reload or due to a Back-Invalidate of loadmissQ entry
+// rel3_upd_val indicatest that the reload completed without an ecc error
 assign rel3_binv_watch_lost   = rel3_watch_set_q & rel3_set_stg_val_q & rel3_back_inv_q & rel3_upd_val_q;
 assign rel3_l1dump_watch_lost = lsq_ctl_rel3_l1dump_val & rel3_watch_pipe_q & ~spr_xucr0_dcdis;
 assign rel3_ovl_watch_lost    = rel3_watch_set_q & rel3_set_stg_val_q & ~rel3_way_set & rel3_upd_val_q;
 assign rel3_all_watch_lost    = rel3_thrd_id_q & {`THREADS{(rel3_binv_watch_lost | rel3_l1dump_watch_lost | rel3_ovl_watch_lost)}};
 assign rel4_all_watch_lost_d  = rel3_all_watch_lost;
 
+// Watch Lost due to Invalidating Type Instruction, Reload Clear, Back-Invalidate of a Reload, or Directory Parity Error
 assign stq4_lost_watch = stq4_instr_watch_lost | rel4_all_watch_lost_q | stq4_perr_watchlost_q;
 
+// Way Watch Bits OR Reduced
 
 always @(*) begin: stpThrdWatch
    reg  [0:`THREADS-1]               tidW;
@@ -1839,9 +2050,9 @@ always @(*) begin: stpThrdWatch
    reg  [0:`THREADS-1]               tidWLr;
    reg  [0:`THREADS-1]               tidWLl;
    reg  [0:`THREADS-1]               tidWLp;
-   
+
    (* analysis_not_referenced="true" *)
-   
+
    integer                           ways;
    tidW   = {`THREADS{1'b0}};
    tidWLs = {`THREADS{1'b0}};
@@ -1856,17 +2067,23 @@ always @(*) begin: stpThrdWatch
       tidWLl = ex7_lost_watch_way_evict[ways]       | tidWLl;
       tidWLp = stq3_err_way_watchlost[ways]         | tidWLp;
    end
+   // `THREADS Watching one of the ways in STQ3
    stq4_cClass_thrd_watch_d <= tidW;
-   
+
+   // Watch Lost due to Instruction
    stq4_instr_watch_lost <= tidWLs;
-   
+
+   // Watch Lost due to Eviction
    rel_lost_watch_evict <= tidWLr;
-   
+
+   // EX5 Watch Lost due to Eviction
    ex7_lost_watch_evict <= tidWLl;
-   
+
+   // Watch Lost due to Parity Error
    stq4_perr_watchlost_d <= tidWLp;
 end
 
+// Want to still update the STM_WATCHLOST indicator if the DCDIS=1
 generate begin : wLVal
       genvar                            tid;
       for (tid = 0; tid <= `THREADS - 1; tid = tid + 1) begin : wLVal
@@ -1875,13 +2092,19 @@ generate begin : wLVal
    end
 endgenerate
 
+// Update STM_WACHTLOST valid
 assign stq4_watch_clr_all = stq4_thrd_id_q & {`THREADS{stq4_watch_clr_all_q}};
 assign stq4_watchlost_upd = stq4_lost_watch | stq4_watch_clr_all | stq4_multihit_watch_lost | ex7_lost_watch_evict | stq4_dci_watch_lost;
 
+// Update STM_WATCHLOST contents
 assign stq4_watchlost_set = stq4_watchlost_value | stq4_multihit_watch_lost | ex7_lost_watch_evict | stq4_dci_watch_lost;
 
+// Watch Lost due to Overlock
 assign lost_watch_evict_ovl_d = rel3_thrd_id_q & {`THREADS{(rel3_l1dump_watch_lost | rel3_ovl_watch_lost)}};
 
+// Multihit Error Detected
+// ####################################################
+// Level 1
 assign stq3_hit_and_01_b = ~(stq3_way_hit[0] & stq3_way_hit[1]);
 assign stq3_hit_and_23_b = ~(stq3_way_hit[2] & stq3_way_hit[3]);
 assign stq3_hit_and_45_b = ~(stq3_way_hit[4] & stq3_way_hit[5]);
@@ -1891,6 +2114,7 @@ assign stq3_hit_or_23_b  = ~(stq3_way_hit[2] | stq3_way_hit[3]);
 assign stq3_hit_or_45_b  = ~(stq3_way_hit[4] | stq3_way_hit[5]);
 assign stq3_hit_or_67_b  = ~(stq3_way_hit[6] | stq3_way_hit[7]);
 
+// Level 2
 assign stq3_hit_or_0123      = ~(stq3_hit_or_01_b & stq3_hit_or_23_b);
 assign stq3_hit_or_4567      = ~(stq3_hit_or_45_b & stq3_hit_or_67_b);
 assign stq3_hit_and_0123     = ~(stq3_hit_or_01_b | stq3_hit_or_23_b);
@@ -1898,23 +2122,31 @@ assign stq3_hit_and_4567     = ~(stq3_hit_or_45_b | stq3_hit_or_67_b);
 assign stq3_multi_hit_err2_0 = ~(stq3_hit_and_01_b & stq3_hit_and_23_b);
 assign stq3_multi_hit_err2_1 = ~(stq3_hit_and_45_b & stq3_hit_and_67_b);
 
+// Level 3
 assign stq3_hit_or_01234567_b   = ~(stq3_hit_or_0123 | stq3_hit_or_4567);
 assign stq3_multi_hit_err3_b[0] = ~(stq3_hit_or_0123 & stq3_hit_or_4567);
 assign stq3_multi_hit_err3_b[1] = ~(stq3_hit_and_0123 | stq3_hit_and_4567);
 assign stq3_multi_hit_err3_b[2] = ~(stq3_multi_hit_err2_0 | stq3_multi_hit_err2_1);
 
+// Level 4
+// Multihit Error Detected
 assign stq3_dir_multihit_val_0 = ~(stq3_multi_hit_err3_b[0] & stq3_multi_hit_err3_b[1]);
 assign stq3_dir_multihit_val_1 = ~(stq3_multi_hit_err3_b[2] & inj_dirmultihit_stp_b);
 
+// Level 5
 assign stq3_dir_multihit_val_b = ~(stq3_dir_multihit_val_0 | stq3_dir_multihit_val_1);
 
 assign stq4_dir_multihit_val_b_d = stq3_dir_multihit_val_b;
 assign stq4_dir_multihit_det     = stq4_dir_upd_val_q & ~stq4_dir_multihit_val_b_q;
 
+// Lock Bit Lost due to Multihit Error
 assign stq4_multihit_lock_lost = stq4_dir_multihit_det & stq4_cClass_lock_set_q;
 
+// Watch Lost due to Multihit Error
 assign stq4_multihit_watch_lost = stq4_cClass_thrd_watch_q & {`THREADS{stq4_dir_multihit_det}};
 
+// Parity Error Detect
+// ####################################################
 generate begin : stpErrGen
       genvar                            ways;
       for (ways=0; ways<numWays; ways=ways+1) begin : stpErrGen
@@ -1926,69 +2158,142 @@ generate begin : stpErrGen
    end
 endgenerate
 
+// Lock Bit Lost due to Parity Error
 assign stq4_perr_lock_lost_d = |(stq3_err_lock_lost);
 
+// Parity Error Detected
 assign stq4_dir_perr_det_d    = |(stq3_err_det_way);
 assign stq4_way_perr_inval    = stq4_err_det_way_q | {numWays{stq4_dir_multihit_det}};
 assign stq5_way_perr_inval_d  = stq4_way_perr_inval;
 assign ex5_stp_perr_flush_d   = |(stq3_err_det_way)  & ex4_cache_acc_q & ~fgen_ex4_cp_flush;
 assign ex5_stp_multihit_flush = ex5_mhit_cacc_q & stq4_dir_multihit_det;
 
+// Staging out Directory Error
 assign stq4_dir_err_val   = stq4_dir_perr_det_q | stq4_dir_multihit_det;
 assign stq5_dir_err_val_d = stq4_dir_err_val;
 
+// ####################################################
+// Update Watch Lost State Bits per thread
+// ####################################################
 
 generate begin : wLost
       genvar                            tid;
       for (tid=0; tid<`THREADS; tid=tid+1) begin : wLost
          assign stm_upd_watchlost_tid[tid] = {stq4_watchlost_upd[tid], ex5_watchlost_upd[tid]};
-         assign stm_watchlost[tid] = (stm_upd_watchlost_tid[tid] == 2'b00) ? stm_watchlost_state_q[tid] : 
-                                     (stm_upd_watchlost_tid[tid] == 2'b01) ? ex5_watchlost_set[tid] : 
+         assign stm_watchlost[tid] = (stm_upd_watchlost_tid[tid] == 2'b00) ? stm_watchlost_state_q[tid] :
+                                     (stm_upd_watchlost_tid[tid] == 2'b01) ? ex5_watchlost_set[tid] :
                                      stq4_watchlost_set[tid];
       end
    end
 endgenerate
 
+// Watch Lost Bits
 assign stm_watchlost_state_d = stm_watchlost;
 
+// ####################################################
+// Performance Events
+// ####################################################
+// Performance Event, Back-Invalidate Hit
 assign perf_dir_binv_val = ex5_binv_val_q;
 assign perf_dir_binv_hit = ex5_binv_val_q & |(ex5_way_hit_q);
 
-assign lost_watch_inter_thrd_d     = ((ex5_watchlost_set  & ~ex5_thrd_id_q)                         & {`THREADS{ex5_xuop_upd_val}}) | 
+// Performance Event, Watches lost due to other thread
+assign lost_watch_inter_thrd_d     = ((ex5_watchlost_set  & ~ex5_thrd_id_q)                         & {`THREADS{ex5_xuop_upd_val}}) |
                                      ((stq4_watchlost_set & ~(stq4_thrd_id_q | stq4_watch_clr_all)) & {`THREADS{stq4_val_q}});
 assign perf_dir_interTid_watchlost = lost_watch_inter_thrd_q;
 
+// Performance Event, Watches lost due to Eviction or Overlock
 assign lost_watch_evict_val_d   = lost_watch_evict_ovl_q | rel_lost_watch_evict | ex7_lost_watch_evict;
 assign perf_dir_evict_watchlost = lost_watch_evict_val_q;
 
+// Performance Event, Watch Lost due to back-invalidate
 assign lost_watch_binv_d       = ex5_watchlost_binv | rel3_all_watch_lost;
 assign perf_dir_binv_watchlost = lost_watch_binv_q;
 
+// ####################################################
+// Directory Valid Bits Write Enable Generation
+// ####################################################
+// Valids are updated for the following operations
+// 1) Reload -> updated the following cycle of the first beat,
+//              need to invalidate the way that will be overwritten
+// 2) Reload -> updated on the last data beat when no ECC error was detected,
+//              the Way will be validated that was replaced
+// 3) Back-Invalidate -> updated the following cycle
+// 4) DCBF -> Updated in ex5
+// 5) DCBI -> Updated in ex5
+// 6) DCBZ -> Updated in ex5
+// 7) LWARX Hit Invalidate -> Updated in ex5
+// 8) STWCX Hit Invalidate -> Updated in ex5
+//
+// Lock Bits are updated for the following operations
+// 1) Reload -> updated the following cycle of the first beat,
+//              need to clear the lock bit for the way that will be overwritten
+// 2) Reload -> updated on the last data beat when no ECC error was detected,
+//              the Lock bit will be set that was replaced if originally a lock type op
+// 3) Back-Invalidate -> will clear lock bit the following cycle
+// 4) DCBF -> will clear lock bit in ex5
+// 5) DCBI -> will clear lock bit in ex5
+// 6) DCBZ -> will clear lock bit in ex5
+// 7) LWARX Hit Invalidate -> will clear lock bit in ex5
+// 8) STWCX Hit Invalidate -> will clear lock bit in ex5
+// 9) DCBLC -> will clear lock bit in ex5
+//10) DCBTLS/DCBTSTLS -> will set lock bit in ex5 if hit
 
+// Port0 Updates
+// 1) XU Invalidate Op
+// 2) BACK-INV Update
+// 3) XU clear Lock Op
+// 4) XU set Lock Op
 assign p0_wren_d     = ex5_xuop_upd_val | ex5_binv_val_q | ex5_way_err_val;
 assign p0_wren_cpy_d = ex5_xuop_upd_val | ex5_binv_val_q | ex5_way_err_val;
 assign p0_wren_stg_d = p0_wren_q;
 
+// Port1 Updates
+// 1) RELOAD_CLR
+// 2) RELOAD_SET
+// 3) DC Array Parity Error with Loadhit followed by storehit update - need to invalidate storehit cline
 assign p1_wren_d     = stq4_rel4_val_q | rel4_set_dir_val_q;
 assign p1_wren_cpy_d = stq4_rel4_val_q | rel4_set_dir_val_q;
 assign stq6_wren_d   = p1_wren_q;
 assign stq7_wren_d   = stq6_wren_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Table for selecting Ports data for
+// updating to the same way and
+// same congruence class
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// P0           P1      |       PortSel
+//------------------------------------------
+// binv2        relclr  |       P1
+// binv2        relset  |       P1
+// binv2        binv2   |       P1      <- Impossible
+// flush        relclr  |       P1
+// flush        relset  |       P1
+// flush        binv2   |       P1      <- FlushOp is flushed
+// lckset       relclr  |       P1
+// lckset       relset  |       P1
+// lckset       binv2   |       P1      <- LockSetOp is flushed
+// lckclr       relclr  |       P1
+// lckclr       relset  |       P1
+// lckclr       binv2   |       P1      <- LockClrOp is flushed
 
+// Act Pin to all Directory Latches
 assign congr_cl_all_act_d = (stq4_watch_clr_all_q & stq4_val_q) | stq4_dci_val_q | spr_xucr0_clfc_q;
 
 generate begin : dirUpdCtrl
       genvar                            cclass;
       for (cclass=0; cclass<numCClass; cclass=cclass+1) begin : dirUpdCtrl
          wire [uprCClassBit:lwrCClassBit]       cclassDummy = cclass;
-         
+
+         // Congruence Class Match
          assign p0_congr_cl_m[cclass] = (ex5_congr_cl_q  == cclassDummy);
          assign p1_congr_cl_m[cclass] = (stq4_congr_cl_q == cclassDummy);
-         
+
+         // Act Pin to Directory Latches for specific congruence class
          assign p0_congr_cl_act_d[cclass] = p0_congr_cl_m[cclass] & (ex5_binv_val_q | ex5_xuop_upd_val_q | ex5_way_err_val);
          assign p1_congr_cl_act_d[cclass] = p1_congr_cl_m[cclass] & (stq4_rel4_val_q | rel4_set_dir_val_q | stq4_dir_err_val);
          assign congr_cl_act[cclass]      = p0_congr_cl_act_q[cclass] | p1_congr_cl_act_q[cclass] | congr_cl_all_act_q;
-         
+
          begin : wayCtrl
             genvar                            ways;
             for (ways=0; ways<numWays; ways=ways+1) begin : wayCtrl
@@ -1996,122 +2301,173 @@ generate begin : dirUpdCtrl
                assign p1_way_data_upd_way[cclass][ways] = p1_congr_cl_act_q[cclass] & stq5_way_upd_q[ways] & p1_wren_q;
             end
          end
-         
+
+         // ####################################################
+         // Write Select for WayA
+         // Mux Selects for Input to Latches
          assign rel_bixu_wayA_upd[cclass] = {p0_way_data_upd_way[cclass][0], p1_way_data_upd_way[cclass][0]};
-         
-         assign congr_cl_wA_d[cclass][0] = (rel_bixu_wayA_upd[cclass] == 2'b00) ? (congr_cl_wA_q[cclass][0] & (~val_finval_q)) : 
-                                           (rel_bixu_wayA_upd[cclass] == 2'b10) ? (ex6_dir_way_q[0][0] & (~val_finval_q)) : 
+
+         // WayA Valid Bit Update
+         assign congr_cl_wA_d[cclass][0] = (rel_bixu_wayA_upd[cclass] == 2'b00) ? (congr_cl_wA_q[cclass][0] & (~val_finval_q)) :
+                                           (rel_bixu_wayA_upd[cclass] == 2'b10) ? (ex6_dir_way_q[0][0] & (~val_finval_q)) :
                                            (stq5_dir_way_q[0][0] & (~val_finval_q));
-         
-         assign congr_cl_wA_d[cclass][1] = (rel_bixu_wayA_upd[cclass] == 2'b00) ? (congr_cl_wA_q[cclass][1] & (~lock_finval_q)) : 
-                                           (rel_bixu_wayA_upd[cclass] == 2'b10) ? (ex6_dir_way_q[0][1] & (~lock_finval_q)) : 
+
+         // WayA Lock Bit Update
+         assign congr_cl_wA_d[cclass][1] = (rel_bixu_wayA_upd[cclass] == 2'b00) ? (congr_cl_wA_q[cclass][1] & (~lock_finval_q)) :
+                                           (rel_bixu_wayA_upd[cclass] == 2'b10) ? (ex6_dir_way_q[0][1] & (~lock_finval_q)) :
                                            (stq5_dir_way_q[0][1] & (~lock_finval_q));
-         
-         assign congr_cl_wA_d[cclass][2:dirState - 1] = (rel_bixu_wayA_upd[cclass] == 2'b00) ? (congr_cl_wA_q[cclass][2:dirState - 1] & (~watch_finval_q)) : 
-                                                        (rel_bixu_wayA_upd[cclass] == 2'b10) ? (ex6_dir_way_q[0][2:dirState - 1] & (~watch_finval_q)) : 
+
+         // WayA Thread Watch Bit Update
+         assign congr_cl_wA_d[cclass][2:dirState - 1] = (rel_bixu_wayA_upd[cclass] == 2'b00) ? (congr_cl_wA_q[cclass][2:dirState - 1] & (~watch_finval_q)) :
+                                                        (rel_bixu_wayA_upd[cclass] == 2'b10) ? (ex6_dir_way_q[0][2:dirState - 1] & (~watch_finval_q)) :
                                                         (stq5_dir_way_q[0][2:dirState - 1] & (~watch_finval_q));
-         
+
+         // ####################################################
+         // Write Select for WayB
+         // Mux Selects for Input to Latches
          assign rel_bixu_wayB_upd[cclass] = {p0_way_data_upd_way[cclass][1], p1_way_data_upd_way[cclass][1]};
-         
-         assign congr_cl_wB_d[cclass][0] = (rel_bixu_wayB_upd[cclass] == 2'b00) ? (congr_cl_wB_q[cclass][0] & (~val_finval_q)) : 
-                                           (rel_bixu_wayB_upd[cclass] == 2'b10) ? (ex6_dir_way_q[1][0] & (~val_finval_q)) : 
+
+         // WayB Valid Bit Update
+         assign congr_cl_wB_d[cclass][0] = (rel_bixu_wayB_upd[cclass] == 2'b00) ? (congr_cl_wB_q[cclass][0] & (~val_finval_q)) :
+                                           (rel_bixu_wayB_upd[cclass] == 2'b10) ? (ex6_dir_way_q[1][0] & (~val_finval_q)) :
                                            (stq5_dir_way_q[1][0] & (~val_finval_q));
-         
-         assign congr_cl_wB_d[cclass][1] = (rel_bixu_wayB_upd[cclass] == 2'b00) ? (congr_cl_wB_q[cclass][1] & (~lock_finval_q)) : 
-                                           (rel_bixu_wayB_upd[cclass] == 2'b10) ? (ex6_dir_way_q[1][1] & (~lock_finval_q)) : 
+
+         // WayB Lock Bit Update
+         assign congr_cl_wB_d[cclass][1] = (rel_bixu_wayB_upd[cclass] == 2'b00) ? (congr_cl_wB_q[cclass][1] & (~lock_finval_q)) :
+                                           (rel_bixu_wayB_upd[cclass] == 2'b10) ? (ex6_dir_way_q[1][1] & (~lock_finval_q)) :
                                            (stq5_dir_way_q[1][1] & (~lock_finval_q));
-         
-         assign congr_cl_wB_d[cclass][2:dirState - 1] = (rel_bixu_wayB_upd[cclass] == 2'b00) ? (congr_cl_wB_q[cclass][2:dirState - 1] & (~watch_finval_q)) : 
-                                                        (rel_bixu_wayB_upd[cclass] == 2'b10) ? (ex6_dir_way_q[1][2:dirState - 1] & (~watch_finval_q)) : 
+
+         // WayB Thread Watch Bit Update
+         assign congr_cl_wB_d[cclass][2:dirState - 1] = (rel_bixu_wayB_upd[cclass] == 2'b00) ? (congr_cl_wB_q[cclass][2:dirState - 1] & (~watch_finval_q)) :
+                                                        (rel_bixu_wayB_upd[cclass] == 2'b10) ? (ex6_dir_way_q[1][2:dirState - 1] & (~watch_finval_q)) :
                                                         (stq5_dir_way_q[1][2:dirState - 1] & (~watch_finval_q));
-         
+
+         // ####################################################
+         // Write Select for WayC
+         // Mux Selects for Input to Latches
          assign rel_bixu_wayC_upd[cclass] = {p0_way_data_upd_way[cclass][2], p1_way_data_upd_way[cclass][2]};
-         
-         assign congr_cl_wC_d[cclass][0] = (rel_bixu_wayC_upd[cclass] == 2'b00) ? (congr_cl_wC_q[cclass][0] & (~val_finval_q)) : 
-                                           (rel_bixu_wayC_upd[cclass] == 2'b10) ? (ex6_dir_way_q[2][0] & (~val_finval_q)) : 
+
+         // WayC Valid Bit Update
+         assign congr_cl_wC_d[cclass][0] = (rel_bixu_wayC_upd[cclass] == 2'b00) ? (congr_cl_wC_q[cclass][0] & (~val_finval_q)) :
+                                           (rel_bixu_wayC_upd[cclass] == 2'b10) ? (ex6_dir_way_q[2][0] & (~val_finval_q)) :
                                            (stq5_dir_way_q[2][0] & (~val_finval_q));
-         
-         assign congr_cl_wC_d[cclass][1] = (rel_bixu_wayC_upd[cclass] == 2'b00) ? (congr_cl_wC_q[cclass][1] & (~lock_finval_q)) : 
-                                           (rel_bixu_wayC_upd[cclass] == 2'b10) ? (ex6_dir_way_q[2][1] & (~lock_finval_q)) : 
+
+         // WayC Lock Bit Update
+         assign congr_cl_wC_d[cclass][1] = (rel_bixu_wayC_upd[cclass] == 2'b00) ? (congr_cl_wC_q[cclass][1] & (~lock_finval_q)) :
+                                           (rel_bixu_wayC_upd[cclass] == 2'b10) ? (ex6_dir_way_q[2][1] & (~lock_finval_q)) :
                                            (stq5_dir_way_q[2][1] & (~lock_finval_q));
-         
-         assign congr_cl_wC_d[cclass][2:dirState - 1] = (rel_bixu_wayC_upd[cclass] == 2'b00) ? (congr_cl_wC_q[cclass][2:dirState - 1] & (~watch_finval_q)) : 
-                                                        (rel_bixu_wayC_upd[cclass] == 2'b10) ? (ex6_dir_way_q[2][2:dirState - 1] & (~watch_finval_q)) : 
+
+         // WayC Thread Watch Bit Update
+         assign congr_cl_wC_d[cclass][2:dirState - 1] = (rel_bixu_wayC_upd[cclass] == 2'b00) ? (congr_cl_wC_q[cclass][2:dirState - 1] & (~watch_finval_q)) :
+                                                        (rel_bixu_wayC_upd[cclass] == 2'b10) ? (ex6_dir_way_q[2][2:dirState - 1] & (~watch_finval_q)) :
                                                         (stq5_dir_way_q[2][2:dirState - 1] & (~watch_finval_q));
-         
+
+         // ####################################################
+         // Write Select for WayD
+         // Mux Selects for Input to Latches
          assign rel_bixu_wayD_upd[cclass] = {p0_way_data_upd_way[cclass][3], p1_way_data_upd_way[cclass][3]};
-         
-         assign congr_cl_wD_d[cclass][0] = (rel_bixu_wayD_upd[cclass] == 2'b00) ? (congr_cl_wD_q[cclass][0] & (~val_finval_q)) : 
-                                           (rel_bixu_wayD_upd[cclass] == 2'b10) ? (ex6_dir_way_q[3][0] & (~val_finval_q)) : 
+
+         // WayD Valid Bit Update
+         assign congr_cl_wD_d[cclass][0] = (rel_bixu_wayD_upd[cclass] == 2'b00) ? (congr_cl_wD_q[cclass][0] & (~val_finval_q)) :
+                                           (rel_bixu_wayD_upd[cclass] == 2'b10) ? (ex6_dir_way_q[3][0] & (~val_finval_q)) :
                                            (stq5_dir_way_q[3][0] & (~val_finval_q));
-         
-         assign congr_cl_wD_d[cclass][1] = (rel_bixu_wayD_upd[cclass] == 2'b00) ? (congr_cl_wD_q[cclass][1] & (~lock_finval_q)) : 
-                                           (rel_bixu_wayD_upd[cclass] == 2'b10) ? (ex6_dir_way_q[3][1] & (~lock_finval_q)) : 
+
+         // WayD Lock Bit Update
+         assign congr_cl_wD_d[cclass][1] = (rel_bixu_wayD_upd[cclass] == 2'b00) ? (congr_cl_wD_q[cclass][1] & (~lock_finval_q)) :
+                                           (rel_bixu_wayD_upd[cclass] == 2'b10) ? (ex6_dir_way_q[3][1] & (~lock_finval_q)) :
                                            (stq5_dir_way_q[3][1] & (~lock_finval_q));
-         
-         assign congr_cl_wD_d[cclass][2:dirState - 1] = (rel_bixu_wayD_upd[cclass] == 2'b00) ? (congr_cl_wD_q[cclass][2:dirState - 1] & (~watch_finval_q)) : 
-                                                        (rel_bixu_wayD_upd[cclass] == 2'b10) ? (ex6_dir_way_q[3][2:dirState - 1] & (~watch_finval_q)) : 
+
+         // WayD Thread Watch Bit Update
+         assign congr_cl_wD_d[cclass][2:dirState - 1] = (rel_bixu_wayD_upd[cclass] == 2'b00) ? (congr_cl_wD_q[cclass][2:dirState - 1] & (~watch_finval_q)) :
+                                                        (rel_bixu_wayD_upd[cclass] == 2'b10) ? (ex6_dir_way_q[3][2:dirState - 1] & (~watch_finval_q)) :
                                                         (stq5_dir_way_q[3][2:dirState - 1] & (~watch_finval_q));
-         
+
+         // ####################################################
+         // Write Select for WayE
+         // Mux Selects for Input to Latches
          assign rel_bixu_wayE_upd[cclass] = {p0_way_data_upd_way[cclass][4], p1_way_data_upd_way[cclass][4]};
-         
-         assign congr_cl_wE_d[cclass][0] = (rel_bixu_wayE_upd[cclass] == 2'b00) ? (congr_cl_wE_q[cclass][0] & (~val_finval_q)) : 
-                                           (rel_bixu_wayE_upd[cclass] == 2'b10) ? (ex6_dir_way_q[4][0] & (~val_finval_q)) : 
+
+         // WayE Valid Bit Update
+         assign congr_cl_wE_d[cclass][0] = (rel_bixu_wayE_upd[cclass] == 2'b00) ? (congr_cl_wE_q[cclass][0] & (~val_finval_q)) :
+                                           (rel_bixu_wayE_upd[cclass] == 2'b10) ? (ex6_dir_way_q[4][0] & (~val_finval_q)) :
                                            (stq5_dir_way_q[4][0] & (~val_finval_q));
-         
-         assign congr_cl_wE_d[cclass][1] = (rel_bixu_wayE_upd[cclass] == 2'b00) ? (congr_cl_wE_q[cclass][1] & (~lock_finval_q)) : 
-                                           (rel_bixu_wayE_upd[cclass] == 2'b10) ? (ex6_dir_way_q[4][1] & (~lock_finval_q)) : 
+
+         // WayE Lock Bit Update
+         assign congr_cl_wE_d[cclass][1] = (rel_bixu_wayE_upd[cclass] == 2'b00) ? (congr_cl_wE_q[cclass][1] & (~lock_finval_q)) :
+                                           (rel_bixu_wayE_upd[cclass] == 2'b10) ? (ex6_dir_way_q[4][1] & (~lock_finval_q)) :
                                            (stq5_dir_way_q[4][1] & (~lock_finval_q));
-         
-         assign congr_cl_wE_d[cclass][2:dirState - 1] = (rel_bixu_wayE_upd[cclass] == 2'b00) ? (congr_cl_wE_q[cclass][2:dirState - 1] & (~watch_finval_q)) : 
-                                                        (rel_bixu_wayE_upd[cclass] == 2'b10) ? (ex6_dir_way_q[4][2:dirState - 1] & (~watch_finval_q)) : 
+
+         // WayE Thread Watch Bit Update
+         assign congr_cl_wE_d[cclass][2:dirState - 1] = (rel_bixu_wayE_upd[cclass] == 2'b00) ? (congr_cl_wE_q[cclass][2:dirState - 1] & (~watch_finval_q)) :
+                                                        (rel_bixu_wayE_upd[cclass] == 2'b10) ? (ex6_dir_way_q[4][2:dirState - 1] & (~watch_finval_q)) :
                                                         (stq5_dir_way_q[4][2:dirState - 1] & (~watch_finval_q));
-         
+
+         // ####################################################
+         // Write Select for WayF
+         // Mux Selects for Input to Latches
          assign rel_bixu_wayF_upd[cclass] = {p0_way_data_upd_way[cclass][5], p1_way_data_upd_way[cclass][5]};
-         
-         assign congr_cl_wF_d[cclass][0] = (rel_bixu_wayF_upd[cclass] == 2'b00) ? (congr_cl_wF_q[cclass][0] & (~val_finval_q)) : 
-                                           (rel_bixu_wayF_upd[cclass] == 2'b10) ? (ex6_dir_way_q[5][0] & (~val_finval_q)) : 
+
+         // WayF Valid Bit Update
+         assign congr_cl_wF_d[cclass][0] = (rel_bixu_wayF_upd[cclass] == 2'b00) ? (congr_cl_wF_q[cclass][0] & (~val_finval_q)) :
+                                           (rel_bixu_wayF_upd[cclass] == 2'b10) ? (ex6_dir_way_q[5][0] & (~val_finval_q)) :
                                            (stq5_dir_way_q[5][0] & (~val_finval_q));
-         
-         assign congr_cl_wF_d[cclass][1] = (rel_bixu_wayF_upd[cclass] == 2'b00) ? (congr_cl_wF_q[cclass][1] & (~lock_finval_q)) : 
-                                           (rel_bixu_wayF_upd[cclass] == 2'b10) ? (ex6_dir_way_q[5][1] & (~lock_finval_q)) : 
+
+         // WayF Lock Bit Update
+         assign congr_cl_wF_d[cclass][1] = (rel_bixu_wayF_upd[cclass] == 2'b00) ? (congr_cl_wF_q[cclass][1] & (~lock_finval_q)) :
+                                           (rel_bixu_wayF_upd[cclass] == 2'b10) ? (ex6_dir_way_q[5][1] & (~lock_finval_q)) :
                                            (stq5_dir_way_q[5][1] & (~lock_finval_q));
-         
-         assign congr_cl_wF_d[cclass][2:dirState - 1] = (rel_bixu_wayF_upd[cclass] == 2'b00) ? (congr_cl_wF_q[cclass][2:dirState - 1] & (~watch_finval_q)) : 
-                                                        (rel_bixu_wayF_upd[cclass] == 2'b10) ? (ex6_dir_way_q[5][2:dirState - 1] & (~watch_finval_q)) : 
+
+         // WayF Thread Watch Bit Update
+         assign congr_cl_wF_d[cclass][2:dirState - 1] = (rel_bixu_wayF_upd[cclass] == 2'b00) ? (congr_cl_wF_q[cclass][2:dirState - 1] & (~watch_finval_q)) :
+                                                        (rel_bixu_wayF_upd[cclass] == 2'b10) ? (ex6_dir_way_q[5][2:dirState - 1] & (~watch_finval_q)) :
                                                         (stq5_dir_way_q[5][2:dirState - 1] & (~watch_finval_q));
-         
+
+         // ####################################################
+         // Write Select for WayG
+         // Mux Selects for Input to Latches
          assign rel_bixu_wayG_upd[cclass] = {p0_way_data_upd_way[cclass][6], p1_way_data_upd_way[cclass][6]};
-         
-         assign congr_cl_wG_d[cclass][0] = (rel_bixu_wayG_upd[cclass] == 2'b00) ? (congr_cl_wG_q[cclass][0] & (~val_finval_q)) : 
-                                           (rel_bixu_wayG_upd[cclass] == 2'b10) ? (ex6_dir_way_q[6][0] & (~val_finval_q)) : 
+
+         // WayG Valid Bit Update
+         assign congr_cl_wG_d[cclass][0] = (rel_bixu_wayG_upd[cclass] == 2'b00) ? (congr_cl_wG_q[cclass][0] & (~val_finval_q)) :
+                                           (rel_bixu_wayG_upd[cclass] == 2'b10) ? (ex6_dir_way_q[6][0] & (~val_finval_q)) :
                                            (stq5_dir_way_q[6][0] & (~val_finval_q));
-         
-         assign congr_cl_wG_d[cclass][1] = (rel_bixu_wayG_upd[cclass] == 2'b00) ? (congr_cl_wG_q[cclass][1] & (~lock_finval_q)) : 
-                                           (rel_bixu_wayG_upd[cclass] == 2'b10) ? (ex6_dir_way_q[6][1] & (~lock_finval_q)) : 
+
+         // WayG Lock Bit Update
+         assign congr_cl_wG_d[cclass][1] = (rel_bixu_wayG_upd[cclass] == 2'b00) ? (congr_cl_wG_q[cclass][1] & (~lock_finval_q)) :
+                                           (rel_bixu_wayG_upd[cclass] == 2'b10) ? (ex6_dir_way_q[6][1] & (~lock_finval_q)) :
                                            (stq5_dir_way_q[6][1] & (~lock_finval_q));
-         
-         assign congr_cl_wG_d[cclass][2:dirState - 1] = (rel_bixu_wayG_upd[cclass] == 2'b00) ? (congr_cl_wG_q[cclass][2:dirState - 1] & (~watch_finval_q)) : 
-                                                        (rel_bixu_wayG_upd[cclass] == 2'b10) ? (ex6_dir_way_q[6][2:dirState - 1] & (~watch_finval_q)) : 
+
+         // WayG Thread Watch Bit Update
+         assign congr_cl_wG_d[cclass][2:dirState - 1] = (rel_bixu_wayG_upd[cclass] == 2'b00) ? (congr_cl_wG_q[cclass][2:dirState - 1] & (~watch_finval_q)) :
+                                                        (rel_bixu_wayG_upd[cclass] == 2'b10) ? (ex6_dir_way_q[6][2:dirState - 1] & (~watch_finval_q)) :
                                                         (stq5_dir_way_q[6][2:dirState - 1] & (~watch_finval_q));
-         
+
+         // ####################################################
+         // Write Select for WayH
+         // Mux Selects for Input to Latches
          assign rel_bixu_wayH_upd[cclass] = {p0_way_data_upd_way[cclass][7], p1_way_data_upd_way[cclass][7]};
-         
-         assign congr_cl_wH_d[cclass][0] = (rel_bixu_wayH_upd[cclass] == 2'b00) ? (congr_cl_wH_q[cclass][0] & (~val_finval_q)) : 
-                                           (rel_bixu_wayH_upd[cclass] == 2'b10) ? (ex6_dir_way_q[7][0] & (~val_finval_q)) : 
+
+         // WayH Valid Bit Update
+         assign congr_cl_wH_d[cclass][0] = (rel_bixu_wayH_upd[cclass] == 2'b00) ? (congr_cl_wH_q[cclass][0] & (~val_finval_q)) :
+                                           (rel_bixu_wayH_upd[cclass] == 2'b10) ? (ex6_dir_way_q[7][0] & (~val_finval_q)) :
                                            (stq5_dir_way_q[7][0] & (~val_finval_q));
-         
-         assign congr_cl_wH_d[cclass][1] = (rel_bixu_wayH_upd[cclass] == 2'b00) ? (congr_cl_wH_q[cclass][1] & (~lock_finval_q)) : 
-                                           (rel_bixu_wayH_upd[cclass] == 2'b10) ? (ex6_dir_way_q[7][1] & (~lock_finval_q)) : 
+
+         // WayH Lock Bit Update
+         assign congr_cl_wH_d[cclass][1] = (rel_bixu_wayH_upd[cclass] == 2'b00) ? (congr_cl_wH_q[cclass][1] & (~lock_finval_q)) :
+                                           (rel_bixu_wayH_upd[cclass] == 2'b10) ? (ex6_dir_way_q[7][1] & (~lock_finval_q)) :
                                            (stq5_dir_way_q[7][1] & (~lock_finval_q));
-         
-         assign congr_cl_wH_d[cclass][2:dirState - 1] = (rel_bixu_wayH_upd[cclass] == 2'b00) ? (congr_cl_wH_q[cclass][2:dirState - 1] & (~watch_finval_q)) : 
-                                                        (rel_bixu_wayH_upd[cclass] == 2'b10) ? (ex6_dir_way_q[7][2:dirState - 1] & (~watch_finval_q)) : 
+
+         // WayH Thread Watch Bit Update
+         assign congr_cl_wH_d[cclass][2:dirState - 1] = (rel_bixu_wayH_upd[cclass] == 2'b00) ? (congr_cl_wH_q[cclass][2:dirState - 1] & (~watch_finval_q)) :
+                                                        (rel_bixu_wayH_upd[cclass] == 2'b10) ? (ex6_dir_way_q[7][2:dirState - 1] & (~watch_finval_q)) :
                                                         (stq5_dir_way_q[7][2:dirState - 1] & (~watch_finval_q));
       end
    end
 endgenerate
 
+// ####################################################
+// Outputs
+// ####################################################
 assign ex4_way_hit_a = ex4_way_hit[0];
 assign ex4_way_hit_b = ex4_way_hit[1];
 assign ex4_way_hit_c = ex4_way_hit[2];
@@ -2160,34 +2516,45 @@ assign rel_way_lock_f = stq3_way_val_q[5][1];
 assign rel_way_lock_g = stq3_way_val_q[6][1];
 assign rel_way_lock_h = stq3_way_val_q[7][1];
 
-assign ctl_perv_dir_perf_events = {perf_dir_binv_val,        perf_dir_binv_hit,         perf_dir_binv_watchlost, 
+// Performance Events
+assign ctl_perv_dir_perf_events = {perf_dir_binv_val,        perf_dir_binv_hit,         perf_dir_binv_watchlost,
                                    perf_dir_evict_watchlost, perf_dir_interTid_watchlost};
 
+// Parity Error Detected
 assign dir_dcc_ex5_dir_perr_det   = ex5_dir_perr_det_q;
 assign dir_dcc_ex5_dc_perr_det    = ex5_dc_perr_det_q;
 assign dir_dcc_ex5_dir_perr_flush = ex5_dir_perr_flush_q;
 assign dir_dcc_ex5_dc_perr_flush  = ex5_dc_perr_flush_q;
 assign dir_dcc_stq4_dir_perr_det  = stq4_dir_perr_det_q;
 
+// Directory MultiHit Detected
 assign dir_dcc_ex5_multihit_det   = ex5_dir_multihit_det;
 assign dir_dcc_ex5_multihit_flush = ex5_dir_multihit_flush;
 assign dir_dcc_stq4_multihit_det  = stq4_dir_multihit_det;
 assign dir_dcc_ex5_stp_flush      = ex5_stp_perr_flush_q | ex5_stp_multihit_flush;
 
+// Resource Conflict between Reload and dcbt[st]ls/ldawx
 assign dir_dcc_ex4_set_rel_coll = ex4_lockwatchSet_rel_coll;
 assign dir_dcc_ex4_byp_restart  = congr_cl_ex4_byp_restart;
 
+// Store Commit Restart
 assign ctl_lsq_stq4_perr_reject = stq4_dir_err_val | stq5_dir_err_val_q;
 
+// Store Commit Gate Write due to Directory Errors
 assign ctl_dat_stq5_way_perr_inval = stq5_way_perr_inval_q;
 
+// SPR Status
 assign lq_xu_spr_xucr0_cslc_xuop = xucr0_cslc_xuop_q;
 assign lq_xu_spr_xucr0_cslc_binv = xucr0_cslc_binv_q;
 
+// ####################################################
+// Directory Valid Bit Registers
+// ####################################################
 
+// Directory State for Way A
 generate begin : congr_cl_wA
       genvar                            cclassA;
-      for (cclassA=0; cclassA<numCClass; cclassA=cclassA+1) begin : congr_cl_wA       
+      for (cclassA=0; cclassA<numCClass; cclassA=cclassA+1) begin : congr_cl_wA
          tri_rlmreg_p #(.WIDTH(dirState), .INIT(0), .NEEDS_SRESET(1)) congr_cl_wA_reg(
             .vd(vdd),
             .gd(gnd),
@@ -2209,9 +2576,10 @@ generate begin : congr_cl_wA
    end
 endgenerate
 
+// Directory State for Way B
 generate begin : congr_cl_wB
       genvar                            cclassB;
-      for (cclassB=0; cclassB<numCClass; cclassB=cclassB+1) begin : congr_cl_wB        
+      for (cclassB=0; cclassB<numCClass; cclassB=cclassB+1) begin : congr_cl_wB
          tri_rlmreg_p #(.WIDTH(dirState), .INIT(0), .NEEDS_SRESET(1)) congr_cl_wB_reg(
             .vd(vdd),
             .gd(gnd),
@@ -2233,9 +2601,10 @@ generate begin : congr_cl_wB
    end
 endgenerate
 
+// Directory State for Way C
 generate begin : congr_cl_wC
       genvar                            cclassC;
-      for (cclassC=0; cclassC<numCClass; cclassC=cclassC+1) begin : congr_cl_wC         
+      for (cclassC=0; cclassC<numCClass; cclassC=cclassC+1) begin : congr_cl_wC
          tri_rlmreg_p #(.WIDTH(dirState), .INIT(0), .NEEDS_SRESET(1)) congr_cl_wC_reg(
             .vd(vdd),
             .gd(gnd),
@@ -2257,9 +2626,10 @@ generate begin : congr_cl_wC
    end
 endgenerate
 
+// Directory State for Way D
 generate begin : congr_cl_wD
       genvar                            cclassD;
-      for (cclassD=0; cclassD<numCClass; cclassD=cclassD+1) begin : congr_cl_wD         
+      for (cclassD=0; cclassD<numCClass; cclassD=cclassD+1) begin : congr_cl_wD
          tri_rlmreg_p #(.WIDTH(dirState), .INIT(0), .NEEDS_SRESET(1)) congr_cl_wD_reg(
             .vd(vdd),
             .gd(gnd),
@@ -2281,9 +2651,10 @@ generate begin : congr_cl_wD
    end
 endgenerate
 
+// Directory State for Way E
 generate begin : congr_cl_wE
       genvar                            cclassE;
-      for (cclassE=0; cclassE<numCClass; cclassE=cclassE+1) begin : congr_cl_wE         
+      for (cclassE=0; cclassE<numCClass; cclassE=cclassE+1) begin : congr_cl_wE
          tri_rlmreg_p #(.WIDTH(dirState), .INIT(0), .NEEDS_SRESET(1)) congr_cl_wE_reg(
             .vd(vdd),
             .gd(gnd),
@@ -2305,9 +2676,10 @@ generate begin : congr_cl_wE
    end
 endgenerate
 
+// Directory State for Way F
 generate begin : congr_cl_wF
       genvar                            cclassF;
-      for (cclassF=0; cclassF<numCClass; cclassF=cclassF+1) begin : congr_cl_wF         
+      for (cclassF=0; cclassF<numCClass; cclassF=cclassF+1) begin : congr_cl_wF
          tri_rlmreg_p #(.WIDTH(dirState), .INIT(0), .NEEDS_SRESET(1)) congr_cl_wF_reg(
             .vd(vdd),
             .gd(gnd),
@@ -2329,9 +2701,10 @@ generate begin : congr_cl_wF
    end
 endgenerate
 
+// Directory State for Way G
 generate begin : congr_cl_wG
       genvar                            cclassG;
-      for (cclassG=0; cclassG<numCClass; cclassG=cclassG+1) begin : congr_cl_wG         
+      for (cclassG=0; cclassG<numCClass; cclassG=cclassG+1) begin : congr_cl_wG
          tri_rlmreg_p #(.WIDTH(dirState), .INIT(0), .NEEDS_SRESET(1)) congr_cl_wG_reg(
             .vd(vdd),
             .gd(gnd),
@@ -2353,9 +2726,10 @@ generate begin : congr_cl_wG
    end
 endgenerate
 
+// Directory State for Way H
 generate begin : congr_cl_wH
       genvar                            cclassH;
-      for (cclassH=0; cclassH<numCClass; cclassH=cclassH+1) begin : congr_cl_wH         
+      for (cclassH=0; cclassH<numCClass; cclassH=cclassH+1) begin : congr_cl_wH
          tri_rlmreg_p #(.WIDTH(dirState), .INIT(0), .NEEDS_SRESET(1)) congr_cl_wH_reg(
             .vd(vdd),
             .gd(gnd),
@@ -2415,7 +2789,7 @@ tri_rlmreg_p #(.WIDTH(numCClass), .INIT(0), .NEEDS_SRESET(1)) p1_congr_cl_act_re
 
 generate begin : ex4_way_val
       genvar                            ways0;
-      for (ways0=0; ways0<numWays; ways0=ways0+1) begin : ex4_way_val        
+      for (ways0=0; ways0<numWays; ways0=ways0+1) begin : ex4_way_val
          tri_rlmreg_p #(.WIDTH(dirState), .INIT(0), .NEEDS_SRESET(1)) ex4_way_val_reg(
             .vd(vdd),
             .gd(gnd),
@@ -2439,7 +2813,7 @@ endgenerate
 
 generate begin : ex5_way_val
       genvar                            ways1;
-      for (ways1=0; ways1<numWays; ways1=ways1+1) begin : ex5_way_val        
+      for (ways1=0; ways1<numWays; ways1=ways1+1) begin : ex5_way_val
          tri_regk #(.WIDTH(dirState), .INIT(0), .NEEDS_SRESET(1)) ex5_way_val_reg(
             .vd(vdd),
             .gd(gnd),
@@ -2535,7 +2909,7 @@ tri_regk #(.WIDTH(numWays), .INIT(0), .NEEDS_SRESET(1)) ex7_way_upd_reg(
 
 generate begin : ex5_dir_way
       genvar                            ways2;
-      for (ways2=0; ways2<numWays; ways2=ways2+1) begin : ex5_dir_way        
+      for (ways2=0; ways2<numWays; ways2=ways2+1) begin : ex5_dir_way
          tri_regk #(.WIDTH(dirState), .INIT(0), .NEEDS_SRESET(1)) ex5_dir_way_reg(
             .vd(vdd),
             .gd(gnd),
@@ -2559,7 +2933,7 @@ endgenerate
 
 generate begin : ex6_dir_way
       genvar                            ways3;
-      for (ways3=0; ways3<numWays; ways3=ways3+1) begin : ex6_dir_way        
+      for (ways3=0; ways3<numWays; ways3=ways3+1) begin : ex6_dir_way
          tri_rlmreg_p #(.WIDTH(2 + `THREADS), .INIT(0), .NEEDS_SRESET(1)) ex6_dir_way_reg(
             .vd(vdd),
             .gd(gnd),
@@ -2583,7 +2957,7 @@ endgenerate
 
 generate begin : ex7_dir_way
       genvar                            ways4;
-      for (ways4=0; ways4<numWays; ways4=ways4+1) begin : ex7_dir_way         
+      for (ways4=0; ways4<numWays; ways4=ways4+1) begin : ex7_dir_way
          tri_regk #(.WIDTH(dirState-2), .INIT(0), .NEEDS_SRESET(1)) ex7_dir_way_reg(
             .vd(vdd),
             .gd(gnd),
@@ -5783,5 +6157,3 @@ generate
 endgenerate
 
 endmodule
-
-

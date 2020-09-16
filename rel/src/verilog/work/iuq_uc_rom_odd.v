@@ -7,12 +7,15 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
-
-
+//********************************************************************
+//*
+//* TITLE: IU Microcode Code
+//*
+//* NAME: iuq_uc_rom_odd.v
+//*
+//*********************************************************************
 
 `include "tri_a2o.vh"
-
-
 
 
 module iuq_uc_rom_odd(
@@ -32,12 +35,13 @@ module iuq_uc_rom_odd(
    rom_addr,
    rom_data
 );
+   //parameter                ucode_width = 72;
 
-    
+
    inout                    vdd;
-    
+
    inout                    gnd;
-    
+
     (* pin_data ="PIN_FUNCTION=/G_CLK/" *)
    input [0:`NCLK_WIDTH-1]  nclk;
    input                    pc_iu_func_sl_thold_0_b;
@@ -54,6 +58,7 @@ module iuq_uc_rom_odd(
    input [0:9]              rom_addr;
    output [0:71]            rom_data;
 
+   //@@  Signal Declarations
    wire [1:200]             rom_instr_pt;
    wire [0:2]               count_src;
    wire                     cr_bf2fxm;
@@ -83,13 +88,17 @@ module iuq_uc_rom_odd(
    parameter                rom_addr_offset = 0;
    parameter                scan_right = rom_addr_offset + 10 - 1;
 
+   // Latches
    wire [0:9]               rom_addr_d;
    wire [0:9]               rom_addr_l2;
    wire [0:scan_right]      siv;
    wire [0:scan_right]      sov;
 
+//64-bit core
+//c64: if (regmode = 6) generate begin
 
 /*
+//table_start
 ?TABLE rom_instr LISTING(final) OPTIMIZE PARMS(ON-SET, OFF-SET);
 *INPUTS*========*OUTPUTS*===============================================================================================*
 |               |                                                                                                       |
@@ -405,327 +414,329 @@ module iuq_uc_rom_odd(
 | 1100010001    | ----------------00001----------- 1 - 0 - ---  0 0 1 0  1 01 01 00 01 1 1  0 0 - 0 ---------- --- -    | # vvvvv FT,FA,FC,s1    - Original qpx op except B
 *END*===========+=======================================================================================================+
 ?TABLE END rom_instr;
+//table_end
 */
 
+//assign_start
 
 assign rom_instr_pt[1] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 8'b01000000);
 assign rom_instr_pt[2] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 8'b00110000);
 assign rom_instr_pt[3] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b1010000);
 assign rom_instr_pt[4] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[5] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[5] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0010000);
 assign rom_instr_pt[5] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[5] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[5] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b1110000);
 assign rom_instr_pt[6] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 8'b01001000);
 assign rom_instr_pt[7] =
-    (({ rom_addr_l2[1] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b001000);
 assign rom_instr_pt[8] =
-    (({ rom_addr_l2[2] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b111000);
 assign rom_instr_pt[9] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0111000);
 assign rom_instr_pt[10] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[5] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[5] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0011000);
 assign rom_instr_pt[11] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[5] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[5] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0011000);
 assign rom_instr_pt[12] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
-    rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
+    rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b101000);
 assign rom_instr_pt[13] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 8'b01110000);
 assign rom_instr_pt[14] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0110000);
 assign rom_instr_pt[15] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0101000);
 assign rom_instr_pt[16] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0011000);
 assign rom_instr_pt[17] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b1000000);
 assign rom_instr_pt[18] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b010000);
 assign rom_instr_pt[19] =
-    (({ rom_addr_l2[1] , rom_addr_l2[3] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[3] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b10000);
 assign rom_instr_pt[20] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b111000);
 assign rom_instr_pt[21] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b11000);
 assign rom_instr_pt[22] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 8'b01101100);
 assign rom_instr_pt[23] =
-    (({ rom_addr_l2[1] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b101100);
 assign rom_instr_pt[24] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b010100);
 assign rom_instr_pt[25] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[5] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b000000);
 assign rom_instr_pt[26] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0100000);
 assign rom_instr_pt[27] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0000100);
 assign rom_instr_pt[28] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0001100);
 assign rom_instr_pt[29] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b010100);
 assign rom_instr_pt[30] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b010000);
 assign rom_instr_pt[31] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 8'b01011010);
 assign rom_instr_pt[32] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[4] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[4] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b011010);
 assign rom_instr_pt[33] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b011010);
 assign rom_instr_pt[34] =
-    (({ rom_addr_l2[1] , rom_addr_l2[3] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[3] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b10110);
 assign rom_instr_pt[35] =
-    (({ rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 4'b0110);
 assign rom_instr_pt[36] =
-    (({ rom_addr_l2[1] , rom_addr_l2[3] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[3] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b01110);
 assign rom_instr_pt[37] =
-    (({ rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 4'b1110);
 assign rom_instr_pt[38] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0110010);
 assign rom_instr_pt[39] =
-    (({ rom_addr_l2[1] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b11010);
 assign rom_instr_pt[40] =
-    (({ rom_addr_l2[1] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[5] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 4'b0010);
 assign rom_instr_pt[41] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 8'b01010110);
 assign rom_instr_pt[42] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0000110);
 assign rom_instr_pt[43] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b010010);
 assign rom_instr_pt[44] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b110010);
 assign rom_instr_pt[45] =
-    (({ rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 4'b0010);
 assign rom_instr_pt[46] =
-    (({ rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b11110);
 assign rom_instr_pt[47] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b000010);
 assign rom_instr_pt[48] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b010010);
 assign rom_instr_pt[49] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b00110);
 assign rom_instr_pt[50] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b11010);
 assign rom_instr_pt[51] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 4'b1010);
 assign rom_instr_pt[52] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 4'b1110);
 assign rom_instr_pt[53] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[6] ,
     rom_addr_l2[8] }) === 7'b0111000);
 assign rom_instr_pt[54] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 6'b111000);
 assign rom_instr_pt[55] =
-    (({ rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[6] ,
     rom_addr_l2[8] }) === 5'b10010);
 assign rom_instr_pt[56] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 6'b000010);
 assign rom_instr_pt[57] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 6'b100010);
 assign rom_instr_pt[58] =
-    (({ rom_addr_l2[1] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[6] ,
     rom_addr_l2[8] }) === 5'b00010);
 assign rom_instr_pt[59] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 6'b100010);
 assign rom_instr_pt[60] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 6'b000110);
 assign rom_instr_pt[61] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 6'b111010);
 assign rom_instr_pt[62] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[8] }) === 5'b10110);
 assign rom_instr_pt[63] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[6] ,
     rom_addr_l2[8] }) === 5'b00010);
 assign rom_instr_pt[64] =
-    (({ rom_addr_l2[1] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[5] ,
     rom_addr_l2[8] }) === 3'b000);
 assign rom_instr_pt[65] =
-    (({ rom_addr_l2[1] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[3] ,
     rom_addr_l2[4] , rom_addr_l2[8]
      }) === 4'b0000);
 assign rom_instr_pt[66] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[8] }) === 5'b01010);
 assign rom_instr_pt[67] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[8] }) === 5'b00110);
 assign rom_instr_pt[68] =
     (({ rom_addr_l2[3] , rom_addr_l2[8]
@@ -734,533 +745,533 @@ assign rom_instr_pt[69] =
     (({ rom_addr_l2[2] , rom_addr_l2[8]
      }) === 2'b00);
 assign rom_instr_pt[70] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b101001);
 assign rom_instr_pt[71] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0100001);
 assign rom_instr_pt[72] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b1100001);
 assign rom_instr_pt[73] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b001001);
 assign rom_instr_pt[74] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b11001);
 assign rom_instr_pt[75] =
-    (({ rom_addr_l2[2] , rom_addr_l2[4] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[4] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b11101);
 assign rom_instr_pt[76] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b011101);
 assign rom_instr_pt[77] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b101001);
 assign rom_instr_pt[78] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[5] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b000001);
 assign rom_instr_pt[79] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0000101);
 assign rom_instr_pt[80] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0001101);
 assign rom_instr_pt[81] =
-    (({ rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b111101);
 assign rom_instr_pt[82] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b011101);
 assign rom_instr_pt[83] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b010001);
 assign rom_instr_pt[84] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0101001);
 assign rom_instr_pt[85] =
-    (({ rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 4'b0101);
 assign rom_instr_pt[86] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[4] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[4] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b10101);
 assign rom_instr_pt[87] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b010001);
 assign rom_instr_pt[88] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b01101);
 assign rom_instr_pt[89] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b11001);
 assign rom_instr_pt[90] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0101011);
 assign rom_instr_pt[91] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[4] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[4] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b011011);
 assign rom_instr_pt[92] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b011011);
 assign rom_instr_pt[93] =
-    (({ rom_addr_l2[1] , rom_addr_l2[3] , 
-    rom_addr_l2[6] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[3] ,
+    rom_addr_l2[6] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b11111);
 assign rom_instr_pt[94] =
-    (({ rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 4'b1111);
 assign rom_instr_pt[95] =
-    (({ rom_addr_l2[1] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b11011);
 assign rom_instr_pt[96] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[5] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b000011);
 assign rom_instr_pt[97] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[5] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b100011);
 assign rom_instr_pt[98] =
-    (({ rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b00011);
 assign rom_instr_pt[99] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[5] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b111011);
 assign rom_instr_pt[100] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0001111);
 assign rom_instr_pt[101] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0000111);
 assign rom_instr_pt[102] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[5] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[5] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0100111);
 assign rom_instr_pt[103] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[5] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b111111);
 assign rom_instr_pt[104] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b010011);
 assign rom_instr_pt[105] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 7'b0101011);
 assign rom_instr_pt[106] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b011011);
 assign rom_instr_pt[107] =
-    (({ rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b11111);
 assign rom_instr_pt[108] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b010111);
 assign rom_instr_pt[109] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 6'b000011);
 assign rom_instr_pt[110] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b10011);
 assign rom_instr_pt[111] =
-    (({ rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 4'b0011);
 assign rom_instr_pt[112] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b00111);
 assign rom_instr_pt[113] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b10011);
 assign rom_instr_pt[114] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b11011);
 assign rom_instr_pt[115] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 4'b0111);
 assign rom_instr_pt[116] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[7] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[7] ,
     rom_addr_l2[8] }) === 5'b11111);
 assign rom_instr_pt[117] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
     rom_addr_l2[7] , rom_addr_l2[8]
      }) === 4'b1011);
 assign rom_instr_pt[118] =
-    (({ rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 4'b1001);
 assign rom_instr_pt[119] =
-    (({ rom_addr_l2[0] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[5] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 4'b1011);
 assign rom_instr_pt[120] =
-    (({ rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[8] }) === 3'b011);
 assign rom_instr_pt[121] =
-    (({ rom_addr_l2[1] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 6'b000111);
 assign rom_instr_pt[122] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[8] }) === 5'b11111);
 assign rom_instr_pt[123] =
-    (({ rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 4'b0011);
 assign rom_instr_pt[124] =
-    (({ rom_addr_l2[1] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[6] ,
     rom_addr_l2[8] }) === 5'b11111);
 assign rom_instr_pt[125] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[4] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[4] , rom_addr_l2[6] ,
     rom_addr_l2[8] }) === 5'b01111);
 assign rom_instr_pt[126] =
-    (({ rom_addr_l2[1] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[3] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 4'b0011);
 assign rom_instr_pt[127] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[8] }) === 5'b11111);
 assign rom_instr_pt[128] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 4'b0011);
 assign rom_instr_pt[129] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
     rom_addr_l2[6] , rom_addr_l2[8]
      }) === 4'b1111);
 assign rom_instr_pt[130] =
-    (({ rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[5] , rom_addr_l2[8]
      }) === 4'b1101);
 assign rom_instr_pt[131] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[5] ,
     rom_addr_l2[8] }) === 5'b11101);
 assign rom_instr_pt[132] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[5] , rom_addr_l2[8]
      }) === 6'b000011);
 assign rom_instr_pt[133] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[8] }) === 5'b01111);
 assign rom_instr_pt[134] =
-    (({ rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[8] }) === 3'b111);
 assign rom_instr_pt[135] =
-    (({ rom_addr_l2[1] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[3] ,
     rom_addr_l2[8] }) === 3'b011);
 assign rom_instr_pt[136] =
-    (({ rom_addr_l2[1] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
     rom_addr_l2[6] , rom_addr_l2[7]
      }) === 6'b000000);
 assign rom_instr_pt[137] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[5] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[5] , rom_addr_l2[6] ,
     rom_addr_l2[7] }) === 5'b00000);
 assign rom_instr_pt[138] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[6] ,
     rom_addr_l2[7] }) === 7'b0101000);
 assign rom_instr_pt[139] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[6] ,
     rom_addr_l2[7] }) === 7'b0111000);
 assign rom_instr_pt[140] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[6] , rom_addr_l2[7]
      }) === 6'b111000);
 assign rom_instr_pt[141] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[7] }) === 5'b01100);
 assign rom_instr_pt[142] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[4] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[4] , rom_addr_l2[6] ,
     rom_addr_l2[7] }) === 5'b00110);
 assign rom_instr_pt[143] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[6] , rom_addr_l2[7]
      }) === 6'b001110);
 assign rom_instr_pt[144] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[6] ,
     rom_addr_l2[7] }) === 5'b01110);
 assign rom_instr_pt[145] =
     (({ rom_addr_l2[6] , rom_addr_l2[7]
      }) === 2'b10);
 assign rom_instr_pt[146] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[5] , rom_addr_l2[7]
      }) === 6'b000010);
 assign rom_instr_pt[147] =
     (({ rom_addr_l2[3] , rom_addr_l2[7]
      }) === 2'b00);
 assign rom_instr_pt[148] =
-    (({ rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[6] , rom_addr_l2[7]
      }) === 4'b1111);
 assign rom_instr_pt[149] =
-    (({ rom_addr_l2[1] , rom_addr_l2[6] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[6] ,
     rom_addr_l2[7] }) === 3'b111);
 assign rom_instr_pt[150] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
     rom_addr_l2[7] }) === 5'b11011);
 assign rom_instr_pt[151] =
-    (({ rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[7] }) === 3'b011);
 assign rom_instr_pt[152] =
-    (({ rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[7] }) === 3'b011);
 assign rom_instr_pt[153] =
-    (({ rom_addr_l2[2] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
     rom_addr_l2[6] }) === 5'b10100);
 assign rom_instr_pt[154] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[5] ,
     rom_addr_l2[6] }) === 5'b11100);
 assign rom_instr_pt[155] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[5] , rom_addr_l2[6]
      }) === 6'b010110);
 assign rom_instr_pt[156] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[6] }) === 5'b10000);
 assign rom_instr_pt[157] =
-    (({ rom_addr_l2[0] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[3] ,
     rom_addr_l2[4] , rom_addr_l2[6]
      }) === 4'b0010);
 assign rom_instr_pt[158] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
     rom_addr_l2[4] , rom_addr_l2[6]
      }) === 4'b1010);
 assign rom_instr_pt[159] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
     rom_addr_l2[4] , rom_addr_l2[6]
      }) === 4'b1110);
 assign rom_instr_pt[160] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[6] }) === 5'b11100);
 assign rom_instr_pt[161] =
-    (({ rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[6] }) === 3'b010);
 assign rom_instr_pt[162] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
     rom_addr_l2[3] , rom_addr_l2[6]
      }) === 4'b1110);
 assign rom_instr_pt[163] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[5] , rom_addr_l2[6]
      }) === 6'b010001);
 assign rom_instr_pt[164] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
     rom_addr_l2[6] }) === 5'b00101);
 assign rom_instr_pt[165] =
-    (({ rom_addr_l2[1] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[4] ,
     rom_addr_l2[5] , rom_addr_l2[6]
      }) === 4'b1101);
 assign rom_instr_pt[166] =
-    (({ rom_addr_l2[0] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[4] ,
     rom_addr_l2[5] , rom_addr_l2[6]
      }) === 4'b1101);
 assign rom_instr_pt[167] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[5] ,
     rom_addr_l2[6] }) === 5'b11001);
 assign rom_instr_pt[168] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[5] ,
     rom_addr_l2[6] }) === 5'b01101);
 assign rom_instr_pt[169] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[5] , rom_addr_l2[6]
      }) === 6'b010011);
 assign rom_instr_pt[170] =
-    (({ rom_addr_l2[0] , rom_addr_l2[3] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[3] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
     rom_addr_l2[6] }) === 5'b11111);
 assign rom_instr_pt[171] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
-    rom_addr_l2[4] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
+    rom_addr_l2[4] , rom_addr_l2[5] ,
     rom_addr_l2[6] }) === 5'b11111);
 assign rom_instr_pt[172] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[3] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[3] , rom_addr_l2[5] ,
     rom_addr_l2[6] }) === 5'b10111);
 assign rom_instr_pt[173] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[5] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[5] ,
     rom_addr_l2[6] }) === 5'b11011);
 assign rom_instr_pt[174] =
-    (({ rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[4] , rom_addr_l2[6]
      }) === 4'b0001);
 assign rom_instr_pt[175] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[6] }) === 5'b01001);
 assign rom_instr_pt[176] =
     (({ rom_addr_l2[4] , rom_addr_l2[6]
      }) === 2'b01);
 assign rom_instr_pt[177] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[6] }) === 5'b10011);
 assign rom_instr_pt[178] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
     rom_addr_l2[4] , rom_addr_l2[6]
      }) === 4'b1011);
 assign rom_instr_pt[179] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
     rom_addr_l2[4] , rom_addr_l2[6]
      }) === 4'b1011);
 assign rom_instr_pt[180] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[6] }) === 5'b11111);
 assign rom_instr_pt[181] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
     rom_addr_l2[3] , rom_addr_l2[6]
      }) === 4'b1111);
 assign rom_instr_pt[182] =
-    (({ rom_addr_l2[0] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[3] ,
     rom_addr_l2[6] }) === 3'b111);
 assign rom_instr_pt[183] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
     rom_addr_l2[2] , rom_addr_l2[6]
      }) === 4'b0001);
 assign rom_instr_pt[184] =
     (({ rom_addr_l2[2] , rom_addr_l2[6]
      }) === 2'b01);
 assign rom_instr_pt[185] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
     rom_addr_l2[2] , rom_addr_l2[6]
      }) === 4'b0111);
 assign rom_instr_pt[186] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
     rom_addr_l2[6] }) === 3'b011);
 assign rom_instr_pt[187] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[4] , rom_addr_l2[5]
      }) === 6'b001100);
 assign rom_instr_pt[188] =
-    (({ rom_addr_l2[1] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[4] ,
     rom_addr_l2[5] }) === 3'b000);
 assign rom_instr_pt[189] =
-    (({ rom_addr_l2[1] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[3] ,
     rom_addr_l2[4] , rom_addr_l2[5]
      }) === 4'b1110);
 assign rom_instr_pt[190] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
-    rom_addr_l2[3] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
+    rom_addr_l2[3] , rom_addr_l2[4] ,
     rom_addr_l2[5] }) === 5'b01001);
 assign rom_instr_pt[191] =
-    (({ rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[4] , rom_addr_l2[5]
      }) === 4'b1111);
 assign rom_instr_pt[192] =
-    (({ rom_addr_l2[0] , rom_addr_l2[1] , 
-    rom_addr_l2[2] , rom_addr_l2[4] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[1] ,
+    rom_addr_l2[2] , rom_addr_l2[4] ,
     rom_addr_l2[5] }) === 5'b01011);
 assign rom_instr_pt[193] =
     (({ rom_addr_l2[3] , rom_addr_l2[5]
      }) === 2'b11);
 assign rom_instr_pt[194] =
-    (({ rom_addr_l2[0] , rom_addr_l2[2] , 
+    (({ rom_addr_l2[0] , rom_addr_l2[2] ,
     rom_addr_l2[3] , rom_addr_l2[4]
      }) === 4'b1000);
 assign rom_instr_pt[195] =
-    (({ rom_addr_l2[2] , rom_addr_l2[3] , 
+    (({ rom_addr_l2[2] , rom_addr_l2[3] ,
     rom_addr_l2[4] }) === 3'b111);
 assign rom_instr_pt[196] =
     (({ rom_addr_l2[3] , rom_addr_l2[4]
@@ -1269,13 +1280,13 @@ assign rom_instr_pt[197] =
     (({ rom_addr_l2[1] , rom_addr_l2[4]
      }) === 2'b11);
 assign rom_instr_pt[198] =
-    (({ rom_addr_l2[1] , rom_addr_l2[2] , 
+    (({ rom_addr_l2[1] , rom_addr_l2[2] ,
     rom_addr_l2[3] }) === 3'b001);
 assign rom_instr_pt[199] =
     (({ rom_addr_l2[2] }) === 1'b0);
 assign rom_instr_pt[200] =
     (({ rom_addr_l2[0] }) === 1'b1);
-assign template[0] = 
+assign template[0] =
     (rom_instr_pt[1] | rom_instr_pt[4]
      | rom_instr_pt[25] | rom_instr_pt[29]
      | rom_instr_pt[38] | rom_instr_pt[80]
@@ -1283,7 +1294,7 @@ assign template[0] =
      | rom_instr_pt[166] | rom_instr_pt[167]
      | rom_instr_pt[168] | rom_instr_pt[171]
      | rom_instr_pt[181]);
-assign template[1] = 
+assign template[1] =
     (rom_instr_pt[3] | rom_instr_pt[6]
      | rom_instr_pt[9] | rom_instr_pt[10]
      | rom_instr_pt[14] | rom_instr_pt[16]
@@ -1316,7 +1327,7 @@ assign template[1] =
      | rom_instr_pt[177] | rom_instr_pt[180]
      | rom_instr_pt[183] | rom_instr_pt[192]
      | rom_instr_pt[194]);
-assign template[2] = 
+assign template[2] =
     (rom_instr_pt[6] | rom_instr_pt[8]
      | rom_instr_pt[10] | rom_instr_pt[17]
      | rom_instr_pt[19] | rom_instr_pt[21]
@@ -1341,7 +1352,7 @@ assign template[2] =
      | rom_instr_pt[177] | rom_instr_pt[183]
      | rom_instr_pt[192] | rom_instr_pt[194]
      | rom_instr_pt[195]);
-assign template[3] = 
+assign template[3] =
     (rom_instr_pt[3] | rom_instr_pt[6]
      | rom_instr_pt[8] | rom_instr_pt[10]
      | rom_instr_pt[14] | rom_instr_pt[17]
@@ -1381,7 +1392,7 @@ assign template[3] =
      | rom_instr_pt[167] | rom_instr_pt[168]
      | rom_instr_pt[173] | rom_instr_pt[177]
      | rom_instr_pt[192]);
-assign template[4] = 
+assign template[4] =
     (rom_instr_pt[1] | rom_instr_pt[4]
      | rom_instr_pt[6] | rom_instr_pt[8]
      | rom_instr_pt[10] | rom_instr_pt[17]
@@ -1412,7 +1423,7 @@ assign template[4] =
      | rom_instr_pt[172] | rom_instr_pt[173]
      | rom_instr_pt[177] | rom_instr_pt[183]
      | rom_instr_pt[192]);
-assign template[5] = 
+assign template[5] =
     (rom_instr_pt[3] | rom_instr_pt[6]
      | rom_instr_pt[9] | rom_instr_pt[10]
      | rom_instr_pt[14] | rom_instr_pt[16]
@@ -1439,13 +1450,13 @@ assign template[5] =
      | rom_instr_pt[173] | rom_instr_pt[177]
      | rom_instr_pt[192] | rom_instr_pt[194]
     );
-assign template[6] = 
+assign template[6] =
     1'b0;
-assign template[7] = 
+assign template[7] =
     1'b0;
-assign template[8] = 
+assign template[8] =
     1'b0;
-assign template[9] = 
+assign template[9] =
     (rom_instr_pt[1] | rom_instr_pt[4]
      | rom_instr_pt[6] | rom_instr_pt[10]
      | rom_instr_pt[16] | rom_instr_pt[17]
@@ -1468,7 +1479,7 @@ assign template[9] =
      | rom_instr_pt[167] | rom_instr_pt[168]
      | rom_instr_pt[173] | rom_instr_pt[183]
     );
-assign template[10] = 
+assign template[10] =
     (rom_instr_pt[25] | rom_instr_pt[27]
      | rom_instr_pt[32] | rom_instr_pt[33]
      | rom_instr_pt[39] | rom_instr_pt[44]
@@ -1480,15 +1491,15 @@ assign template[10] =
      | rom_instr_pt[95] | rom_instr_pt[104]
      | rom_instr_pt[121] | rom_instr_pt[165]
     );
-assign template[11] = 
+assign template[11] =
     (rom_instr_pt[9] | rom_instr_pt[46]
      | rom_instr_pt[81] | rom_instr_pt[107]
      | rom_instr_pt[192]);
-assign template[12] = 
+assign template[12] =
     1'b0;
-assign template[13] = 
+assign template[13] =
     (rom_instr_pt[9]);
-assign template[14] = 
+assign template[14] =
     (rom_instr_pt[14] | rom_instr_pt[16]
      | rom_instr_pt[32] | rom_instr_pt[35]
      | rom_instr_pt[40] | rom_instr_pt[42]
@@ -1506,19 +1517,19 @@ assign template[14] =
      | rom_instr_pt[105] | rom_instr_pt[112]
      | rom_instr_pt[113] | rom_instr_pt[125]
      | rom_instr_pt[127]);
-assign template[15] = 
+assign template[15] =
     (rom_instr_pt[3] | rom_instr_pt[31]
      | rom_instr_pt[56] | rom_instr_pt[72]
      | rom_instr_pt[81] | rom_instr_pt[104]
      | rom_instr_pt[128]);
-assign template[16] = 
+assign template[16] =
     (rom_instr_pt[32] | rom_instr_pt[39]
      | rom_instr_pt[50] | rom_instr_pt[77]
      | rom_instr_pt[82] | rom_instr_pt[84]
      | rom_instr_pt[92] | rom_instr_pt[108]
      | rom_instr_pt[112] | rom_instr_pt[113]
      | rom_instr_pt[121]);
-assign template[17] = 
+assign template[17] =
     (rom_instr_pt[24] | rom_instr_pt[35]
      | rom_instr_pt[39] | rom_instr_pt[42]
      | rom_instr_pt[44] | rom_instr_pt[46]
@@ -1531,22 +1542,22 @@ assign template[17] =
      | rom_instr_pt[94] | rom_instr_pt[104]
      | rom_instr_pt[105] | rom_instr_pt[121]
      | rom_instr_pt[127]);
-assign template[18] = 
+assign template[18] =
     (rom_instr_pt[77] | rom_instr_pt[121]
      | rom_instr_pt[124]);
-assign template[19] = 
+assign template[19] =
     (rom_instr_pt[59] | rom_instr_pt[79]
      | rom_instr_pt[107] | rom_instr_pt[121]
      | rom_instr_pt[148] | rom_instr_pt[177]
     );
-assign template[20] = 
+assign template[20] =
     (rom_instr_pt[16] | rom_instr_pt[36]
      | rom_instr_pt[40] | rom_instr_pt[43]
      | rom_instr_pt[49] | rom_instr_pt[51]
      | rom_instr_pt[79] | rom_instr_pt[121]
      | rom_instr_pt[125] | rom_instr_pt[194]
     );
-assign template[21] = 
+assign template[21] =
     (rom_instr_pt[42] | rom_instr_pt[59]
      | rom_instr_pt[60] | rom_instr_pt[71]
      | rom_instr_pt[78] | rom_instr_pt[87]
@@ -1554,7 +1565,7 @@ assign template[21] =
      | rom_instr_pt[100] | rom_instr_pt[112]
      | rom_instr_pt[113] | rom_instr_pt[121]
      | rom_instr_pt[177]);
-assign template[22] = 
+assign template[22] =
     (rom_instr_pt[16] | rom_instr_pt[28]
      | rom_instr_pt[32] | rom_instr_pt[36]
      | rom_instr_pt[39] | rom_instr_pt[40]
@@ -1564,7 +1575,7 @@ assign template[22] =
      | rom_instr_pt[100] | rom_instr_pt[123]
      | rom_instr_pt[125] | rom_instr_pt[128]
      | rom_instr_pt[169]);
-assign template[23] = 
+assign template[23] =
     (rom_instr_pt[8] | rom_instr_pt[16]
      | rom_instr_pt[22] | rom_instr_pt[36]
      | rom_instr_pt[40] | rom_instr_pt[41]
@@ -1577,7 +1588,7 @@ assign template[23] =
      | rom_instr_pt[125] | rom_instr_pt[139]
      | rom_instr_pt[165] | rom_instr_pt[173]
     );
-assign template[24] = 
+assign template[24] =
     (rom_instr_pt[6] | rom_instr_pt[10]
      | rom_instr_pt[17] | rom_instr_pt[22]
      | rom_instr_pt[27] | rom_instr_pt[33]
@@ -1587,14 +1598,14 @@ assign template[24] =
      | rom_instr_pt[103] | rom_instr_pt[121]
      | rom_instr_pt[139] | rom_instr_pt[173]
      | rom_instr_pt[177]);
-assign template[25] = 
+assign template[25] =
     (rom_instr_pt[16] | rom_instr_pt[36]
      | rom_instr_pt[40] | rom_instr_pt[43]
      | rom_instr_pt[49] | rom_instr_pt[51]
      | rom_instr_pt[59] | rom_instr_pt[71]
      | rom_instr_pt[121] | rom_instr_pt[125]
      | rom_instr_pt[177]);
-assign template[26] = 
+assign template[26] =
     (rom_instr_pt[6] | rom_instr_pt[9]
      | rom_instr_pt[10] | rom_instr_pt[14]
      | rom_instr_pt[16] | rom_instr_pt[17]
@@ -1622,7 +1633,7 @@ assign template[26] =
      | rom_instr_pt[173] | rom_instr_pt[177]
      | rom_instr_pt[192] | rom_instr_pt[194]
     );
-assign template[27] = 
+assign template[27] =
     (rom_instr_pt[14] | rom_instr_pt[16]
      | rom_instr_pt[28] | rom_instr_pt[32]
      | rom_instr_pt[36] | rom_instr_pt[39]
@@ -1639,7 +1650,7 @@ assign template[27] =
      | rom_instr_pt[127] | rom_instr_pt[128]
      | rom_instr_pt[169] | rom_instr_pt[177]
     );
-assign template[28] = 
+assign template[28] =
     (rom_instr_pt[6] | rom_instr_pt[10]
      | rom_instr_pt[14] | rom_instr_pt[16]
      | rom_instr_pt[17] | rom_instr_pt[22]
@@ -1664,7 +1675,7 @@ assign template[28] =
      | rom_instr_pt[127] | rom_instr_pt[139]
      | rom_instr_pt[173] | rom_instr_pt[177]
     );
-assign template[29] = 
+assign template[29] =
     (rom_instr_pt[3] | rom_instr_pt[6]
      | rom_instr_pt[10] | rom_instr_pt[14]
      | rom_instr_pt[17] | rom_instr_pt[22]
@@ -1689,7 +1700,7 @@ assign template[29] =
      | rom_instr_pt[142] | rom_instr_pt[153]
      | rom_instr_pt[169] | rom_instr_pt[173]
      | rom_instr_pt[192]);
-assign template[30] = 
+assign template[30] =
     (rom_instr_pt[3] | rom_instr_pt[6]
      | rom_instr_pt[10] | rom_instr_pt[14]
      | rom_instr_pt[17] | rom_instr_pt[22]
@@ -1711,14 +1722,14 @@ assign template[30] =
      | rom_instr_pt[127] | rom_instr_pt[139]
      | rom_instr_pt[170] | rom_instr_pt[173]
      | rom_instr_pt[192]);
-assign template[31] = 
+assign template[31] =
     (rom_instr_pt[20] | rom_instr_pt[30]
      | rom_instr_pt[66] | rom_instr_pt[80]
      | rom_instr_pt[88] | rom_instr_pt[106]
      | rom_instr_pt[114] | rom_instr_pt[121]
      | rom_instr_pt[143] | rom_instr_pt[149]
     );
-assign ucode_end = 
+assign ucode_end =
     (rom_instr_pt[98] | rom_instr_pt[107]
      | rom_instr_pt[120] | rom_instr_pt[128]
      | rom_instr_pt[129] | rom_instr_pt[131]
@@ -1726,29 +1737,29 @@ assign ucode_end =
      | rom_instr_pt[162] | rom_instr_pt[164]
      | rom_instr_pt[175] | rom_instr_pt[178]
     );
-assign ucode_end_early = 
+assign ucode_end_early =
     (rom_instr_pt[111] | rom_instr_pt[184]
      | rom_instr_pt[186]);
-assign loop_begin = 
+assign loop_begin =
     1'b0;
-assign loop_end = 
+assign loop_end =
     (rom_instr_pt[37] | rom_instr_pt[64]
      | rom_instr_pt[65] | rom_instr_pt[69]
      | rom_instr_pt[126] | rom_instr_pt[130]
     );
-assign count_src[0] = 
+assign count_src[0] =
     (rom_instr_pt[68] | rom_instr_pt[147]
      | rom_instr_pt[176] | rom_instr_pt[199]
     );
-assign count_src[1] = 
+assign count_src[1] =
     (rom_instr_pt[68] | rom_instr_pt[176]
      | rom_instr_pt[196] | rom_instr_pt[199]
     );
-assign count_src[2] = 
+assign count_src[2] =
     (rom_instr_pt[68] | rom_instr_pt[135]
      | rom_instr_pt[145] | rom_instr_pt[188]
      | rom_instr_pt[199]);
-assign ext_rt = 
+assign ext_rt =
     (rom_instr_pt[11] | rom_instr_pt[18]
      | rom_instr_pt[28] | rom_instr_pt[33]
      | rom_instr_pt[45] | rom_instr_pt[47]
@@ -1762,7 +1773,7 @@ assign ext_rt =
      | rom_instr_pt[161] | rom_instr_pt[174]
      | rom_instr_pt[190] | rom_instr_pt[197]
     );
-assign ext_s1 = 
+assign ext_s1 =
     (rom_instr_pt[33] | rom_instr_pt[36]
      | rom_instr_pt[45] | rom_instr_pt[55]
      | rom_instr_pt[63] | rom_instr_pt[67]
@@ -1777,7 +1788,7 @@ assign ext_s1 =
      | rom_instr_pt[179] | rom_instr_pt[182]
      | rom_instr_pt[185] | rom_instr_pt[189]
     );
-assign ext_s2 = 
+assign ext_s2 =
     (rom_instr_pt[7] | rom_instr_pt[36]
      | rom_instr_pt[45] | rom_instr_pt[47]
      | rom_instr_pt[52] | rom_instr_pt[67]
@@ -1786,27 +1797,27 @@ assign ext_s2 =
      | rom_instr_pt[146] | rom_instr_pt[156]
      | rom_instr_pt[158] | rom_instr_pt[179]
      | rom_instr_pt[198]);
-assign ext_s3 = 
+assign ext_s3 =
     (rom_instr_pt[22] | rom_instr_pt[116]
      | rom_instr_pt[161] | rom_instr_pt[168]
      | rom_instr_pt[182] | rom_instr_pt[193]
      | rom_instr_pt[197]);
-assign sel0_5 = 
+assign sel0_5 =
     (rom_instr_pt[156]);
-assign sel6_10[0] = 
+assign sel6_10[0] =
     (rom_instr_pt[97] | rom_instr_pt[120]
      | rom_instr_pt[122] | rom_instr_pt[128]
      | rom_instr_pt[159] | rom_instr_pt[162]
      | rom_instr_pt[175]);
-assign sel6_10[1] = 
+assign sel6_10[1] =
     (rom_instr_pt[62] | rom_instr_pt[87]
      | rom_instr_pt[138] | rom_instr_pt[156]
      | rom_instr_pt[179] | rom_instr_pt[181]
      | rom_instr_pt[191]);
-assign sel11_15[0] = 
+assign sel11_15[0] =
     (rom_instr_pt[36] | rom_instr_pt[63]
      | rom_instr_pt[101]);
-assign sel11_15[1] = 
+assign sel11_15[1] =
     (rom_instr_pt[5] | rom_instr_pt[7]
      | rom_instr_pt[11] | rom_instr_pt[12]
      | rom_instr_pt[18] | rom_instr_pt[36]
@@ -1817,9 +1828,9 @@ assign sel11_15[1] =
      | rom_instr_pt[159] | rom_instr_pt[162]
      | rom_instr_pt[165] | rom_instr_pt[175]
     );
-assign sel16_20[0] = 
+assign sel16_20[0] =
     (rom_instr_pt[174]);
-assign sel16_20[1] = 
+assign sel16_20[1] =
     (rom_instr_pt[2] | rom_instr_pt[5]
      | rom_instr_pt[22] | rom_instr_pt[26]
      | rom_instr_pt[28] | rom_instr_pt[33]
@@ -1831,54 +1842,54 @@ assign sel16_20[1] =
      | rom_instr_pt[168] | rom_instr_pt[173]
      | rom_instr_pt[174] | rom_instr_pt[175]
     );
-assign sel21_25[0] = 
+assign sel21_25[0] =
     1'b0;
-assign sel21_25[1] = 
+assign sel21_25[1] =
     (rom_instr_pt[2] | rom_instr_pt[5]
      | rom_instr_pt[26] | rom_instr_pt[97]
      | rom_instr_pt[99] | rom_instr_pt[120]
      | rom_instr_pt[156] | rom_instr_pt[159]
      | rom_instr_pt[162] | rom_instr_pt[163]
      | rom_instr_pt[168]);
-assign sel26_30 = 
+assign sel26_30 =
     (rom_instr_pt[2] | rom_instr_pt[5]
      | rom_instr_pt[26] | rom_instr_pt[97]
      | rom_instr_pt[99] | rom_instr_pt[120]
      | rom_instr_pt[156] | rom_instr_pt[159]
      | rom_instr_pt[162] | rom_instr_pt[163]
      | rom_instr_pt[168]);
-assign sel31 = 
+assign sel31 =
     (rom_instr_pt[2] | rom_instr_pt[5]
      | rom_instr_pt[26] | rom_instr_pt[97]
      | rom_instr_pt[99] | rom_instr_pt[119]
      | rom_instr_pt[140] | rom_instr_pt[154]
      | rom_instr_pt[156] | rom_instr_pt[159]
      | rom_instr_pt[163]);
-assign cr_bf2fxm = 
+assign cr_bf2fxm =
     (rom_instr_pt[165]);
-assign skip_cond = 
+assign skip_cond =
     (rom_instr_pt[44] | rom_instr_pt[47]
      | rom_instr_pt[52] | rom_instr_pt[58]
      | rom_instr_pt[74] | rom_instr_pt[83]
      | rom_instr_pt[104] | rom_instr_pt[112]
      | rom_instr_pt[117] | rom_instr_pt[138]
     );
-assign skip_zero = 
+assign skip_zero =
     1'b0;
-assign skip_nop = 
+assign skip_nop =
     (rom_instr_pt[13] | rom_instr_pt[15]
      | rom_instr_pt[34] | rom_instr_pt[75]
      | rom_instr_pt[93] | rom_instr_pt[133]
      | rom_instr_pt[187]);
-assign loop_addr[0] = 
+assign loop_addr[0] =
     (rom_instr_pt[200]);
-assign loop_addr[1] = 
+assign loop_addr[1] =
     (rom_instr_pt[44] | rom_instr_pt[119]
      | rom_instr_pt[122] | rom_instr_pt[140]
      | rom_instr_pt[175] | rom_instr_pt[182]
      | rom_instr_pt[185] | rom_instr_pt[197]
     );
-assign loop_addr[2] = 
+assign loop_addr[2] =
     (rom_instr_pt[36] | rom_instr_pt[45]
      | rom_instr_pt[58] | rom_instr_pt[67]
      | rom_instr_pt[75] | rom_instr_pt[115]
@@ -1887,35 +1898,35 @@ assign loop_addr[2] =
      | rom_instr_pt[157] | rom_instr_pt[185]
      | rom_instr_pt[187] | rom_instr_pt[189]
     );
-assign loop_addr[3] = 
+assign loop_addr[3] =
     (rom_instr_pt[67] | rom_instr_pt[133]
      | rom_instr_pt[163] | rom_instr_pt[182]
      | rom_instr_pt[187] | rom_instr_pt[189]
      | rom_instr_pt[193] | rom_instr_pt[198]
     );
-assign loop_addr[4] = 
+assign loop_addr[4] =
     (rom_instr_pt[75] | rom_instr_pt[115]
      | rom_instr_pt[133] | rom_instr_pt[140]
      | rom_instr_pt[151] | rom_instr_pt[157]
      | rom_instr_pt[197]);
-assign loop_addr[5] = 
+assign loop_addr[5] =
     (rom_instr_pt[22] | rom_instr_pt[67]
      | rom_instr_pt[75] | rom_instr_pt[115]
      | rom_instr_pt[122] | rom_instr_pt[140]
      | rom_instr_pt[150] | rom_instr_pt[158]
      | rom_instr_pt[173] | rom_instr_pt[190]
      | rom_instr_pt[193]);
-assign loop_addr[6] = 
+assign loop_addr[6] =
     (rom_instr_pt[67] | rom_instr_pt[115]
      | rom_instr_pt[119] | rom_instr_pt[122]
      | rom_instr_pt[140]);
-assign loop_addr[7] = 
+assign loop_addr[7] =
     (rom_instr_pt[22] | rom_instr_pt[58]
      | rom_instr_pt[67] | rom_instr_pt[115]
      | rom_instr_pt[140] | rom_instr_pt[168]
      | rom_instr_pt[173] | rom_instr_pt[175]
      | rom_instr_pt[182]);
-assign loop_addr[8] = 
+assign loop_addr[8] =
     (rom_instr_pt[22] | rom_instr_pt[45]
      | rom_instr_pt[58] | rom_instr_pt[67]
      | rom_instr_pt[75] | rom_instr_pt[133]
@@ -1924,27 +1935,61 @@ assign loop_addr[8] =
      | rom_instr_pt[168] | rom_instr_pt[173]
      | rom_instr_pt[182] | rom_instr_pt[193]
      | rom_instr_pt[198]);
-assign loop_addr[9] = 
+assign loop_addr[9] =
     1'b0;
-assign loop_init[0] = 
+assign loop_init[0] =
     1'b0;
-assign loop_init[1] = 
+assign loop_init[1] =
     1'b0;
-assign loop_init[2] = 
+assign loop_init[2] =
     1'b0;
-assign ep = 
+assign ep =
     (rom_instr_pt[7] | rom_instr_pt[22]
      | rom_instr_pt[41] | rom_instr_pt[116]
      | rom_instr_pt[146]);
 
+//assign_end
+
+   // Old FDIV/FSQRT
+   //end generate;
+   //| 1111000001    | 11111100001-----0000000000111100 0 - 0 - ---  1 0 1 1  0 00 10 00 00 0 0  0 0 - 0 ---------- --- -    | # fnmsub   s1,FB,s0,s0
+   //| 1111000011    | 11111100011000010000100001111010 0 - 0 - ---  1 1 1 1  0 00 00 00 00 0 0  0 0 - 0 ---------- --- -    | # fmadd    s3,s1,s1,s1
+   //| 1111000101    | 11111100000----------00010111100 0 - 0 - ---  1 0 0 1  0 00 10 11 00 0 0  0 0 - 0 ---------- --- -    | # fnmsub   s0,FB,s2,FA
+   //| 1111000111    | 11111100000000010000000000110010 0 - 0 - ---  1 1 0 1  0 00 00 00 00 0 0  0 0 - 0 ---------- --- -    | # fmul     s0,s1,s0
+   //| 1111001001    | 11111100011000000001000011111010 0 - 0 - ---  1 1 1 1  0 00 00 00 00 0 0  0 0 - 0 ---------- --- -    | # fmadd    s3,s0,s3,s2
+   //| 1111001011    | 11111100010----------00011111100 0 - 0 - ---  1 0 0 1  0 00 10 11 00 0 0  0 0 - 0 ---------- --- -    | # fnmsub   s2,FB,s3,FA
+   //| 1111001101    | 111111-----00001000000000010001- 1 - 0 - ---  0 1 1 1  0 01 00 00 00 0 1  0 0 - 0 ---------- --- -    | # fmul_uc  FT,s1,s0,s0  include s0 in 16-20
+   //| 1111010001    | 11111100011-----0000000000111100 0 - 0 - ---  1 0 1 1  0 00 10 00 00 0 0  0 0 - 0 ---------- --- -    | # fnmsub   s3,FB,s0,s0
+   //| 1111010011    | 11101100001000000000000011111010 0 - 0 - ---  1 1 1 1  0 00 00 00 00 0 0  0 0 - 0 ---------- --- -    | # fmadds   s1,s0,s3,s0
+   //| 1111010101    | 11101100000----------00001111100 0 - 0 - ---  1 0 0 1  0 00 10 11 00 0 0  0 0 - 0 ---------- --- -    | # fnmsub   s0,FB,s1,FA
+   //| 1111010111    | 11101100000----------00001111100 0 - 0 - ---  1 0 0 1  0 00 10 11 00 0 0  0 0 - 0 ---------- --- -    | # fnmsub   s0,FB,s1,FA
+   //| 1111100001    | 11111100001000000000000000110010 0 - 0 - ---  1 1 0 1  0 00 00 00 00 0 0  0 0 - 0 ---------- --- -    | # fmul     s1,s0,s0,
+   //| 1111100011    | 11111100000000010000100010111100 0 - 0 - ---  1 1 1 1  0 00 00 00 00 0 0  0 0 - 0 ---------- --- -    | # fnmsub   s0,s1,s2,s1
+   //| 1111100101    | 11111100010000010000100000111010 0 - 0 - ---  1 1 1 1  0 00 00 00 00 0 0  0 0 - 0 ---------- --- -    | # fmadd    s2,s1,s0,s1
+   //| 1111100111    | 11111100001000000001100010111010 0 - 0 - ---  1 1 1 1  0 00 00 00 00 0 0  0 0 - 0 ---------- --- -    | # fmadd    s1,s0,s2,s3
+   //| 1111101001    | 1111110000000001-----00001111100 0 - 0 - ---  1 1 0 1  0 00 00 01 00 0 0  0 0 - 0 ---------- --- -    | # fnmsub   s0,s1,s1,FB
+   //| 1111101011    | 1111110000000001-----00011111100 0 - 0 - ---  1 1 0 1  0 00 00 01 00 0 0  0 0 - 0 ---------- --- -    | # fnmsub   s0,s1,s3,FB
+   //| 1111110001    | 11111100010000000000000000110010 0 - 0 - ---  1 1 0 1  0 00 00 00 00 0 0  0 0 - 0 ---------- --- -    | # fmul     s1,s0,s0,
+   //| 1111110011    | 1111110000000011-----00011111100 0 - 0 - ---  1 1 0 1  0 00 00 01 00 0 0  0 0 - 0 ---------- --- -    | # fnmsub   s0,s2,s2,FB
+   //| 1111110101    | 11101100011000000001100010111010 0 - 0 - ---  1 1 1 1  0 00 00 00 00 0 0  0 0 - 0 ---------- --- -    | # fmadds   s3,s0,s1,s2
+   //| 1111110111    | 1110110001000011-----00011111100 0 - 0 - ---  1 1 0 1  0 00 00 01 00 0 0  0 0 - 0 ---------- --- -    | # fnmsubs  s2,s3,s3,FB
+   //| 1111111001    | 111011-----00001000000000010001- 1 - 0 - ---  0 1 1 1  0 01 00 00 00 0 1  0 0 - 0 ---------- --- -    | # fmuls_uc FT,s1,s0,s0  include s0 in 16-20
+   //32-bit core
+   //c32: if (regmode = 5) generate begin
+   //end generate;
 
 
-
+   // ??? Do I want to optimize any terms?
+   // ??? Which is better: on-off, or on-dc?
+   // ??? Do we want to DC template fields not being used?
 
    assign rom_addr_d = rom_addr;
 
    assign rom_data = {template, ucode_end, ucode_end_early, loop_begin, loop_end, count_src, ext_rt, ext_s1, ext_s2, ext_s3, sel0_5, sel6_10, sel11_15, sel16_20, sel21_25, sel26_30, sel31, cr_bf2fxm, skip_cond, skip_zero, skip_nop, loop_addr, loop_init, ep};
 
+   //---------------------------------------------------------------------
+   // Latches
+   //---------------------------------------------------------------------
 
    tri_rlmreg_p #(.WIDTH(10), .INIT(0), .NEEDS_SRESET(0)) rom_addr_latch(
       .vd(vdd),
@@ -1964,8 +2009,10 @@ assign ep =
       .dout(rom_addr_l2)
    );
 
+   //---------------------------------------------------------------------
+   // Scan
+   //---------------------------------------------------------------------
    assign siv[0:scan_right] = {sov[1:scan_right], scan_in};
    assign scan_out = sov[0];
 
 endmodule
-

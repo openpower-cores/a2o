@@ -9,12 +9,8 @@
 
 `timescale 1 ns / 1 ns
 
-
-
-
-
    `include "tri_a2o.vh"
-   
+
 
 module fu_sa3(
    vdd,
@@ -42,45 +38,48 @@ module fu_sa3(
 );
    inout           vdd;
    inout           gnd;
-   input           clkoff_b;		
-   input           act_dis;		
-   input           flush;		
-   input [2:3]     delay_lclkr;		
-   input [2:3]     mpw1_b;		
-   input [0:0]     mpw2_b;		
+   input           clkoff_b;		// tiup
+   input           act_dis;		// ??tidn??
+   input           flush;		// ??tidn??
+   input [2:3]     delay_lclkr;		// tidn,
+   input [2:3]     mpw1_b;		// tidn,
+   input [0:0]     mpw2_b;		// tidn,
    input           sg_1;
    input           thold_1;
-   input           fpu_enable;		
+   input           fpu_enable;		//dc_act
    input  [0:`NCLK_WIDTH-1]          nclk;
-   
-   input           f_sa3_si;		
-   output          f_sa3_so;		
-   input           ex2_act_b;		
-   
+
+   input           f_sa3_si;		//perv
+   output          f_sa3_so;		//perv
+   input           ex2_act_b;		//act
+
    input [54:161]  f_mul_ex3_sum;
    input [54:161]  f_mul_ex3_car;
    input [0:162]   f_alg_ex3_res;
-   
-   output [0:162]  f_sa3_ex4_s_lza;		
-   output [53:161] f_sa3_ex4_c_lza;		
-   
-   output [0:162]  f_sa3_ex4_s_add;		
-   output [53:161] f_sa3_ex4_c_add;		
-   
-   
-   
-   
+
+   output [0:162]  f_sa3_ex4_s_lza;		// data
+   output [53:161] f_sa3_ex4_c_lza;		// data
+
+   output [0:162]  f_sa3_ex4_s_add;		// data
+   output [53:161] f_sa3_ex4_c_add;		// data
+
+   // ENTITY
+
+
    parameter       tiup = 1'b1;
    parameter       tidn = 1'b0;
-   
+
+   ////#################################
+   ////# sigdef : functional
+   ////#################################
    wire            thold_0_b;
    wire            thold_0;
    wire            force_t;
    wire            sg_0;
-   
-   (* analysis_not_referenced="TRUE" *) 
+
+   (* analysis_not_referenced="TRUE" *)
    wire [0:3]      act_spare_unused;
-   
+
    wire            ex3_act;
    wire [0:4]      act_so;
    wire [0:4]      act_si;
@@ -102,1111 +101,1142 @@ module fu_sa3(
    wire [0:`NCLK_WIDTH-1]            sa3_ex4_lclk;
 
 
-   wire [0:52]     ex3_alg_b;		
-   wire [53:162]   ex3_sum_b;		
-   wire [53:161]   ex3_car_b;		
-   
+   wire [0:52]     ex3_alg_b;
+   wire [53:162]   ex3_sum_b;
+   wire [53:161]   ex3_car_b;
+
    wire [55:161]   f_alg_ex3_res_b;
    wire [55:161]   f_mul_ex3_sum_b;
    wire [55:161]   f_mul_ex3_car_b;
-   
-   
-   
-   
-   
-   
+
+   ////################################################################
+   ////# ex3 logic
+   ////################################################################
+
+   // just a 3:2 compressor
+   //
+   // ex3_sum(54 to 159) <= f_mul_ex3_sum(54 to 159) xor f_mul_ex3_car(54 to 159) xor f_alg_ex3_res(54 to 159) ;
+   // ex3_sum(160)       <= f_mul_ex3_sum(160)       xor                              f_alg_ex3_res(160)       ;
+   //
+   // ex3_car(53 to 158) <= ( f_mul_ex3_sum(54 to 159) and f_mul_ex3_car(54 to 159) ) or
+   //                       ( f_mul_ex3_sum(54 to 159) and f_alg_ex3_res(54 to 159) ) or
+   //                       ( f_alg_ex3_res(54 to 159) and f_mul_ex3_car(54 to 159) ) ;
+   // ex3_car(159)       <= ( f_mul_ex3_sum(160)       and f_alg_ex3_res(160)       ) ;
+   //---------------------------------------------------------------
+
+   // this model                       @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+   //
+   // aligner  000 001 002 ....... 052 053 054  055 056 .... 158 159 160 161 162
+   // mul sum  xxx xxx xxx ....... xxx xxx 054* 055 056 .... 158 159 160 xxx xxx
+   // mul car  xxx xxx xxx ....... xxx xxx 054* 055 056 .... 158 159 xxx xxx xxx
+   // rid PB   "1" "1" "1" ....... "1" "1" "1"  "0" "0" .... "0" "0" "0" "0" "0"
+   //
+   // 54* is the pseudo bit ... at most 1 is on
+
    assign ex3_sum_b[54] = (~((~(f_mul_ex3_sum[54] | f_mul_ex3_car[54])) ^ f_alg_ex3_res[54]));
    assign ex3_car_b[53] = (~((f_mul_ex3_sum[54] | f_mul_ex3_car[54]) | f_alg_ex3_res[54]));
-   
-   
-   
-   assign ex3_alg_b[0:52] = (~f_alg_ex3_res[0:52]);		
-   
-   
-   assign f_alg_ex3_res_b[55:161] = (~(f_alg_ex3_res[55:161]));		
-   assign f_mul_ex3_sum_b[55:161] = (~(f_mul_ex3_sum[55:161]));		
-   assign f_mul_ex3_car_b[55:161] = (~(f_mul_ex3_car[55:161]));		
-   
+
+   // rest of bits are normal as expected
+
+   // with 3:2 is it equivalent to invert all the inputs, or invert all the outputs
+
+   assign ex3_alg_b[0:52] = (~f_alg_ex3_res[0:52]);
+
+   assign f_alg_ex3_res_b[55:161] = (~(f_alg_ex3_res[55:161]));
+   assign f_mul_ex3_sum_b[55:161] = (~(f_mul_ex3_sum[55:161]));
+   assign f_mul_ex3_car_b[55:161] = (~(f_mul_ex3_car[55:161]));
+
+   		//MLT32_X1_A12TH
    tri_csa32 res_csa_55(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[55]),		
-      .b(f_mul_ex3_sum_b[55]),		
-      .c(f_mul_ex3_car_b[55]),		
-      .sum(ex3_sum_b[55]),		
-      .car(ex3_car_b[54])		
+      .a(f_alg_ex3_res_b[55]),		//i--
+      .b(f_mul_ex3_sum_b[55]),		//i--
+      .c(f_mul_ex3_car_b[55]),		//i--
+      .sum(ex3_sum_b[55]),		//o--
+      .car(ex3_car_b[54])		//o--
    );
-   
+
    tri_csa32 res_csa_56(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[56]),		
-      .b(f_mul_ex3_sum_b[56]),		
-      .c(f_mul_ex3_car_b[56]),		
-      .sum(ex3_sum_b[56]),		
-      .car(ex3_car_b[55])		
+      .a(f_alg_ex3_res_b[56]),		//i--
+      .b(f_mul_ex3_sum_b[56]),		//i--
+      .c(f_mul_ex3_car_b[56]),		//i--
+      .sum(ex3_sum_b[56]),		//o--
+      .car(ex3_car_b[55])		//o--
    );
-   
+
    tri_csa32 res_csa_57(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[57]),		
-      .b(f_mul_ex3_sum_b[57]),		
-      .c(f_mul_ex3_car_b[57]),		
-      .sum(ex3_sum_b[57]),		
-      .car(ex3_car_b[56])		
+      .a(f_alg_ex3_res_b[57]),		//i--
+      .b(f_mul_ex3_sum_b[57]),		//i--
+      .c(f_mul_ex3_car_b[57]),		//i--
+      .sum(ex3_sum_b[57]),		//o--
+      .car(ex3_car_b[56])		//o--
    );
-   
+
    tri_csa32 res_csa_58(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[58]),		
-      .b(f_mul_ex3_sum_b[58]),		
-      .c(f_mul_ex3_car_b[58]),		
-      .sum(ex3_sum_b[58]),		
-      .car(ex3_car_b[57])		
+      .a(f_alg_ex3_res_b[58]),		//i--
+      .b(f_mul_ex3_sum_b[58]),		//i--
+      .c(f_mul_ex3_car_b[58]),		//i--
+      .sum(ex3_sum_b[58]),		//o--
+      .car(ex3_car_b[57])		//o--
    );
-   
+
    tri_csa32 res_csa_59(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[59]),		
-      .b(f_mul_ex3_sum_b[59]),		
-      .c(f_mul_ex3_car_b[59]),		
-      .sum(ex3_sum_b[59]),		
-      .car(ex3_car_b[58])		
+      .a(f_alg_ex3_res_b[59]),		//i--
+      .b(f_mul_ex3_sum_b[59]),		//i--
+      .c(f_mul_ex3_car_b[59]),		//i--
+      .sum(ex3_sum_b[59]),		//o--
+      .car(ex3_car_b[58])		//o--
    );
-   
+
    tri_csa32 res_csa_60(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[60]),		
-      .b(f_mul_ex3_sum_b[60]),		
-      .c(f_mul_ex3_car_b[60]),		
-      .sum(ex3_sum_b[60]),		
-      .car(ex3_car_b[59])		
+      .a(f_alg_ex3_res_b[60]),		//i--
+      .b(f_mul_ex3_sum_b[60]),		//i--
+      .c(f_mul_ex3_car_b[60]),		//i--
+      .sum(ex3_sum_b[60]),		//o--
+      .car(ex3_car_b[59])		//o--
    );
-   
+
    tri_csa32 res_csa_61(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[61]),		
-      .b(f_mul_ex3_sum_b[61]),		
-      .c(f_mul_ex3_car_b[61]),		
-      .sum(ex3_sum_b[61]),		
-      .car(ex3_car_b[60])		
+      .a(f_alg_ex3_res_b[61]),		//i--
+      .b(f_mul_ex3_sum_b[61]),		//i--
+      .c(f_mul_ex3_car_b[61]),		//i--
+      .sum(ex3_sum_b[61]),		//o--
+      .car(ex3_car_b[60])		//o--
    );
-   
+
    tri_csa32 res_csa_62(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[62]),		
-      .b(f_mul_ex3_sum_b[62]),		
-      .c(f_mul_ex3_car_b[62]),		
-      .sum(ex3_sum_b[62]),		
-      .car(ex3_car_b[61])		
+      .a(f_alg_ex3_res_b[62]),		//i--
+      .b(f_mul_ex3_sum_b[62]),		//i--
+      .c(f_mul_ex3_car_b[62]),		//i--
+      .sum(ex3_sum_b[62]),		//o--
+      .car(ex3_car_b[61])		//o--
    );
-   
+
    tri_csa32 res_csa_63(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[63]),		
-      .b(f_mul_ex3_sum_b[63]),		
-      .c(f_mul_ex3_car_b[63]),		
-      .sum(ex3_sum_b[63]),		
-      .car(ex3_car_b[62])		
+      .a(f_alg_ex3_res_b[63]),		//i--
+      .b(f_mul_ex3_sum_b[63]),		//i--
+      .c(f_mul_ex3_car_b[63]),		//i--
+      .sum(ex3_sum_b[63]),		//o--
+      .car(ex3_car_b[62])		//o--
    );
-   
+
    tri_csa32 res_csa_64(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[64]),		
-      .b(f_mul_ex3_sum_b[64]),		
-      .c(f_mul_ex3_car_b[64]),		
-      .sum(ex3_sum_b[64]),		
-      .car(ex3_car_b[63])		
+      .a(f_alg_ex3_res_b[64]),		//i--
+      .b(f_mul_ex3_sum_b[64]),		//i--
+      .c(f_mul_ex3_car_b[64]),		//i--
+      .sum(ex3_sum_b[64]),		//o--
+      .car(ex3_car_b[63])		//o--
    );
-   
+
    tri_csa32 res_csa_65(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[65]),		
-      .b(f_mul_ex3_sum_b[65]),		
-      .c(f_mul_ex3_car_b[65]),		
-      .sum(ex3_sum_b[65]),		
-      .car(ex3_car_b[64])		
+      .a(f_alg_ex3_res_b[65]),		//i--
+      .b(f_mul_ex3_sum_b[65]),		//i--
+      .c(f_mul_ex3_car_b[65]),		//i--
+      .sum(ex3_sum_b[65]),		//o--
+      .car(ex3_car_b[64])		//o--
    );
-   
+
    tri_csa32 res_csa_66(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[66]),		
-      .b(f_mul_ex3_sum_b[66]),		
-      .c(f_mul_ex3_car_b[66]),		
-      .sum(ex3_sum_b[66]),		
-      .car(ex3_car_b[65])		
+      .a(f_alg_ex3_res_b[66]),		//i--
+      .b(f_mul_ex3_sum_b[66]),		//i--
+      .c(f_mul_ex3_car_b[66]),		//i--
+      .sum(ex3_sum_b[66]),		//o--
+      .car(ex3_car_b[65])		//o--
    );
-   
+
    tri_csa32 res_csa_67(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[67]),		
-      .b(f_mul_ex3_sum_b[67]),		
-      .c(f_mul_ex3_car_b[67]),		
-      .sum(ex3_sum_b[67]),		
-      .car(ex3_car_b[66])		
+      .a(f_alg_ex3_res_b[67]),		//i--
+      .b(f_mul_ex3_sum_b[67]),		//i--
+      .c(f_mul_ex3_car_b[67]),		//i--
+      .sum(ex3_sum_b[67]),		//o--
+      .car(ex3_car_b[66])		//o--
    );
-   
+
    tri_csa32 res_csa_68(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[68]),		
-      .b(f_mul_ex3_sum_b[68]),		
-      .c(f_mul_ex3_car_b[68]),		
-      .sum(ex3_sum_b[68]),		
-      .car(ex3_car_b[67])		
+      .a(f_alg_ex3_res_b[68]),		//i--
+      .b(f_mul_ex3_sum_b[68]),		//i--
+      .c(f_mul_ex3_car_b[68]),		//i--
+      .sum(ex3_sum_b[68]),		//o--
+      .car(ex3_car_b[67])		//o--
    );
-   
+
    tri_csa32 res_csa_69(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[69]),		
-      .b(f_mul_ex3_sum_b[69]),		
-      .c(f_mul_ex3_car_b[69]),		
-      .sum(ex3_sum_b[69]),		
-      .car(ex3_car_b[68])		
+      .a(f_alg_ex3_res_b[69]),		//i--
+      .b(f_mul_ex3_sum_b[69]),		//i--
+      .c(f_mul_ex3_car_b[69]),		//i--
+      .sum(ex3_sum_b[69]),		//o--
+      .car(ex3_car_b[68])		//o--
    );
-   
+
    tri_csa32 res_csa_70(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[70]),		
-      .b(f_mul_ex3_sum_b[70]),		
-      .c(f_mul_ex3_car_b[70]),		
-      .sum(ex3_sum_b[70]),		
-      .car(ex3_car_b[69])		
+      .a(f_alg_ex3_res_b[70]),		//i--
+      .b(f_mul_ex3_sum_b[70]),		//i--
+      .c(f_mul_ex3_car_b[70]),		//i--
+      .sum(ex3_sum_b[70]),		//o--
+      .car(ex3_car_b[69])		//o--
    );
-   
+
    tri_csa32 res_csa_71(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[71]),		
-      .b(f_mul_ex3_sum_b[71]),		
-      .c(f_mul_ex3_car_b[71]),		
-      .sum(ex3_sum_b[71]),		
-      .car(ex3_car_b[70])		
+      .a(f_alg_ex3_res_b[71]),		//i--
+      .b(f_mul_ex3_sum_b[71]),		//i--
+      .c(f_mul_ex3_car_b[71]),		//i--
+      .sum(ex3_sum_b[71]),		//o--
+      .car(ex3_car_b[70])		//o--
    );
-   
+
    tri_csa32 res_csa_72(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[72]),		
-      .b(f_mul_ex3_sum_b[72]),		
-      .c(f_mul_ex3_car_b[72]),		
-      .sum(ex3_sum_b[72]),		
-      .car(ex3_car_b[71])		
+      .a(f_alg_ex3_res_b[72]),		//i--
+      .b(f_mul_ex3_sum_b[72]),		//i--
+      .c(f_mul_ex3_car_b[72]),		//i--
+      .sum(ex3_sum_b[72]),		//o--
+      .car(ex3_car_b[71])		//o--
    );
-   
+
    tri_csa32 res_csa_73(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[73]),		
-      .b(f_mul_ex3_sum_b[73]),		
-      .c(f_mul_ex3_car_b[73]),		
-      .sum(ex3_sum_b[73]),		
-      .car(ex3_car_b[72])		
+      .a(f_alg_ex3_res_b[73]),		//i--
+      .b(f_mul_ex3_sum_b[73]),		//i--
+      .c(f_mul_ex3_car_b[73]),		//i--
+      .sum(ex3_sum_b[73]),		//o--
+      .car(ex3_car_b[72])		//o--
    );
-   
+
    tri_csa32 res_csa_74(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[74]),		
-      .b(f_mul_ex3_sum_b[74]),		
-      .c(f_mul_ex3_car_b[74]),		
-      .sum(ex3_sum_b[74]),		
-      .car(ex3_car_b[73])		
+      .a(f_alg_ex3_res_b[74]),		//i--
+      .b(f_mul_ex3_sum_b[74]),		//i--
+      .c(f_mul_ex3_car_b[74]),		//i--
+      .sum(ex3_sum_b[74]),		//o--
+      .car(ex3_car_b[73])		//o--
    );
-   
+
    tri_csa32 res_csa_75(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[75]),		
-      .b(f_mul_ex3_sum_b[75]),		
-      .c(f_mul_ex3_car_b[75]),		
-      .sum(ex3_sum_b[75]),		
-      .car(ex3_car_b[74])		
+      .a(f_alg_ex3_res_b[75]),		//i--
+      .b(f_mul_ex3_sum_b[75]),		//i--
+      .c(f_mul_ex3_car_b[75]),		//i--
+      .sum(ex3_sum_b[75]),		//o--
+      .car(ex3_car_b[74])		//o--
    );
-   
+
    tri_csa32 res_csa_76(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[76]),		
-      .b(f_mul_ex3_sum_b[76]),		
-      .c(f_mul_ex3_car_b[76]),		
-      .sum(ex3_sum_b[76]),		
-      .car(ex3_car_b[75])		
+      .a(f_alg_ex3_res_b[76]),		//i--
+      .b(f_mul_ex3_sum_b[76]),		//i--
+      .c(f_mul_ex3_car_b[76]),		//i--
+      .sum(ex3_sum_b[76]),		//o--
+      .car(ex3_car_b[75])		//o--
    );
-   
+
    tri_csa32 res_csa_77(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[77]),		
-      .b(f_mul_ex3_sum_b[77]),		
-      .c(f_mul_ex3_car_b[77]),		
-      .sum(ex3_sum_b[77]),		
-      .car(ex3_car_b[76])		
+      .a(f_alg_ex3_res_b[77]),		//i--
+      .b(f_mul_ex3_sum_b[77]),		//i--
+      .c(f_mul_ex3_car_b[77]),		//i--
+      .sum(ex3_sum_b[77]),		//o--
+      .car(ex3_car_b[76])		//o--
    );
-   
+
    tri_csa32 res_csa_78(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[78]),		
-      .b(f_mul_ex3_sum_b[78]),		
-      .c(f_mul_ex3_car_b[78]),		
-      .sum(ex3_sum_b[78]),		
-      .car(ex3_car_b[77])		
+      .a(f_alg_ex3_res_b[78]),		//i--
+      .b(f_mul_ex3_sum_b[78]),		//i--
+      .c(f_mul_ex3_car_b[78]),		//i--
+      .sum(ex3_sum_b[78]),		//o--
+      .car(ex3_car_b[77])		//o--
    );
-   
+
    tri_csa32 res_csa_79(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[79]),		
-      .b(f_mul_ex3_sum_b[79]),		
-      .c(f_mul_ex3_car_b[79]),		
-      .sum(ex3_sum_b[79]),		
-      .car(ex3_car_b[78])		
+      .a(f_alg_ex3_res_b[79]),		//i--
+      .b(f_mul_ex3_sum_b[79]),		//i--
+      .c(f_mul_ex3_car_b[79]),		//i--
+      .sum(ex3_sum_b[79]),		//o--
+      .car(ex3_car_b[78])		//o--
    );
-   
+
    tri_csa32 res_csa_80(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[80]),		
-      .b(f_mul_ex3_sum_b[80]),		
-      .c(f_mul_ex3_car_b[80]),		
-      .sum(ex3_sum_b[80]),		
-      .car(ex3_car_b[79])		
+      .a(f_alg_ex3_res_b[80]),		//i--
+      .b(f_mul_ex3_sum_b[80]),		//i--
+      .c(f_mul_ex3_car_b[80]),		//i--
+      .sum(ex3_sum_b[80]),		//o--
+      .car(ex3_car_b[79])		//o--
    );
-   
+
    tri_csa32 res_csa_81(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[81]),		
-      .b(f_mul_ex3_sum_b[81]),		
-      .c(f_mul_ex3_car_b[81]),		
-      .sum(ex3_sum_b[81]),		
-      .car(ex3_car_b[80])		
+      .a(f_alg_ex3_res_b[81]),		//i--
+      .b(f_mul_ex3_sum_b[81]),		//i--
+      .c(f_mul_ex3_car_b[81]),		//i--
+      .sum(ex3_sum_b[81]),		//o--
+      .car(ex3_car_b[80])		//o--
    );
-   
+
    tri_csa32 res_csa_82(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[82]),		
-      .b(f_mul_ex3_sum_b[82]),		
-      .c(f_mul_ex3_car_b[82]),		
-      .sum(ex3_sum_b[82]),		
-      .car(ex3_car_b[81])		
+      .a(f_alg_ex3_res_b[82]),		//i--
+      .b(f_mul_ex3_sum_b[82]),		//i--
+      .c(f_mul_ex3_car_b[82]),		//i--
+      .sum(ex3_sum_b[82]),		//o--
+      .car(ex3_car_b[81])		//o--
    );
-   
+
    tri_csa32 res_csa_83(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[83]),		
-      .b(f_mul_ex3_sum_b[83]),		
-      .c(f_mul_ex3_car_b[83]),		
-      .sum(ex3_sum_b[83]),		
-      .car(ex3_car_b[82])		
+      .a(f_alg_ex3_res_b[83]),		//i--
+      .b(f_mul_ex3_sum_b[83]),		//i--
+      .c(f_mul_ex3_car_b[83]),		//i--
+      .sum(ex3_sum_b[83]),		//o--
+      .car(ex3_car_b[82])		//o--
    );
-   
+
    tri_csa32 res_csa_84(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[84]),		
-      .b(f_mul_ex3_sum_b[84]),		
-      .c(f_mul_ex3_car_b[84]),		
-      .sum(ex3_sum_b[84]),		
-      .car(ex3_car_b[83])		
+      .a(f_alg_ex3_res_b[84]),		//i--
+      .b(f_mul_ex3_sum_b[84]),		//i--
+      .c(f_mul_ex3_car_b[84]),		//i--
+      .sum(ex3_sum_b[84]),		//o--
+      .car(ex3_car_b[83])		//o--
    );
-   
+
    tri_csa32 res_csa_85(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[85]),		
-      .b(f_mul_ex3_sum_b[85]),		
-      .c(f_mul_ex3_car_b[85]),		
-      .sum(ex3_sum_b[85]),		
-      .car(ex3_car_b[84])		
+      .a(f_alg_ex3_res_b[85]),		//i--
+      .b(f_mul_ex3_sum_b[85]),		//i--
+      .c(f_mul_ex3_car_b[85]),		//i--
+      .sum(ex3_sum_b[85]),		//o--
+      .car(ex3_car_b[84])		//o--
    );
-   
+
    tri_csa32 res_csa_86(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[86]),		
-      .b(f_mul_ex3_sum_b[86]),		
-      .c(f_mul_ex3_car_b[86]),		
-      .sum(ex3_sum_b[86]),		
-      .car(ex3_car_b[85])		
+      .a(f_alg_ex3_res_b[86]),		//i--
+      .b(f_mul_ex3_sum_b[86]),		//i--
+      .c(f_mul_ex3_car_b[86]),		//i--
+      .sum(ex3_sum_b[86]),		//o--
+      .car(ex3_car_b[85])		//o--
    );
-   
+
    tri_csa32 res_csa_87(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[87]),		
-      .b(f_mul_ex3_sum_b[87]),		
-      .c(f_mul_ex3_car_b[87]),		
-      .sum(ex3_sum_b[87]),		
-      .car(ex3_car_b[86])		
+      .a(f_alg_ex3_res_b[87]),		//i--
+      .b(f_mul_ex3_sum_b[87]),		//i--
+      .c(f_mul_ex3_car_b[87]),		//i--
+      .sum(ex3_sum_b[87]),		//o--
+      .car(ex3_car_b[86])		//o--
    );
-   
+
    tri_csa32 res_csa_88(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[88]),		
-      .b(f_mul_ex3_sum_b[88]),		
-      .c(f_mul_ex3_car_b[88]),		
-      .sum(ex3_sum_b[88]),		
-      .car(ex3_car_b[87])		
+      .a(f_alg_ex3_res_b[88]),		//i--
+      .b(f_mul_ex3_sum_b[88]),		//i--
+      .c(f_mul_ex3_car_b[88]),		//i--
+      .sum(ex3_sum_b[88]),		//o--
+      .car(ex3_car_b[87])		//o--
    );
-   
+
    tri_csa32 res_csa_89(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[89]),		
-      .b(f_mul_ex3_sum_b[89]),		
-      .c(f_mul_ex3_car_b[89]),		
-      .sum(ex3_sum_b[89]),		
-      .car(ex3_car_b[88])		
+      .a(f_alg_ex3_res_b[89]),		//i--
+      .b(f_mul_ex3_sum_b[89]),		//i--
+      .c(f_mul_ex3_car_b[89]),		//i--
+      .sum(ex3_sum_b[89]),		//o--
+      .car(ex3_car_b[88])		//o--
    );
-   
+
    tri_csa32 res_csa_90(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[90]),		
-      .b(f_mul_ex3_sum_b[90]),		
-      .c(f_mul_ex3_car_b[90]),		
-      .sum(ex3_sum_b[90]),		
-      .car(ex3_car_b[89])		
+      .a(f_alg_ex3_res_b[90]),		//i--
+      .b(f_mul_ex3_sum_b[90]),		//i--
+      .c(f_mul_ex3_car_b[90]),		//i--
+      .sum(ex3_sum_b[90]),		//o--
+      .car(ex3_car_b[89])		//o--
    );
-   
+
    tri_csa32 res_csa_91(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[91]),		
-      .b(f_mul_ex3_sum_b[91]),		
-      .c(f_mul_ex3_car_b[91]),		
-      .sum(ex3_sum_b[91]),		
-      .car(ex3_car_b[90])		
+      .a(f_alg_ex3_res_b[91]),		//i--
+      .b(f_mul_ex3_sum_b[91]),		//i--
+      .c(f_mul_ex3_car_b[91]),		//i--
+      .sum(ex3_sum_b[91]),		//o--
+      .car(ex3_car_b[90])		//o--
    );
-   
+
    tri_csa32 res_csa_92(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[92]),		
-      .b(f_mul_ex3_sum_b[92]),		
-      .c(f_mul_ex3_car_b[92]),		
-      .sum(ex3_sum_b[92]),		
-      .car(ex3_car_b[91])		
+      .a(f_alg_ex3_res_b[92]),		//i--
+      .b(f_mul_ex3_sum_b[92]),		//i--
+      .c(f_mul_ex3_car_b[92]),		//i--
+      .sum(ex3_sum_b[92]),		//o--
+      .car(ex3_car_b[91])		//o--
    );
-   
+
    tri_csa32 res_csa_93(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[93]),		
-      .b(f_mul_ex3_sum_b[93]),		
-      .c(f_mul_ex3_car_b[93]),		
-      .sum(ex3_sum_b[93]),		
-      .car(ex3_car_b[92])		
+      .a(f_alg_ex3_res_b[93]),		//i--
+      .b(f_mul_ex3_sum_b[93]),		//i--
+      .c(f_mul_ex3_car_b[93]),		//i--
+      .sum(ex3_sum_b[93]),		//o--
+      .car(ex3_car_b[92])		//o--
    );
-   
+
    tri_csa32 res_csa_94(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[94]),		
-      .b(f_mul_ex3_sum_b[94]),		
-      .c(f_mul_ex3_car_b[94]),		
-      .sum(ex3_sum_b[94]),		
-      .car(ex3_car_b[93])		
+      .a(f_alg_ex3_res_b[94]),		//i--
+      .b(f_mul_ex3_sum_b[94]),		//i--
+      .c(f_mul_ex3_car_b[94]),		//i--
+      .sum(ex3_sum_b[94]),		//o--
+      .car(ex3_car_b[93])		//o--
    );
-   
+
    tri_csa32 res_csa_95(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[95]),		
-      .b(f_mul_ex3_sum_b[95]),		
-      .c(f_mul_ex3_car_b[95]),		
-      .sum(ex3_sum_b[95]),		
-      .car(ex3_car_b[94])		
+      .a(f_alg_ex3_res_b[95]),		//i--
+      .b(f_mul_ex3_sum_b[95]),		//i--
+      .c(f_mul_ex3_car_b[95]),		//i--
+      .sum(ex3_sum_b[95]),		//o--
+      .car(ex3_car_b[94])		//o--
    );
-   
+
    tri_csa32 res_csa_96(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[96]),		
-      .b(f_mul_ex3_sum_b[96]),		
-      .c(f_mul_ex3_car_b[96]),		
-      .sum(ex3_sum_b[96]),		
-      .car(ex3_car_b[95])		
+      .a(f_alg_ex3_res_b[96]),		//i--
+      .b(f_mul_ex3_sum_b[96]),		//i--
+      .c(f_mul_ex3_car_b[96]),		//i--
+      .sum(ex3_sum_b[96]),		//o--
+      .car(ex3_car_b[95])		//o--
    );
-   
+
    tri_csa32 res_csa_97(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[97]),		
-      .b(f_mul_ex3_sum_b[97]),		
-      .c(f_mul_ex3_car_b[97]),		
-      .sum(ex3_sum_b[97]),		
-      .car(ex3_car_b[96])		
+      .a(f_alg_ex3_res_b[97]),		//i--
+      .b(f_mul_ex3_sum_b[97]),		//i--
+      .c(f_mul_ex3_car_b[97]),		//i--
+      .sum(ex3_sum_b[97]),		//o--
+      .car(ex3_car_b[96])		//o--
    );
-   
+
    tri_csa32 res_csa_98(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[98]),		
-      .b(f_mul_ex3_sum_b[98]),		
-      .c(f_mul_ex3_car_b[98]),		
-      .sum(ex3_sum_b[98]),		
-      .car(ex3_car_b[97])		
+      .a(f_alg_ex3_res_b[98]),		//i--
+      .b(f_mul_ex3_sum_b[98]),		//i--
+      .c(f_mul_ex3_car_b[98]),		//i--
+      .sum(ex3_sum_b[98]),		//o--
+      .car(ex3_car_b[97])		//o--
    );
-   
+
    tri_csa32 res_csa_99(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[99]),		
-      .b(f_mul_ex3_sum_b[99]),		
-      .c(f_mul_ex3_car_b[99]),		
-      .sum(ex3_sum_b[99]),		
-      .car(ex3_car_b[98])		
+      .a(f_alg_ex3_res_b[99]),		//i--
+      .b(f_mul_ex3_sum_b[99]),		//i--
+      .c(f_mul_ex3_car_b[99]),		//i--
+      .sum(ex3_sum_b[99]),		//o--
+      .car(ex3_car_b[98])		//o--
    );
-   
+
    tri_csa32 res_csa_100(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[100]),		
-      .b(f_mul_ex3_sum_b[100]),		
-      .c(f_mul_ex3_car_b[100]),		
-      .sum(ex3_sum_b[100]),		
-      .car(ex3_car_b[99])		
+      .a(f_alg_ex3_res_b[100]),		//i--
+      .b(f_mul_ex3_sum_b[100]),		//i--
+      .c(f_mul_ex3_car_b[100]),		//i--
+      .sum(ex3_sum_b[100]),		//o--
+      .car(ex3_car_b[99])		//o--
    );
-   
+
    tri_csa32 res_csa_101(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[101]),		
-      .b(f_mul_ex3_sum_b[101]),		
-      .c(f_mul_ex3_car_b[101]),		
-      .sum(ex3_sum_b[101]),		
-      .car(ex3_car_b[100])		
+      .a(f_alg_ex3_res_b[101]),		//i--
+      .b(f_mul_ex3_sum_b[101]),		//i--
+      .c(f_mul_ex3_car_b[101]),		//i--
+      .sum(ex3_sum_b[101]),		//o--
+      .car(ex3_car_b[100])		//o--
    );
-   
+
    tri_csa32 res_csa_102(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[102]),		
-      .b(f_mul_ex3_sum_b[102]),		
-      .c(f_mul_ex3_car_b[102]),		
-      .sum(ex3_sum_b[102]),		
-      .car(ex3_car_b[101])		
+      .a(f_alg_ex3_res_b[102]),		//i--
+      .b(f_mul_ex3_sum_b[102]),		//i--
+      .c(f_mul_ex3_car_b[102]),		//i--
+      .sum(ex3_sum_b[102]),		//o--
+      .car(ex3_car_b[101])		//o--
    );
-   
+
    tri_csa32 res_csa_103(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[103]),		
-      .b(f_mul_ex3_sum_b[103]),		
-      .c(f_mul_ex3_car_b[103]),		
-      .sum(ex3_sum_b[103]),		
-      .car(ex3_car_b[102])		
+      .a(f_alg_ex3_res_b[103]),		//i--
+      .b(f_mul_ex3_sum_b[103]),		//i--
+      .c(f_mul_ex3_car_b[103]),		//i--
+      .sum(ex3_sum_b[103]),		//o--
+      .car(ex3_car_b[102])		//o--
    );
-   
+
    tri_csa32 res_csa_104(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[104]),		
-      .b(f_mul_ex3_sum_b[104]),		
-      .c(f_mul_ex3_car_b[104]),		
-      .sum(ex3_sum_b[104]),		
-      .car(ex3_car_b[103])		
+      .a(f_alg_ex3_res_b[104]),		//i--
+      .b(f_mul_ex3_sum_b[104]),		//i--
+      .c(f_mul_ex3_car_b[104]),		//i--
+      .sum(ex3_sum_b[104]),		//o--
+      .car(ex3_car_b[103])		//o--
    );
-   
+
    tri_csa32 res_csa_105(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[105]),		
-      .b(f_mul_ex3_sum_b[105]),		
-      .c(f_mul_ex3_car_b[105]),		
-      .sum(ex3_sum_b[105]),		
-      .car(ex3_car_b[104])		
+      .a(f_alg_ex3_res_b[105]),		//i--
+      .b(f_mul_ex3_sum_b[105]),		//i--
+      .c(f_mul_ex3_car_b[105]),		//i--
+      .sum(ex3_sum_b[105]),		//o--
+      .car(ex3_car_b[104])		//o--
    );
-   
+
    tri_csa32 res_csa_106(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[106]),		
-      .b(f_mul_ex3_sum_b[106]),		
-      .c(f_mul_ex3_car_b[106]),		
-      .sum(ex3_sum_b[106]),		
-      .car(ex3_car_b[105])		
+      .a(f_alg_ex3_res_b[106]),		//i--
+      .b(f_mul_ex3_sum_b[106]),		//i--
+      .c(f_mul_ex3_car_b[106]),		//i--
+      .sum(ex3_sum_b[106]),		//o--
+      .car(ex3_car_b[105])		//o--
    );
-   
+
    tri_csa32 res_csa_107(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[107]),		
-      .b(f_mul_ex3_sum_b[107]),		
-      .c(f_mul_ex3_car_b[107]),		
-      .sum(ex3_sum_b[107]),		
-      .car(ex3_car_b[106])		
+      .a(f_alg_ex3_res_b[107]),		//i--
+      .b(f_mul_ex3_sum_b[107]),		//i--
+      .c(f_mul_ex3_car_b[107]),		//i--
+      .sum(ex3_sum_b[107]),		//o--
+      .car(ex3_car_b[106])		//o--
    );
-   
+
    tri_csa32 res_csa_108(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[108]),		
-      .b(f_mul_ex3_sum_b[108]),		
-      .c(f_mul_ex3_car_b[108]),		
-      .sum(ex3_sum_b[108]),		
-      .car(ex3_car_b[107])		
+      .a(f_alg_ex3_res_b[108]),		//i--
+      .b(f_mul_ex3_sum_b[108]),		//i--
+      .c(f_mul_ex3_car_b[108]),		//i--
+      .sum(ex3_sum_b[108]),		//o--
+      .car(ex3_car_b[107])		//o--
    );
-   
+
    tri_csa32 res_csa_109(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[109]),		
-      .b(f_mul_ex3_sum_b[109]),		
-      .c(f_mul_ex3_car_b[109]),		
-      .sum(ex3_sum_b[109]),		
-      .car(ex3_car_b[108])		
+      .a(f_alg_ex3_res_b[109]),		//i--
+      .b(f_mul_ex3_sum_b[109]),		//i--
+      .c(f_mul_ex3_car_b[109]),		//i--
+      .sum(ex3_sum_b[109]),		//o--
+      .car(ex3_car_b[108])		//o--
    );
-   
+
    tri_csa32 res_csa_110(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[110]),		
-      .b(f_mul_ex3_sum_b[110]),		
-      .c(f_mul_ex3_car_b[110]),		
-      .sum(ex3_sum_b[110]),		
-      .car(ex3_car_b[109])		
+      .a(f_alg_ex3_res_b[110]),		//i--
+      .b(f_mul_ex3_sum_b[110]),		//i--
+      .c(f_mul_ex3_car_b[110]),		//i--
+      .sum(ex3_sum_b[110]),		//o--
+      .car(ex3_car_b[109])		//o--
    );
-   
+
    tri_csa32 res_csa_111(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[111]),		
-      .b(f_mul_ex3_sum_b[111]),		
-      .c(f_mul_ex3_car_b[111]),		
-      .sum(ex3_sum_b[111]),		
-      .car(ex3_car_b[110])		
+      .a(f_alg_ex3_res_b[111]),		//i--
+      .b(f_mul_ex3_sum_b[111]),		//i--
+      .c(f_mul_ex3_car_b[111]),		//i--
+      .sum(ex3_sum_b[111]),		//o--
+      .car(ex3_car_b[110])		//o--
    );
-   
+
    tri_csa32 res_csa_112(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[112]),		
-      .b(f_mul_ex3_sum_b[112]),		
-      .c(f_mul_ex3_car_b[112]),		
-      .sum(ex3_sum_b[112]),		
-      .car(ex3_car_b[111])		
+      .a(f_alg_ex3_res_b[112]),		//i--
+      .b(f_mul_ex3_sum_b[112]),		//i--
+      .c(f_mul_ex3_car_b[112]),		//i--
+      .sum(ex3_sum_b[112]),		//o--
+      .car(ex3_car_b[111])		//o--
    );
-   
+
    tri_csa32 res_csa_113(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[113]),		
-      .b(f_mul_ex3_sum_b[113]),		
-      .c(f_mul_ex3_car_b[113]),		
-      .sum(ex3_sum_b[113]),		
-      .car(ex3_car_b[112])		
+      .a(f_alg_ex3_res_b[113]),		//i--
+      .b(f_mul_ex3_sum_b[113]),		//i--
+      .c(f_mul_ex3_car_b[113]),		//i--
+      .sum(ex3_sum_b[113]),		//o--
+      .car(ex3_car_b[112])		//o--
    );
-   
+
    tri_csa32 res_csa_114(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[114]),		
-      .b(f_mul_ex3_sum_b[114]),		
-      .c(f_mul_ex3_car_b[114]),		
-      .sum(ex3_sum_b[114]),		
-      .car(ex3_car_b[113])		
+      .a(f_alg_ex3_res_b[114]),		//i--
+      .b(f_mul_ex3_sum_b[114]),		//i--
+      .c(f_mul_ex3_car_b[114]),		//i--
+      .sum(ex3_sum_b[114]),		//o--
+      .car(ex3_car_b[113])		//o--
    );
-   
+
    tri_csa32 res_csa_115(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[115]),		
-      .b(f_mul_ex3_sum_b[115]),		
-      .c(f_mul_ex3_car_b[115]),		
-      .sum(ex3_sum_b[115]),		
-      .car(ex3_car_b[114])		
+      .a(f_alg_ex3_res_b[115]),		//i--
+      .b(f_mul_ex3_sum_b[115]),		//i--
+      .c(f_mul_ex3_car_b[115]),		//i--
+      .sum(ex3_sum_b[115]),		//o--
+      .car(ex3_car_b[114])		//o--
    );
-   
+
    tri_csa32 res_csa_116(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[116]),		
-      .b(f_mul_ex3_sum_b[116]),		
-      .c(f_mul_ex3_car_b[116]),		
-      .sum(ex3_sum_b[116]),		
-      .car(ex3_car_b[115])		
+      .a(f_alg_ex3_res_b[116]),		//i--
+      .b(f_mul_ex3_sum_b[116]),		//i--
+      .c(f_mul_ex3_car_b[116]),		//i--
+      .sum(ex3_sum_b[116]),		//o--
+      .car(ex3_car_b[115])		//o--
    );
-   
+
    tri_csa32 res_csa_117(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[117]),		
-      .b(f_mul_ex3_sum_b[117]),		
-      .c(f_mul_ex3_car_b[117]),		
-      .sum(ex3_sum_b[117]),		
-      .car(ex3_car_b[116])		
+      .a(f_alg_ex3_res_b[117]),		//i--
+      .b(f_mul_ex3_sum_b[117]),		//i--
+      .c(f_mul_ex3_car_b[117]),		//i--
+      .sum(ex3_sum_b[117]),		//o--
+      .car(ex3_car_b[116])		//o--
    );
-   
+
    tri_csa32 res_csa_118(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[118]),		
-      .b(f_mul_ex3_sum_b[118]),		
-      .c(f_mul_ex3_car_b[118]),		
-      .sum(ex3_sum_b[118]),		
-      .car(ex3_car_b[117])		
+      .a(f_alg_ex3_res_b[118]),		//i--
+      .b(f_mul_ex3_sum_b[118]),		//i--
+      .c(f_mul_ex3_car_b[118]),		//i--
+      .sum(ex3_sum_b[118]),		//o--
+      .car(ex3_car_b[117])		//o--
    );
-   
+
    tri_csa32 res_csa_119(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[119]),		
-      .b(f_mul_ex3_sum_b[119]),		
-      .c(f_mul_ex3_car_b[119]),		
-      .sum(ex3_sum_b[119]),		
-      .car(ex3_car_b[118])		
+      .a(f_alg_ex3_res_b[119]),		//i--
+      .b(f_mul_ex3_sum_b[119]),		//i--
+      .c(f_mul_ex3_car_b[119]),		//i--
+      .sum(ex3_sum_b[119]),		//o--
+      .car(ex3_car_b[118])		//o--
    );
-   
+
    tri_csa32 res_csa_120(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[120]),		
-      .b(f_mul_ex3_sum_b[120]),		
-      .c(f_mul_ex3_car_b[120]),		
-      .sum(ex3_sum_b[120]),		
-      .car(ex3_car_b[119])		
+      .a(f_alg_ex3_res_b[120]),		//i--
+      .b(f_mul_ex3_sum_b[120]),		//i--
+      .c(f_mul_ex3_car_b[120]),		//i--
+      .sum(ex3_sum_b[120]),		//o--
+      .car(ex3_car_b[119])		//o--
    );
-   
+
    tri_csa32 res_csa_121(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[121]),		
-      .b(f_mul_ex3_sum_b[121]),		
-      .c(f_mul_ex3_car_b[121]),		
-      .sum(ex3_sum_b[121]),		
-      .car(ex3_car_b[120])		
+      .a(f_alg_ex3_res_b[121]),		//i--
+      .b(f_mul_ex3_sum_b[121]),		//i--
+      .c(f_mul_ex3_car_b[121]),		//i--
+      .sum(ex3_sum_b[121]),		//o--
+      .car(ex3_car_b[120])		//o--
    );
-   
+
    tri_csa32 res_csa_122(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[122]),		
-      .b(f_mul_ex3_sum_b[122]),		
-      .c(f_mul_ex3_car_b[122]),		
-      .sum(ex3_sum_b[122]),		
-      .car(ex3_car_b[121])		
+      .a(f_alg_ex3_res_b[122]),		//i--
+      .b(f_mul_ex3_sum_b[122]),		//i--
+      .c(f_mul_ex3_car_b[122]),		//i--
+      .sum(ex3_sum_b[122]),		//o--
+      .car(ex3_car_b[121])		//o--
    );
-   
+
    tri_csa32 res_csa_123(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[123]),		
-      .b(f_mul_ex3_sum_b[123]),		
-      .c(f_mul_ex3_car_b[123]),		
-      .sum(ex3_sum_b[123]),		
-      .car(ex3_car_b[122])		
+      .a(f_alg_ex3_res_b[123]),		//i--
+      .b(f_mul_ex3_sum_b[123]),		//i--
+      .c(f_mul_ex3_car_b[123]),		//i--
+      .sum(ex3_sum_b[123]),		//o--
+      .car(ex3_car_b[122])		//o--
    );
-   
+
    tri_csa32 res_csa_124(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[124]),		
-      .b(f_mul_ex3_sum_b[124]),		
-      .c(f_mul_ex3_car_b[124]),		
-      .sum(ex3_sum_b[124]),		
-      .car(ex3_car_b[123])		
+      .a(f_alg_ex3_res_b[124]),		//i--
+      .b(f_mul_ex3_sum_b[124]),		//i--
+      .c(f_mul_ex3_car_b[124]),		//i--
+      .sum(ex3_sum_b[124]),		//o--
+      .car(ex3_car_b[123])		//o--
    );
-   
+
    tri_csa32 res_csa_125(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[125]),		
-      .b(f_mul_ex3_sum_b[125]),		
-      .c(f_mul_ex3_car_b[125]),		
-      .sum(ex3_sum_b[125]),		
-      .car(ex3_car_b[124])		
+      .a(f_alg_ex3_res_b[125]),		//i--
+      .b(f_mul_ex3_sum_b[125]),		//i--
+      .c(f_mul_ex3_car_b[125]),		//i--
+      .sum(ex3_sum_b[125]),		//o--
+      .car(ex3_car_b[124])		//o--
    );
-   
+
    tri_csa32 res_csa_126(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[126]),		
-      .b(f_mul_ex3_sum_b[126]),		
-      .c(f_mul_ex3_car_b[126]),		
-      .sum(ex3_sum_b[126]),		
-      .car(ex3_car_b[125])		
+      .a(f_alg_ex3_res_b[126]),		//i--
+      .b(f_mul_ex3_sum_b[126]),		//i--
+      .c(f_mul_ex3_car_b[126]),		//i--
+      .sum(ex3_sum_b[126]),		//o--
+      .car(ex3_car_b[125])		//o--
    );
-   
+
    tri_csa32 res_csa_127(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[127]),		
-      .b(f_mul_ex3_sum_b[127]),		
-      .c(f_mul_ex3_car_b[127]),		
-      .sum(ex3_sum_b[127]),		
-      .car(ex3_car_b[126])		
+      .a(f_alg_ex3_res_b[127]),		//i--
+      .b(f_mul_ex3_sum_b[127]),		//i--
+      .c(f_mul_ex3_car_b[127]),		//i--
+      .sum(ex3_sum_b[127]),		//o--
+      .car(ex3_car_b[126])		//o--
    );
-   
+
    tri_csa32 res_csa_128(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[128]),		
-      .b(f_mul_ex3_sum_b[128]),		
-      .c(f_mul_ex3_car_b[128]),		
-      .sum(ex3_sum_b[128]),		
-      .car(ex3_car_b[127])		
+      .a(f_alg_ex3_res_b[128]),		//i--
+      .b(f_mul_ex3_sum_b[128]),		//i--
+      .c(f_mul_ex3_car_b[128]),		//i--
+      .sum(ex3_sum_b[128]),		//o--
+      .car(ex3_car_b[127])		//o--
    );
-   
+
    tri_csa32 res_csa_129(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[129]),		
-      .b(f_mul_ex3_sum_b[129]),		
-      .c(f_mul_ex3_car_b[129]),		
-      .sum(ex3_sum_b[129]),		
-      .car(ex3_car_b[128])		
+      .a(f_alg_ex3_res_b[129]),		//i--
+      .b(f_mul_ex3_sum_b[129]),		//i--
+      .c(f_mul_ex3_car_b[129]),		//i--
+      .sum(ex3_sum_b[129]),		//o--
+      .car(ex3_car_b[128])		//o--
    );
-   
+
    tri_csa32 res_csa_130(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[130]),		
-      .b(f_mul_ex3_sum_b[130]),		
-      .c(f_mul_ex3_car_b[130]),		
-      .sum(ex3_sum_b[130]),		
-      .car(ex3_car_b[129])		
+      .a(f_alg_ex3_res_b[130]),		//i--
+      .b(f_mul_ex3_sum_b[130]),		//i--
+      .c(f_mul_ex3_car_b[130]),		//i--
+      .sum(ex3_sum_b[130]),		//o--
+      .car(ex3_car_b[129])		//o--
    );
-   
+
    tri_csa32 res_csa_131(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[131]),		
-      .b(f_mul_ex3_sum_b[131]),		
-      .c(f_mul_ex3_car_b[131]),		
-      .sum(ex3_sum_b[131]),		
-      .car(ex3_car_b[130])		
+      .a(f_alg_ex3_res_b[131]),		//i--
+      .b(f_mul_ex3_sum_b[131]),		//i--
+      .c(f_mul_ex3_car_b[131]),		//i--
+      .sum(ex3_sum_b[131]),		//o--
+      .car(ex3_car_b[130])		//o--
    );
-   
+
    tri_csa32 res_csa_132(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[132]),		
-      .b(f_mul_ex3_sum_b[132]),		
-      .c(f_mul_ex3_car_b[132]),		
-      .sum(ex3_sum_b[132]),		
-      .car(ex3_car_b[131])		
+      .a(f_alg_ex3_res_b[132]),		//i--
+      .b(f_mul_ex3_sum_b[132]),		//i--
+      .c(f_mul_ex3_car_b[132]),		//i--
+      .sum(ex3_sum_b[132]),		//o--
+      .car(ex3_car_b[131])		//o--
    );
-   
+
    tri_csa32 res_csa_133(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[133]),		
-      .b(f_mul_ex3_sum_b[133]),		
-      .c(f_mul_ex3_car_b[133]),		
-      .sum(ex3_sum_b[133]),		
-      .car(ex3_car_b[132])		
+      .a(f_alg_ex3_res_b[133]),		//i--
+      .b(f_mul_ex3_sum_b[133]),		//i--
+      .c(f_mul_ex3_car_b[133]),		//i--
+      .sum(ex3_sum_b[133]),		//o--
+      .car(ex3_car_b[132])		//o--
    );
-   
+
    tri_csa32 res_csa_134(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[134]),		
-      .b(f_mul_ex3_sum_b[134]),		
-      .c(f_mul_ex3_car_b[134]),		
-      .sum(ex3_sum_b[134]),		
-      .car(ex3_car_b[133])		
+      .a(f_alg_ex3_res_b[134]),		//i--
+      .b(f_mul_ex3_sum_b[134]),		//i--
+      .c(f_mul_ex3_car_b[134]),		//i--
+      .sum(ex3_sum_b[134]),		//o--
+      .car(ex3_car_b[133])		//o--
    );
-   
+
    tri_csa32 res_csa_135(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[135]),		
-      .b(f_mul_ex3_sum_b[135]),		
-      .c(f_mul_ex3_car_b[135]),		
-      .sum(ex3_sum_b[135]),		
-      .car(ex3_car_b[134])		
+      .a(f_alg_ex3_res_b[135]),		//i--
+      .b(f_mul_ex3_sum_b[135]),		//i--
+      .c(f_mul_ex3_car_b[135]),		//i--
+      .sum(ex3_sum_b[135]),		//o--
+      .car(ex3_car_b[134])		//o--
    );
-   
+
    tri_csa32 res_csa_136(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[136]),		
-      .b(f_mul_ex3_sum_b[136]),		
-      .c(f_mul_ex3_car_b[136]),		
-      .sum(ex3_sum_b[136]),		
-      .car(ex3_car_b[135])		
+      .a(f_alg_ex3_res_b[136]),		//i--
+      .b(f_mul_ex3_sum_b[136]),		//i--
+      .c(f_mul_ex3_car_b[136]),		//i--
+      .sum(ex3_sum_b[136]),		//o--
+      .car(ex3_car_b[135])		//o--
    );
-   
+
    tri_csa32 res_csa_137(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[137]),		
-      .b(f_mul_ex3_sum_b[137]),		
-      .c(f_mul_ex3_car_b[137]),		
-      .sum(ex3_sum_b[137]),		
-      .car(ex3_car_b[136])		
+      .a(f_alg_ex3_res_b[137]),		//i--
+      .b(f_mul_ex3_sum_b[137]),		//i--
+      .c(f_mul_ex3_car_b[137]),		//i--
+      .sum(ex3_sum_b[137]),		//o--
+      .car(ex3_car_b[136])		//o--
    );
-   
+
    tri_csa32 res_csa_138(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[138]),		
-      .b(f_mul_ex3_sum_b[138]),		
-      .c(f_mul_ex3_car_b[138]),		
-      .sum(ex3_sum_b[138]),		
-      .car(ex3_car_b[137])		
+      .a(f_alg_ex3_res_b[138]),		//i--
+      .b(f_mul_ex3_sum_b[138]),		//i--
+      .c(f_mul_ex3_car_b[138]),		//i--
+      .sum(ex3_sum_b[138]),		//o--
+      .car(ex3_car_b[137])		//o--
    );
-   
+
    tri_csa32 res_csa_139(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[139]),		
-      .b(f_mul_ex3_sum_b[139]),		
-      .c(f_mul_ex3_car_b[139]),		
-      .sum(ex3_sum_b[139]),		
-      .car(ex3_car_b[138])		
+      .a(f_alg_ex3_res_b[139]),		//i--
+      .b(f_mul_ex3_sum_b[139]),		//i--
+      .c(f_mul_ex3_car_b[139]),		//i--
+      .sum(ex3_sum_b[139]),		//o--
+      .car(ex3_car_b[138])		//o--
    );
-   
+
    tri_csa32 res_csa_140(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[140]),		
-      .b(f_mul_ex3_sum_b[140]),		
-      .c(f_mul_ex3_car_b[140]),		
-      .sum(ex3_sum_b[140]),		
-      .car(ex3_car_b[139])		
+      .a(f_alg_ex3_res_b[140]),		//i--
+      .b(f_mul_ex3_sum_b[140]),		//i--
+      .c(f_mul_ex3_car_b[140]),		//i--
+      .sum(ex3_sum_b[140]),		//o--
+      .car(ex3_car_b[139])		//o--
    );
-   
+
    tri_csa32 res_csa_141(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[141]),		
-      .b(f_mul_ex3_sum_b[141]),		
-      .c(f_mul_ex3_car_b[141]),		
-      .sum(ex3_sum_b[141]),		
-      .car(ex3_car_b[140])		
+      .a(f_alg_ex3_res_b[141]),		//i--
+      .b(f_mul_ex3_sum_b[141]),		//i--
+      .c(f_mul_ex3_car_b[141]),		//i--
+      .sum(ex3_sum_b[141]),		//o--
+      .car(ex3_car_b[140])		//o--
    );
-   
+
    tri_csa32 res_csa_142(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[142]),		
-      .b(f_mul_ex3_sum_b[142]),		
-      .c(f_mul_ex3_car_b[142]),		
-      .sum(ex3_sum_b[142]),		
-      .car(ex3_car_b[141])		
+      .a(f_alg_ex3_res_b[142]),		//i--
+      .b(f_mul_ex3_sum_b[142]),		//i--
+      .c(f_mul_ex3_car_b[142]),		//i--
+      .sum(ex3_sum_b[142]),		//o--
+      .car(ex3_car_b[141])		//o--
    );
-   
+
    tri_csa32 res_csa_143(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[143]),		
-      .b(f_mul_ex3_sum_b[143]),		
-      .c(f_mul_ex3_car_b[143]),		
-      .sum(ex3_sum_b[143]),		
-      .car(ex3_car_b[142])		
+      .a(f_alg_ex3_res_b[143]),		//i--
+      .b(f_mul_ex3_sum_b[143]),		//i--
+      .c(f_mul_ex3_car_b[143]),		//i--
+      .sum(ex3_sum_b[143]),		//o--
+      .car(ex3_car_b[142])		//o--
    );
-   
+
    tri_csa32 res_csa_144(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[144]),		
-      .b(f_mul_ex3_sum_b[144]),		
-      .c(f_mul_ex3_car_b[144]),		
-      .sum(ex3_sum_b[144]),		
-      .car(ex3_car_b[143])		
+      .a(f_alg_ex3_res_b[144]),		//i--
+      .b(f_mul_ex3_sum_b[144]),		//i--
+      .c(f_mul_ex3_car_b[144]),		//i--
+      .sum(ex3_sum_b[144]),		//o--
+      .car(ex3_car_b[143])		//o--
    );
-   
+
    tri_csa32 res_csa_145(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[145]),		
-      .b(f_mul_ex3_sum_b[145]),		
-      .c(f_mul_ex3_car_b[145]),		
-      .sum(ex3_sum_b[145]),		
-      .car(ex3_car_b[144])		
+      .a(f_alg_ex3_res_b[145]),		//i--
+      .b(f_mul_ex3_sum_b[145]),		//i--
+      .c(f_mul_ex3_car_b[145]),		//i--
+      .sum(ex3_sum_b[145]),		//o--
+      .car(ex3_car_b[144])		//o--
    );
-   
+
    tri_csa32 res_csa_146(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[146]),		
-      .b(f_mul_ex3_sum_b[146]),		
-      .c(f_mul_ex3_car_b[146]),		
-      .sum(ex3_sum_b[146]),		
-      .car(ex3_car_b[145])		
+      .a(f_alg_ex3_res_b[146]),		//i--
+      .b(f_mul_ex3_sum_b[146]),		//i--
+      .c(f_mul_ex3_car_b[146]),		//i--
+      .sum(ex3_sum_b[146]),		//o--
+      .car(ex3_car_b[145])		//o--
    );
-   
+
    tri_csa32 res_csa_147(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[147]),		
-      .b(f_mul_ex3_sum_b[147]),		
-      .c(f_mul_ex3_car_b[147]),		
-      .sum(ex3_sum_b[147]),		
-      .car(ex3_car_b[146])		
+      .a(f_alg_ex3_res_b[147]),		//i--
+      .b(f_mul_ex3_sum_b[147]),		//i--
+      .c(f_mul_ex3_car_b[147]),		//i--
+      .sum(ex3_sum_b[147]),		//o--
+      .car(ex3_car_b[146])		//o--
    );
-   
+
    tri_csa32 res_csa_148(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[148]),		
-      .b(f_mul_ex3_sum_b[148]),		
-      .c(f_mul_ex3_car_b[148]),		
-      .sum(ex3_sum_b[148]),		
-      .car(ex3_car_b[147])		
+      .a(f_alg_ex3_res_b[148]),		//i--
+      .b(f_mul_ex3_sum_b[148]),		//i--
+      .c(f_mul_ex3_car_b[148]),		//i--
+      .sum(ex3_sum_b[148]),		//o--
+      .car(ex3_car_b[147])		//o--
    );
-   
+
    tri_csa32 res_csa_149(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[149]),		
-      .b(f_mul_ex3_sum_b[149]),		
-      .c(f_mul_ex3_car_b[149]),		
-      .sum(ex3_sum_b[149]),		
-      .car(ex3_car_b[148])		
+      .a(f_alg_ex3_res_b[149]),		//i--
+      .b(f_mul_ex3_sum_b[149]),		//i--
+      .c(f_mul_ex3_car_b[149]),		//i--
+      .sum(ex3_sum_b[149]),		//o--
+      .car(ex3_car_b[148])		//o--
    );
-   
+
    tri_csa32 res_csa_150(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[150]),		
-      .b(f_mul_ex3_sum_b[150]),		
-      .c(f_mul_ex3_car_b[150]),		
-      .sum(ex3_sum_b[150]),		
-      .car(ex3_car_b[149])		
+      .a(f_alg_ex3_res_b[150]),		//i--
+      .b(f_mul_ex3_sum_b[150]),		//i--
+      .c(f_mul_ex3_car_b[150]),		//i--
+      .sum(ex3_sum_b[150]),		//o--
+      .car(ex3_car_b[149])		//o--
    );
-   
+
    tri_csa32 res_csa_151(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[151]),		
-      .b(f_mul_ex3_sum_b[151]),		
-      .c(f_mul_ex3_car_b[151]),		
-      .sum(ex3_sum_b[151]),		
-      .car(ex3_car_b[150])		
+      .a(f_alg_ex3_res_b[151]),		//i--
+      .b(f_mul_ex3_sum_b[151]),		//i--
+      .c(f_mul_ex3_car_b[151]),		//i--
+      .sum(ex3_sum_b[151]),		//o--
+      .car(ex3_car_b[150])		//o--
    );
-   
+
    tri_csa32 res_csa_152(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[152]),		
-      .b(f_mul_ex3_sum_b[152]),		
-      .c(f_mul_ex3_car_b[152]),		
-      .sum(ex3_sum_b[152]),		
-      .car(ex3_car_b[151])		
+      .a(f_alg_ex3_res_b[152]),		//i--
+      .b(f_mul_ex3_sum_b[152]),		//i--
+      .c(f_mul_ex3_car_b[152]),		//i--
+      .sum(ex3_sum_b[152]),		//o--
+      .car(ex3_car_b[151])		//o--
    );
-   
+
    tri_csa32 res_csa_153(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[153]),		
-      .b(f_mul_ex3_sum_b[153]),		
-      .c(f_mul_ex3_car_b[153]),		
-      .sum(ex3_sum_b[153]),		
-      .car(ex3_car_b[152])		
+      .a(f_alg_ex3_res_b[153]),		//i--
+      .b(f_mul_ex3_sum_b[153]),		//i--
+      .c(f_mul_ex3_car_b[153]),		//i--
+      .sum(ex3_sum_b[153]),		//o--
+      .car(ex3_car_b[152])		//o--
    );
-   
+
    tri_csa32 res_csa_154(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[154]),		
-      .b(f_mul_ex3_sum_b[154]),		
-      .c(f_mul_ex3_car_b[154]),		
-      .sum(ex3_sum_b[154]),		
-      .car(ex3_car_b[153])		
+      .a(f_alg_ex3_res_b[154]),		//i--
+      .b(f_mul_ex3_sum_b[154]),		//i--
+      .c(f_mul_ex3_car_b[154]),		//i--
+      .sum(ex3_sum_b[154]),		//o--
+      .car(ex3_car_b[153])		//o--
    );
-   
+
    tri_csa32 res_csa_155(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[155]),		
-      .b(f_mul_ex3_sum_b[155]),		
-      .c(f_mul_ex3_car_b[155]),		
-      .sum(ex3_sum_b[155]),		
-      .car(ex3_car_b[154])		
+      .a(f_alg_ex3_res_b[155]),		//i--
+      .b(f_mul_ex3_sum_b[155]),		//i--
+      .c(f_mul_ex3_car_b[155]),		//i--
+      .sum(ex3_sum_b[155]),		//o--
+      .car(ex3_car_b[154])		//o--
    );
-   
+
    tri_csa32 res_csa_156(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[156]),		
-      .b(f_mul_ex3_sum_b[156]),		
-      .c(f_mul_ex3_car_b[156]),		
-      .sum(ex3_sum_b[156]),		
-      .car(ex3_car_b[155])		
+      .a(f_alg_ex3_res_b[156]),		//i--
+      .b(f_mul_ex3_sum_b[156]),		//i--
+      .c(f_mul_ex3_car_b[156]),		//i--
+      .sum(ex3_sum_b[156]),		//o--
+      .car(ex3_car_b[155])		//o--
    );
-   
+
    tri_csa32 res_csa_157(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[157]),		
-      .b(f_mul_ex3_sum_b[157]),		
-      .c(f_mul_ex3_car_b[157]),		
-      .sum(ex3_sum_b[157]),		
-      .car(ex3_car_b[156])		
+      .a(f_alg_ex3_res_b[157]),		//i--
+      .b(f_mul_ex3_sum_b[157]),		//i--
+      .c(f_mul_ex3_car_b[157]),		//i--
+      .sum(ex3_sum_b[157]),		//o--
+      .car(ex3_car_b[156])		//o--
    );
-   
+
    tri_csa32 res_csa_158(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[158]),		
-      .b(f_mul_ex3_sum_b[158]),		
-      .c(f_mul_ex3_car_b[158]),		
-      .sum(ex3_sum_b[158]),		
-      .car(ex3_car_b[157])		
+      .a(f_alg_ex3_res_b[158]),		//i--
+      .b(f_mul_ex3_sum_b[158]),		//i--
+      .c(f_mul_ex3_car_b[158]),		//i--
+      .sum(ex3_sum_b[158]),		//o--
+      .car(ex3_car_b[157])		//o--
    );
-   
+
    tri_csa32 res_csa_159(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[159]),		
-      .b(f_mul_ex3_sum_b[159]),		
-      .c(f_mul_ex3_car_b[159]),		
-      .sum(ex3_sum_b[159]),		
-      .car(ex3_car_b[158])		
+      .a(f_alg_ex3_res_b[159]),		//i--
+      .b(f_mul_ex3_sum_b[159]),		//i--
+      .c(f_mul_ex3_car_b[159]),		//i--
+      .sum(ex3_sum_b[159]),		//o--
+      .car(ex3_car_b[158])		//o--
    );
-   
+
    tri_csa32 res_csa_160(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[160]),		
-      .b(f_mul_ex3_sum_b[160]),		
-      .c(f_mul_ex3_car_b[160]),		
-      .sum(ex3_sum_b[160]),		
-      .car(ex3_car_b[159])		
+      .a(f_alg_ex3_res_b[160]),		//i--
+      .b(f_mul_ex3_sum_b[160]),		//i--
+      .c(f_mul_ex3_car_b[160]),		//i--
+      .sum(ex3_sum_b[160]),		//o--
+      .car(ex3_car_b[159])		//o--
    );
-   
+
    tri_csa32 res_csa_161(
       .vd(vdd),
       .gd(gnd),
-      .a(f_alg_ex3_res_b[161]),		
-      .b(f_mul_ex3_sum_b[161]),		
-      .c(f_mul_ex3_car_b[161]),		
-      .sum(ex3_sum_b[161]),		
-      .car(ex3_car_b[160])		
+      .a(f_alg_ex3_res_b[161]),		//i--
+      .b(f_mul_ex3_sum_b[161]),		//i--
+      .c(f_mul_ex3_car_b[161]),		//i--
+      .sum(ex3_sum_b[161]),		//o--
+      .car(ex3_car_b[160])		//o--
    );
-   
+
    assign ex3_sum_b[53] = (~f_alg_ex3_res[53]);
    assign ex3_sum_b[162] = (~f_alg_ex3_res[162]);
-   assign ex3_car_b[161] = tiup;		
-   
-   
-   
-   tri_inv_nlats #(.WIDTH(53),  .NEEDS_SRESET(0)) ex4_000_lat( 
+   assign ex3_car_b[161] = tiup;
+
+   ////################################################################
+   ////# functional latches
+   ////################################################################
+
+   // 053:068  : 16sum, 16 carry
+   // 069:084
+   // 085:100
+   // 101:116
+   // 117:132
+   // 133:148
+   // 149:164
+
+   tri_inv_nlats #(.WIDTH(53),  .NEEDS_SRESET(0)) ex4_000_lat(
       .vd(vdd),
       .gd(gnd),
-      .lclk(sa3_ex4_lclk),		
+      .lclk(sa3_ex4_lclk),		//lclk.clk
       .d1clk(sa3_ex4_d1clk),
       .d2clk(sa3_ex4_d2clk),
       .scanin(ex4_000_si),
@@ -1214,11 +1244,11 @@ module fu_sa3(
       .d(ex3_alg_b[0:52]),
       .qb(ex4_sum[0:52])
    );
-   
-   tri_inv_nlats #(.WIDTH(110),  .NEEDS_SRESET(0)) ex4_053_sum_lat( 
+
+   tri_inv_nlats #(.WIDTH(110),  .NEEDS_SRESET(0)) ex4_053_sum_lat(
       .vd(vdd),
       .gd(gnd),
-      .lclk(sa3_ex4_lclk),		
+      .lclk(sa3_ex4_lclk),		//lclk.clk
       .d1clk(sa3_ex4_d1clk),
       .d2clk(sa3_ex4_d2clk),
       .scanin(ex4_053_sum_si),
@@ -1226,11 +1256,11 @@ module fu_sa3(
       .d(ex3_sum_b[53:162]),
       .qb(ex4_sum[53:162])
    );
-   
-   tri_inv_nlats #(.WIDTH(109),  .NEEDS_SRESET(0)) ex4_053_car_lat( 
+
+   tri_inv_nlats #(.WIDTH(109),  .NEEDS_SRESET(0)) ex4_053_car_lat(
       .vd(vdd),
       .gd(gnd),
-      .lclk(sa3_ex4_lclk),		
+      .lclk(sa3_ex4_lclk),		//lclk.clk
       .d1clk(sa3_ex4_d1clk),
       .d2clk(sa3_ex4_d2clk),
       .scanin(ex4_053_car_si),
@@ -1238,29 +1268,32 @@ module fu_sa3(
       .d(ex3_car_b[53:161]),
       .qb(ex4_car[53:161])
    );
-   
+
    assign ex4_sum_lza_b[0:162] = (~ex4_sum[0:162]);
    assign ex4_car_lza_b[53:161] = (~ex4_car[53:161]);
    assign ex4_sum_add_b[0:162] = (~ex4_sum[0:162]);
    assign ex4_car_add_b[53:161] = (~ex4_car[53:161]);
-   
+
    assign f_sa3_ex4_s_lza[0:162] = (~ex4_sum_lza_b[0:162]);
    assign f_sa3_ex4_c_lza[53:161] = (~ex4_car_lza_b[53:161]);
    assign f_sa3_ex4_s_add[0:162] = (~ex4_sum_add_b[0:162]);
    assign f_sa3_ex4_c_add[53:161] = (~ex4_car_add_b[53:161]);
-   
-   
-   
+
+   ////################################################################
+   ////# pervasive
+   ////################################################################
+
+
    tri_plat  thold_reg_0(
       .vd(vdd),
       .gd(gnd),
       .nclk(nclk),
       .flush(flush),
-      .din(thold_1),		
+      .din(thold_1),
       .q(thold_0)
    );
-   
-   
+
+
    tri_plat  sg_reg_0(
       .vd(vdd),
       .gd(gnd),
@@ -1269,8 +1302,8 @@ module fu_sa3(
       .din(sg_1),
       .q(sg_0)
    );
-   
-   
+
+
    tri_lcbor  lcbor_0(
       .clkoff_b(clkoff_b),
       .thold(thold_0),
@@ -1279,17 +1312,20 @@ module fu_sa3(
       .force_t(force_t),
       .thold_b(thold_0_b)
    );
-   
-   
+
+   ////################################################################
+   ////# act
+   ////################################################################
+
    assign ex2_act = (~ex2_act_b);
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(5), .NEEDS_SRESET(0)) act_lat(
-      .force_t(force_t),		
-      .d_mode(tiup),						       
-      .delay_lclkr(delay_lclkr[2]),		
-      .mpw1_b(mpw1_b[2]),		
-      .mpw2_b(mpw2_b[0]),		
+      .force_t(force_t),		// tidn,
+      .d_mode(tiup),
+      .delay_lclkr(delay_lclkr[2]),		// tidn,
+      .mpw1_b(mpw1_b[2]),		// tidn,
+      .mpw2_b(mpw2_b[0]),		// tidn,
       .vd(vdd),
       .gd(gnd),
       .nclk(nclk),
@@ -1298,40 +1334,45 @@ module fu_sa3(
       .sg(sg_0),
       .scout(act_so),
       .scin(act_si),
+      //-----------------
       .din({ act_spare_unused[0],
              act_spare_unused[1],
              ex2_act,
              act_spare_unused[2],
              act_spare_unused[3]}),
+      //-----------------
       .dout({act_spare_unused[0],
              act_spare_unused[1],
              ex3_act,
              act_spare_unused[2],
              act_spare_unused[3]})
    );
-   
-   
+
+
    tri_lcbnd  sa3_ex4_lcb(
-      .delay_lclkr(delay_lclkr[3]),		
-      .mpw1_b(mpw1_b[3]),		
-      .mpw2_b(mpw2_b[0]),		
-      .force_t(force_t),		
-      .nclk(nclk),		
-      .vd(vdd),		
-      .gd(gnd),		
-      .act(ex3_act),		
-      .sg(sg_0),		
-      .thold_b(thold_0_b),		
-      .d1clk(sa3_ex4_d1clk),		
-      .d2clk(sa3_ex4_d2clk),		
-      .lclk(sa3_ex4_lclk)		
+      .delay_lclkr(delay_lclkr[3]),		// tidn ,--in
+      .mpw1_b(mpw1_b[3]),		// tidn ,--in
+      .mpw2_b(mpw2_b[0]),		// tidn ,--in
+      .force_t(force_t),		// tidn ,--in
+      .nclk(nclk),		//in
+      .vd(vdd),		//inout
+      .gd(gnd),		//inout
+      .act(ex3_act),		//in
+      .sg(sg_0),		//in
+      .thold_b(thold_0_b),		//in
+      .d1clk(sa3_ex4_d1clk),		//out
+      .d2clk(sa3_ex4_d2clk),		//out
+      .lclk(sa3_ex4_lclk)		//out
    );
-   
-   
+
+   ////################################################################
+   ////# scan string
+   ////################################################################
+
    assign ex4_053_car_si[0:108] = {ex4_053_car_so[1:108], f_sa3_si};
    assign ex4_053_sum_si[0:109] = {ex4_053_sum_so[1:109], ex4_053_car_so[0]};
    assign ex4_000_si[0:52] = {ex4_000_so[1:52], ex4_053_sum_so[0]};
    assign act_si[0:4] = {act_so[1:4], ex4_000_so[0]};
    assign f_sa3_so = act_so[0];
-   
+
 endmodule

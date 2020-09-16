@@ -9,8 +9,9 @@
 
 `timescale 1 ns / 1 ns
 
-
-
+//  Description:  Saturating Incrementer
+//
+//*****************************************************************************
 
 module iuq_cpl_ctrl_inc(
    inc,
@@ -22,10 +23,9 @@ module iuq_cpl_ctrl_inc(
    parameter         WRAP = 40;
    input [0:1]       inc;
    input [0:SIZE-1]  i;
-   
+
    output [0:SIZE-1] o;
-   
-   
+
       wire [1:SIZE]     a;
       wire [1:SIZE]     b;
       wire [1:SIZE]     rslt;
@@ -34,26 +34,29 @@ module iuq_cpl_ctrl_inc(
       wire              inc_1;
       wire              inc_2;
       wire [0:1]        wrap_sel;
-      
-      
+
+      // Increment by 1 or 2.
+      // Go back to zero at WRAP
+      // Flip bit zero when a rollover occurs
+      // eg 0...39, 64..103
+
       assign a = {i[1:SIZE - 1], inc[1]};
       assign b = {1'b0, inc[0], inc[1]};
       assign rslt = a + b;
-      
+
       assign rollover = i[1:SIZE - 1] == WRAP;
       assign rollover_m1 = i[1:SIZE - 1] == WRAP - 1;
-      
+
       assign inc_1 = inc[0] ^ inc[1];
       assign inc_2 = inc[0] & inc[1];
-      
+
       assign wrap_sel[0] = (rollover & inc_1) | (rollover_m1 & inc_2);
       assign wrap_sel[1] = rollover & inc_2;
-      
+
       assign o[0] = i[0] ^ |(wrap_sel);
-      
-      assign o[1:SIZE - 1] = (wrap_sel[0:1] == 2'b10) ? 0 : 
-                             (wrap_sel[0:1] == 2'b01) ? 1 : 
+
+      assign o[1:SIZE - 1] = (wrap_sel[0:1] == 2'b10) ? 0 :
+                             (wrap_sel[0:1] == 2'b01) ? 1 :
                              rslt[1:SIZE - 1];
 
 endmodule
-      

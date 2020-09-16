@@ -7,12 +7,21 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  FXU Decode
+//
+//*****************************************************************************
 `include "tri_a2o.vh"
 module xu0_dec(
+   //-------------------------------------------------------------------
+   // Clocks & Power
+   //-------------------------------------------------------------------
    input [0:`NCLK_WIDTH-1]                         nclk,
    inout                                           vdd,
    inout                                           gnd,
-   
+
+   //-------------------------------------------------------------------
+   // Pervasive
+   //-------------------------------------------------------------------
    input                                           d_mode_dc,
    input [0:0]                                     delay_lclkr_dc,
    input [0:0]                                     mpw1_dc_b,
@@ -22,19 +31,25 @@ module xu0_dec(
    input                                           sg_0,
    input                                           scan_in,
    output                                          scan_out,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with CP
+   //-------------------------------------------------------------------
    input [0:`THREADS-1]                            cp_flush,
    input [0:`ITAG_SIZE_ENC-1]                      cp_next_itag_t0,
    `ifndef THREADS1
    input [0:`ITAG_SIZE_ENC-1]                      cp_next_itag_t1,
    `endif
-      
+
    output [0:`THREADS-1]                           dec_ex0_flush,
    output [0:`THREADS-1]                           dec_ex1_flush,
    output [0:`THREADS-1]                           dec_ex2_flush,
    output [0:`THREADS-1]                           dec_ex3_flush,
    output [0:`THREADS-1]                           dec_cp_flush,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with RV
+   //-------------------------------------------------------------------
    input [0:`THREADS-1]                            rv_xu0_vld,
    input                                           rv_xu0_ex0_ord,
    input [0:19]                                    rv_xu0_ex0_fusion,
@@ -58,11 +73,14 @@ module xu0_dec(
    input [0:`THREADS-1]                            rv_xu0_ex0_spec_flush,
    input [0:`THREADS-1]                            rv_xu0_ex1_spec_flush,
    input [0:`THREADS-1]                            rv_xu0_ex2_spec_flush,
-   
+
    output                                          xu0_rv_ord_complete,
    output [0:`ITAG_SIZE_ENC-1]                     xu0_rv_ord_itag,
    output                                          xu0_rv_hold_all,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with IU
+   //-------------------------------------------------------------------
    output [0:`THREADS-1]                           xu0_iu_execute_vld,
    output [0:`ITAG_SIZE_ENC-1]                     xu0_iu_itag,
    output [0:`THREADS-1]                           xu0_iu_mtiar,
@@ -72,16 +90,19 @@ module xu0_dec(
    output                                          xu0_iu_np1_flush,
    output                                          xu0_iu_flush2ucode,
    output [0:3]                                    xu0_iu_perf_events,
-   
+
    output [0:`THREADS-1]                           xu_iu_np1_async_flush,
    input [0:`THREADS-1]                            iu_xu_async_complete,
    input                                           iu_xu_credits_returned,
-   
+
    output                                          xu0_pc_ram_done,
-   
+
    output [0:`THREADS-1]                           xu_iu_pri_val,
    output [0:2]                                    xu_iu_pri,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with ALU
+   //-------------------------------------------------------------------
    output                                          dec_pop_ex1_act,
    output                                          dec_alu_ex1_act,
    output [0:31]                                   dec_alu_ex1_instr,
@@ -96,7 +117,10 @@ module xu0_dec(
    output                                          dec_alu_ex1_xer_ca_en,
    input                                           alu_dec_ex3_trap_val,
    output                                          xu0_xu1_ex3_act,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with MUL
+   //-------------------------------------------------------------------
    output                                          dec_mul_ex1_mul_recform,
    output [0:`THREADS-1]                           dec_mul_ex1_mul_val,
    output                                          dec_mul_ex1_mul_ord,
@@ -106,9 +130,12 @@ module xu0_dec(
    output                                          dec_mul_ex1_mul_imm,
    output                                          dec_mul_ex1_xer_ov_update,
    input                                           mul_dec_ex6_ord_done,
-   
+
    output [0:`THREADS-1]                           dec_ord_flush,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with DIV
+   //-------------------------------------------------------------------
    output [0:7]                                    dec_div_ex1_div_ctr,
    output                                          dec_div_ex1_div_act,
    output [0:`THREADS-1]                           dec_div_ex1_div_val,
@@ -118,28 +145,37 @@ module xu0_dec(
    output                                          dec_div_ex1_div_recform,
    output                                          dec_div_ex1_xer_ov_update,
    input                                           div_dec_ex4_done,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with SPR
+   //-------------------------------------------------------------------
    input                                           spr_xu_ord_read_done,
    input                                           spr_xu_ord_write_done,
    input                                           spr_dec_ex4_spr_hypv,
    input                                           spr_dec_ex4_spr_illeg,
    input                                           spr_dec_ex4_spr_priv,
    input                                           spr_dec_ex4_np1_flush,
-   
+
    input                                           xu_slowspr_val_in,
    input                                           xu_slowspr_rw_in,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with BCD
+   //-------------------------------------------------------------------
    output                                          dec_bcd_ex1_val,
    output                                          dec_bcd_ex1_is_addg6s,
    output                                          dec_bcd_ex1_is_cdtbcd,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with BYP
+   //-------------------------------------------------------------------
    input                                           byp_dec_ex2_abort,
    output                                          dec_byp_ex0_act,
    output [64-`GPR_WIDTH:63]                       dec_byp_ex1_imm,
    output [24:25]                                  dec_byp_ex1_instr,
    output                                          dec_byp_ex0_rs2_sel_imm,
    output                                          dec_byp_ex0_rs1_sel_zero,
-   
+
    output                                          dec_byp_ex1_is_mflr,
    output                                          dec_byp_ex1_is_mfxer,
    output                                          dec_byp_ex1_is_mtxer,
@@ -151,7 +187,7 @@ module xu0_dec(
    output [2:3]                                    dec_byp_ex1_xer_sel,
    output                                          dec_byp_ex1_rs_capt,
    output                                          dec_byp_ex1_ra_capt,
-   
+
    output                                          dec_byp_ex3_mtiar,
    output                                          dec_byp_ex5_ord_sel,
    output                                          dec_byp_ex4_pop_done,
@@ -159,30 +195,39 @@ module xu0_dec(
    output                                          dec_byp_ex3_prm_done,
    output                                          dec_byp_ex3_dlm_done,
    output [25:25]                                  dec_cnt_ex2_instr,
-   
+
    output                                          dec_byp_ex4_hpriv,
    output [0:31]                                   dec_byp_ex4_instr,
-   
+
    output                                          dec_byp_ex3_is_mtspr,
    output                                          dec_br_ex0_act,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with BR
+   //-------------------------------------------------------------------
    input [0:`THREADS-1]                            br_dec_ex3_execute_vld,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with Regfiles
+   //-------------------------------------------------------------------
    output                                          xu0_gpr_ex6_we,
    output [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1]    xu0_gpr_ex6_wa,
-   
+
    output                                          xu0_xer_ex6_we,
    output [0:`XER_POOL_ENC+`THREADS_POOL_ENC-1]    xu0_xer_ex6_wa,
-   
+
    output                                          xu0_cr_ex6_we,
    output [0:`CR_POOL_ENC+`THREADS_POOL_ENC-1]     xu0_cr_ex6_wa,
-   
+
    output                                          xu0_ctr_ex4_we,
    output [0:`CTR_POOL_ENC+`THREADS_POOL_ENC-1]    xu0_ctr_ex4_wa,
-   
+
    output                                          xu0_lr_ex4_we,
    output [0:`BR_POOL_ENC+`THREADS_POOL_ENC-1]     xu0_lr_ex4_wa,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with MMU / ERATs
+   //-------------------------------------------------------------------
    output                                          xu_iu_ord_ready,
    output                                          xu_iu_act,
    output [0:`THREADS-1]                           xu_iu_val,
@@ -197,7 +242,7 @@ module xu0_dec(
    input                                           iu_xu_ord_write_done,
    input                                           iu_xu_ord_n_flush_req,
    input                                           iu_xu_ord_par_err,
-   
+
    output                                          xu_lq_ord_ready,
    output                                          xu_lq_act,
    output [0:`THREADS-1]                           xu_lq_val,
@@ -212,8 +257,8 @@ module xu0_dec(
    input                                           lq_xu_ord_write_done,
    input                                           lq_xu_ord_n_flush_req,
    input                                           lq_xu_ord_par_err,
-   
-   
+
+
    output                                          xu_mm_ord_ready,
    output                                          xu_mm_act,
    output [0:`THREADS-1]                           xu_mm_val,
@@ -234,7 +279,7 @@ module xu0_dec(
    input                                           mm_xu_tlb_inelig,
    input                                           mm_xu_pt_fault,
    input                                           mm_xu_hv_priv,
-   input                                           mm_xu_illeg_instr,   
+   input                                           mm_xu_illeg_instr,
    input                                           mm_xu_tlb_multihit,
    input                                           mm_xu_tlb_par_err,
    input                                           mm_xu_lru_par_err,
@@ -245,12 +290,15 @@ module xu0_dec(
    input [0:1]                                     mm_xu_mmucr0_tlbsel_t1,
    `endif
    input                                           mm_xu_tlbwe_binv,
-   
+
+   //-------------------------------------------------------------------
+   // SPRs
+   //-------------------------------------------------------------------
    output                                          xu_spr_ord_flush,
    output                                          xu_spr_ord_ready,
    output                                          ex1_spr_msr_cm,
    output                                          ex4_spr_msr_cm,
-   
+
    input [0:`THREADS-1]                            spr_msr_cm,
    input [0:`THREADS-1]                            spr_msr_gs,
    input [0:`THREADS-1]                            spr_msr_pr,
@@ -261,254 +309,256 @@ module xu0_dec(
    input                                           spr_ccr2_en_pc,
    input [0:31]                                    spr_xesr1,
    input [0:`THREADS-1]                            perf_event_en,
-   
+
    input [0:`THREADS-1]                            pc_xu_ram_active
 );
 
    localparam                                      tiup = 1'b1;
-   localparam                                      tidn = 1'b0;   
+   localparam                                      tidn = 1'b0;
    localparam                    XER_LEFT          = `GPR_POOL_ENC-`XER_POOL_ENC;
    localparam                    CR_LEFT           = `GPR_POOL_ENC-`CR_POOL_ENC;
-   
-	wire [1:5]                    exx_act_q,                 exx_act_d                  ; 
-	wire                          ex1_s2_v_q                                            ; 
-	wire [0:2]                    ex1_s2_t_q                                            ; 
-	wire                          ex1_s3_v_q                                            ; 
-	wire [0:2]                    ex1_s3_t_q                                            ; 
-	wire [0:2]                    ex1_t1_t_q                                            ; 
-	wire [0:2]                    ex1_t2_t_q                                            ; 
-	wire [0:2]                    ex1_t3_t_q                                            ; 
-	wire                          ex1_t1_v_q                                            ; 
-	wire                          ex1_t2_v_q                                            ; 
-	wire                          ex1_t3_v_q                                            ; 
-	wire [0:`GPR_POOL_ENC-1]      ex1_t1_p_q                                            ; 
-	wire [0:`XER_POOL_ENC-1]      ex1_t2_p_q                                            ; 
-	wire [0:`CR_POOL_ENC-1]       ex1_t3_p_q                                            ; 
-	wire [0:31]                   ex1_instr_q,               ex0_instr                  ; 
-	wire [0:2]                    ex1_ucode_q                                           ; 
-	wire [0:`ITAG_SIZE_ENC-1]     ex1_itag_q                                            ; 
-	wire [0:1]                    ex2_add_ci_sel_q,          ex1_add_ci_sel             ; 
-	wire [0:`ITAG_SIZE_ENC-1]     ex2_itag_q                                            ; 
-	wire [0:`GPR_POOL_ENC-1]      ex2_t1_p_q                                            ; 
-	wire [0:`XER_POOL_ENC-1]      ex2_t2_p_q                                            ; 
-	wire [0:`CR_POOL_ENC-1]       ex2_t3_p_q                                            ; 
-	wire [0:`GPR_POOL_ENC-1]      ex3_t1_p_q                                            ; 
-	wire [0:`XER_POOL_ENC-1]      ex3_t2_p_q                                            ; 
-	wire [0:`CR_POOL_ENC-1]       ex3_t3_p_q                                            ; 
-	wire [0:`ITAG_SIZE_ENC-1]     ex3_itag_q                                            ; 
-	wire [0:`ITAG_SIZE_ENC-1]     ex4_itag_q,                ex3_itag                   ; 
-	wire [0:`THREADS-1]           cp_flush_q                                            ; 
-	wire [0:`THREADS-1]           ex0_val_q,                 rv2_val                    ; 
-	wire [0:`THREADS-1]           ex1_val_q,                 ex0_val                    ; 
-	wire [0:`THREADS-1]           ex2_val_q,                 ex1_val                    ; 
-	wire [0:`THREADS-1]           ex3_val_q,                 ex2_val                    ; 
-	wire [0:`THREADS-1]           ex4_val_q,                 ex3_val                    ; 
-	wire [0:`THREADS-1]           ex5_val_q,                 ex4_val                    ; 
-	wire [0:`THREADS-1]           ex6_val_q,                 ex5_val                    ; 
-	wire [0:`THREADS-1]           ex1_ord_val_q,             ex0_ord_val                ; 
-	wire [0:`THREADS-1]           ex2_ord_val_q,             ex1_ord_val                ; 
-	wire [0:`THREADS-1]           ex3_ord_val_q,             ex2_ord_val                ; 
-	wire [0:`THREADS-1]           ex4_ord_val_q,             ex3_ord_val                ; 
-	wire [0:`THREADS-1]           spr_msr_cm_q                                          ; 
-	wire [0:`THREADS-1]           spr_msr_gs_q                                          ; 
-	wire [0:`THREADS-1]           spr_msr_pr_q                                          ; 
-	wire [0:`THREADS-1]           spr_epcr_dgtmi_q                                      ; 
-	wire                          spr_ccr2_notlb_q                                      ; 
-	wire [0:`THREADS-1]           ex4_br_val_q                                          ; 
-	wire                          ex1_ord_q,                 ex0_ord                    ; 
-	wire                          ex2_ord_q                                             ; 
-	wire                          ex3_ord_q                                             ; 
-	wire                          ex2_t1_v_q                                            ; 
-	wire                          ex2_t2_v_q                                            ; 
-   wire                          ex2_t3_v_q                                            ; 
-	wire [0:2]                    ex2_t1_t_q                                            ; 
-	wire [0:2]                    ex2_t2_t_q                                            ; 
-	wire [0:2]                    ex2_t3_t_q                                            ; 
-	wire                          ex3_t1_v_q                                            ; 
-	wire                          ex3_t2_v_q                                            ; 
-	wire                          ex3_t3_v_q                                            ; 
-	wire [0:2]                    ex3_t1_t_q                                            ; 
-	wire [0:2]                    ex3_t2_t_q                                            ; 
-	wire [0:2]                    ex3_t3_t_q                                            ; 
-	wire                          ex4_t1_v_q                                            ; 
-	wire                          ex4_t2_v_q                                            ; 
-	wire                          ex4_t3_v_q                                            ; 
-	wire [0:2]                    ex4_t1_t_q                                            ; 
-	wire [0:2]                    ex4_t2_t_q                                            ; 
-	wire [0:2]                    ex4_t3_t_q                                            ; 
-	wire [0:`GPR_POOL_ENC-1]         ex4_t1_p_q                                         ; 
-	wire [XER_LEFT:`GPR_POOL_ENC-1]  ex4_t2_p_q                                         ; 
-	wire [CR_LEFT:`GPR_POOL_ENC-1]   ex4_t3_p_q                                         ; 
-	wire                          ex5_t1_v_q                                            ; 
-	wire                          ex5_t2_v_q                                            ; 
-	wire                          ex5_t3_v_q                                            ; 
-	wire [0:2]                    ex5_t1_t_q                                            ; 
-	wire [0:2]                    ex5_t2_t_q                                            ; 
-	wire [0:2]                    ex5_t3_t_q                                            ; 
-	wire [0:`GPR_POOL_ENC-1]         ex5_t1_p_q                                         ; 
-	wire [XER_LEFT:`GPR_POOL_ENC-1]  ex5_t2_p_q                                         ; 
-	wire [CR_LEFT:`GPR_POOL_ENC-1]   ex5_t3_p_q                                         ; 
-	wire                          ex5_ord_t1_v_q                                        ; 
-	wire                          ex5_ord_t2_v_q                                        ; 
-	wire                          ex5_ord_t3_v_q                                        ; 
-	wire [0:2]                    ex5_ord_t1_t_q                                        ; 
-	wire [0:2]                    ex5_ord_t2_t_q                                        ; 
-	wire [0:2]                    ex5_ord_t3_t_q                                        ; 
-	wire [0:`GPR_POOL_ENC-1]         ex5_ord_t1_p_q                                     ; 
-	wire [XER_LEFT:`GPR_POOL_ENC-1]  ex5_ord_t2_p_q                                     ; 
-	wire [CR_LEFT:`GPR_POOL_ENC-1]   ex5_ord_t3_p_q                                     ; 
-	wire                          ex6_gpr_we_q,              ex5_gpr_we                 ; 
-	wire                          ex6_xer_we_q,              ex5_xer_we                 ; 
-	wire                          ex6_cr_we_q,               ex5_cr_we                  ; 
-	wire [CR_LEFT:`GPR_POOL_ENC-1]   ex6_cr_wa_q,            ex5_cr_wa                  ; 
-	wire                          ex4_ctr_we_q,              ex3_ctr_we                 ; 
-	wire                          ex4_lr_we_q,               ex3_lr_we                  ; 
-	wire [0:`GPR_POOL_ENC-1]         ex6_t1_p_q,             ex5_t1_p                   ; 
-	wire [XER_LEFT:`GPR_POOL_ENC-1]  ex6_t2_p_q,             ex5_t2_p                   ; 
-	wire                          spr_ccr2_en_attn_q                                    ; 
-	wire                          spr_ccr4_en_dnh_q                                     ; 
-	wire                          spr_ccr2_en_pc_q                                      ; 
-	wire [0:`THREADS-1]           ex2_ord_tid_q                                         ; 
-	wire [0:`ITAG_SIZE_ENC-1]     ex2_ord_itag_q                                        ; 
-	wire                          ex2_ord_is_eratre_q                                   ; 
-	wire                          ex2_ord_is_eratwe_q                                   ; 
-	wire                          ex2_ord_is_eratsx_q                                   ; 
-	wire                          ex2_ord_is_eratilx_q                                  ; 
-	wire                          ex2_ord_is_erativax_q                                 ; 
-	wire                          ex2_ord_is_tlbre_q                                    ; 
-	wire                          ex2_ord_is_tlbwe_q                                    ; 
-	wire                          ex2_ord_is_tlbsx_q                                    ; 
-	wire                          ex2_ord_is_tlbsxr_q                                   ; 
-	wire                          ex2_ord_is_tlbsrx_q                                   ; 
-	wire                          ex2_ord_is_tlbivax_q                                  ; 
-	wire                          ex2_ord_is_tlbilx_q                                   ; 
-	wire [19:20]                  ex2_ord_tlb_ws_q                                      ; 
-	wire [8:10]                   ex2_ord_tlb_t_q                                       ; 
-	wire                          ex2_priv_excep_q,          ex1_priv_excep             ; 
-	wire                          ex2_hyp_priv_excep_q,      ex1_hyp_priv_excep         ; 
-	wire                          ex2_illegal_op_q,          ex1_illegal_op             ; 
-	wire                          ex2_flush2ucode_q,         ex1_flush2ucode            ; 
-	wire                          ex2_tlb_illeg_q,           ex1_tlb_illeg              ; 
-	wire                          ex3_priv_excep_q                                      ; 
-	wire                          ex3_hyp_priv_excep_q                                  ; 
-	wire                          ex3_illegal_op_q                                      ; 
-	wire                          ex3_flush2ucode_q,         ex2_flush2ucode            ; 
-	wire                          ex4_flush2ucode_q,         ex3_flush2ucode            ; 
-	wire                          ex1_ord_complete_q,        ex0_ord_complete           ; 
-	wire                          ex2_ord_complete_q,        ex1_ord_complete           ; 
-	wire                          ex3_ord_complete_q,        ex2_ord_complete           ; 
-	wire                          ex4_ord_complete_q,        ex3_ord_complete           ; 
-	wire                          ex5_ord_complete_q,        ex4_ord_complete           ; 
-	wire                          ex6_ord_complete_q,        ex5_ord_complete           ; 
-	wire [0:2]                    xu_iu_pri_q,               xu_iu_pri_d                ; 
-	wire [0:`THREADS-1]           xu_iu_pri_val_q,           xu_iu_pri_val_d            ; 
-	wire                          xu_iu_hold_val_q,          xu_iu_hold_val_d           ; 
-	wire                          xu_lq_hold_val_q,          xu_lq_hold_val_d           ; 
-	wire                          xu_mm_hold_val_q,          xu_mm_hold_val_d           ; 
-	wire                          xu_iu_val_q,               xu_iu_val_d                ; 
-	wire                          xu_lq_val_q,               xu_lq_val_d                ; 
-	wire                          xu_mm_val_q,               xu_mm_val_d                ; 
-	wire [0:`THREADS-1]           xu_iu_val_2_q,             xu_iu_val_2_d              ; 
-	wire [0:`THREADS-1]           xu_lq_val_2_q,             xu_lq_val_2_d              ; 
-	wire [0:`THREADS-1]           xu_mm_val_2_q,             xu_mm_val_2_d              ; 
-	wire                          ord_tlb_miss_q,            ord_tlb_miss_d             ; 
-	wire                          ord_lrat_miss_q,           ord_lrat_miss_d            ; 
-	wire                          ord_tlb_inelig_q,          ord_tlb_inelig_d           ; 
-	wire                          ord_pt_fault_q,            ord_pt_fault_d             ; 
-	wire                          ord_hv_priv_q,             ord_hv_priv_d              ; 
-	wire                          ord_illeg_mmu_q,           ord_illeg_mmu_d            ; 
-	wire                          ord_lq_flush_q,            ord_lq_flush_d             ; 
-	wire                          ord_spr_priv_q,            ord_spr_priv_d             ; 
-	wire                          ord_spr_illegal_spr_q,     ord_spr_illegal_spr_d      ; 
-	wire                          ord_hyp_priv_spr_q,        ord_hyp_priv_spr_d         ; 
-	wire                          ord_ex3_np1_flush_q,       ord_ex3_np1_flush_d        ; 
-	wire                          ord_ill_tlb_q,             ord_ill_tlb_d              ; 
-	wire                          ord_priv_q,                ord_priv_d                 ; 
-	wire                          ord_hyp_priv_q,            ord_hyp_priv_d             ; 
-	wire                          ord_hold_lq_q,             ord_hold_lq_d              ; 
-	wire                          ord_outstanding_q,         ord_outstanding_d          ; 
-	wire                          ord_flushed_q,             ord_flushed_d              ; 
-	wire                          ord_done_q,                ord_done_d                 ; 
-	wire                          ord_mmu_req_sent_q,        ord_mmu_req_sent_d         ; 
-	wire                          ord_core_block_q,          ord_core_block_d           ; 
-   wire                          ord_ierat_par_err_q,       ord_ierat_par_err_d        ; 
-   wire                          ord_derat_par_err_q,       ord_derat_par_err_d        ; 
-   wire                          ord_tlb_multihit_q,        ord_tlb_multihit_d         ; 
-   wire                          ord_tlb_par_err_q,         ord_tlb_par_err_d          ; 
-   wire                          ord_tlb_lru_par_err_q,     ord_tlb_lru_par_err_d      ; 
-   wire                          ord_local_snoop_reject_q,  ord_local_snoop_reject_d   ; 
-	wire [0:1]                    mmu_ord_n_flush_req_q,     mmu_ord_n_flush_req_d      ; 
-	wire [0:1]                    iu_ord_n_flush_req_q,      iu_ord_n_flush_req_d       ; 
-	wire [0:1]                    lq_ord_n_flush_req_q,      lq_ord_n_flush_req_d       ; 
-	wire                          ex4_np1_flush_q,           ex3_np1_flush              ; 
-	wire                          ex4_n_flush_q,             ex3_n_flush                ; 
-	wire                          ex4_excep_val_q,           ex3_excep_val              ; 
-	wire [0:4]                    ex4_excep_vector_q,        ex3_excep_vector           ; 
-	wire [0:2]                    ex2_ucode_q                                           ; 
-	wire                          ex2_is_ehpriv_q,           ex1_is_ehpriv              ; 
-	wire                          ex3_is_ehpriv_q                                       ; 
-	wire                          ex2_is_mtiar_q                                        ; 
-	wire                          ex3_mtiar_sel_q,           ex2_mtiar_sel              ; 
-	wire                          ord_mtiar_q,               ord_mtiar_d                ; 
-	wire [0:31]                   ord_instr_q,               ord_instr_d                ; 
-	wire                          ex2_is_erativax_q                                     ; 
-	wire [0:`THREADS-1]           xu0_iu_mtiar_q,            xu0_iu_mtiar_d             ; 
-	wire                          ord_is_cp_next_q,          ord_is_cp_next             ; 
-	wire                          ord_flush_1_q                                         ; 
-	wire                          ord_flush_2_q                                         ; 
-	wire [0:1]  spr_mmucr0_tlbsel_q[0:`THREADS-1],  spr_mmucr0_tlbsel_d[0:`THREADS-1]   ; 
-	wire                          mm_xu_tlbwe_binv_q                                    ; 
-	wire [0:31]                   ex2_instr_q                                           ; 
-	wire [0:31]                   ex3_instr_q                                           ; 
-	wire [0:31]                   ex4_instr_q                                           ; 
-	wire                          ex4_hpriv_q,               ex3_hpriv                  ; 
-	wire                          ex2_any_popcnt_q,          ex1_any_popcnt             ; 
-	wire                          ex3_any_popcnt_q                                      ; 
-	wire                          ex4_any_popcnt_q                                      ; 
-	wire                          ex2_any_cntlz_q,           ex1_any_cntlz              ; 
-	wire                          ex3_any_cntlz_q                                       ; 
-	wire                          ex2_is_bpermd_q                                       ; 
-	wire                          ex3_is_bpermd_q                                       ; 
-	wire                          ex2_is_dlmzb_q                                        ; 
-	wire                          ex3_is_dlmzb_q                                        ; 
-	wire                          ex2_mul_multicyc_q,        ex1_mul_multicyc           ; 
-	wire                          ex3_mul_multicyc_q                                    ; 
-	wire                          ex2_mul_2c_q,              ex1_mul_2c                 ; 
-	wire                          ex2_mul_3c_q,              ex1_mul_3c                 ; 
-	wire                          ex2_mul_4c_q,              ex1_mul_4c                 ; 
-	wire                          ex3_mul_2c_q                                          ; 
-	wire                          ex3_mul_3c_q                                          ; 
-	wire                          ex3_mul_4c_q                                          ; 
-	wire                          ex4_mul_2c_q,              ex4_mul_2c_d               ; 
-	wire                          ex4_mul_3c_q,              ex4_mul_3c_d               ; 
-	wire                          ex4_mul_4c_q,              ex4_mul_4c_d               ; 
-	wire                          ex5_mul_3c_q,              ex5_mul_3c_d               ; 
-	wire                          ex5_mul_4c_q,              ex5_mul_4c_d               ; 
-	wire                          ex6_mul_4c_q,              ex6_mul_4c_d               ; 
-	wire [0:`THREADS-1]           exx_mul_tid_q,             exx_mul_tid_d              ; 
-	wire                          ex2_is_mtspr_q                                        ; 
-	wire                          ex3_is_mtspr_q                                        ; 
-	wire                          ex6_ram_active_q,          ex6_ram_active_d           ; 
-	wire [0:`THREADS-1]           ex6_tid_q,                 ex6_tid_d                  ; 
-	wire [0:`THREADS-1]           ex1_spec_flush_q                                      ; 
-	wire [0:`THREADS-1]           ex2_spec_flush_q                                      ; 
-	wire [0:`THREADS-1]           ex3_spec_flush_q                                      ; 
-	wire [0:`THREADS-1]           ord_async_flush_before_q,  ord_async_flush_before_d   ; 
-	wire [0:`THREADS-1]           ord_async_flush_after_q,   ord_async_flush_after_d    ; 
-    wire                          ord_async_credit_wait_q,   ord_async_credit_wait_d    ; 
-	wire [0:`THREADS-1]           async_flush_req_q,         async_flush_req_d          ; 
-	wire [0:`THREADS-1]           async_flush_req_2_q                                   ; 
-    wire [0:`THREADS-1]           iu_async_complete_q                                   ; 
-    wire                          iu_xu_credits_returned_q                              ; 
-    wire                          ex2_any_mfspr_q,           ex1_any_mfspr              ; 
-	wire                          ex3_any_mfspr_q,           ex2_any_mfspr              ; 
-	wire                          ex2_any_mtspr_q,           ex1_any_mtspr              ; 
-	wire                          ex3_any_mtspr_q,           ex2_any_mtspr              ; 
-   wire [0:3]                    ex4_perf_event_q                                      ; 
-   wire                          ord_any_mfspr_q                                       ; 
-   wire                          ord_any_mtspr_q                                       ; 
-   wire [0:5]                    ord_timer_q,               ord_timer_d                ; 
-   wire [0:1]                    ord_timeout_q,             ord_timeout_d              ; 
+
+   // Latches
+	wire [1:5]                    exx_act_q,                 exx_act_d                  ; //  input=>exx_act_d                       ,act=>1'b1
+	wire                          ex1_s2_v_q                                            ; //  input=>rv_xu0_ex0_s2_v                 ,act=>exx_act[0]
+	wire [0:2]                    ex1_s2_t_q                                            ; //  input=>rv_xu0_ex0_s2_t                 ,act=>exx_act[0]
+	wire                          ex1_s3_v_q                                            ; //  input=>rv_xu0_ex0_s3_v                 ,act=>exx_act[0]
+	wire [0:2]                    ex1_s3_t_q                                            ; //  input=>rv_xu0_ex0_s3_t                 ,act=>exx_act[0]
+	wire [0:2]                    ex1_t1_t_q                                            ; //  input=>rv_xu0_ex0_t1_t                 ,act=>exx_act[0]
+	wire [0:2]                    ex1_t2_t_q                                            ; //  input=>rv_xu0_ex0_t2_t                 ,act=>exx_act[0]
+	wire [0:2]                    ex1_t3_t_q                                            ; //  input=>rv_xu0_ex0_t3_t                 ,act=>exx_act[0]
+	wire                          ex1_t1_v_q                                            ; //  input=>rv_xu0_ex0_t1_v                 ,act=>exx_act[0]
+	wire                          ex1_t2_v_q                                            ; //  input=>rv_xu0_ex0_t2_v                 ,act=>exx_act[0]
+	wire                          ex1_t3_v_q                                            ; //  input=>rv_xu0_ex0_t3_v                 ,act=>exx_act[0]
+	wire [0:`GPR_POOL_ENC-1]      ex1_t1_p_q                                            ; //  input=>rv_xu0_ex0_t1_p                 ,act=>exx_act[0]
+	wire [0:`XER_POOL_ENC-1]      ex1_t2_p_q                                            ; //  input=>rv_xu0_ex0_t2_p[XER_LEFT:`GPR_POOL_ENC-1]  ,act=>exx_act[0]
+	wire [0:`CR_POOL_ENC-1]       ex1_t3_p_q                                            ; //  input=>rv_xu0_ex0_t3_p[CR_LEFT:`GPR_POOL_ENC-1]   ,act=>exx_act[0]
+	wire [0:31]                   ex1_instr_q,               ex0_instr                  ; //  input=>ex0_instr                       ,act=>exx_act[0]
+	wire [0:2]                    ex1_ucode_q                                           ; //  input=>rv_xu0_ex0_ucode                ,act=>exx_act[0]
+	wire [0:`ITAG_SIZE_ENC-1]     ex1_itag_q                                            ; //  input=>rv_xu0_ex0_itag                 ,act=>exx_act[0]
+	wire [0:1]                    ex2_add_ci_sel_q,          ex1_add_ci_sel             ; //  input=>ex1_add_ci_sel                  ,act=>exx_act[1]
+	wire [0:`ITAG_SIZE_ENC-1]     ex2_itag_q                                            ; //  input=>ex1_itag_q                      ,act=>exx_act[1]
+	wire [0:`GPR_POOL_ENC-1]      ex2_t1_p_q                                            ; //  input=>ex1_t1_p_q                      ,act=>exx_act[1]
+	wire [0:`XER_POOL_ENC-1]      ex2_t2_p_q                                            ; //  input=>ex1_t2_p_q                      ,act=>exx_act[1]
+	wire [0:`CR_POOL_ENC-1]       ex2_t3_p_q                                            ; //  input=>ex1_t3_p_q                      ,act=>exx_act[1]
+	wire [0:`GPR_POOL_ENC-1]      ex3_t1_p_q                                            ; //  input=>ex2_t1_p_q                      ,act=>exx_act[2]
+	wire [0:`XER_POOL_ENC-1]      ex3_t2_p_q                                            ; //  input=>ex2_t2_p_q                      ,act=>exx_act[2]
+	wire [0:`CR_POOL_ENC-1]       ex3_t3_p_q                                            ; //  input=>ex2_t3_p_q                      ,act=>exx_act[2]
+	wire [0:`ITAG_SIZE_ENC-1]     ex3_itag_q                                            ; //  input=>ex2_itag_q                      ,act=>exx_act[2]
+	wire [0:`ITAG_SIZE_ENC-1]     ex4_itag_q,                ex3_itag                   ; //  input=>ex3_itag                        ,act=>exx_act[3]
+	wire [0:`THREADS-1]           cp_flush_q                                            ; //  input=>cp_flush                        ,act=>1'b1
+	wire [0:`THREADS-1]           ex0_val_q,                 rv2_val                    ; //  input=>rv2_val                         ,act=>1'b1
+	wire [0:`THREADS-1]           ex1_val_q,                 ex0_val                    ; //  input=>ex0_val                         ,act=>1'b1
+	wire [0:`THREADS-1]           ex2_val_q,                 ex1_val                    ; //  input=>ex1_val                         ,act=>1'b1
+	wire [0:`THREADS-1]           ex3_val_q,                 ex2_val                    ; //  input=>ex2_val                         ,act=>1'b1
+	wire [0:`THREADS-1]           ex4_val_q,                 ex3_val                    ; //  input=>ex3_val                         ,act=>1'b1
+	wire [0:`THREADS-1]           ex5_val_q,                 ex4_val                    ; //  input=>ex4_val                         ,act=>1'b1
+	wire [0:`THREADS-1]           ex6_val_q,                 ex5_val                    ; //  input=>ex5_val                         ,act=>1'b1
+	wire [0:`THREADS-1]           ex1_ord_val_q,             ex0_ord_val                ; //  input=>ex0_ord_val                     ,act=>1'b1
+	wire [0:`THREADS-1]           ex2_ord_val_q,             ex1_ord_val                ; //  input=>ex1_ord_val                     ,act=>1'b1
+	wire [0:`THREADS-1]           ex3_ord_val_q,             ex2_ord_val                ; //  input=>ex2_ord_val                     ,act=>1'b1
+	wire [0:`THREADS-1]           ex4_ord_val_q,             ex3_ord_val                ; //  input=>ex3_ord_val                     ,act=>1'b1
+	wire [0:`THREADS-1]           spr_msr_cm_q                                          ; //  input=>spr_msr_cm                      ,act=>1'b1
+	wire [0:`THREADS-1]           spr_msr_gs_q                                          ; //  input=>spr_msr_gs                      ,act=>1'b1
+	wire [0:`THREADS-1]           spr_msr_pr_q                                          ; //  input=>spr_msr_pr                      ,act=>1'b1
+	wire [0:`THREADS-1]           spr_epcr_dgtmi_q                                      ; //  input=>spr_epcr_dgtmi                  ,act=>1'b1
+	wire                          spr_ccr2_notlb_q                                      ; //  input=>spr_ccr2_notlb                  ,act=>1'b1
+	wire [0:`THREADS-1]           ex4_br_val_q                                          ; //  input=>br_dec_ex3_execute_vld          ,act=>1'b1
+	wire                          ex1_ord_q,                 ex0_ord                    ; //  input=>ex0_ord                         ,act=>1'b1
+	wire                          ex2_ord_q                                             ; //  input=>ex1_ord_q                       ,act=>1'b1
+	wire                          ex3_ord_q                                             ; //  input=>ex2_ord_q                       ,act=>exx_act[2]
+	wire                          ex2_t1_v_q                                            ; //  input=>ex2_t1_v_q                      ,act=>exx_act[1]
+	wire                          ex2_t2_v_q                                            ; //  input=>ex1_t2_v_q                      ,act=>exx_act[1]
+   wire                          ex2_t3_v_q                                            ; //  input=>ex1_t3_v_q                      ,act=>exx_act[1]
+	wire [0:2]                    ex2_t1_t_q                                            ; //  input=>ex1_t1_t_q                      ,act=>exx_act[1]
+	wire [0:2]                    ex2_t2_t_q                                            ; //  input=>ex1_t2_t_q                      ,act=>exx_act[1]
+	wire [0:2]                    ex2_t3_t_q                                            ; //  input=>ex1_t3_t_q                      ,act=>exx_act[1]
+	wire                          ex3_t1_v_q                                            ; //  input=>ex2_t1_v_q                      ,act=>exx_act[2]
+	wire                          ex3_t2_v_q                                            ; //  input=>ex2_t2_v_q                      ,act=>exx_act[2]
+	wire                          ex3_t3_v_q                                            ; //  input=>ex2_t3_v_q                      ,act=>exx_act[2]
+	wire [0:2]                    ex3_t1_t_q                                            ; //  input=>ex2_t1_t_q                      ,act=>exx_act[2]
+	wire [0:2]                    ex3_t2_t_q                                            ; //  input=>ex2_t2_t_q                      ,act=>exx_act[2]
+	wire [0:2]                    ex3_t3_t_q                                            ; //  input=>ex2_t3_t_q                      ,act=>exx_act[2]
+	wire                          ex4_t1_v_q                                            ; //  input=>ex3_t1_v_q                      ,act=>exx_act[3]
+	wire                          ex4_t2_v_q                                            ; //  input=>ex3_t2_v_q                      ,act=>exx_act[3]
+	wire                          ex4_t3_v_q                                            ; //  input=>ex3_t3_v_q                      ,act=>exx_act[3]
+	wire [0:2]                    ex4_t1_t_q                                            ; //  input=>ex3_t1_t_q                      ,act=>exx_act[3]
+	wire [0:2]                    ex4_t2_t_q                                            ; //  input=>ex3_t2_t_q                      ,act=>exx_act[3]
+	wire [0:2]                    ex4_t3_t_q                                            ; //  input=>ex3_t3_t_q                      ,act=>exx_act[3]
+	wire [0:`GPR_POOL_ENC-1]         ex4_t1_p_q                                         ; //  input=>ex3_t1_p_q                      ,act=>exx_act[3]
+	wire [XER_LEFT:`GPR_POOL_ENC-1]  ex4_t2_p_q                                         ; //  input=>ex3_t2_p_q                      ,act=>exx_act[3]
+	wire [CR_LEFT:`GPR_POOL_ENC-1]   ex4_t3_p_q                                         ; //  input=>ex3_t3_p_q                      ,act=>exx_act[3]
+	wire                          ex5_t1_v_q                                            ; //  input=>ex4_t1_v_q                      ,act=>exx_act[4]
+	wire                          ex5_t2_v_q                                            ; //  input=>ex4_t2_v_q                      ,act=>exx_act[4]
+	wire                          ex5_t3_v_q                                            ; //  input=>ex4_t3_v_q                      ,act=>exx_act[4]
+	wire [0:2]                    ex5_t1_t_q                                            ; //  input=>ex4_t1_t_q                      ,act=>exx_act[4]
+	wire [0:2]                    ex5_t2_t_q                                            ; //  input=>ex4_t2_t_q                      ,act=>exx_act[4]
+	wire [0:2]                    ex5_t3_t_q                                            ; //  input=>ex4_t3_t_q                      ,act=>exx_act[4]
+	wire [0:`GPR_POOL_ENC-1]         ex5_t1_p_q                                         ; //  input=>ex4_t1_p_q                      ,act=>exx_act[4]
+	wire [XER_LEFT:`GPR_POOL_ENC-1]  ex5_t2_p_q                                         ; //  input=>ex4_t2_p_q                      ,act=>exx_act[4]
+	wire [CR_LEFT:`GPR_POOL_ENC-1]   ex5_t3_p_q                                         ; //  input=>ex4_t3_p_q                      ,act=>exx_act[4]
+	wire                          ex5_ord_t1_v_q                                        ; //  input=>ex4_t1_v_q                      ,act=>ex4_ord_act
+	wire                          ex5_ord_t2_v_q                                        ; //  input=>ex4_t2_v_q                      ,act=>ex4_ord_act
+	wire                          ex5_ord_t3_v_q                                        ; //  input=>ex4_t3_v_q                      ,act=>ex4_ord_act
+	wire [0:2]                    ex5_ord_t1_t_q                                        ; //  input=>ex4_t1_t_q                      ,act=>ex4_ord_act
+	wire [0:2]                    ex5_ord_t2_t_q                                        ; //  input=>ex4_t2_t_q                      ,act=>ex4_ord_act
+	wire [0:2]                    ex5_ord_t3_t_q                                        ; //  input=>ex4_t3_t_q                      ,act=>ex4_ord_act
+	wire [0:`GPR_POOL_ENC-1]         ex5_ord_t1_p_q                                     ; //  input=>ex4_t1_p_q                      ,act=>ex4_ord_act
+	wire [XER_LEFT:`GPR_POOL_ENC-1]  ex5_ord_t2_p_q                                     ; //  input=>ex4_t2_p_q                      ,act=>ex4_ord_act
+	wire [CR_LEFT:`GPR_POOL_ENC-1]   ex5_ord_t3_p_q                                     ; //  input=>ex4_t3_p_q                      ,act=>ex4_ord_act
+	wire                          ex6_gpr_we_q,              ex5_gpr_we                 ; //  input=>ex5_gpr_we                      ,act=>1'b1
+	wire                          ex6_xer_we_q,              ex5_xer_we                 ; //  input=>ex5_xer_we                      ,act=>1'b1
+	wire                          ex6_cr_we_q,               ex5_cr_we                  ; //  input=>ex5_cr_we                       ,act=>1'b1
+	wire [CR_LEFT:`GPR_POOL_ENC-1]   ex6_cr_wa_q,            ex5_cr_wa                  ; //  input=>ex5_cr_wa                       ,act=>exx_act[5]
+	wire                          ex4_ctr_we_q,              ex3_ctr_we                 ; //  input=>ex3_ctr_we                      ,act=>1'b1
+	wire                          ex4_lr_we_q,               ex3_lr_we                  ; //  input=>ex3_lr_we                       ,act=>1'b1
+	wire [0:`GPR_POOL_ENC-1]         ex6_t1_p_q,             ex5_t1_p                   ; //  input=>ex5_t1_p                        ,act=>exx_act[5]
+	wire [XER_LEFT:`GPR_POOL_ENC-1]  ex6_t2_p_q,             ex5_t2_p                   ; //  input=>ex5_t2_p                        ,act=>exx_act[5]
+	wire                          spr_ccr2_en_attn_q                                    ; //  input=>spr_ccr2_en_attn                ,act=>1'b1
+	wire                          spr_ccr4_en_dnh_q                                     ; //  input=>spr_ccr4_en_dnh                 ,act=>1'b1
+	wire                          spr_ccr2_en_pc_q                                      ; //  input=>spr_ccr2_en_pc                  ,act=>1'b1
+	wire [0:`THREADS-1]           ex2_ord_tid_q                                         ; //  input=>ex1_ord_val_q                   ,act=>ex1_ord_act
+	wire [0:`ITAG_SIZE_ENC-1]     ex2_ord_itag_q                                        ; //  input=>ex1_itag_q                      ,act=>ex1_ord_act
+	wire                          ex2_ord_is_eratre_q                                   ; //  input=>ex1_is_eratre                   ,act=>ex1_ord_act
+	wire                          ex2_ord_is_eratwe_q                                   ; //  input=>ex1_is_eratwe                   ,act=>ex1_ord_act
+	wire                          ex2_ord_is_eratsx_q                                   ; //  input=>ex1_is_eratsx                   ,act=>ex1_ord_act
+	wire                          ex2_ord_is_eratilx_q                                  ; //  input=>ex1_is_eratilx                  ,act=>ex1_ord_act
+	wire                          ex2_ord_is_erativax_q                                 ; //  input=>ex1_is_erativax                 ,act=>ex1_ord_act
+	wire                          ex2_ord_is_tlbre_q                                    ; //  input=>ex1_is_tlbre                    ,act=>ex1_ord_act
+	wire                          ex2_ord_is_tlbwe_q                                    ; //  input=>ex1_is_tlbwe                    ,act=>ex1_ord_act
+	wire                          ex2_ord_is_tlbsx_q                                    ; //  input=>ex1_is_tlbsx                    ,act=>ex1_ord_act
+	wire                          ex2_ord_is_tlbsxr_q                                   ; //  input=>ex1_is_tlbsxr                   ,act=>ex1_ord_act
+	wire                          ex2_ord_is_tlbsrx_q                                   ; //  input=>ex1_is_tlbsrx                   ,act=>ex1_ord_act
+	wire                          ex2_ord_is_tlbivax_q                                  ; //  input=>ex1_is_tlbivax                  ,act=>ex1_ord_act
+	wire                          ex2_ord_is_tlbilx_q                                   ; //  input=>ex1_is_tlbilx                   ,act=>ex1_ord_act
+	wire [19:20]                  ex2_ord_tlb_ws_q                                      ; //  input=>ex1_instr_q[19:20]              ,act=>ex1_ord_act
+	wire [8:10]                   ex2_ord_tlb_t_q                                       ; //  input=>ex1_instr_q[8:10]               ,act=>ex1_ord_act
+	wire                          ex2_priv_excep_q,          ex1_priv_excep             ; //  input=>ex1_priv_excep                  ,act=>exx_act[1]
+	wire                          ex2_hyp_priv_excep_q,      ex1_hyp_priv_excep         ; //  input=>ex1_hyp_priv_excep              ,act=>exx_act[1]
+	wire                          ex2_illegal_op_q,          ex1_illegal_op             ; //  input=>ex1_illegal_op                  ,act=>exx_act[1]
+	wire                          ex2_flush2ucode_q,         ex1_flush2ucode            ; //  input=>ex1_flush2ucode                 ,act=>1'b1
+	wire                          ex2_tlb_illeg_q,           ex1_tlb_illeg              ; //  input=>ex1_tlb_illeg                   ,act=>exx_act[1]
+	wire                          ex3_priv_excep_q                                      ; //  input=>ex2_priv_excep_q                ,act=>exx_act[2]
+	wire                          ex3_hyp_priv_excep_q                                  ; //  input=>ex2_hyp_priv_excep_q            ,act=>exx_act[2]
+	wire                          ex3_illegal_op_q                                      ; //  input=>ex2_illegal_op_q                ,act=>exx_act[2]
+	wire                          ex3_flush2ucode_q,         ex2_flush2ucode            ; //  input=>ex2_flush2ucode                 ,act=>1'b1
+	wire                          ex4_flush2ucode_q,         ex3_flush2ucode            ; //  input=>ex3_flush2ucode                 ,act=>1'b1
+	wire                          ex1_ord_complete_q,        ex0_ord_complete           ; //  input=>ex0_ord_complete                ,act=>1'b1
+	wire                          ex2_ord_complete_q,        ex1_ord_complete           ; //  input=>ex1_ord_complete                ,act=>1'b1
+	wire                          ex3_ord_complete_q,        ex2_ord_complete           ; //  input=>ex2_ord_complete                ,act=>1'b1
+	wire                          ex4_ord_complete_q,        ex3_ord_complete           ; //  input=>ex3_ord_complete                ,act=>1'b1
+	wire                          ex5_ord_complete_q,        ex4_ord_complete           ; //  input=>ex4_ord_complete                ,act=>1'b1
+	wire                          ex6_ord_complete_q,        ex5_ord_complete           ; //  input=>ex5_ord_complete                ,act=>1'b1
+	wire [0:2]                    xu_iu_pri_q,               xu_iu_pri_d                ; //  input=>xu_iu_pri_d                     ,act=>ex1_ord_act
+	wire [0:`THREADS-1]           xu_iu_pri_val_q,           xu_iu_pri_val_d            ; //  input=>xu_iu_pri_val_d                 ,act=>1'b1
+	wire                          xu_iu_hold_val_q,          xu_iu_hold_val_d           ; //  input=>xu_iu_hold_val_d                ,act=>1'b1
+	wire                          xu_lq_hold_val_q,          xu_lq_hold_val_d           ; //  input=>xu_lq_hold_val_d                ,act=>1'b1
+	wire                          xu_mm_hold_val_q,          xu_mm_hold_val_d           ; //  input=>xu_mm_hold_val_d                ,act=>1'b1
+	wire                          xu_iu_val_q,               xu_iu_val_d                ; //  input=>xu_iu_val_d                     ,act=>1'b1
+	wire                          xu_lq_val_q,               xu_lq_val_d                ; //  input=>xu_lq_val_d                     ,act=>1'b1
+	wire                          xu_mm_val_q,               xu_mm_val_d                ; //  input=>xu_mm_val_d                     ,act=>1'b1
+	wire [0:`THREADS-1]           xu_iu_val_2_q,             xu_iu_val_2_d              ; //  input=>xu_iu_val_2_d                   ,act=>1'b1
+	wire [0:`THREADS-1]           xu_lq_val_2_q,             xu_lq_val_2_d              ; //  input=>xu_lq_val_2_d                   ,act=>1'b1
+	wire [0:`THREADS-1]           xu_mm_val_2_q,             xu_mm_val_2_d              ; //  input=>xu_mm_val_2_d                   ,act=>1'b1
+	wire                          ord_tlb_miss_q,            ord_tlb_miss_d             ; //  input=>ord_tlb_miss_d                  ,act=>ord_outstanding_act
+	wire                          ord_lrat_miss_q,           ord_lrat_miss_d            ; //  input=>ord_lrat_miss_d                 ,act=>ord_outstanding_act
+	wire                          ord_tlb_inelig_q,          ord_tlb_inelig_d           ; //  input=>ord_tlb_inelig_d                ,act=>ord_outstanding_act
+	wire                          ord_pt_fault_q,            ord_pt_fault_d             ; //  input=>ord_pt_fault_d                  ,act=>ord_outstanding_act
+	wire                          ord_hv_priv_q,             ord_hv_priv_d              ; //  input=>ord_hv_priv_d                   ,act=>ord_outstanding_act
+	wire                          ord_illeg_mmu_q,           ord_illeg_mmu_d            ; //  input=>ord_illeg_mmu_d                 ,act=>ord_outstanding_act
+	wire                          ord_lq_flush_q,            ord_lq_flush_d             ; //  input=>ord_lq_flush_d                  ,act=>ord_outstanding_act
+	wire                          ord_spr_priv_q,            ord_spr_priv_d             ; //  input=>ord_spr_priv_d                  ,act=>ord_outstanding_act
+	wire                          ord_spr_illegal_spr_q,     ord_spr_illegal_spr_d      ; //  input=>ord_spr_illegal_spr_d           ,act=>ord_outstanding_act
+	wire                          ord_hyp_priv_spr_q,        ord_hyp_priv_spr_d         ; //  input=>ord_hyp_priv_spr_d              ,act=>ord_outstanding_act
+	wire                          ord_ex3_np1_flush_q,       ord_ex3_np1_flush_d        ; //  input=>ord_ex3_np1_flush_d             ,act=>ord_outstanding_act
+	wire                          ord_ill_tlb_q,             ord_ill_tlb_d              ; //  input=>ord_ill_tlb_d                   ,act=>ord_outstanding_act
+	wire                          ord_priv_q,                ord_priv_d                 ; //  input=>ord_priv_d                      ,act=>ord_outstanding_act
+	wire                          ord_hyp_priv_q,            ord_hyp_priv_d             ; //  input=>ord_hyp_priv_d                  ,act=>ord_outstanding_act
+	wire                          ord_hold_lq_q,             ord_hold_lq_d              ; //  input=>ord_hold_lq_d                   ,act=>ord_outstanding_act
+	wire                          ord_outstanding_q,         ord_outstanding_d          ; //  input=>ord_outstanding_d               ,act=>ord_outstanding_act
+	wire                          ord_flushed_q,             ord_flushed_d              ; //  input=>ord_flushed_d                   ,act=>ord_outstanding_act
+	wire                          ord_done_q,                ord_done_d                 ; //  input=>ord_done_d                      ,act=>1'b1
+	wire                          ord_mmu_req_sent_q,        ord_mmu_req_sent_d         ; //  input=>ord_mmu_req_sent_d              ,act=>ord_outstanding_act
+	wire                          ord_core_block_q,          ord_core_block_d           ; //  input=>ord_core_block_d                ,act=>ord_outstanding_act
+   wire                          ord_ierat_par_err_q,       ord_ierat_par_err_d        ; //  input=>ord_ierat_par_err_d             ,act=>ord_outstanding_act
+   wire                          ord_derat_par_err_q,       ord_derat_par_err_d        ; //  input=>ord_derat_par_err_d             ,act=>ord_outstanding_act
+   wire                          ord_tlb_multihit_q,        ord_tlb_multihit_d         ; //  input=>ord_tlb_multihit_d              ,act=>ord_outstanding_act
+   wire                          ord_tlb_par_err_q,         ord_tlb_par_err_d          ; //  input=>ord_tlb_par_err_d               ,act=>ord_outstanding_act
+   wire                          ord_tlb_lru_par_err_q,     ord_tlb_lru_par_err_d      ; //  input=>ord_tlb_lru_par_err_d           ,act=>ord_outstanding_act
+   wire                          ord_local_snoop_reject_q,  ord_local_snoop_reject_d   ; //  input=>ord_local_snoop_reject_d        ,act=>ord_outstanding_act
+	wire [0:1]                    mmu_ord_n_flush_req_q,     mmu_ord_n_flush_req_d      ; //  input=>mmu_ord_n_flush_req_d           ,act=>1'b1
+	wire [0:1]                    iu_ord_n_flush_req_q,      iu_ord_n_flush_req_d       ; //  input=>iu_ord_n_flush_req_d           ,act=>1'b1
+	wire [0:1]                    lq_ord_n_flush_req_q,      lq_ord_n_flush_req_d       ; //  input=>lq_ord_n_flush_req_d           ,act=>1'b1
+	wire                          ex4_np1_flush_q,           ex3_np1_flush              ; //  input=>ex3_np1_flush                   ,act=>1'b1
+	wire                          ex4_n_flush_q,             ex3_n_flush                ; //  input=>ex3_n_flush                     ,act=>1'b1
+	wire                          ex4_excep_val_q,           ex3_excep_val              ; //  input=>ex3_excep_val                   ,act=>1'b1
+	wire [0:4]                    ex4_excep_vector_q,        ex3_excep_vector           ; //  input=>ex3_excep_vector                ,act=>1'b1
+	wire [0:2]                    ex2_ucode_q                                           ; //  input=>ex1_ucode_q                     ,act=>exx_act[1]
+	wire                          ex2_is_ehpriv_q,           ex1_is_ehpriv              ; //  input=>ex1_is_ehpriv                   ,act=>exx_act[1]
+	wire                          ex3_is_ehpriv_q                                       ; //  input=>ex2_is_ehpriv_q                 ,act=>exx_act[2]
+	wire                          ex2_is_mtiar_q                                        ; //  input=>ex1_is_mtiar                    ,act=>exx_act[1]
+	wire                          ex3_mtiar_sel_q,           ex2_mtiar_sel              ; //  input=>ex2_mtiar_sel                   ,act=>1'b1
+	wire                          ord_mtiar_q,               ord_mtiar_d                ; //  input=>ord_mtiar_d                     ,act=>1'b1
+	wire [0:31]                   ord_instr_q,               ord_instr_d                ; //  input=>ord_instr_d                     ,act=>ex1_ord_valid
+	wire                          ex2_is_erativax_q                                     ; //  input=>ex1_is_erativax                 ,act=>ex1_ord_act
+	wire [0:`THREADS-1]           xu0_iu_mtiar_q,            xu0_iu_mtiar_d             ; //  input=>xu0_iu_mtiar_d                  ,act=>1'b1
+	wire                          ord_is_cp_next_q,          ord_is_cp_next             ; //  input=>ord_is_cp_next                  ,act=>1'b1
+	wire                          ord_flush_1_q                                         ; //  input=>ord_spec_flush                  ,act=>1'b1
+	wire                          ord_flush_2_q                                         ; //  input=>ord_flush_1_q                   ,act=>1'b1
+	wire [0:1]  spr_mmucr0_tlbsel_q[0:`THREADS-1],  spr_mmucr0_tlbsel_d[0:`THREADS-1]   ; //  input=>spr_mmucr0_tlbsel_d             ,act=>1'b1
+	wire                          mm_xu_tlbwe_binv_q                                    ; //  input=>mm_xu_tlbwe_binv                ,act=>1'b1
+	wire [0:31]                   ex2_instr_q                                           ; //  input=>ex1_instr_q                     ,act=>exx_act[1]
+	wire [0:31]                   ex3_instr_q                                           ; //  input=>ex2_instr_q                     ,act=>exx_act[2]
+	wire [0:31]                   ex4_instr_q                                           ; //  input=>ex3_instr_q                     ,act=>exx_act[3]
+	wire                          ex4_hpriv_q,               ex3_hpriv                  ; //  input=>ex3_hpriv                       ,act=>1'b1
+	wire                          ex2_any_popcnt_q,          ex1_any_popcnt             ; //  input=>ex1_any_popcnt                  ,act=>exx_act[1]
+	wire                          ex3_any_popcnt_q                                      ; //  input=>ex2_any_popcnt_q                ,act=>exx_act[2]
+	wire                          ex4_any_popcnt_q                                      ; //  input=>ex3_any_popcnt_q                ,act=>exx_act[3]
+	wire                          ex2_any_cntlz_q,           ex1_any_cntlz              ; //  input=>ex1_any_cntlz                   ,act=>exx_act[1]
+	wire                          ex3_any_cntlz_q                                       ; //  input=>ex2_any_cntlz_q                 ,act=>exx_act[2]
+	wire                          ex2_is_bpermd_q                                       ; //  input=>ex1_is_bpermd                   ,act=>exx_act[1]
+	wire                          ex3_is_bpermd_q                                       ; //  input=>ex2_is_bpermd_q                 ,act=>exx_act[2]
+	wire                          ex2_is_dlmzb_q                                        ; //  input=>ex1_is_dlmzb                    ,act=>exx_act[1]
+	wire                          ex3_is_dlmzb_q                                        ; //  input=>ex2_is_dlmzb_q                  ,act=>exx_act[2]
+	wire                          ex2_mul_multicyc_q,        ex1_mul_multicyc           ; //  input=>ex1_mul_multicyc                ,act=>1'b1
+	wire                          ex3_mul_multicyc_q                                    ; //  input=>ex2_mul_multicyc_q              ,act=>1'b1
+	wire                          ex2_mul_2c_q,              ex1_mul_2c                 ; //  input=>ex1_mul_2c                      ,act=>1'b1
+	wire                          ex2_mul_3c_q,              ex1_mul_3c                 ; //  input=>ex1_mul_3c                      ,act=>1'b1
+	wire                          ex2_mul_4c_q,              ex1_mul_4c                 ; //  input=>ex1_mul_4c                      ,act=>1'b1
+	wire                          ex3_mul_2c_q                                          ; //  input=>ex2_mul_2c_q                    ,act=>1'b1
+	wire                          ex3_mul_3c_q                                          ; //  input=>ex2_mul_3c_q                    ,act=>1'b1
+	wire                          ex3_mul_4c_q                                          ; //  input=>ex2_mul_4c_q                    ,act=>1'b1
+	wire                          ex4_mul_2c_q,              ex4_mul_2c_d               ; //  input=>ex4_mul_2c_d                    ,act=>1'b1
+	wire                          ex4_mul_3c_q,              ex4_mul_3c_d               ; //  input=>ex4_mul_3c_d                    ,act=>1'b1
+	wire                          ex4_mul_4c_q,              ex4_mul_4c_d               ; //  input=>ex4_mul_4c_d                    ,act=>1'b1
+	wire                          ex5_mul_3c_q,              ex5_mul_3c_d               ; //  input=>ex5_mul_3c_d                    ,act=>1'b1
+	wire                          ex5_mul_4c_q,              ex5_mul_4c_d               ; //  input=>ex5_mul_4c_d                    ,act=>1'b1
+	wire                          ex6_mul_4c_q,              ex6_mul_4c_d               ; //  input=>ex6_mul_4c_d                    ,act=>1'b1
+	wire [0:`THREADS-1]           exx_mul_tid_q,             exx_mul_tid_d              ; //  input=>exx_mul_tid_d                   ,act=>1'b1
+	wire                          ex2_is_mtspr_q                                        ; //  input=>ex1_is_mtspr                    ,act=>exx_act[1]
+	wire                          ex3_is_mtspr_q                                        ; //  input=>ex2_is_mtspr_q                  ,act=>exx_act[2]
+	wire                          ex6_ram_active_q,          ex6_ram_active_d           ; //  input=>ex6_ram_active_d                ,act=>1'b1
+	wire [0:`THREADS-1]           ex6_tid_q,                 ex6_tid_d                  ; //  input=>ex6_tid_d                       ,act=>1'b1
+	wire [0:`THREADS-1]           ex1_spec_flush_q                                      ; //  input=>rv_xu0_ex0_spec_flush           ,act=>1'b1
+	wire [0:`THREADS-1]           ex2_spec_flush_q                                      ; //  input=>rv_xu0_ex1_spec_flush           ,act=>1'b1
+	wire [0:`THREADS-1]           ex3_spec_flush_q                                      ; //  input=>rv_xu0_ex2_spec_flush           ,act=>1'b1
+	wire [0:`THREADS-1]           ord_async_flush_before_q,  ord_async_flush_before_d   ; //  input=>ord_async_flush_before_d        ,act=>1'b1
+	wire [0:`THREADS-1]           ord_async_flush_after_q,   ord_async_flush_after_d    ; //  input=>ord_async_flush_after_d         ,act=>1'b1
+    wire                          ord_async_credit_wait_q,   ord_async_credit_wait_d    ; //  input=>ord_async_credit_wait_d         ,act=>1'b1
+	wire [0:`THREADS-1]           async_flush_req_q,         async_flush_req_d          ; //  input=>async_flush_req_d               ,act=>1'b1
+	wire [0:`THREADS-1]           async_flush_req_2_q                                   ; //  input=>async_flush_req_q               ,act=>1'b1
+    wire [0:`THREADS-1]           iu_async_complete_q                                   ; //  input=>iu_xu_async_complete            ,act=>1'b1
+    wire                          iu_xu_credits_returned_q                              ; //  input=>iu_xu_credits_returned          ,act=>1'b1
+    wire                          ex2_any_mfspr_q,           ex1_any_mfspr              ; //  input=>ex1_any_mfspr                   ,act=>exx_act[1]
+	wire                          ex3_any_mfspr_q,           ex2_any_mfspr              ; //  input=>ex2_any_mfspr                   ,act=>exx_act[2]
+	wire                          ex2_any_mtspr_q,           ex1_any_mtspr              ; //  input=>ex1_any_mtspr                   ,act=>exx_act[1]
+	wire                          ex3_any_mtspr_q,           ex2_any_mtspr              ; //  input=>ex2_any_mtspr                   ,act=>exx_act[2]
+   wire [0:3]                    ex4_perf_event_q                                      ; //  input=>ex3_perf_event                  ,act=>exx_act[3]
+   wire                          ord_any_mfspr_q                                       ; //  input=>ex1_any_mfspr                   ,act=>ex1_ord_act
+   wire                          ord_any_mtspr_q                                       ; //  input=>ex1_any_mtspr                   ,act=>ex1_ord_act
+   wire [0:5]                    ord_timer_q,               ord_timer_d                ; //  input=>ord_timer_d                     ,act=>ord_outstanding_act
+   wire [0:1]                    ord_timeout_q,             ord_timeout_d              ; //  input=>ord_timeout_d                   ,act=>1'b1
+   // Scanchain
 	localparam exx_act_offset                             = 0;
 	localparam ex1_s2_v_offset                            = exx_act_offset                 + 5;
 	localparam ex1_s2_t_offset                            = ex1_s2_v_offset                + 1;
@@ -758,34 +808,35 @@ module xu0_dec(
    localparam DEX6 = 0;
    localparam DEX7 = 0;
    localparam DEX8 = 0;
-   localparam DX = 0;      
+   localparam DX = 0;
    wire [0:scan_right-1]                           siv;
    wire [0:scan_right-1]                           sov;
+   // Signals
    wire [0:5]                                      exx_act;
    wire  ex0_is_b,        ex0_is_bc,        ex0_is_addi,      ex0_is_addic,     ex0_is_addicr,    ex0_is_addme,
          ex0_is_addis,    ex0_is_addze,     ex0_is_andir,     ex0_is_andisr,    ex0_is_cmpi,      ex0_is_cmpli,
          ex0_is_mulli,    ex0_is_neg,       ex0_is_ori,       ex0_is_oris,      ex0_is_subfic,    ex0_is_subfze,
-         ex0_is_twi,      ex0_is_tdi,       ex0_is_xori,      ex0_is_xoris,     ex0_is_subfme,    
+         ex0_is_twi,      ex0_is_tdi,       ex0_is_xori,      ex0_is_xoris,     ex0_is_subfme,
          ex0_is_mtcrf,    ex0_is_mtmsr,     ex0_is_mtspr,     ex0_is_wrtee,
          ex0_is_wrteei,   ex0_is_eratwe,    ex0_is_erativax,  ex0_is_eratsx;
    wire  ex1_opcode_is_31, ex1_opcode_is_19, ex1_opcode_is_0;
-   wire  ex1_is_adde,     ex1_is_addi,     ex1_is_addic,    ex1_is_addicr,   ex1_is_addis,    ex1_is_addme,    
-         ex1_is_addze,    ex1_is_andir,    ex1_is_andisr,   ex1_is_cmp,      ex1_is_cmpi,     ex1_is_cmpl,     
+   wire  ex1_is_adde,     ex1_is_addi,     ex1_is_addic,    ex1_is_addicr,   ex1_is_addis,    ex1_is_addme,
+         ex1_is_addze,    ex1_is_andir,    ex1_is_andisr,   ex1_is_cmp,      ex1_is_cmpi,     ex1_is_cmpl,
          ex1_is_cmpli,    ex1_is_neg,      ex1_is_ori,      ex1_is_mulldo,   ex1_is_dnh,
          ex1_is_mulhd,    ex1_is_mulhdu,   ex1_is_mulhw,    ex1_is_mulhwu,   ex1_is_mulld,    ex1_is_attn,
          ex1_is_mulli,    ex1_is_mullw,    ex1_is_divd,     ex1_is_divdu,    ex1_is_divw,     ex1_is_divwu,
          ex1_is_divwe,    ex1_is_divweu,   ex1_is_divde,    ex1_is_divdeu,   ex1_is_mflr,     ex1_is_mfxer,
          ex1_is_mfctr,    ex1_is_mfcr,     ex1_is_mtcrf,    ex1_is_mtiar,    ex1_is_eratilx,  ex1_is_erativax,
          ex1_is_eratre,   ex1_is_eratsx,   ex1_is_eratwe,   ex1_is_tlbilx,   ex1_is_tlbivax,  ex1_is_tlbre,
-         ex1_is_tlbsx,    ex1_is_tlbsxr,   ex1_is_tlbsrx,   ex1_is_mtxer,    ex1_is_tlbwe,    ex1_is_mftar, 
+         ex1_is_tlbsx,    ex1_is_tlbsxr,   ex1_is_tlbsrx,   ex1_is_mtxer,    ex1_is_tlbwe,    ex1_is_mftar,
          ex1_is_bc,       ex1_is_wrtee,    ex1_is_wrteei,   ex1_is_mtmsr,    ex1_is_mtspr,    ex1_is_msgclr,
-         ex1_is_oris,     ex1_is_subf,     
-         ex1_is_subfc,    ex1_is_subfe,    ex1_is_subfic,   ex1_is_subfme,   ex1_is_subfze,   ex1_is_td,       
+         ex1_is_oris,     ex1_is_subf,
+         ex1_is_subfc,    ex1_is_subfe,    ex1_is_subfic,   ex1_is_subfme,   ex1_is_subfze,   ex1_is_td,
          ex1_is_tdi,      ex1_is_tw,       ex1_is_twi,      ex1_is_xori,     ex1_is_xoris,    ex1_is_isel,
          ex1_is_pri1,     ex1_is_pri2,     ex1_is_pri3,     ex1_is_pri4,     ex1_is_pri5,     ex1_is_pri6,
          ex1_is_pri7,     ex1_is_add,      ex1_is_addc,     ex1_is_srad,     ex1_is_sradi,    ex1_is_sraw,
          ex1_is_srawi,    ex1_is_popcntb,  ex1_is_popcntw,  ex1_is_popcntd,  ex1_is_cntlzw,   ex1_is_cntlzd,
-         ex1_is_bpermd,   ex1_is_dlmzb,    ex1_is_addg6s,   ex1_is_cdtbcd,   ex1_is_cbcdtd,   ex1_is_mfspr, 
+         ex1_is_bpermd,   ex1_is_dlmzb,    ex1_is_addg6s,   ex1_is_cdtbcd,   ex1_is_cbcdtd,   ex1_is_mfspr,
          ex1_is_mfmsr,    ex1_is_mftb;
    wire [0:`THREADS-1]                             ex0_flush;
    wire [0:`THREADS-1]                             ex1_flush;
@@ -794,8 +845,10 @@ module xu0_dec(
    wire                                            ord_flush;
    wire                                            ex1_ord_valid;
    wire                                            ex2_ord_valid;
+// wire                                            ex3_ord_valid;
    wire                                            ex1_valid;
    wire                                            ex3_valid;
+// wire                                            ex4_valid;
    wire                                            ex5_valid;
    wire                                            ex6_valid;
    wire                                            ex1_add_rs1_inv;
@@ -876,7 +929,11 @@ module xu0_dec(
    wire                                            ord_outstanding_act;
    wire                                            ord_waiting;
 
+   //!! Bugspray Include: xu0_dec;
 
+   //-------------------------------------------------------------------------
+   // Valids / Act
+   //-------------------------------------------------------------------------
    assign dec_ex0_flush       = ex0_flush;
    assign dec_ex1_flush       = ex1_flush;
    assign dec_ex2_flush       = ex2_flush;
@@ -904,6 +961,7 @@ module xu0_dec(
    assign ex2_ord_val         = ex2_ord_val_q  & ~ex2_flush;
    assign ex3_ord_val         = ex3_ord_val_q  & ~ex3_flush;
 
+   // This is used for clock gating later... rs/ra_capt
    assign ex0_ord             = |ex0_val_q & rv_xu0_ex0_ord;
 
    assign ex1_valid           = |(ex1_val);
@@ -922,7 +980,7 @@ module xu0_dec(
 
    assign cp_flush_ord        = ord_outstanding_q & cp_flush_ord_tid;
 
-   assign ord_spec_flush      = |(ex1_spec_flush_q & ex1_ord_val_q) | 
+   assign ord_spec_flush      = |(ex1_spec_flush_q & ex1_ord_val_q) |
                                 |(ex2_spec_flush_q & ex2_ord_val_q) |
                                 |(ex3_spec_flush_q & ex3_ord_val_q) |
                                (byp_dec_ex2_abort & |ex2_ord_val_q);
@@ -950,6 +1008,9 @@ module xu0_dec(
    assign ex1_spr_msr_cm      = ex1_spr_msr_cm_int;
    assign ex4_spr_msr_cm      = |((ex4_val_q | ex4_ord_val_q) & spr_msr_cm_q);
 
+   //-------------------------------------------------------------------------
+   // ALU control logic
+   //-------------------------------------------------------------------------
    assign dec_pop_ex1_act        = exx_act[1];
    assign dec_alu_ex1_act        = exx_act[1];
    assign dec_alu_ex1_instr      = ex1_instr_q;
@@ -964,14 +1025,16 @@ module xu0_dec(
    assign dec_byp_ex3_is_mtspr   = ex3_is_mtspr_q;
    assign dec_byp_ex0_rs1_sel_zero  = ex0_rs1_sel_zero_trm1 | (ex0_is_eratsx & ~ex0_tlbsel[1]);
 
+   // CI uses XER[CA]
    assign ex0_rs1_sel_zero_trm1 = (|ex1_ord_val_q & ex1_is_erativax) ? ~ex1_s3_v_q : ~rv_xu0_ex0_s1_v;
-   
-   assign ex1_add_ci_sel[0]      =  ex1_is_adde    | ex1_is_addme    | ex1_is_addze | 
+
+   assign ex1_add_ci_sel[0]      =  ex1_is_adde    | ex1_is_addme    | ex1_is_addze |
                                     ex1_is_subfme  | ex1_is_subfze   | ex1_is_subfe;
-   assign ex1_add_ci_sel[1]      =  ex1_is_subf    | ex1_is_subfc    | ex1_is_subfic | 
+   // CI uses 1
+   assign ex1_add_ci_sel[1]      =  ex1_is_subf    | ex1_is_subfc    | ex1_is_subfic |
                                     ex1_is_neg     | ex1_alu_cmp     | ex1_any_trap;
 
-   assign ex1_add_rs1_inv        =  ex1_add_ci_sel[1] | 
+   assign ex1_add_rs1_inv        =  ex1_add_ci_sel[1] |
                                     ex1_is_subfme  | ex1_is_subfze   | ex1_is_subfe;
 
    assign ex1_any_tw             = ex1_is_tw | ex1_is_twi;
@@ -985,15 +1048,16 @@ module xu0_dec(
 
    assign ex1_alu_cmp            = ex1_any_cmp | ex1_any_cmpl;
 
+   // Traps, Compares and back invalidates operate regardless of msr[cm]
    assign ex1_force_64b_cmp      = ex1_any_td | (ex1_alu_cmp &  ex1_instr_q[10]);
    assign ex1_force_32b_cmp      = ex1_any_tw | (ex1_alu_cmp & ~ex1_instr_q[10]);
 
    assign dec_alu_ex1_msb_64b_sel = (ex1_spr_msr_cm_int & ~ex1_force_32b_cmp) | ex1_force_64b_cmp;
 
-   assign dec_alu_ex1_xer_ca_en  =  ex1_is_addc    | ex1_is_addic    | ex1_is_addicr   | 
-                                    ex1_is_adde    | ex1_is_addme    | ex1_is_addze    | 
-                                    ex1_is_subfc   | ex1_is_subfic   | ex1_is_subfme   | 
-                                    ex1_is_subfe   | ex1_is_subfze   | ex1_is_srad     | 
+   assign dec_alu_ex1_xer_ca_en  =  ex1_is_addc    | ex1_is_addic    | ex1_is_addicr   |
+                                    ex1_is_adde    | ex1_is_addme    | ex1_is_addze    |
+                                    ex1_is_subfc   | ex1_is_subfic   | ex1_is_subfme   |
+                                    ex1_is_subfe   | ex1_is_subfze   | ex1_is_srad     |
                                     ex1_is_sradi   | ex1_is_sraw     | ex1_is_srawi    ;
 
    assign dec_alu_ex1_xer_ov_en  = ex1_instr_q[21] & (
@@ -1012,57 +1076,75 @@ module xu0_dec(
    assign dec_byp_ex3_dlm_done   = ex3_is_dlmzb_q;
    assign dec_cnt_ex2_instr      = ex2_instr_q[25:25];
 
+   //----------------------------------------------------------------------------------------------------------------------------------------
+   // Immediate Logic
+   //----------------------------------------------------------------------------------------------------------------------------------------
+   // Determine what ops use immediate:
    assign ex0_use_imm   =  ex0_is_b       | ex0_is_bc    | ex0_is_addi  | ex0_is_addic    | ex0_is_addicr   | ex0_is_addme |
                            ex0_is_addis   | ex0_is_addze | ex0_is_andir | ex0_is_andisr   | ex0_is_cmpi     | ex0_is_cmpli |
                            ex0_is_mulli   | ex0_is_neg   | ex0_is_ori   | ex0_is_oris     | ex0_is_subfic   | ex0_is_subfze |
                            ex0_is_twi     | ex0_is_tdi   | ex0_is_xori  | ex0_is_xoris    | ex0_is_subfme   | ex0_is_mtcrf |
                            ex0_is_mtmsr   | ex0_is_mtspr | ex0_is_wrteei | ex0_is_wrtee   | ex0_is_eratwe;
 
+   // Determine ops that use 15 bit immediate
    assign ex1_imm_size  =  ex1_is_addi    | ex1_is_addis | ex1_is_subfic | ex1_is_addic   | ex1_is_addicr   | ex1_is_mulli |
                            ex1_is_ori     | ex1_is_oris  | ex1_is_andir  | ex1_is_andisr  | ex1_is_xori     | ex1_is_xoris |
                            ex1_is_bc      | ex1_is_cmpli | ex1_is_cmpi   | ex1_is_twi     | ex1_is_tdi      | ex1_is_wrteei;
 
+   // Determine ops that use sign-extended immediate
    assign ex1_imm_signext = ex1_is_addi   | ex1_is_addis | ex1_is_subfic | ex1_is_addic   | ex1_is_addicr   | ex1_is_mulli |
                             ex1_is_bc     | ex1_is_cmpi  | ex1_is_twi    | ex1_is_tdi;
 
-   assign ex1_shift_imm =  ex1_is_addis   | ex1_is_oris  | ex1_is_andisr | ex1_is_xoris;		
+   assign ex1_shift_imm =  ex1_is_addis   | ex1_is_oris  | ex1_is_andisr | ex1_is_xoris;		// Immediate needs to be shifted
 
    assign ex1_zero_imm  =  ex1_is_mtcrf   | ex1_is_mtmsr | ex1_is_mtspr  | ex1_is_wrtee   | ex1_is_neg      | ex1_is_addze |
-                           ex1_is_subfze  | ex1_is_eratwe | ex1_is_mtiar;		               
+                           ex1_is_subfze  | ex1_is_eratwe | ex1_is_mtiar;		               // Immediate should be zeroed
 
-   assign ex1_ones_imm  =  ex1_is_addme   | ex1_is_subfme;     
+   assign ex1_ones_imm  =  ex1_is_addme   | ex1_is_subfme;     // Immediate should be all ones
 
-   assign ex1_extd_imm = ({ex1_imm_size, ex1_imm_signext} == 2'b11) ? {{10{ex1_instr_q[16]}},   ex1_instr_q[16:31]} : 
-                         ({ex1_imm_size, ex1_imm_signext} == 2'b10) ? {10'b0,                   ex1_instr_q[16:31]} : 
+   assign ex1_extd_imm = ({ex1_imm_size, ex1_imm_signext} == 2'b11) ? {{10{ex1_instr_q[16]}},   ex1_instr_q[16:31]} :
+                         ({ex1_imm_size, ex1_imm_signext} == 2'b10) ? {10'b0,                   ex1_instr_q[16:31]} :
                                                                                                 ex1_instr_q[6:31];
 
-   assign ex1_shifted_imm = (ex1_shift_imm == 1'b0) ? {{`GPR_WIDTH-26{ex1_extd_imm[6]}} , ex1_extd_imm} : 
+   assign ex1_shifted_imm = (ex1_shift_imm == 1'b0) ? {{`GPR_WIDTH-26{ex1_extd_imm[6]}} , ex1_extd_imm} :
                                                       {{`GPR_WIDTH-32{ex1_extd_imm[15]}}, ex1_extd_imm[16:31], 16'b0};
 
+   // Immediate tied down or tied up as needed
    assign dec_byp_ex1_imm = (ex1_shifted_imm & {`GPR_WIDTH{~ex1_zero_imm}}) | {`GPR_WIDTH{ex1_ones_imm}};
 
    assign dec_byp_ex0_rs2_sel_imm = ex0_use_imm;
 
+   //-------------------------------------------------------------------------
+   // TLB Illegal Ops
+   //-------------------------------------------------------------------------
+   // WS>3 is reserved
    assign ex1_tlb_illeg_ws    = (ex1_is_eratwe | ex1_is_eratre) & ex1_instr_q[16:18] != 3'b000;
+   // WS=2 is reserved in 64b mode
    assign ex1_tlb_illeg_ws2   = (ex1_is_eratwe | ex1_is_eratre) & ex1_instr_q[19:20] == 2'b10 & ex1_spr_msr_cm_int;
+   // WS=3 is reserved for eratwe when targeting anything other than erats
    assign ex1_tlb_illeg_ws3   = ex1_is_eratwe & ex1_instr_q[19:20] == 2'b11 & ex1_tlbsel[0] == 1'b0;
+   // T=2 is reserved
    assign ex1_tlb_illeg_t     = ex1_is_tlbilx & ex1_instr_q[8:10] == 3'b010;
+   // Target other than erats is illegid for some erat ops, and all tlb ops illegid when no TLB is present
    assign ex1_tlb_illeg_sel   = ((ex1_is_tlbwe | ex1_is_tlbre | ex1_is_tlbsx | ex1_is_tlbsxr | ex1_is_tlbsrx | ex1_is_tlbilx | ex1_is_tlbivax) & spr_ccr2_notlb_q) |
-                                ((ex1_is_eratwe | ex1_is_eratre | ex1_is_eratsx) & (~ex1_tlbsel[0])) | 
-                                ((ex1_is_erativax) & (~spr_ccr2_notlb_q));		      
+                                ((ex1_is_eratwe | ex1_is_eratre | ex1_is_eratsx) & (~ex1_tlbsel[0])) |
+                                ((ex1_is_erativax) & (~spr_ccr2_notlb_q));		      // erativax illegid in TLB mode, use tlbivax
 
    assign ex1_tlb_illeg       = ex1_tlb_illeg_ws | ex1_tlb_illeg_ws2 | ex1_tlb_illeg_ws3 | ex1_tlb_illeg_sel | ex1_tlb_illeg_t;
 
+   //-------------------------------------------------------------------------
+   // Multiply Decode
+   //-------------------------------------------------------------------------
    assign dec_mul_ex1_mul_val = (ex1_ord_val | ex1_val) & {`THREADS{ex1_mul_val}};
 
-   assign ex1_mul_val            =  ex1_is_mulhw   | ex1_is_mulhwu   | ex1_is_mullw    | ex1_is_mulhd | 
+   assign ex1_mul_val            =  ex1_is_mulhw   | ex1_is_mulhwu   | ex1_is_mullw    | ex1_is_mulhd |
                                     ex1_is_mulhdu  | ex1_is_mulld    | ex1_is_mulldo   | ex1_is_mulli ;
 
    assign dec_mul_ex1_mul_ord    = ex1_ord_q;
    assign dec_mul_ex1_mul_recform = ex1_instr_q[31] & (
                                     ex1_is_mulhd   | ex1_is_mulhdu   | ex1_is_mulhw    | ex1_is_mulhwu |
                                     ex1_is_mulld   | ex1_is_mulldo   | ex1_is_mullw);
-                                    
+
    assign dec_mul_ex1_mul_ret    =  ex1_is_mulhw   | ex1_is_mulhwu   | ex1_is_mulhd    | ex1_is_mulhdu;
    assign dec_mul_ex1_mul_size   =  ex1_is_mulld   | ex1_is_mulldo   | ex1_is_mulhd    | ex1_is_mulhdu | ex1_is_mulli;
    assign dec_mul_ex1_mul_sign   = ~(ex1_is_mulhdu | ex1_is_mulhwu);
@@ -1087,11 +1169,14 @@ module xu0_dec(
    assign ex0_mul_insert         = ex1_mul_2c | ex2_mul_3c_q | ex3_mul_4c_q;
    assign ex3_mul_insert         = (ex4_mul_2c_q | ex5_mul_3c_q | ex6_mul_4c_q) & |(exx_mul_tid_q & ~cp_flush_q);
 
+   //--------------------------------------------------------------------------
+   // DIV control logic
+   //--------------------------------------------------------------------------
    assign dec_div_ex1_div_act    = |(ex1_ord_val_q) & ex1_div_val;
 
    assign dec_div_ex1_div_val    = ex1_ord_val & {`THREADS{ex1_div_val}};
 
-   assign ex1_div_val            =(ex1_is_divd  | ex1_is_divdu    | ex1_is_divw  | ex1_is_divwu | 
+   assign ex1_div_val            =(ex1_is_divd  | ex1_is_divdu    | ex1_is_divw  | ex1_is_divwu |
                                    ex1_is_divde | ex1_is_divdeu   | ex1_is_divwe | ex1_is_divweu);
 
    assign dec_div_ex1_div_sign   = ex1_is_divw  | ex1_is_divd     | ex1_is_divwe | ex1_is_divde;
@@ -1100,76 +1185,89 @@ module xu0_dec(
 
    assign dec_div_ex1_div_extd   = ex1_is_divde | ex1_is_divdeu   | ex1_is_divwe | ex1_is_divweu;
 
-   assign dec_div_ex1_div_recform =(ex1_is_divd | ex1_is_divdu    | ex1_is_divw  | ex1_is_divwu | 
+   assign dec_div_ex1_div_recform =(ex1_is_divd | ex1_is_divdu    | ex1_is_divw  | ex1_is_divwu |
                                    ex1_is_divde | ex1_is_divdeu   | ex1_is_divwe | ex1_is_divweu) & ex1_instr_q[31];
 
    assign dec_div_ex1_div_ctr = (ex1_div_ctr_sel == 3'b100) ? 8'b01000010 :
-                                (ex1_div_ctr_sel == 3'b010) ? 8'b00100010 : 
-                                (ex1_div_ctr_sel == 3'b001) ? 8'b00010010 : 
+                                (ex1_div_ctr_sel == 3'b010) ? 8'b00100010 :
+                                (ex1_div_ctr_sel == 3'b001) ? 8'b00010010 :
                                                               8'b00000000 ;
    assign ex1_div_ctr_sel[0]  = ex1_is_divde | ex1_is_divdeu;
    assign ex1_div_ctr_sel[1]  = ex1_is_divd  | ex1_is_divdu    | ex1_is_divwe | ex1_is_divweu;
    assign ex1_div_ctr_sel[2]  = ex1_is_divw  | ex1_is_divwu;
 
-   assign dec_div_ex1_xer_ov_update =(ex1_is_divd | ex1_is_divde | ex1_is_divdeu | ex1_is_divdu | 
+   assign dec_div_ex1_xer_ov_update =(ex1_is_divd | ex1_is_divde | ex1_is_divdeu | ex1_is_divdu |
                                       ex1_is_divw | ex1_is_divwe | ex1_is_divweu | ex1_is_divwu) & ex1_instr_q[21];
 
+   //--------------------------------------------------------------------------
+   // BCD control logic
+   //--------------------------------------------------------------------------
    assign dec_bcd_ex1_val        = ex1_valid & (ex1_is_cdtbcd | ex1_is_cbcdtd | ex1_is_addg6s);
    assign dec_bcd_ex1_is_addg6s  = ex1_is_addg6s;
    assign dec_bcd_ex1_is_cdtbcd  = ex1_is_cdtbcd;
 
+   //--------------------------------------------------------------------------
+   // mt/mf bypassed SPRs
+   //--------------------------------------------------------------------------
    assign dec_byp_ex1_is_mflr    = ex1_is_mflr | ex1_is_mftar;
    assign dec_byp_ex1_is_mfxer   = ex1_is_mfxer;
    assign dec_byp_ex1_is_mtxer   = ex1_is_mtxer;
    assign dec_byp_ex1_is_mfctr   = ex1_is_mfctr;
    assign dec_byp_ex1_is_mfcr    = ex1_instr_q[12:19] & {8{ex1_is_mfcr}};
    assign dec_byp_ex1_is_mtcr    = ex1_instr_q[12:19] & {8{ex1_is_mtcrf}};
-   assign dec_byp_ex1_is_mfcr_sel = ex1_is_mfcr;		
+   assign dec_byp_ex1_is_mfcr_sel = ex1_is_mfcr;		// A2i compatability
 
    assign dec_byp_ex1_cr_sel[2]  = ex1_s2_v_q & (ex1_s2_t_q == `cr_t);
    assign dec_byp_ex1_cr_sel[3]  = ex1_s3_v_q & (ex1_s3_t_q == `cr_t);
    assign dec_byp_ex1_xer_sel[2] = ex1_s2_v_q & (ex1_s2_t_q == `xer_t);
    assign dec_byp_ex1_xer_sel[3] = ex1_s3_v_q & (ex1_s3_t_q == `xer_t);
 
+   //-------------------------------------------------------------------------
+   // Privilege Levels
+   //-------------------------------------------------------------------------
    assign ex1_tid                = ex1_val_q | ex1_ord_val_q;
 
-   assign ex1_priv_excep = (  ex1_is_eratilx | ex1_is_erativax | ex1_is_eratre   | ex1_is_eratsx   | 
-                              ex1_is_eratwe  | ex1_is_tlbilx   | ex1_is_tlbivax  | ex1_is_tlbre    | 
+   assign ex1_priv_excep = (  ex1_is_eratilx | ex1_is_erativax | ex1_is_eratre   | ex1_is_eratsx   |
+                              ex1_is_eratwe  | ex1_is_tlbilx   | ex1_is_tlbivax  | ex1_is_tlbre    |
                               ex1_is_tlbwe   | ex1_is_tlbsrx   | ex1_is_tlbsx    | ex1_is_tlbsxr   ) & |(ex1_tid & spr_msr_pr_q);
 
    assign ex1_hyp_priv_excep=(ex1_is_eratilx | ex1_is_erativax | ex1_is_eratre   | ex1_is_eratsx   |
-                               ex1_is_eratwe | ex1_is_tlbsx    | ex1_is_tlbsxr   | ex1_is_tlbivax  | ex1_is_tlbre | 
+                               ex1_is_eratwe | ex1_is_tlbsx    | ex1_is_tlbsxr   | ex1_is_tlbivax  | ex1_is_tlbre |
                             ((ex1_is_tlbwe   | ex1_is_tlbsrx   | ex1_is_tlbilx) & |(ex1_tid & spr_epcr_dgtmi_q)))
                              & |(ex1_tid & (spr_msr_pr_q | spr_msr_gs_q));
 
    assign ex1_illegal_op         = (ex1_is_attn    &  ~spr_ccr2_en_attn_q) |
                                    (ex1_is_dnh     &  ~spr_ccr4_en_dnh_q)  ;
 
-   assign ex1_flush2ucode        = ex1_is_mtcrf & 
-                                  ~((ex1_instr_q[12:19] == 8'b10000000) | (ex1_instr_q[12:19] == 8'b01000000) | 
-                                    (ex1_instr_q[12:19] == 8'b00100000) | (ex1_instr_q[12:19] == 8'b00010000) | 
-                                    (ex1_instr_q[12:19] == 8'b00001000) | (ex1_instr_q[12:19] == 8'b00000100) | 
+   assign ex1_flush2ucode        = ex1_is_mtcrf &
+                                  ~((ex1_instr_q[12:19] == 8'b10000000) | (ex1_instr_q[12:19] == 8'b01000000) |
+                                    (ex1_instr_q[12:19] == 8'b00100000) | (ex1_instr_q[12:19] == 8'b00010000) |
+                                    (ex1_instr_q[12:19] == 8'b00001000) | (ex1_instr_q[12:19] == 8'b00000100) |
                                     (ex1_instr_q[12:19] == 8'b00000010) | (ex1_instr_q[12:19] == 8'b00000001) |
                                     (ex1_instr_q[12:19] == 8'b00000000));
-                                    
-   assign ex1_async_flush_after     = ex1_is_mtspr &  ((ex1_instr_q[11:20] == 10'b1000011111) |    
-                                                       (ex1_instr_q[11:20] == 10'b1011101101));		
 
-   assign ex1_async_flush_before    = ex1_is_eratilx | ex1_is_tlbilx | ex1_is_tlbivax | (ex1_is_tlbwe & mm_xu_tlbwe_binv_q) | (ex1_is_mtspr & (ex1_instr_q[11:20] == 10'b1011011111 |   
-                                                                                                                                               ex1_instr_q[11:20] == 10'b1000011001 |   
-                                                                                                                                               ex1_instr_q[11:20] == 10'b1000111001 |   
-                                                                                                                                               ex1_instr_q[11:20] == 10'b1001011001 |   
-                                                                                                                                               ex1_instr_q[11:20] == 10'b1010011001 |   
-                                                                                                                                               ex1_instr_q[11:20] == 10'b1010111001 |   
-                                                                                                                                               ex1_instr_q[11:20] == 10'b1011011001 )); 
+   //--------------------------------------------------------------------------
+   // Ordered
+   //--------------------------------------------------------------------------
+   // 1008 CCR0
+   assign ex1_async_flush_after     = ex1_is_mtspr &  ((ex1_instr_q[11:20] == 10'b1000011111) |    // 1008 CCR0
+                                                       (ex1_instr_q[11:20] == 10'b1011101101));		//  439 TENC
 
-   assign ex1_is_credit_wait        = (ex1_is_mtspr & (ex1_instr_q[11:20] == 10'b1011011111 |   
-                                                       ex1_instr_q[11:20] == 10'b1000011001 |   
-                                                       ex1_instr_q[11:20] == 10'b1000111001 |   
-                                                       ex1_instr_q[11:20] == 10'b1001011001 |   
-                                                       ex1_instr_q[11:20] == 10'b1010011001 |   
-                                                       ex1_instr_q[11:20] == 10'b1010111001 |   
-                                                       ex1_instr_q[11:20] == 10'b1011011001 )); 
+   assign ex1_async_flush_before    = ex1_is_eratilx | ex1_is_tlbilx | ex1_is_tlbivax | (ex1_is_tlbwe & mm_xu_tlbwe_binv_q) | (ex1_is_mtspr & (ex1_instr_q[11:20] == 10'b1011011111 |   // XUCR0
+                                                                                                                                               ex1_instr_q[11:20] == 10'b1000011001 |   // cpcr0 816
+                                                                                                                                               ex1_instr_q[11:20] == 10'b1000111001 |   // cpcr1 817
+                                                                                                                                               ex1_instr_q[11:20] == 10'b1001011001 |   // cpcr2 818
+                                                                                                                                               ex1_instr_q[11:20] == 10'b1010011001 |   // cpcr3 820
+                                                                                                                                               ex1_instr_q[11:20] == 10'b1010111001 |   // cpcr4 821
+                                                                                                                                               ex1_instr_q[11:20] == 10'b1011011001 )); // cpcr5 822
+
+   assign ex1_is_credit_wait        = (ex1_is_mtspr & (ex1_instr_q[11:20] == 10'b1011011111 |   // XUCR0
+                                                       ex1_instr_q[11:20] == 10'b1000011001 |   // cpcr0 816
+                                                       ex1_instr_q[11:20] == 10'b1000111001 |   // cpcr1 817
+                                                       ex1_instr_q[11:20] == 10'b1001011001 |   // cpcr2 818
+                                                       ex1_instr_q[11:20] == 10'b1010011001 |   // cpcr3 820
+                                                       ex1_instr_q[11:20] == 10'b1010111001 |   // cpcr4 821
+                                                       ex1_instr_q[11:20] == 10'b1011011001 )); // cpcr5 822
 
    assign ex2_mtiar_sel             = ex2_ord_valid & ex2_is_mtiar_q;
 
@@ -1183,26 +1281,30 @@ module xu0_dec(
    assign xu_iu_pri_val_d           = ((ex1_ord_val & {`THREADS{ex1_any_pri}}) | xu_iu_pri_val_q) & ~xu_iu_pri_val_int & ~cp_flush_q;
 
    assign xu_iu_pri                 = xu_iu_pri_q;
-   assign xu_iu_pri_d               =  (3'b001 & {3{(ex1_ord_capt & ex1_is_pri1)}}) | 
-                                       (3'b010 & {3{(ex1_ord_capt & ex1_is_pri2)}}) | 
-                                       (3'b011 & {3{(ex1_ord_capt & ex1_is_pri3)}}) | 
-                                       (3'b100 & {3{(ex1_ord_capt & ex1_is_pri4)}}) | 
-                                       (3'b101 & {3{(ex1_ord_capt & ex1_is_pri5)}}) | 
+   assign xu_iu_pri_d               =  (3'b001 & {3{(ex1_ord_capt & ex1_is_pri1)}}) |
+                                       (3'b010 & {3{(ex1_ord_capt & ex1_is_pri2)}}) |
+                                       (3'b011 & {3{(ex1_ord_capt & ex1_is_pri3)}}) |
+                                       (3'b100 & {3{(ex1_ord_capt & ex1_is_pri4)}}) |
+                                       (3'b101 & {3{(ex1_ord_capt & ex1_is_pri5)}}) |
                                        (3'b110 & {3{(ex1_ord_capt & ex1_is_pri6)}}) |
                                        (3'b111 & {3{(ex1_ord_capt & ex1_is_pri7)}});
 
    assign ex2_ord_erat_val          = (ex2_ord_is_eratre_q | ex2_ord_is_eratwe_q | ex2_ord_is_eratsx_q) & ~(ex2_priv_excep_q | ex2_hyp_priv_excep_q | ex2_tlb_illeg_q);
 
-   assign ex2_ord_mmu_val           = (ex2_ord_is_tlbre_q | ex2_ord_is_tlbwe_q | ex2_ord_is_tlbsx_q | 
-                                       ex2_ord_is_tlbsxr_q | ex2_ord_is_tlbsrx_q | ex2_ord_is_tlbilx_q | 
+   assign ex2_ord_mmu_val           = (ex2_ord_is_tlbre_q | ex2_ord_is_tlbwe_q | ex2_ord_is_tlbsx_q |
+                                       ex2_ord_is_tlbsxr_q | ex2_ord_is_tlbsrx_q | ex2_ord_is_tlbilx_q |
                                        ex2_ord_is_tlbivax_q | ex2_ord_is_eratilx_q | ex2_ord_is_erativax_q) & (~(ex2_priv_excep_q | ex2_hyp_priv_excep_q | ex2_tlb_illeg_q));
 
    assign xu_iu_hold_val_d = (ex2_ord_valid == 1'b1) ? (ex2_tlbsel == 2'b10 & ex2_ord_erat_val) : xu_iu_hold_val_q & ~ord_mmu_req_sent_q;
    assign xu_lq_hold_val_d = (ex2_ord_valid == 1'b1) ? (ex2_tlbsel == 2'b11 & ex2_ord_erat_val) : xu_lq_hold_val_q & ~ord_mmu_req_sent_q;
    assign xu_mm_hold_val_d = (ex2_ord_valid == 1'b1) ? (ex2_ord_mmu_val)                        : xu_mm_hold_val_q & ~ord_mmu_req_sent_q;
 
+   // Data is ready by EX5.
    assign ord_mmu_req_sent_d  = (xu_iu_val_d | xu_lq_val_d | xu_mm_val_d) & ord_outstanding_q & ord_is_cp_next_q;
 
+   // mmu_ord_n_flush_req_q is mmu busy, so just retry tlb op again.
+   // iu_ord_n_flush_req_q is eratsx collision with I$ back_inv or tlb reload, so just retry erat op again.
+   // lq_ord_n_flush_req_q is spare/future use for now because derat has arbiter for collisions.
    assign xu_iu_val_d   = (xu_iu_hold_val_q & ord_outstanding_q & ord_is_cp_next_q & ~ord_mmu_req_sent_q & ~cp_flush_ord_tid) | iu_ord_n_flush_req_q[1];
    assign xu_lq_val_d   = (xu_lq_hold_val_q & ord_outstanding_q & ord_is_cp_next_q & ~ord_mmu_req_sent_q & ~cp_flush_ord_tid) | lq_ord_n_flush_req_q[1];
    assign xu_mm_val_d   = (xu_mm_hold_val_q & ord_outstanding_q & ord_is_cp_next_q & ~ord_mmu_req_sent_q & ~cp_flush_ord_tid) | mmu_ord_n_flush_req_q[1];
@@ -1244,7 +1346,7 @@ module xu0_dec(
 
    assign xu_iu_np1_async_flush        = async_flush_req_q & ~async_flush_req_2_q;
 
-   assign async_flush_req_d            = (ord_async_flush_after_q  & {`THREADS{|ex2_ord_cp_next_cmp & ord_done_q}}) | 
+   assign async_flush_req_d            = (ord_async_flush_after_q  & {`THREADS{|ex2_ord_cp_next_cmp & ord_done_q}}) |
                                          (ord_async_flush_before_q & {`THREADS{|ex2_ord_cp_next_cmp}});
 
    assign ord_is_cp_next               = |ex2_ord_cp_next_cmp & ord_outstanding_q & ~((|ord_async_flush_before_q) | ord_async_credit_wait_q);
@@ -1265,22 +1367,23 @@ module xu0_dec(
    assign ord_illeg_mmu_d        = (mm_xu_illeg_instr                               | ord_illeg_mmu_q    ) & ~ex1_ord_capt;
    assign ord_lq_flush_d         = (lq_xu_ord_n_flush_req                           | ord_lq_flush_q     ) & ~ex1_ord_capt;
    assign ord_spr_priv_d         = ((spr_dec_ex4_spr_priv   & spr_ord_done)         | ord_spr_priv_q     ) & ~ex1_ord_capt;
-   assign ord_spr_illegal_spr_d  = ((spr_dec_ex4_spr_illeg  & spr_ord_done)         | 
+   assign ord_spr_illegal_spr_d  = ((spr_dec_ex4_spr_illeg  & spr_ord_done)         |
                                     (ex2_ord_valid          & ex2_illegal_op_q)     | ord_spr_illegal_spr_q) & ~ex1_ord_capt;
    assign ord_hyp_priv_spr_d     = ((spr_dec_ex4_spr_hypv   & spr_ord_done)         | ord_hyp_priv_spr_q ) & ~ex1_ord_capt;
    assign ord_ex3_np1_flush_d    = ((spr_dec_ex4_np1_flush  & spr_ord_done)         | ord_ex3_np1_flush_q) & ~ex1_ord_capt;
    assign ord_ill_tlb_d          = ((ex2_ord_valid          & ex2_tlb_illeg_q)      | ord_ill_tlb_q      ) & ~ex1_ord_capt;
    assign ord_priv_d             = ((ex2_ord_valid          & ex2_priv_excep_q)     | ord_priv_q         ) & ~ex1_ord_capt;
    assign ord_hyp_priv_d         = ((ex2_ord_valid          & ex2_hyp_priv_excep_q) | ord_hyp_priv_q     ) & ~ex1_ord_capt;
-   
+
    assign ord_ierat_par_err_d    = (((iu_xu_ord_read_done | iu_xu_ord_write_done) & iu_xu_ord_par_err)        | ord_ierat_par_err_q)     & ~ex1_ord_capt;
    assign ord_derat_par_err_d    = (((lq_xu_ord_read_done | lq_xu_ord_write_done) & lq_xu_ord_par_err)        | ord_derat_par_err_q)     & ~ex1_ord_capt;
    assign ord_tlb_multihit_d     = ((mmu_ord_itag_match                           & mm_xu_tlb_multihit)       | ord_tlb_multihit_q)      & ~ex1_ord_capt;
    assign ord_tlb_par_err_d      = ((mmu_ord_itag_match                           & mm_xu_tlb_par_err)        | ord_tlb_par_err_q)       & ~ex1_ord_capt;
    assign ord_tlb_lru_par_err_d  = ((mmu_ord_itag_match                           & mm_xu_lru_par_err)        | ord_tlb_lru_par_err_q)   & ~ex1_ord_capt;
-   assign ord_local_snoop_reject_d=((mmu_ord_itag_match                           & mm_xu_local_snoop_reject) | ord_local_snoop_reject_q)& ~ex1_ord_capt;    
-   
-   
+   assign ord_local_snoop_reject_d=((mmu_ord_itag_match                           & mm_xu_local_snoop_reject) | ord_local_snoop_reject_q)& ~ex1_ord_capt;
+
+
+   // Don't hold the lq off for core-blocker instructions
    assign ord_hold_lq_d       = ((mmu_ord_n_flush_req_q[0]  & ~ord_core_block_q)    | ord_hold_lq_q      ) & ~ex1_ord_capt & ord_outstanding_q;
 
    assign mmu_error     = (mm_xu_tlb_miss | mm_xu_lrat_miss | mm_xu_tlb_inelig | mm_xu_pt_fault | mm_xu_hv_priv | mm_xu_illeg_instr) & mmu_ord_itag_match;
@@ -1295,7 +1398,7 @@ module xu0_dec(
                                                                        ex4_ord_complete_q |
                                                                        ex5_ord_complete_q |
                                                                        ex6_ord_complete_q ;
-   
+
    assign ord_outstanding_d = (ex1_ord_valid | ord_outstanding_q) & ~(ex0_ord_complete | ord_flush);
 
    assign ord_done_d          = ((ord_outstanding_q & (ord_write_gpr | ord_read_gpr | ord_other)) | ord_done_q) & ~ex0_ord_complete & ~cp_flush_ord;
@@ -1307,10 +1410,10 @@ module xu0_dec(
    assign ord_waiting         = ord_outstanding_q & ord_done_q & ord_async_done;
 
    assign ord_timer_d         = ord_waiting ? (ord_timer_q + 6'd1) : 6'd0;
-   
+
    assign ord_timeout_d[0]    = ord_timer_q == 6'b111111;
    assign ord_timeout_d[1]    = ord_timeout_q[0];
-   
+
    assign xu0_rv_hold_all     = |ord_timeout_q;
 
    assign ex0_ord_complete    = ord_waiting & ~|ex0_val_q & ~ex0_mul_insert & ~cp_flush_ord;
@@ -1321,25 +1424,25 @@ module xu0_dec(
    assign ex5_ord_complete    = ex5_ord_complete_q & ~cp_flush_ord_tid;
    assign ex6_ord_complete    = ex6_ord_complete_q & ~cp_flush_ord_tid;
 
-   assign ord_other           = ord_ill_tlb_q | ord_priv_q | ord_hyp_priv_q | ord_illeg_mmu_q | ord_ierat_par_err_q |  
+   assign ord_other           = ord_ill_tlb_q | ord_priv_q | ord_hyp_priv_q | ord_illeg_mmu_q | ord_ierat_par_err_q |
                                 ord_derat_par_err_q | ord_tlb_multihit_q | ord_tlb_par_err_q | ord_tlb_lru_par_err_q | ord_local_snoop_reject_q;
 
-   assign ord_write_gpr =   ((xu_slowspr_val_in & xu_slowspr_rw_in) |                        
-                              spr_xu_ord_write_done |                                        
-                              iu_xu_ord_read_done |                                          
-                              lq_xu_ord_read_done |                                          
-                             (mm_xu_ord_read_done & (~mm_xu_ord_n_flush_req | mmu_error)) |  
-                              div_dec_ex4_done |                                             
-                              mul_dec_ex6_ord_done                                           
+   assign ord_write_gpr =   ((xu_slowspr_val_in & xu_slowspr_rw_in) |                        // SlowSPR Read
+                              spr_xu_ord_write_done |                                        // FastSPR Read
+                              iu_xu_ord_read_done |                                          // IU IERAT read
+                              lq_xu_ord_read_done |                                          // LQ DERAT read
+                             (mm_xu_ord_read_done & (~mm_xu_ord_n_flush_req | mmu_error)) |  // MMU read
+                              div_dec_ex4_done |                                             // Divide
+                              mul_dec_ex6_ord_done                                           // Mult
                                                    ) & ~cp_flush_ord_tid;
 
-   assign ord_read_gpr =    ((xu_slowspr_val_in & ~xu_slowspr_rw_in) |                       
-                              spr_xu_ord_read_done |                                         
-                              iu_xu_ord_write_done |                                         
-                             (mm_xu_ord_write_done & (~mm_xu_ord_n_flush_req | mmu_error)) | 
-                              lq_xu_ord_write_done |                                         
-                              lq_xu_ord_n_flush_req |                                        
-                              |xu_iu_pri_val_int                                             
+   assign ord_read_gpr =    ((xu_slowspr_val_in & ~xu_slowspr_rw_in) |                       // SlowSPR Write
+                              spr_xu_ord_read_done |                                         // FastSPR Write
+                              iu_xu_ord_write_done |                                         // IU IERAT Write
+                             (mm_xu_ord_write_done & (~mm_xu_ord_n_flush_req | mmu_error)) | // MMU read
+                              lq_xu_ord_write_done |                                         // LQ DERAT Write
+                              lq_xu_ord_n_flush_req |                                        //
+                              |xu_iu_pri_val_int                                             //
                                                    ) & ~cp_flush_ord_tid;
 
 
@@ -1352,24 +1455,40 @@ module xu0_dec(
 
    assign ex3_hpriv           = |(ex3_excep_cond[9:11]);
    assign dec_byp_ex4_hpriv   = ex4_hpriv_q;
-   assign dec_byp_ex4_instr   = (ex4_instr_q & {32{~ex4_ord_complete}}) | 
+   assign dec_byp_ex4_instr   = (ex4_instr_q & {32{~ex4_ord_complete}}) |
                                 (ord_instr_q & {32{ ex4_ord_complete}});
 
+   // TLB Parity Error                             0
+   // TLB LRU Parity                               1
+   // TLB Multihit                                 2
+   // IERAT parity                                 3
+   // DERAT parity                                 4
+   // Program XU sourced illegal instruction type  5
+   // Program SPR sourced illegal SPR              6
+   // Program SPR sourced priviledged SPR          7
+   // Program XU sourced priviledged instruction   8
+   // Hypervisor Priviledge Priviledged SPR        9
+   // Hypervisor Priviledge ehpriv instruction     10
+   // Hypervisor Priviledge XU sourced priviledged 11
+   // TLB Ineligile                                12
+   // MMU illegal Mas                              13
+   // Program Trap Instruction                     14
+   // LRAT Miss                                    15
 
-   assign ex3_excep_cond[0] = ex3_ord_complete     & ord_tlb_par_err_q;    
+   assign ex3_excep_cond[0] = ex3_ord_complete     & ord_tlb_par_err_q;
    assign ex3_excep_cond[1] = ex3_ord_complete     & ord_tlb_lru_par_err_q;
-   assign ex3_excep_cond[2] = ex3_ord_complete     & ord_tlb_multihit_q;   
-   assign ex3_excep_cond[3] = ex3_ord_complete     & ord_ierat_par_err_q;  
-   assign ex3_excep_cond[4] = ex3_ord_complete     & ord_derat_par_err_q;  
-   assign ex3_excep_cond[5] =(ex3_valid            & ex3_illegal_op_q) | 
+   assign ex3_excep_cond[2] = ex3_ord_complete     & ord_tlb_multihit_q;
+   assign ex3_excep_cond[3] = ex3_ord_complete     & ord_ierat_par_err_q;
+   assign ex3_excep_cond[4] = ex3_ord_complete     & ord_derat_par_err_q;
+   assign ex3_excep_cond[5] =(ex3_valid            & ex3_illegal_op_q) |
                              (ex3_ord_complete     & ord_ill_tlb_q);
    assign ex3_excep_cond[6] = ex3_ord_complete     & ord_spr_illegal_spr_q;
-   assign ex3_excep_cond[7] =(ex3_valid            & ex3_priv_excep_q) | 
+   assign ex3_excep_cond[7] =(ex3_valid            & ex3_priv_excep_q) |
                              (ex3_ord_complete     & ord_priv_q);
    assign ex3_excep_cond[8] = ex3_ord_complete     & ord_spr_priv_q;
-   assign ex3_excep_cond[9] = ex3_ord_complete     & ord_hyp_priv_spr_q; 
+   assign ex3_excep_cond[9] = ex3_ord_complete     & ord_hyp_priv_spr_q;
    assign ex3_excep_cond[10]= ex3_valid            & ex3_is_ehpriv_q;
-   assign ex3_excep_cond[11]=(ex3_valid            & ex3_hyp_priv_excep_q) | 
+   assign ex3_excep_cond[11]=(ex3_valid            & ex3_hyp_priv_excep_q) |
                              (ex3_ord_complete     & (ord_hyp_priv_q | ord_hv_priv_q));
    assign ex3_excep_cond[12]= ex3_ord_complete     & ord_tlb_inelig_q;
    assign ex3_excep_cond[13]= ex3_ord_complete     & ord_illeg_mmu_q;
@@ -1387,16 +1506,16 @@ module xu0_dec(
       .or_cond(ex3_excep_val)
    );
 
-   assign ex3_excep_vector =  (5'd0  & {5{ex3_excep_pri[0]}}) | 
-                              (5'd1  & {5{ex3_excep_pri[1]}}) | 
-                              (5'd2  & {5{ex3_excep_pri[2]}}) | 
-                              (5'd3  & {5{ex3_excep_pri[3]}}) | 
-                              (5'd4  & {5{ex3_excep_pri[4]}}) | 
-                              (5'd5  & {5{ex3_excep_pri[5]}}) | 
-                              (5'd6  & {5{ex3_excep_pri[6]}}) | 
-                              (5'd7  & {5{ex3_excep_pri[7]}}) | 
-                              (5'd8  & {5{ex3_excep_pri[8]}}) | 
-                              (5'd9  & {5{ex3_excep_pri[9]}}) | 
+   assign ex3_excep_vector =  (5'd0  & {5{ex3_excep_pri[0]}}) |
+                              (5'd1  & {5{ex3_excep_pri[1]}}) |
+                              (5'd2  & {5{ex3_excep_pri[2]}}) |
+                              (5'd3  & {5{ex3_excep_pri[3]}}) |
+                              (5'd4  & {5{ex3_excep_pri[4]}}) |
+                              (5'd5  & {5{ex3_excep_pri[5]}}) |
+                              (5'd6  & {5{ex3_excep_pri[6]}}) |
+                              (5'd7  & {5{ex3_excep_pri[7]}}) |
+                              (5'd8  & {5{ex3_excep_pri[8]}}) |
+                              (5'd9  & {5{ex3_excep_pri[9]}}) |
                               (5'd10 & {5{ex3_excep_pri[10]}})|
                               (5'd11 & {5{ex3_excep_pri[11]}})|
                               (5'd12 & {5{ex3_excep_pri[12]}})|
@@ -1443,8 +1562,8 @@ module xu0_dec(
 
 
    `ifdef THREADS1
-   assign spr_mmucr0_tlbsel_d[0] = mm_xu_mmucr0_tlbsel_t0;   
-   
+   assign spr_mmucr0_tlbsel_d[0] = mm_xu_mmucr0_tlbsel_t0;
+
    assign ex0_tlbsel    =  ex0_val_q[0]==1'b1      ?  spr_mmucr0_tlbsel_q[0] :
                                                       2'b00;
 
@@ -1453,11 +1572,11 @@ module xu0_dec(
 
    assign ex2_tlbsel    =  ex2_ord_tid_q[0]==1'b1  ?  spr_mmucr0_tlbsel_q[0] :
                                                       2'b00;
-   
+
    `else
-   assign spr_mmucr0_tlbsel_d[0] = mm_xu_mmucr0_tlbsel_t0;   
+   assign spr_mmucr0_tlbsel_d[0] = mm_xu_mmucr0_tlbsel_t0;
    assign spr_mmucr0_tlbsel_d[1] = mm_xu_mmucr0_tlbsel_t1;
-   
+
    assign ex0_tlbsel    =  ex0_val_q[1]==1'b1      ?  spr_mmucr0_tlbsel_q[1] :
                            ex0_val_q[0]==1'b1      ?  spr_mmucr0_tlbsel_q[0] :
                                                       2'b00;
@@ -1468,10 +1587,13 @@ module xu0_dec(
 
    assign ex2_tlbsel    =  ex2_ord_tid_q[1]==1'b1  ?  spr_mmucr0_tlbsel_q[1] :
                            ex2_ord_tid_q[0]==1'b1  ?  spr_mmucr0_tlbsel_q[0] :
-                                                      2'b00;   
-   `endif   
+                                                      2'b00;
+   `endif
 
 
+   //-------------------------------------------------------------------------
+   // Write Enables
+   //-------------------------------------------------------------------------
 
    assign ex5_t1_v   = (ex5_ord_complete_q == 1'b1) ? ex5_ord_t1_v_q : ex5_t1_v_q;
    assign ex5_t1_t   = (ex5_ord_complete_q == 1'b1) ? ex5_ord_t1_t_q : ex5_t1_t_q;
@@ -1484,7 +1606,7 @@ module xu0_dec(
    assign ex5_t3_p   = (ex5_ord_complete_q == 1'b1) ? ex5_ord_t3_p_q : ex5_t3_p_q;
    assign ex3_itag   = (ex3_ord_complete   == 1'b1) ? ex2_ord_itag_q : ex3_itag_q;
    assign ex6_tid_d  = (ex5_ord_complete_q == 1'b1) ? ex2_ord_tid_q  : ex5_val_q;
-   
+
    assign ex5_cr1_we = ex5_t1_v & (ex5_t1_t == `cr_t);
    assign ex5_cr3_we = ex5_t3_v & (ex5_t3_t == `cr_t);
 
@@ -1495,7 +1617,7 @@ module xu0_dec(
    assign ex3_ctr_we = ex3_valid & ex3_t2_v_q & (ex3_t2_t_q == `ctr_t);
    assign ex3_lr_we  = ex3_valid & ex3_t3_v_q & (ex3_t3_t_q == `lr_t);
 
-   assign ex5_cr_wa  = (ex5_t1_p[`GPR_POOL_ENC-`CR_POOL_ENC:`GPR_POOL_ENC-1] & {`CR_POOL_ENC{ex5_cr1_we}}) | 
+   assign ex5_cr_wa  = (ex5_t1_p[`GPR_POOL_ENC-`CR_POOL_ENC:`GPR_POOL_ENC-1] & {`CR_POOL_ENC{ex5_cr1_we}}) |
                        (ex5_t3_p[`GPR_POOL_ENC-`CR_POOL_ENC:`GPR_POOL_ENC-1] & {`CR_POOL_ENC{ex5_cr3_we}});
 
    assign xu0_gpr_ex6_we   = ex6_gpr_we_q;
@@ -1530,12 +1652,15 @@ module xu0_dec(
 
    assign xu0_pc_ram_done  = (ex6_valid | ex6_ord_complete) & ex6_ram_active_q;
 
+   //-------------------------------------------------------------------------
+   // Perf Events
+   //-------------------------------------------------------------------------
    assign ex1_any_mfspr    = ex1_is_mfspr | ex1_is_mfmsr | ex1_is_mftb | ex1_is_mfcr;
    assign ex1_any_mtspr    = ex1_is_mtspr | ex1_is_mtmsr |               ex1_is_mtcrf | ex1_is_wrtee | ex1_is_wrteei;
-   
+
    assign ex2_any_mfspr    = ex2_ord_complete_q ? ord_any_mfspr_q : ex2_any_mfspr_q;
    assign ex2_any_mtspr    = ex2_ord_complete_q ? ord_any_mtspr_q : ex2_any_mtspr_q;
-   
+
    assign ex3_tid          = (ex3_val_q | (ex2_ord_tid_q & {`THREADS{ex3_ord_complete_q}}));
 
    generate begin : perf_event
@@ -1546,41 +1671,45 @@ module xu0_dec(
                                                  (spr_xesr1[4*e+16*t:4*e+16*t+3] == 4'd11 ? (ex3_tid[t] & perf_event_en[t] & ex3_any_mtspr_q) : 1'b0) ;
          end
       end
-   end 
+   end
    endgenerate
 
+   //-------------------------------------------------------------------------
+   // Decode
+   //-------------------------------------------------------------------------
 
-   assign ex0_instr[0:5] = (rv_xu0_ex0_fusion[0:2] == 3'b100)  ?  6'b011111 : 
-                           (rv_xu0_ex0_fusion[0:2] == 3'b101)  ?  6'b001011 : 
-                           (rv_xu0_ex0_fusion[0:2] == 3'b110)  ?  6'b011111 : 
-                           (rv_xu0_ex0_fusion[0:2] == 3'b111)  ?  6'b001010 : 
+   assign ex0_instr[0:5] = (rv_xu0_ex0_fusion[0:2] == 3'b100)  ?  6'b011111 :
+                           (rv_xu0_ex0_fusion[0:2] == 3'b101)  ?  6'b001011 :
+                           (rv_xu0_ex0_fusion[0:2] == 3'b110)  ?  6'b011111 :
+                           (rv_xu0_ex0_fusion[0:2] == 3'b111)  ?  6'b001010 :
                                                                   rv_xu0_ex0_instr[0:5];
 
-   assign ex0_instr[6:9] = (rv_xu0_ex0_fusion[0] == 1'b1)      ?  4'b0000 : 
+   assign ex0_instr[6:9] = (rv_xu0_ex0_fusion[0] == 1'b1)      ?  4'b0000 :
                                                                   rv_xu0_ex0_instr[6:9];
 
-   assign ex0_instr[10]    = (rv_xu0_ex0_fusion[0] == 1'b1)    ?  rv_xu0_ex0_fusion[3] : 
+   assign ex0_instr[10]    = (rv_xu0_ex0_fusion[0] == 1'b1)    ?  rv_xu0_ex0_fusion[3] :
                                                                   rv_xu0_ex0_instr[10];
 
-   assign ex0_instr[11:15] = (rv_xu0_ex0_fusion[0] == 1'b1)    ?  5'b00000 : 
+   assign ex0_instr[11:15] = (rv_xu0_ex0_fusion[0] == 1'b1)    ?  5'b00000 :
                                                                   rv_xu0_ex0_instr[11:15];
 
-   assign ex0_instr[16:20] = (rv_xu0_ex0_fusion[0:2] == 3'b100) ? 5'b00000 : 
-                             (rv_xu0_ex0_fusion[0:2] == 3'b101) ? rv_xu0_ex0_fusion[4:8] : 
-                             (rv_xu0_ex0_fusion[0:2] == 3'b110) ? 5'b00000 : 
-                             (rv_xu0_ex0_fusion[0:2] == 3'b111) ? rv_xu0_ex0_fusion[4:8] : 
+   assign ex0_instr[16:20] = (rv_xu0_ex0_fusion[0:2] == 3'b100) ? 5'b00000 :
+                             (rv_xu0_ex0_fusion[0:2] == 3'b101) ? rv_xu0_ex0_fusion[4:8] :
+                             (rv_xu0_ex0_fusion[0:2] == 3'b110) ? 5'b00000 :
+                             (rv_xu0_ex0_fusion[0:2] == 3'b111) ? rv_xu0_ex0_fusion[4:8] :
                                                                   rv_xu0_ex0_instr[16:20];
 
-   assign ex0_instr[21:30] = (rv_xu0_ex0_fusion[0:2] == 3'b100) ? 10'b0000000000 : 
-                             (rv_xu0_ex0_fusion[0:2] == 3'b101) ? rv_xu0_ex0_fusion[9:18] : 
-                             (rv_xu0_ex0_fusion[0:2] == 3'b110) ? 10'b0000100000 : 
-                             (rv_xu0_ex0_fusion[0:2] == 3'b111) ? rv_xu0_ex0_fusion[9:18] : 
+   assign ex0_instr[21:30] = (rv_xu0_ex0_fusion[0:2] == 3'b100) ? 10'b0000000000 :
+                             (rv_xu0_ex0_fusion[0:2] == 3'b101) ? rv_xu0_ex0_fusion[9:18] :
+                             (rv_xu0_ex0_fusion[0:2] == 3'b110) ? 10'b0000100000 :
+                             (rv_xu0_ex0_fusion[0:2] == 3'b111) ? rv_xu0_ex0_fusion[9:18] :
                                                                   rv_xu0_ex0_instr[21:30];
 
-   assign ex0_instr[31] = (rv_xu0_ex0_fusion[0:2] == 3'b100) ? 1'b0 : 
-                          (rv_xu0_ex0_fusion[0:2] == 3'b101) ? rv_xu0_ex0_fusion[19] : 
-                          (rv_xu0_ex0_fusion[0:2] == 3'b110) ? 1'b0 : 
-                          (rv_xu0_ex0_fusion[0:2] == 3'b111) ? rv_xu0_ex0_fusion[19] : 
+   // Kill the opcode31 if fusion is on, so I don't get a false decode.
+   assign ex0_instr[31] = (rv_xu0_ex0_fusion[0:2] == 3'b100) ? 1'b0 :
+                          (rv_xu0_ex0_fusion[0:2] == 3'b101) ? rv_xu0_ex0_fusion[19] :
+                          (rv_xu0_ex0_fusion[0:2] == 3'b110) ? 1'b0 :
+                          (rv_xu0_ex0_fusion[0:2] == 3'b111) ? rv_xu0_ex0_fusion[19] :
                                                                rv_xu0_ex0_instr[31];
 
    assign ex0_opcode_is_31 = (rv_xu0_ex0_instr[0:5] == 6'b011111) & (rv_xu0_ex0_fusion[0] == 1'b0);
@@ -1712,9 +1841,9 @@ module xu0_dec(
    assign ex1_is_wrteei    = (ex1_opcode_is_31  &  ex1_instr_q[21:30]   == 10'b0010100011)            ? 1'b1 : 1'b0;
    assign ex1_is_xori      = (                     ex1_instr_q[0:5]     ==  6'b011010)                ? 1'b1 : 1'b0;
    assign ex1_is_xoris     = (                     ex1_instr_q[0:5]     ==  6'b011011)                ? 1'b1 : 1'b0;
-   assign ex1_is_mfspr     = (ex1_opcode_is_31  &  ex1_instr_q[21:30]   == 10'b0101010011)            ? 1'b1 : 1'b0; 
-   assign ex1_is_mfmsr     = (ex1_opcode_is_31  &  ex1_instr_q[21:30]   == 10'b0001010011)            ? 1'b1 : 1'b0; 
-   assign ex1_is_mftb      = (ex1_opcode_is_31  &  ex1_instr_q[21:30]   == 10'b0101110011)            ? 1'b1 : 1'b0; 
+   assign ex1_is_mfspr     = (ex1_opcode_is_31  &  ex1_instr_q[21:30]   == 10'b0101010011)            ? 1'b1 : 1'b0; // 31/339
+   assign ex1_is_mfmsr     = (ex1_opcode_is_31  &  ex1_instr_q[21:30]   == 10'b0001010011)            ? 1'b1 : 1'b0; // 31/083
+   assign ex1_is_mftb      = (ex1_opcode_is_31  &  ex1_instr_q[21:30]   == 10'b0101110011)            ? 1'b1 : 1'b0; // 31/371
 
 
    assign ex1_is_pri1 = (ex1_opcode_is_31 & ex1_instr_q[6:31] == 26'b11111111111111101101111000)      ? 1'b1 : 1'b0;
@@ -1725,6 +1854,9 @@ module xu0_dec(
    assign ex1_is_pri6 = (ex1_opcode_is_31 & ex1_instr_q[6:31] == 26'b00011000110001101101111000)      ? 1'b1 : 1'b0;
    assign ex1_is_pri7 = (ex1_opcode_is_31 & ex1_instr_q[6:31] == 26'b00111001110011101101111000)      ? 1'b1 : 1'b0;
 
+   //------------------------------------------------------------------------------------------
+   // Latches
+   //------------------------------------------------------------------------------------------
    tri_rlmreg_p #(.WIDTH(5), .OFFSET(1),.INIT(0), .NEEDS_SRESET(1)) exx_act_latch(
       .nclk(nclk), .vd(vdd), .gd(gnd),
       .act(1'b1),
@@ -4655,7 +4787,7 @@ endgenerate
       .scout(sov[ord_async_flush_after_offset : ord_async_flush_after_offset + `THREADS-1]),
       .din(ord_async_flush_after_d),
       .dout(ord_async_flush_after_q)
-   );   
+   );
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ord_async_credit_wait_latch(
       .nclk(nclk), .vd(vdd), .gd(gnd),
       .act(1'b1),

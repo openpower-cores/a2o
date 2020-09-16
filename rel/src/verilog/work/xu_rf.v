@@ -7,6 +7,9 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  Register File Array
+//
+//*****************************************************************************
 `include "tri_a2o.vh"
 module xu_rf
 #(
@@ -19,11 +22,17 @@ module xu_rf
    parameter             BYPASS = 1
 )
 (
-   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) 
+   //-------------------------------------------------------------------
+   // Clocks & Power
+   //-------------------------------------------------------------------
+   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) // nclk
    input [0:`NCLK_WIDTH-1] nclk,
    inout                  vdd,
    inout                  gnd,
-   
+
+   //-------------------------------------------------------------------
+   // Pervasive
+   //-------------------------------------------------------------------
    input                 d_mode_dc,
    input                 delay_lclkr_dc,
    input                 mpw1_dc_b,
@@ -35,56 +44,62 @@ module xu_rf
    input                 sg_0,
    input                 scan_in,
    output                scan_out,
-   
+
+   //-------------------------------------------------------------------
+   // Read Ports
+   //-------------------------------------------------------------------
    input                 r0e_e,
    input                 r0e,
    input [0:POOL_ENC-1]  r0a,
    output [0:WIDTH-1]    r0d,
-   
+
    input                 r1e_e,
    input                 r1e,
    input [0:POOL_ENC-1]  r1a,
    output [0:WIDTH-1]    r1d,
-   
+
    input                 r2e_e,
    input                 r2e,
    input [0:POOL_ENC-1]  r2a,
    output [0:WIDTH-1]    r2d,
-   
+
    input                 r3e_e,
    input                 r3e,
    input [0:POOL_ENC-1]  r3a,
    output [0:WIDTH-1]    r3d,
-   
+
    input                 r4e_e,
    input                 r4e,
    input [0:POOL_ENC-1]  r4a,
    output [0:WIDTH-1]    r4d,
-   
+
+   //-------------------------------------------------------------------
+   // Write ports
+   //-------------------------------------------------------------------
    input                 w0e_e,
    input                 w0e,
    input [0:POOL_ENC-1]  w0a,
    input [0:WIDTH-1]     w0d,
-   
+
    input                 w1e_e,
    input                 w1e,
    input [0:POOL_ENC-1]  w1a,
    input [0:WIDTH-1]     w1d,
-   
+
    input                 w2e_e,
    input                 w2e,
    input [0:POOL_ENC-1]  w2a,
    input [0:WIDTH-1]     w2d,
-   
+
    input                 w3e_e,
    input                 w3e,
    input [0:POOL_ENC-1]  w3a,
    input [0:WIDTH-1]     w3d,
-   
+
    input                 w4e_e,
    input                 w4e,
    input [0:POOL_ENC-1]  w4a,
-   
+
    input [0:WIDTH-1]     w4d
 );
 
@@ -99,39 +114,40 @@ module xu_rf
    localparam             USE_W3 = {31'b0,(WR_PORTS > 3)};
    localparam             USE_W4 = {31'b0,(WR_PORTS > 4)};
 
-   wire [0:WIDTH-1]              reg_q[0:POOL-1];		
+   wire [0:WIDTH-1]              reg_q[0:POOL-1];
 
-   reg [0:WIDTH-1]               reg_d[0:POOL-1]                                       ; 
-	wire                          r0e_q                                                 ; 
-	wire [0:POOL_ENC-1]           r0a_q                                                 ; 
-	wire [0:WIDTH-1]              r0d_q,                     r0d_d                      ; 
-	wire                          r1e_q                                                 ; 
-	wire [0:POOL_ENC-1]           r1a_q                                                 ; 
-	wire [0:WIDTH-1]              r1d_q,                     r1d_d                      ; 
-	wire                          r2e_q                                                 ; 
-	wire [0:POOL_ENC-1]           r2a_q                                                 ; 
-	wire [0:WIDTH-1]              r2d_q,                     r2d_d                      ; 
-	wire                          r3e_q                                                 ; 
-	wire [0:POOL_ENC-1]           r3a_q                                                 ; 
-	wire [0:WIDTH-1]              r3d_q,                     r3d_d                      ; 
-	wire                          r4e_q                                                 ; 
-	wire [0:POOL_ENC-1]           r4a_q                                                 ; 
-	wire [0:WIDTH-1]              r4d_q,                     r4d_d                      ; 
-	wire                          w0e_q                                                 ; 
-	wire [0:POOL_ENC-1]           w0a_q                                                 ; 
-	wire [0:WIDTH-1]              w0d_q                                                 ; 
-	wire                          w1e_q                                                 ; 
-	wire [0:POOL_ENC-1]           w1a_q                                                 ; 
-	wire [0:WIDTH-1]              w1d_q                                                 ; 
-	wire                          w2e_q                                                 ; 
-	wire [0:POOL_ENC-1]           w2a_q                                                 ; 
-	wire [0:WIDTH-1]              w2d_q                                                 ; 
-	wire                          w3e_q                                                 ; 
-	wire [0:POOL_ENC-1]           w3a_q                                                 ; 
-	wire [0:WIDTH-1]              w3d_q                                                 ; 
-	wire                          w4e_q                                                 ; 
-	wire [0:POOL_ENC-1]           w4a_q                                                 ; 
-	wire [0:WIDTH-1]              w4d_q                                                 ; 
+   reg [0:WIDTH-1]               reg_d[0:POOL-1]                                       ; // input=>par_d[r]   ,act=>reg_act[r]
+	wire                          r0e_q                                                 ; //  input=>r0e     ,act=>1'b1
+	wire [0:POOL_ENC-1]           r0a_q                                                 ; //  input=>r0a     ,act=>r0e_e
+	wire [0:WIDTH-1]              r0d_q,                     r0d_d                      ; //  input=>r0d     ,act=>r0e_q
+	wire                          r1e_q                                                 ; //  input=>r1e     ,act=>1'b1
+	wire [0:POOL_ENC-1]           r1a_q                                                 ; //  input=>r1a     ,act=>r1e_e
+	wire [0:WIDTH-1]              r1d_q,                     r1d_d                      ; //  input=>r1d     ,act=>r1e_q
+	wire                          r2e_q                                                 ; //  input=>r2e     ,act=>1'b1
+	wire [0:POOL_ENC-1]           r2a_q                                                 ; //  input=>r2a     ,act=>r2e_e
+	wire [0:WIDTH-1]              r2d_q,                     r2d_d                      ; //  input=>r2d     ,act=>r2e_q
+	wire                          r3e_q                                                 ; //  input=>r3e     ,act=>1'b1
+	wire [0:POOL_ENC-1]           r3a_q                                                 ; //  input=>r3a     ,act=>r3e_e
+	wire [0:WIDTH-1]              r3d_q,                     r3d_d                      ; //  input=>r3d     ,act=>r3e_q
+	wire                          r4e_q                                                 ; //  input=>r4e     ,act=>1'b1
+	wire [0:POOL_ENC-1]           r4a_q                                                 ; //  input=>r4a     ,act=>r4e_e
+	wire [0:WIDTH-1]              r4d_q,                     r4d_d                      ; //  input=>r4d     ,act=>r4e_q
+	wire                          w0e_q                                                 ; //  input=>w0e     ,act=>1'b1
+	wire [0:POOL_ENC-1]           w0a_q                                                 ; //  input=>w0a     ,act=>w0e_e
+	wire [0:WIDTH-1]              w0d_q                                                 ; //  input=>w0d     ,act=>w0e_e
+	wire                          w1e_q                                                 ; //  input=>w1e     ,act=>1'b1
+	wire [0:POOL_ENC-1]           w1a_q                                                 ; //  input=>w1a     ,act=>w1e_e
+	wire [0:WIDTH-1]              w1d_q                                                 ; //  input=>w1d     ,act=>w1e_e
+	wire                          w2e_q                                                 ; //  input=>w2e     ,act=>1'b1
+	wire [0:POOL_ENC-1]           w2a_q                                                 ; //  input=>w2a     ,act=>w2e_e
+	wire [0:WIDTH-1]              w2d_q                                                 ; //  input=>w2d     ,act=>w2e_e
+	wire                          w3e_q                                                 ; //  input=>w3e     ,act=>1'b1
+	wire [0:POOL_ENC-1]           w3a_q                                                 ; //  input=>w3a     ,act=>w3e_e
+	wire [0:WIDTH-1]              w3d_q                                                 ; //  input=>w3d     ,act=>w3e_e
+	wire                          w4e_q                                                 ; //  input=>w4e     ,act=>1'b1
+	wire [0:POOL_ENC-1]           w4a_q                                                 ; //  input=>w4a     ,act=>w4e_e
+	wire [0:WIDTH-1]              w4d_q                                                 ; //  input=>w4d     ,act=>w4e_e
+   // Scanchain
    localparam             reg_offset = 0;
    localparam             r0e_offset = reg_offset + WIDTH*POOL;
    localparam             r0a_offset = r0e_offset + 1 * USE_R0;
@@ -166,6 +182,7 @@ module xu_rf
    localparam             scan_right = w4d_offset + WIDTH * USE_W4;
    wire [0:scan_right-1] siv;
    wire [0:scan_right-1] sov;
+   // Signals
    reg [0:POOL-1]        reg_act;
    reg [0:WIDTH-1]       r0d_array;
    reg [0:WIDTH-1]       r1d_array;
@@ -176,11 +193,14 @@ module xu_rf
    (* analysis_not_assigned="true" *)
    (* analysis_not_referenced="true" *)
    wire [0:7] unused;
-   
+
+   //!! Bugspray Include: xu_rf;
 
 always @*
 begin: write
+    // synopsys translate_off
     (* analysis_not_referenced="true" *)
+    // synopsys translate_on
    integer               i;
    reg_act  <= 0;
 
@@ -224,7 +244,9 @@ end
 
 always @*
 begin: read
+    // synopsys translate_off
     (* analysis_not_referenced="true" *)
+    // synopsys translate_on
    integer               i;
    r0d_array <= 0;
    r1d_array <= 0;
@@ -257,6 +279,7 @@ begin: read
    end
 end
 
+// BYPASS
 
 generate
    if (BYPASS == 1)
@@ -289,7 +312,7 @@ generate
                      (w3d        & {WIDTH{r0_byp_sel[8]}}) |
                      (w4d        & {WIDTH{r0_byp_sel[9]}}) |
                      (r0d_array  & {WIDTH{r0_byp_sel[10]}});
-      
+
       assign r1_byp_sel[0] = w0e_q & (w0a_q == r1a_q);
       assign r1_byp_sel[1] = w1e_q & (w1a_q == r1a_q);
       assign r1_byp_sel[2] = w2e_q & (w2a_q == r1a_q);

@@ -9,11 +9,12 @@
 
 `timescale 1 ns / 1 ns
 
-
+//
+//  Description:  XU LSU Store Data Rotator Wrapper
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
-
-
 
 module lq_ldq_rot(
    ldq_rel1_stg_act,
@@ -51,14 +52,23 @@ module lq_ldq_rot(
    scan_out
 );
 
+//-------------------------------------------------------------------
+// Generics
+//-------------------------------------------------------------------
+//parameter                         EXPAND_TYPE = 2;		   // 0 = ibm (Umbra), 1 = non-ibm, 2 = ibm (MPG)
+//parameter                         `GPR_WIDTH_ENC = 6;		// Register Mode 5 = 32bit, 6 = 64bit
+//parameter                         `THREADS = 2;		      // Number of `THREADS
 
+// ACT
 input                               ldq_rel1_stg_act;
-                                    
+
+// Reload Rotator Control
 input [0:7]                         ldq_rel1_rot_sel1;
 input [0:7]                         ldq_rel1_rot_sel2;
 input [0:7]                         ldq_rel1_rot_sel3;
 input [0:127]                       ldq_rel1_data;
-                                    
+
+// Reload Data Fixup Control
 input [0:2]                         ldq_rel1_opsize;
 input                               ldq_rel1_byte_swap;
 input                               ldq_rel1_algebraic;
@@ -68,6 +78,7 @@ input                               ldq_rel1_dvc1_en;
 input                               ldq_rel1_dvc2_en;
 input [0:`THREADS-1]                ldq_rel2_thrd_id;
 
+// Data Value Compare Registers
 input [64-(2**`GPR_WIDTH_ENC):63]   ctl_lsq_spr_dvc1_dbg;
 input [64-(2**`GPR_WIDTH_ENC):63]   ctl_lsq_spr_dvc2_dbg;
 input [0:8*`THREADS-1]              ctl_lsq_spr_dbcr2_dvc1be;
@@ -75,11 +86,13 @@ input [0:2*`THREADS-1]              ctl_lsq_spr_dbcr2_dvc1m;
 input [0:8*`THREADS-1]              ctl_lsq_spr_dbcr2_dvc2be;
 input [0:2*`THREADS-1]              ctl_lsq_spr_dbcr2_dvc2m;
 
+// Reload Rotator Output
 output [0:127]                      ldq_rel2_rot_data;
 output [0:1]                        ldq_rel2_dvc;
-                                    
 
-                       
+// Pervasive
+
+
 inout                               vdd;
 
 
@@ -105,7 +118,13 @@ input                               scan_in;
 output                              scan_out;
 
 
+//--------------------------
+// components
+//--------------------------
 
+//--------------------------
+// signals
+//--------------------------
 wire [0:127]                        rel1_data_swzl;
 wire [0:127]                        rel1_rot_data;
 wire [0:15]                         be_byte_bit0;
@@ -145,6 +164,9 @@ wire [0:1]                          ctl_lsq_spr_dbcr2_dvc1m_int[0:`THREADS-1];
 wire [0:7]                          ctl_lsq_spr_dbcr2_dvc2be_int[0:`THREADS-1];
 wire [0:1]                          ctl_lsq_spr_dbcr2_dvc2m_int[0:`THREADS-1];
 
+//--------------------------
+// constants
+//--------------------------
 parameter                           rel2_byte_mask_offset = 0;
 parameter                           rel2_rot_data_offset = rel2_byte_mask_offset + (((2**`GPR_WIDTH_ENC)-1)/8-0+1);
 parameter                           rel2_dvc1_val_offset = rel2_rot_data_offset + 128;
@@ -157,7 +179,11 @@ wire [0:scan_right]                 sov;
 
 assign tiup = 1'b1;
 
+// #############################################################################################
+// 16 Byte Reload Rotator
+// #############################################################################################
 
+// Thread Unpack
 generate begin : sprTid
       genvar   tid;
       for (tid=0; tid<`THREADS; tid=tid+1) begin : sprTid
@@ -169,29 +195,34 @@ generate begin : sprTid
    end
 endgenerate
 
+// Swizzle Rotate Data
 generate begin : swzlRelData
       genvar                            t;
       for (t=0; t<8; t=t+1) begin : swzlRelData
-         assign rel1_data_swzl[t*16:(t*16)+15] = {ldq_rel1_data[t+0],  ldq_rel1_data[t+8],   ldq_rel1_data[t+16],  ldq_rel1_data[t+24], 
-                                                  ldq_rel1_data[t+32], ldq_rel1_data[t+40],  ldq_rel1_data[t+48],  ldq_rel1_data[t+56], 
-                                                  ldq_rel1_data[t+64], ldq_rel1_data[t+72],  ldq_rel1_data[t+80],  ldq_rel1_data[t+88], 
+         assign rel1_data_swzl[t*16:(t*16)+15] = {ldq_rel1_data[t+0],  ldq_rel1_data[t+8],   ldq_rel1_data[t+16],  ldq_rel1_data[t+24],
+                                                  ldq_rel1_data[t+32], ldq_rel1_data[t+40],  ldq_rel1_data[t+48],  ldq_rel1_data[t+56],
+                                                  ldq_rel1_data[t+64], ldq_rel1_data[t+72],  ldq_rel1_data[t+80],  ldq_rel1_data[t+88],
                                                   ldq_rel1_data[t+96], ldq_rel1_data[t+104], ldq_rel1_data[t+112], ldq_rel1_data[t+120]};
       end
    end
 endgenerate
 
+// Reload Data Rotate
 generate begin : rrotl
       genvar   bit;
       for (bit=0; bit<8; bit=bit+1) begin : rrotl
          tri_rot16_lu drotl(
-            
+
+            // Rotator Controls and Data
             .rot_sel1(ldq_rel1_rot_sel1),
             .rot_sel2(ldq_rel1_rot_sel2),
             .rot_sel3(ldq_rel1_rot_sel3),
             .rot_data(rel1_data_swzl[bit*16:(bit*16)+15]),
-            
+
+            // Rotated Data
             .data_rot(rel1_rot_data[bit*16:(bit*16)+15]),
-            
+
+            // Pervasive
             .vdd(vdd),
             .gnd(gnd)
          );
@@ -199,51 +230,61 @@ generate begin : rrotl
    end
 endgenerate
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Reload Algebraic Bit Select
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-assign be_byte_bit0 = {ldq_rel1_data[0],  ldq_rel1_data[8],   ldq_rel1_data[16],  ldq_rel1_data[24], 
-                       ldq_rel1_data[32], ldq_rel1_data[40],  ldq_rel1_data[48],  ldq_rel1_data[56], 
-                       ldq_rel1_data[64], ldq_rel1_data[72],  ldq_rel1_data[80],  ldq_rel1_data[88], 
+assign be_byte_bit0 = {ldq_rel1_data[0],  ldq_rel1_data[8],   ldq_rel1_data[16],  ldq_rel1_data[24],
+                       ldq_rel1_data[32], ldq_rel1_data[40],  ldq_rel1_data[48],  ldq_rel1_data[56],
+                       ldq_rel1_data[64], ldq_rel1_data[72],  ldq_rel1_data[80],  ldq_rel1_data[88],
                        ldq_rel1_data[96], ldq_rel1_data[104], ldq_rel1_data[112], ldq_rel1_data[120]};
 
-assign le_byte_bit0 = {ldq_rel1_data[120], ldq_rel1_data[112], ldq_rel1_data[104], ldq_rel1_data[96], 
-                       ldq_rel1_data[88],  ldq_rel1_data[80],  ldq_rel1_data[72],  ldq_rel1_data[64], 
-                       ldq_rel1_data[56],  ldq_rel1_data[48],  ldq_rel1_data[40],  ldq_rel1_data[32], 
+assign le_byte_bit0 = {ldq_rel1_data[120], ldq_rel1_data[112], ldq_rel1_data[104], ldq_rel1_data[96],
+                       ldq_rel1_data[88],  ldq_rel1_data[80],  ldq_rel1_data[72],  ldq_rel1_data[64],
+                       ldq_rel1_data[56],  ldq_rel1_data[48],  ldq_rel1_data[40],  ldq_rel1_data[32],
                        ldq_rel1_data[24],  ldq_rel1_data[16],  ldq_rel1_data[8],   ldq_rel1_data[0]};
 
+// Select between little endian data or big-endian data
 assign rel1_alg_byte = ldq_rel1_byte_swap ? le_byte_bit0 : be_byte_bit0;
 
-assign rel1_alg_bit = (ldq_rel1_algebraic_sel == 4'b0000) ? rel1_alg_byte[0] : 
-                      (ldq_rel1_algebraic_sel == 4'b0001) ? rel1_alg_byte[1] : 
-                      (ldq_rel1_algebraic_sel == 4'b0010) ? rel1_alg_byte[2] : 
-                      (ldq_rel1_algebraic_sel == 4'b0011) ? rel1_alg_byte[3] : 
-                      (ldq_rel1_algebraic_sel == 4'b0100) ? rel1_alg_byte[4] : 
-                      (ldq_rel1_algebraic_sel == 4'b0101) ? rel1_alg_byte[5] : 
-                      (ldq_rel1_algebraic_sel == 4'b0110) ? rel1_alg_byte[6] : 
-                      (ldq_rel1_algebraic_sel == 4'b0111) ? rel1_alg_byte[7] : 
-                      (ldq_rel1_algebraic_sel == 4'b1000) ? rel1_alg_byte[8] : 
-                      (ldq_rel1_algebraic_sel == 4'b1001) ? rel1_alg_byte[9] : 
-                      (ldq_rel1_algebraic_sel == 4'b1010) ? rel1_alg_byte[10] : 
-                      (ldq_rel1_algebraic_sel == 4'b1011) ? rel1_alg_byte[11] : 
-                      (ldq_rel1_algebraic_sel == 4'b1100) ? rel1_alg_byte[12] : 
-                      (ldq_rel1_algebraic_sel == 4'b1101) ? rel1_alg_byte[13] : 
-                      (ldq_rel1_algebraic_sel == 4'b1110) ? rel1_alg_byte[14] : 
+// Algebraic Bit Select
+assign rel1_alg_bit = (ldq_rel1_algebraic_sel == 4'b0000) ? rel1_alg_byte[0] :
+                      (ldq_rel1_algebraic_sel == 4'b0001) ? rel1_alg_byte[1] :
+                      (ldq_rel1_algebraic_sel == 4'b0010) ? rel1_alg_byte[2] :
+                      (ldq_rel1_algebraic_sel == 4'b0011) ? rel1_alg_byte[3] :
+                      (ldq_rel1_algebraic_sel == 4'b0100) ? rel1_alg_byte[4] :
+                      (ldq_rel1_algebraic_sel == 4'b0101) ? rel1_alg_byte[5] :
+                      (ldq_rel1_algebraic_sel == 4'b0110) ? rel1_alg_byte[6] :
+                      (ldq_rel1_algebraic_sel == 4'b0111) ? rel1_alg_byte[7] :
+                      (ldq_rel1_algebraic_sel == 4'b1000) ? rel1_alg_byte[8] :
+                      (ldq_rel1_algebraic_sel == 4'b1001) ? rel1_alg_byte[9] :
+                      (ldq_rel1_algebraic_sel == 4'b1010) ? rel1_alg_byte[10] :
+                      (ldq_rel1_algebraic_sel == 4'b1011) ? rel1_alg_byte[11] :
+                      (ldq_rel1_algebraic_sel == 4'b1100) ? rel1_alg_byte[12] :
+                      (ldq_rel1_algebraic_sel == 4'b1101) ? rel1_alg_byte[13] :
+                      (ldq_rel1_algebraic_sel == 4'b1110) ? rel1_alg_byte[14] :
                       rel1_alg_byte[15];
 
+// #############################################################################################
+// Op Size Mask Generation for Reloads
+// #############################################################################################
 
-assign rel1_1hot_opsize = (ldq_rel1_opsize == 3'b110) ? 5'b10000 : 		
-                          (ldq_rel1_opsize == 3'b101) ? 5'b01000 : 		
-                          (ldq_rel1_opsize == 3'b100) ? 5'b00100 : 		
-                          (ldq_rel1_opsize == 3'b010) ? 5'b00010 : 		
-                          (ldq_rel1_opsize == 3'b001) ? 5'b00001 : 		
+assign rel1_1hot_opsize = (ldq_rel1_opsize == 3'b110) ? 5'b10000 : 		// 16Bytes
+                          (ldq_rel1_opsize == 3'b101) ? 5'b01000 : 		// 8Bytes
+                          (ldq_rel1_opsize == 3'b100) ? 5'b00100 : 		// 4Bytes
+                          (ldq_rel1_opsize == 3'b010) ? 5'b00010 : 		// 2Bytes
+                          (ldq_rel1_opsize == 3'b001) ? 5'b00001 : 		// 1Bytes
                           5'b00000;
 
-assign rel1_byte_mask = (8'h01 & {8{rel1_1hot_opsize[4]}}) | (8'h03 & {8{rel1_1hot_opsize[3]}}) | 
+// Reload DVC Compare Byte Valid Generation
+assign rel1_byte_mask = (8'h01 & {8{rel1_1hot_opsize[4]}}) | (8'h03 & {8{rel1_1hot_opsize[3]}}) |
                         (8'h0F & {8{rel1_1hot_opsize[2]}}) | (8'hFF & {8{rel1_1hot_opsize[1]}});
 
 assign rel2_byte_mask_d = rel1_byte_mask[(8 - ((2 ** `GPR_WIDTH_ENC)/8)):7];
 
-assign rel1_bittype_mask = (16'h0001 & {16{rel1_1hot_opsize[4]}}) | (16'h0003 & {16{rel1_1hot_opsize[3]}}) | 
-                           (16'h000F & {16{rel1_1hot_opsize[2]}}) | (16'h00FF & {16{rel1_1hot_opsize[1]}}) | 
+// Reload Bit Mask Generation
+assign rel1_bittype_mask = (16'h0001 & {16{rel1_1hot_opsize[4]}}) | (16'h0003 & {16{rel1_1hot_opsize[3]}}) |
+                           (16'h000F & {16{rel1_1hot_opsize[2]}}) | (16'h00FF & {16{rel1_1hot_opsize[1]}}) |
                            (16'hFFFF & {16{rel1_1hot_opsize[0]}});
 
 generate begin : maskGen
@@ -256,6 +297,7 @@ endgenerate
 
 assign rel1_msk_data = rel1_rot_data & rel1_optype_mask;
 
+// Reload Algebraic Sign Extension
 assign lh_algebraic     = rel1_1hot_opsize[3] & ldq_rel1_algebraic;
 assign lw_algebraic     = rel1_1hot_opsize[2] & ldq_rel1_algebraic;
 assign lh_algebraic_msk =  {48{rel1_alg_bit}};
@@ -263,10 +305,11 @@ assign lw_algebraic_msk = {{32{rel1_alg_bit}}, 16'h0000};
 
 assign rel1_algebraic_msk = (lh_algebraic_msk & {48{lh_algebraic}}) | (lw_algebraic_msk & {48{lw_algebraic}});
 
+// Swizzle Data to a proper format
 generate begin : swzlData
       genvar                            t;
       for (t=0; t<16; t=t+1) begin : swzlData
-         assign rel1_swzl_data[t*8:(t*8)+7] = {rel1_msk_data[t],    rel1_msk_data[t+16], rel1_msk_data[t+32], rel1_msk_data[t+48], 
+         assign rel1_swzl_data[t*8:(t*8)+7] = {rel1_msk_data[t],    rel1_msk_data[t+16], rel1_msk_data[t+32], rel1_msk_data[t+48],
                                                rel1_msk_data[t+64], rel1_msk_data[t+80], rel1_msk_data[t+96], rel1_msk_data[t+112]};
       end
    end
@@ -275,30 +318,35 @@ endgenerate
 assign rel1_algebraic_msk_data = {rel1_swzl_data[0:63], (rel1_swzl_data[64:111] | rel1_algebraic_msk), rel1_swzl_data[112:127]};
 assign rel2_rot_data_d         = rel1_algebraic_msk_data;
 
+// #############################################################################################
+// RELOAD DEBUG Data Compare
+// #############################################################################################
 
 assign rel2_dvc1_val_d = ldq_rel1_gpr_val & ldq_rel1_dvc1_en;
 assign rel2_dvc2_val_d = ldq_rel1_gpr_val & ldq_rel1_dvc2_en;
 
+// Reload Data Compare
 generate begin : dvcCmpRl
       genvar                            t;
       for (t = 0; t <= ((2 ** `GPR_WIDTH_ENC)/8) - 1; t = t + 1) begin : dvcCmpRl
-         assign rel2_dvc1_cmp[t] =    (rel2_rot_data_q[(128 - (2 ** `GPR_WIDTH_ENC)) + t * 8:(128 - (2 ** `GPR_WIDTH_ENC)) + ((t * 8) + 7)] == 
+         assign rel2_dvc1_cmp[t] =    (rel2_rot_data_q[(128 - (2 ** `GPR_WIDTH_ENC)) + t * 8:(128 - (2 ** `GPR_WIDTH_ENC)) + ((t * 8) + 7)] ==
                                    ctl_lsq_spr_dvc1_dbg[(64 - (2 ** `GPR_WIDTH_ENC)) + t * 8:(64 - (2 ** `GPR_WIDTH_ENC)) + ((t * 8) + 7)]) & rel2_byte_mask_q[t];
-         assign rel2_dvc2_cmp[t] =    (rel2_rot_data_q[(128 - (2 ** `GPR_WIDTH_ENC)) + t * 8:(128 - (2 ** `GPR_WIDTH_ENC)) + ((t * 8) + 7)] == 
+         assign rel2_dvc2_cmp[t] =    (rel2_rot_data_q[(128 - (2 ** `GPR_WIDTH_ENC)) + t * 8:(128 - (2 ** `GPR_WIDTH_ENC)) + ((t * 8) + 7)] ==
                                    ctl_lsq_spr_dvc2_dbg[(64 - (2 ** `GPR_WIDTH_ENC)) + t * 8:(64 - (2 ** `GPR_WIDTH_ENC)) + ((t * 8) + 7)]) & rel2_byte_mask_q[t];
       end
    end
 endgenerate
 
+// Thread Select
 
 always @(*) begin: relTid
    reg [0:1]                         dvc1m;
    reg [0:1]                         dvc2m;
    reg [8-(2**`GPR_WIDTH_ENC)/8:7]   dvc1be;
    reg [8-(2**`GPR_WIDTH_ENC)/8:7]   dvc2be;
-   
+
    (* analysis_not_referenced="true" *)
-   
+
    integer                           tid;
    dvc1m = {2{1'b0}};
    dvc2m = {2{1'b0}};
@@ -336,10 +384,16 @@ lq_spr_dvccmp #(.REGSIZE(2**`GPR_WIDTH_ENC)) dvc2Rel(
    .dvc_cmpr(rel2_dvc2r_cmpr)
 );
 
+// #############################################################################################
+// Outputs
+// #############################################################################################
 
 assign ldq_rel2_rot_data = rel2_rot_data_q;
 assign ldq_rel2_dvc = {rel2_dvc1r_cmpr, rel2_dvc2r_cmpr};
 
+// #############################################################################################
+// Registers
+// #############################################################################################
 
 
 tri_rlmreg_p #(.WIDTH((2**`GPR_WIDTH_ENC)/8), .INIT(0), .NEEDS_SRESET(1)) rel2_byte_mask_reg(
@@ -419,7 +473,5 @@ tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) rel2_dvc2_val_reg(
 
 assign siv[0:scan_right] = {sov[1:scan_right], scan_in};
 assign scan_out = sov[0];
-   
+
 endmodule
-
-

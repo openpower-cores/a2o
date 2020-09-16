@@ -7,12 +7,21 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  Simple Execution Unit
+//
+//*****************************************************************************
 `include "tri_a2o.vh"
 module xu1(
+   //-------------------------------------------------------------------
+   // Clocks & Power
+   //-------------------------------------------------------------------
    input [0:`NCLK_WIDTH-1]                   nclk,
    inout                                     vdd,
    inout                                     gnd,
-   
+
+   //-------------------------------------------------------------------
+   // Pervasive
+   //-------------------------------------------------------------------
    input                                     d_mode_dc,
    input                                     delay_lclkr_dc,
    input                                     mpw1_dc_b,
@@ -22,17 +31,26 @@ module xu1(
    input                                     sg_0,
    input                                     scan_in,
    output                                    scan_out,
-   
+
    output                                    xu1_pc_ram_done,
    output [64-`GPR_WIDTH:63]                 xu1_pc_ram_data,
-   
+
    input                                     xu0_xu1_ex3_act,
    input                                     lq_xu_ex5_act,
-   
-   input [0:`THREADS-1]                      spr_msr_cm,		
-   
+
+   //-------------------------------------------------------------------
+   // Interface with SPR
+   //-------------------------------------------------------------------
+   input [0:`THREADS-1]                      spr_msr_cm,		// 0: 32 bit mode, 1: 64 bit mode
+
+   //-------------------------------------------------------------------
+   // Interface with CP
+   //-------------------------------------------------------------------
    input [0:`THREADS-1]                      cp_flush,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with RV
+   //-------------------------------------------------------------------
    input [0:`THREADS-1]                      rv_xu1_vld,
    input                                     rv_xu1_s1_v,
    input                                     rv_xu1_s2_v,
@@ -52,7 +70,10 @@ module xu1(
    input [0:`THREADS-1]                      rv_xu1_ex0_spec_flush,
    input [0:`THREADS-1]                      rv_xu1_ex1_spec_flush,
    input [0:`THREADS-1]                      rv_xu1_ex2_spec_flush,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with Bypass Controller
+   //-------------------------------------------------------------------
    input [1:11]                              rv_xu1_s1_fxu0_sel,
    input [1:11]                              rv_xu1_s2_fxu0_sel,
    input [2:11]                              rv_xu1_s3_fxu0_sel,
@@ -64,7 +85,10 @@ module xu1(
    input [4:8]                               rv_xu1_s3_lq_sel,
    input [2:3]                               rv_xu1_s1_rel_sel,
    input [2:3]                               rv_xu1_s2_rel_sel,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with LQ
+   //-------------------------------------------------------------------
    output [0:`THREADS-1]                     xu1_lq_ex2_stq_val,
    output [0:`ITAG_SIZE_ENC-1]               xu1_lq_ex2_stq_itag,
    output [1:4]                              xu1_lq_ex2_stq_size,
@@ -72,20 +96,28 @@ module xu1(
    output                                    xu1_lq_ex3_strg_noop,
    output [(64-`GPR_WIDTH)/8:7]              xu1_lq_ex2_stq_dvc1_cmp,
    output [(64-`GPR_WIDTH)/8:7]              xu1_lq_ex2_stq_dvc2_cmp,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with IU
+   //-------------------------------------------------------------------
    output [0:`THREADS-1]                     xu1_iu_execute_vld,
    output [0:`ITAG_SIZE_ENC-1]               xu1_iu_itag,
-   
+
    output [0:`THREADS-1]                     xu_iu_ucode_xer_val,
    output [3:9]                              xu_iu_ucode_xer,
 
    output                                    xu1_rv_ex2_s1_abort,
    output                                    xu1_rv_ex2_s2_abort,
    output                                    xu1_rv_ex2_s3_abort,
+   //-------------------------------------------------------------------
+   // Bypass Inputs
+   //-------------------------------------------------------------------
+   // Regfile Data
    input [64-`GPR_WIDTH:63]                  gpr_xu1_ex1_r1d,
    input [64-`GPR_WIDTH:63]                  gpr_xu1_ex1_r2d,
    input [0:9]                               xer_xu1_ex1_r3d,
    input [0:3]                               cr_xu1_ex1_r3d,
+   // External Bypass
    input                                     xu0_xu1_ex2_abort,
    input                                     xu0_xu1_ex6_abort,
    input                                     lq_xu_ex5_abort,
@@ -102,13 +134,18 @@ module xu1(
    input [64-`GPR_WIDTH:63]                  lq_xu_ex5_rt,
    input [64-`GPR_WIDTH:63]                  lq_xu_rel_rt,
    input                                     lq_xu_rel_act,
+   // CR
    input [0:3]                               lq_xu_ex5_cr,
    input [0:3]                               xu0_xu1_ex3_cr,
    input [0:3]                               xu0_xu1_ex4_cr,
    input [0:3]                               xu0_xu1_ex6_cr,
+   // XER
    input [0:9]                               xu0_xu1_ex3_xer,
    input [0:9]                               xu0_xu1_ex4_xer,
    input [0:9]                               xu0_xu1_ex6_xer,
+   //-------------------------------------------------------------------
+   // Bypass Outputs
+   //-------------------------------------------------------------------
    output                                    xu1_xu0_ex3_act,
    output                                    xu1_xu0_ex2_abort,
    output                                    xu1_lq_ex3_abort,
@@ -117,39 +154,47 @@ module xu1(
    output [64-`GPR_WIDTH:63]                 xu1_xu0_ex4_rt,
    output [64-`GPR_WIDTH:63]                 xu1_xu0_ex5_rt,
    output [64-`GPR_WIDTH:63]                 xu1_lq_ex3_rt,
+   // CR
    output [0:3]                              xu1_xu0_ex3_cr,
+   // XER
    output [0:9]                              xu1_xu0_ex3_xer,
-   
+
+   //-------------------------------------------------------------------
+   // Interface with Regfiles
+   //-------------------------------------------------------------------
    output                                    xu1_gpr_ex3_we,
    output [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1] xu1_gpr_ex3_wa,
    output [64-`GPR_WIDTH:65+`GPR_WIDTH/8]    xu1_gpr_ex3_wd,
-   
+
    output                                    xu1_xer_ex3_we,
    output [0:`XER_POOL_ENC+`THREADS_POOL_ENC-1] xu1_xer_ex3_wa,
    output [0:9]                              xu1_xer_ex3_w0d,
-   
+
    output                                    xu1_cr_ex3_we,
    output [0:`CR_POOL_ENC+`THREADS_POOL_ENC-1]  xu1_cr_ex3_wa,
    output [0:3]                              xu1_cr_ex3_w0d,
-   
+
    input [0:`THREADS-1]                      pc_xu_ram_active,
    `ifndef THREADS1
-   input [64-`GPR_WIDTH:63]                  spr_dvc1_t1,   
+   input [64-`GPR_WIDTH:63]                  spr_dvc1_t1,
    input [64-`GPR_WIDTH:63]                  spr_dvc2_t1,
    `endif
-   input [64-`GPR_WIDTH:63]                  spr_dvc1_t0,   
+   input [64-`GPR_WIDTH:63]                  spr_dvc1_t0,
    input [64-`GPR_WIDTH:63]                  spr_dvc2_t0,
 
+   // Debug
    input  [0:10] 							         pc_xu_debug_mux_ctrls,
    input  [0:31] 							         xu1_debug_bus_in,
    output [0:31] 							         xu1_debug_bus_out,
    input  [0:3] 							         xu1_coretrace_ctrls_in,
    output [0:3] 							         xu1_coretrace_ctrls_out
 );
+   //!! Bugspray Include: xu1_byp;
 
    localparam                                scan_right = 3;
    wire [0:scan_right-1]                     siv;
    wire [0:scan_right-1]                     sov;
+   // Signals
    wire                                      byp_dec_ex2_abort;
    wire                                      dec_byp_ex0_act;
    wire [64-`GPR_WIDTH:63]                   dec_byp_ex1_imm;
@@ -180,11 +225,11 @@ module xu1(
    wire                                      byp_alu_ex2_cr_bit;
    wire [0:9]                                byp_alu_ex2_xer;
    wire [3:9]                                byp_dec_ex2_xer;
-      
+
    assign xu1_debug_bus_out            = xu1_debug_bus_in;
    assign xu1_coretrace_ctrls_out      = xu1_coretrace_ctrls_in;
 
-      
+
    xu_alu alu(
       .nclk(nclk),
       .vdd(vdd),
@@ -335,7 +380,7 @@ module xu1(
       .sg_0(sg_0),
       .scan_in(siv[2]),
       .scan_out(sov[2]),
-      .spr_msr_cm(spr_msr_cm),		
+      .spr_msr_cm(spr_msr_cm),		// 0=> 0,
       .cp_flush(cp_flush),
       .rv_xu1_vld(rv_xu1_vld),
       .rv_xu1_ex0_instr(rv_xu1_ex0_instr),
@@ -394,5 +439,5 @@ module xu1(
 
    assign siv[0:scan_right-1] = {sov[1:scan_right-1], scan_in};
    assign scan_out = sov[0];
-      
+
 endmodule

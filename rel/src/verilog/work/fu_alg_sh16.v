@@ -9,9 +9,8 @@
 
 `timescale 1 ns / 1 ns
 
-
    `include "tri_a2o.vh"
-   
+
 module fu_alg_sh16(
    ex3_lvl3_shdcd000,
    ex3_lvl3_shdcd016,
@@ -34,6 +33,7 @@ module fu_alg_sh16(
    ex3_sh16_163,
    ex3_sh_lvl3
 );
+   //--------- SHIFT CONTROLS -----------------
    input          ex3_lvl3_shdcd000;
    input          ex3_lvl3_shdcd016;
    input          ex3_lvl3_shdcd032;
@@ -50,25 +50,27 @@ module fu_alg_sh16(
    input          ex3_lvl3_shdcd224;
    input          ex3_lvl3_shdcd240;
    input          ex3_sel_special;
-   
+
+   //--------- SHIFT DATA -----------------
    input [0:67]   ex3_sh_lvl2;
-   
+
+   //-------- SHIFT OUTPUT ---------------
    output         ex3_sh16_162;
    output         ex3_sh16_163;
    output [0:162] ex3_sh_lvl3;
-   
-   
-   
-   
+
+   // ENTITY
+
+
    parameter      tiup = 1'b1;
    parameter      tidn = 1'b0;
-   
+
    wire [0:162]   ex3_sh16_r1_b;
    wire [0:162]   ex3_sh16_r2_b;
    wire [0:162]   ex3_sh16_r3_b;
-   
+
    wire [99:162]  ex3_special;
-   
+
    wire           cpx_spc_b;
    wire           cpx_000_b;
    wire           cpx_016_b;
@@ -151,18 +153,25 @@ module fu_alg_sh16(
    wire           ex3_sh16_r1_163_b;
    wire           ex3_sh16_r2_163_b;
    wire           ex3_sh16_r3_163_b;
-   
 
 
+////################################################################
+////# map block attributes
+////################################################################
+
+////#-------------------------------------------------
+////# finish shifting
+////#-------------------------------------------------
+// this looks more like a 53:1 mux than a shifter to shrink it, and lower load on selects
+// real implementation should be nand/nand/nor ... ?? integrate nor into latch ??
+
+   assign ex3_special[99:162] = ex3_sh_lvl2[0:63];		// just a rename
+
+   ////#-----------------------------------------------------------------
+   ////# repower select signal
+   ////#-----------------------------------------------------------------
 
 
-
-
-   
-   assign ex3_special[99:162] = ex3_sh_lvl2[0:63];		
-   
-   
-   
    assign cpx_spc_b = (~ex3_sel_special);
    assign cpx_000_b = (~ex3_lvl3_shdcd000);
    assign cpx_016_b = (~ex3_lvl3_shdcd016);
@@ -179,7 +188,7 @@ module fu_alg_sh16(
    assign cpx_208_b = (~ex3_lvl3_shdcd208);
    assign cpx_224_b = (~ex3_lvl3_shdcd224);
    assign cpx_240_b = (~ex3_lvl3_shdcd240);
-   
+
    assign cp1_spc = (~cpx_spc_b);
    assign cp1_000 = (~cpx_000_b);
    assign cp1_016 = (~cpx_016_b);
@@ -196,7 +205,7 @@ module fu_alg_sh16(
    assign cp1_208 = (~cpx_208_b);
    assign cp1_224 = (~cpx_224_b);
    assign cp1_240 = (~cpx_240_b);
-   
+
    assign cp2_spc = (~cpx_spc_b);
    assign cp2_000 = (~cpx_000_b);
    assign cp2_016 = (~cpx_016_b);
@@ -211,7 +220,7 @@ module fu_alg_sh16(
    assign cp2_208 = (~cpx_208_b);
    assign cp2_224 = (~cpx_224_b);
    assign cp2_240 = (~cpx_240_b);
-   
+
    assign cp3_spc = (~cpx_spc_b);
    assign cp3_000 = (~cpx_000_b);
    assign cp3_016 = (~cpx_016_b);
@@ -224,7 +233,7 @@ module fu_alg_sh16(
    assign cp3_128 = (~cpx_128_b);
    assign cp3_224 = (~cpx_224_b);
    assign cp3_240 = (~cpx_240_b);
-   
+
    assign cp4_spc = (~cpx_spc_b);
    assign cp4_000 = (~cpx_000_b);
    assign cp4_016 = (~cpx_016_b);
@@ -235,7 +244,7 @@ module fu_alg_sh16(
    assign cp4_096 = (~cpx_096_b);
    assign cp4_112 = (~cpx_112_b);
    assign cp4_240 = (~cpx_240_b);
-   
+
    assign cp5_spc = (~cpx_spc_b);
    assign cp5_000 = (~cpx_000_b);
    assign cp5_016 = (~cpx_016_b);
@@ -244,8 +253,9 @@ module fu_alg_sh16(
    assign cp5_064 = (~cpx_064_b);
    assign cp5_080 = (~cpx_080_b);
    assign cp5_096 = (~cpx_096_b);
-   
-   
+
+   //-------------------------------------------------------------------
+
    assign ex3_sh16_r1_b[0] = (~((cp1_192 & ex3_sh_lvl2[64]) | (cp1_208 & ex3_sh_lvl2[48])));
    assign ex3_sh16_r1_b[1] = (~((cp1_192 & ex3_sh_lvl2[65]) | (cp1_208 & ex3_sh_lvl2[49])));
    assign ex3_sh16_r1_b[2] = (~((cp1_192 & ex3_sh_lvl2[66]) | (cp1_208 & ex3_sh_lvl2[50])));
@@ -262,7 +272,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r1_b[13] = (~(cp1_208 & ex3_sh_lvl2[61]));
    assign ex3_sh16_r1_b[14] = (~(cp1_208 & ex3_sh_lvl2[62]));
    assign ex3_sh16_r1_b[15] = (~(cp1_208 & ex3_sh_lvl2[63]));
-   
+
    assign ex3_sh16_r1_b[16] = (~((cp2_208 & ex3_sh_lvl2[64]) | (cp2_224 & ex3_sh_lvl2[48])));
    assign ex3_sh16_r1_b[17] = (~((cp2_208 & ex3_sh_lvl2[65]) | (cp2_224 & ex3_sh_lvl2[49])));
    assign ex3_sh16_r1_b[18] = (~((cp2_208 & ex3_sh_lvl2[66]) | (cp2_224 & ex3_sh_lvl2[50])));
@@ -279,7 +289,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r1_b[29] = (~(cp2_224 & ex3_sh_lvl2[61]));
    assign ex3_sh16_r1_b[30] = (~(cp2_224 & ex3_sh_lvl2[62]));
    assign ex3_sh16_r1_b[31] = (~(cp2_224 & ex3_sh_lvl2[63]));
-   
+
    assign ex3_sh16_r1_b[32] = (~((cp3_224 & ex3_sh_lvl2[64]) | (cp3_240 & ex3_sh_lvl2[48])));
    assign ex3_sh16_r1_b[33] = (~((cp3_224 & ex3_sh_lvl2[65]) | (cp3_240 & ex3_sh_lvl2[49])));
    assign ex3_sh16_r1_b[34] = (~((cp3_224 & ex3_sh_lvl2[66]) | (cp3_240 & ex3_sh_lvl2[50])));
@@ -296,7 +306,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r1_b[45] = (~(cp3_240 & ex3_sh_lvl2[61]));
    assign ex3_sh16_r1_b[46] = (~(cp3_240 & ex3_sh_lvl2[62]));
    assign ex3_sh16_r1_b[47] = (~(cp3_240 & ex3_sh_lvl2[63]));
-   
+
    assign ex3_sh16_r1_b[48] = (~((cp4_240 & ex3_sh_lvl2[64]) | (cp4_000 & ex3_sh_lvl2[48])));
    assign ex3_sh16_r1_b[49] = (~((cp4_240 & ex3_sh_lvl2[65]) | (cp4_000 & ex3_sh_lvl2[49])));
    assign ex3_sh16_r1_b[50] = (~((cp4_240 & ex3_sh_lvl2[66]) | (cp4_000 & ex3_sh_lvl2[50])));
@@ -313,7 +323,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r1_b[61] = (~(cp4_000 & ex3_sh_lvl2[61]));
    assign ex3_sh16_r1_b[62] = (~(cp4_000 & ex3_sh_lvl2[62]));
    assign ex3_sh16_r1_b[63] = (~(cp4_000 & ex3_sh_lvl2[63]));
-   
+
    assign ex3_sh16_r1_b[64] = (~((cp5_000 & ex3_sh_lvl2[64]) | (cp4_016 & ex3_sh_lvl2[48])));
    assign ex3_sh16_r1_b[65] = (~((cp5_000 & ex3_sh_lvl2[65]) | (cp4_016 & ex3_sh_lvl2[49])));
    assign ex3_sh16_r1_b[66] = (~((cp5_000 & ex3_sh_lvl2[66]) | (cp4_016 & ex3_sh_lvl2[50])));
@@ -330,7 +340,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r1_b[77] = (~(cp4_016 & ex3_sh_lvl2[61]));
    assign ex3_sh16_r1_b[78] = (~(cp4_016 & ex3_sh_lvl2[62]));
    assign ex3_sh16_r1_b[79] = (~(cp4_016 & ex3_sh_lvl2[63]));
-   
+
    assign ex3_sh16_r1_b[80] = (~((cp5_016 & ex3_sh_lvl2[64]) | (cp4_032 & ex3_sh_lvl2[48])));
    assign ex3_sh16_r1_b[81] = (~((cp5_016 & ex3_sh_lvl2[65]) | (cp4_032 & ex3_sh_lvl2[49])));
    assign ex3_sh16_r1_b[82] = (~((cp5_016 & ex3_sh_lvl2[66]) | (cp4_032 & ex3_sh_lvl2[50])));
@@ -347,7 +357,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r1_b[93] = (~(cp4_032 & ex3_sh_lvl2[61]));
    assign ex3_sh16_r1_b[94] = (~(cp4_032 & ex3_sh_lvl2[62]));
    assign ex3_sh16_r1_b[95] = (~(cp4_032 & ex3_sh_lvl2[63]));
-   
+
    assign ex3_sh16_r1_b[96] = (~((cp5_032 & ex3_sh_lvl2[64]) | (cp4_048 & ex3_sh_lvl2[48])));
    assign ex3_sh16_r1_b[97] = (~((cp5_032 & ex3_sh_lvl2[65]) | (cp4_048 & ex3_sh_lvl2[49])));
    assign ex3_sh16_r1_b[98] = (~((cp5_032 & ex3_sh_lvl2[66]) | (cp4_048 & ex3_sh_lvl2[50])));
@@ -364,7 +374,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r1_b[109] = (~(cp4_048 & ex3_sh_lvl2[61]));
    assign ex3_sh16_r1_b[110] = (~(cp4_048 & ex3_sh_lvl2[62]));
    assign ex3_sh16_r1_b[111] = (~(cp4_048 & ex3_sh_lvl2[63]));
-   
+
    assign ex3_sh16_r1_b[112] = (~((cp5_048 & ex3_sh_lvl2[64]) | (cp4_064 & ex3_sh_lvl2[48])));
    assign ex3_sh16_r1_b[113] = (~((cp5_048 & ex3_sh_lvl2[65]) | (cp4_064 & ex3_sh_lvl2[49])));
    assign ex3_sh16_r1_b[114] = (~((cp5_048 & ex3_sh_lvl2[66]) | (cp4_064 & ex3_sh_lvl2[50])));
@@ -381,7 +391,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r1_b[125] = (~(cp4_064 & ex3_sh_lvl2[61]));
    assign ex3_sh16_r1_b[126] = (~(cp4_064 & ex3_sh_lvl2[62]));
    assign ex3_sh16_r1_b[127] = (~(cp4_064 & ex3_sh_lvl2[63]));
-   
+
    assign ex3_sh16_r1_b[128] = (~((cp5_064 & ex3_sh_lvl2[64]) | (cp4_080 & ex3_sh_lvl2[48])));
    assign ex3_sh16_r1_b[129] = (~((cp5_064 & ex3_sh_lvl2[65]) | (cp4_080 & ex3_sh_lvl2[49])));
    assign ex3_sh16_r1_b[130] = (~((cp5_064 & ex3_sh_lvl2[66]) | (cp4_080 & ex3_sh_lvl2[50])));
@@ -398,7 +408,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r1_b[141] = (~(cp4_080 & ex3_sh_lvl2[61]));
    assign ex3_sh16_r1_b[142] = (~(cp4_080 & ex3_sh_lvl2[62]));
    assign ex3_sh16_r1_b[143] = (~(cp4_080 & ex3_sh_lvl2[63]));
-   
+
    assign ex3_sh16_r1_b[144] = (~((cp5_080 & ex3_sh_lvl2[64]) | (cp4_096 & ex3_sh_lvl2[48])));
    assign ex3_sh16_r1_b[145] = (~((cp5_080 & ex3_sh_lvl2[65]) | (cp4_096 & ex3_sh_lvl2[49])));
    assign ex3_sh16_r1_b[146] = (~((cp5_080 & ex3_sh_lvl2[66]) | (cp4_096 & ex3_sh_lvl2[50])));
@@ -415,11 +425,11 @@ module fu_alg_sh16(
    assign ex3_sh16_r1_b[157] = (~(cp4_096 & ex3_sh_lvl2[61]));
    assign ex3_sh16_r1_b[158] = (~(cp4_096 & ex3_sh_lvl2[62]));
    assign ex3_sh16_r1_b[159] = (~(cp4_096 & ex3_sh_lvl2[63]));
-   
+
    assign ex3_sh16_r1_b[160] = (~((cp5_096 & ex3_sh_lvl2[64]) | (cp4_112 & ex3_sh_lvl2[48])));
    assign ex3_sh16_r1_b[161] = (~((cp5_096 & ex3_sh_lvl2[65]) | (cp4_112 & ex3_sh_lvl2[49])));
    assign ex3_sh16_r1_b[162] = (~((cp5_096 & ex3_sh_lvl2[66]) | (cp4_112 & ex3_sh_lvl2[50])));
-   
+
    assign ex3_sh16_r2_b[0] = (~((cp1_224 & ex3_sh_lvl2[32]) | (cp1_240 & ex3_sh_lvl2[16])));
    assign ex3_sh16_r2_b[1] = (~((cp1_224 & ex3_sh_lvl2[33]) | (cp1_240 & ex3_sh_lvl2[17])));
    assign ex3_sh16_r2_b[2] = (~((cp1_224 & ex3_sh_lvl2[34]) | (cp1_240 & ex3_sh_lvl2[18])));
@@ -436,7 +446,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r2_b[13] = (~((cp1_224 & ex3_sh_lvl2[45]) | (cp1_240 & ex3_sh_lvl2[29])));
    assign ex3_sh16_r2_b[14] = (~((cp1_224 & ex3_sh_lvl2[46]) | (cp1_240 & ex3_sh_lvl2[30])));
    assign ex3_sh16_r2_b[15] = (~((cp1_224 & ex3_sh_lvl2[47]) | (cp1_240 & ex3_sh_lvl2[31])));
-   
+
    assign ex3_sh16_r2_b[16] = (~((cp2_240 & ex3_sh_lvl2[32]) | (cp2_000 & ex3_sh_lvl2[16])));
    assign ex3_sh16_r2_b[17] = (~((cp2_240 & ex3_sh_lvl2[33]) | (cp2_000 & ex3_sh_lvl2[17])));
    assign ex3_sh16_r2_b[18] = (~((cp2_240 & ex3_sh_lvl2[34]) | (cp2_000 & ex3_sh_lvl2[18])));
@@ -453,7 +463,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r2_b[29] = (~((cp2_240 & ex3_sh_lvl2[45]) | (cp2_000 & ex3_sh_lvl2[29])));
    assign ex3_sh16_r2_b[30] = (~((cp2_240 & ex3_sh_lvl2[46]) | (cp2_000 & ex3_sh_lvl2[30])));
    assign ex3_sh16_r2_b[31] = (~((cp2_240 & ex3_sh_lvl2[47]) | (cp2_000 & ex3_sh_lvl2[31])));
-   
+
    assign ex3_sh16_r2_b[32] = (~((cp3_000 & ex3_sh_lvl2[32]) | (cp2_016 & ex3_sh_lvl2[16])));
    assign ex3_sh16_r2_b[33] = (~((cp3_000 & ex3_sh_lvl2[33]) | (cp2_016 & ex3_sh_lvl2[17])));
    assign ex3_sh16_r2_b[34] = (~((cp3_000 & ex3_sh_lvl2[34]) | (cp2_016 & ex3_sh_lvl2[18])));
@@ -470,7 +480,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r2_b[45] = (~((cp3_000 & ex3_sh_lvl2[45]) | (cp2_016 & ex3_sh_lvl2[29])));
    assign ex3_sh16_r2_b[46] = (~((cp3_000 & ex3_sh_lvl2[46]) | (cp2_016 & ex3_sh_lvl2[30])));
    assign ex3_sh16_r2_b[47] = (~((cp3_000 & ex3_sh_lvl2[47]) | (cp2_016 & ex3_sh_lvl2[31])));
-   
+
    assign ex3_sh16_r2_b[48] = (~((cp3_016 & ex3_sh_lvl2[32]) | (cp2_032 & ex3_sh_lvl2[16])));
    assign ex3_sh16_r2_b[49] = (~((cp3_016 & ex3_sh_lvl2[33]) | (cp2_032 & ex3_sh_lvl2[17])));
    assign ex3_sh16_r2_b[50] = (~((cp3_016 & ex3_sh_lvl2[34]) | (cp2_032 & ex3_sh_lvl2[18])));
@@ -487,7 +497,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r2_b[61] = (~((cp3_016 & ex3_sh_lvl2[45]) | (cp2_032 & ex3_sh_lvl2[29])));
    assign ex3_sh16_r2_b[62] = (~((cp3_016 & ex3_sh_lvl2[46]) | (cp2_032 & ex3_sh_lvl2[30])));
    assign ex3_sh16_r2_b[63] = (~((cp3_016 & ex3_sh_lvl2[47]) | (cp2_032 & ex3_sh_lvl2[31])));
-   
+
    assign ex3_sh16_r2_b[64] = (~((cp3_032 & ex3_sh_lvl2[32]) | (cp2_048 & ex3_sh_lvl2[16])));
    assign ex3_sh16_r2_b[65] = (~((cp3_032 & ex3_sh_lvl2[33]) | (cp2_048 & ex3_sh_lvl2[17])));
    assign ex3_sh16_r2_b[66] = (~((cp3_032 & ex3_sh_lvl2[34]) | (cp2_048 & ex3_sh_lvl2[18])));
@@ -504,7 +514,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r2_b[77] = (~((cp3_032 & ex3_sh_lvl2[45]) | (cp2_048 & ex3_sh_lvl2[29])));
    assign ex3_sh16_r2_b[78] = (~((cp3_032 & ex3_sh_lvl2[46]) | (cp2_048 & ex3_sh_lvl2[30])));
    assign ex3_sh16_r2_b[79] = (~((cp3_032 & ex3_sh_lvl2[47]) | (cp2_048 & ex3_sh_lvl2[31])));
-   
+
    assign ex3_sh16_r2_b[80] = (~((cp3_048 & ex3_sh_lvl2[32]) | (cp2_064 & ex3_sh_lvl2[16])));
    assign ex3_sh16_r2_b[81] = (~((cp3_048 & ex3_sh_lvl2[33]) | (cp2_064 & ex3_sh_lvl2[17])));
    assign ex3_sh16_r2_b[82] = (~((cp3_048 & ex3_sh_lvl2[34]) | (cp2_064 & ex3_sh_lvl2[18])));
@@ -521,7 +531,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r2_b[93] = (~((cp3_048 & ex3_sh_lvl2[45]) | (cp2_064 & ex3_sh_lvl2[29])));
    assign ex3_sh16_r2_b[94] = (~((cp3_048 & ex3_sh_lvl2[46]) | (cp2_064 & ex3_sh_lvl2[30])));
    assign ex3_sh16_r2_b[95] = (~((cp3_048 & ex3_sh_lvl2[47]) | (cp2_064 & ex3_sh_lvl2[31])));
-   
+
    assign ex3_sh16_r2_b[96] = (~((cp3_064 & ex3_sh_lvl2[32]) | (cp2_080 & ex3_sh_lvl2[16])));
    assign ex3_sh16_r2_b[97] = (~((cp3_064 & ex3_sh_lvl2[33]) | (cp2_080 & ex3_sh_lvl2[17])));
    assign ex3_sh16_r2_b[98] = (~((cp3_064 & ex3_sh_lvl2[34]) | (cp2_080 & ex3_sh_lvl2[18])));
@@ -538,7 +548,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r2_b[109] = (~((cp3_064 & ex3_sh_lvl2[45]) | (cp2_080 & ex3_sh_lvl2[29])));
    assign ex3_sh16_r2_b[110] = (~((cp3_064 & ex3_sh_lvl2[46]) | (cp2_080 & ex3_sh_lvl2[30])));
    assign ex3_sh16_r2_b[111] = (~((cp3_064 & ex3_sh_lvl2[47]) | (cp2_080 & ex3_sh_lvl2[31])));
-   
+
    assign ex3_sh16_r2_b[112] = (~((cp3_080 & ex3_sh_lvl2[32]) | (cp2_096 & ex3_sh_lvl2[16])));
    assign ex3_sh16_r2_b[113] = (~((cp3_080 & ex3_sh_lvl2[33]) | (cp2_096 & ex3_sh_lvl2[17])));
    assign ex3_sh16_r2_b[114] = (~((cp3_080 & ex3_sh_lvl2[34]) | (cp2_096 & ex3_sh_lvl2[18])));
@@ -555,7 +565,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r2_b[125] = (~((cp3_080 & ex3_sh_lvl2[45]) | (cp2_096 & ex3_sh_lvl2[29])));
    assign ex3_sh16_r2_b[126] = (~((cp3_080 & ex3_sh_lvl2[46]) | (cp2_096 & ex3_sh_lvl2[30])));
    assign ex3_sh16_r2_b[127] = (~((cp3_080 & ex3_sh_lvl2[47]) | (cp2_096 & ex3_sh_lvl2[31])));
-   
+
    assign ex3_sh16_r2_b[128] = (~((cp3_096 & ex3_sh_lvl2[32]) | (cp2_112 & ex3_sh_lvl2[16])));
    assign ex3_sh16_r2_b[129] = (~((cp3_096 & ex3_sh_lvl2[33]) | (cp2_112 & ex3_sh_lvl2[17])));
    assign ex3_sh16_r2_b[130] = (~((cp3_096 & ex3_sh_lvl2[34]) | (cp2_112 & ex3_sh_lvl2[18])));
@@ -572,7 +582,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r2_b[141] = (~((cp3_096 & ex3_sh_lvl2[45]) | (cp2_112 & ex3_sh_lvl2[29])));
    assign ex3_sh16_r2_b[142] = (~((cp3_096 & ex3_sh_lvl2[46]) | (cp2_112 & ex3_sh_lvl2[30])));
    assign ex3_sh16_r2_b[143] = (~((cp3_096 & ex3_sh_lvl2[47]) | (cp2_112 & ex3_sh_lvl2[31])));
-   
+
    assign ex3_sh16_r2_b[144] = (~((cp3_112 & ex3_sh_lvl2[32]) | (cp2_128 & ex3_sh_lvl2[16])));
    assign ex3_sh16_r2_b[145] = (~((cp3_112 & ex3_sh_lvl2[33]) | (cp2_128 & ex3_sh_lvl2[17])));
    assign ex3_sh16_r2_b[146] = (~((cp3_112 & ex3_sh_lvl2[34]) | (cp2_128 & ex3_sh_lvl2[18])));
@@ -589,11 +599,11 @@ module fu_alg_sh16(
    assign ex3_sh16_r2_b[157] = (~((cp3_112 & ex3_sh_lvl2[45]) | (cp2_128 & ex3_sh_lvl2[29])));
    assign ex3_sh16_r2_b[158] = (~((cp3_112 & ex3_sh_lvl2[46]) | (cp2_128 & ex3_sh_lvl2[30])));
    assign ex3_sh16_r2_b[159] = (~((cp3_112 & ex3_sh_lvl2[47]) | (cp2_128 & ex3_sh_lvl2[31])));
-   
+
    assign ex3_sh16_r2_b[160] = (~((cp3_128 & ex3_sh_lvl2[32]) | (cp2_144 & ex3_sh_lvl2[16])));
    assign ex3_sh16_r2_b[161] = (~((cp3_128 & ex3_sh_lvl2[33]) | (cp2_144 & ex3_sh_lvl2[17])));
    assign ex3_sh16_r2_b[162] = (~((cp3_128 & ex3_sh_lvl2[34]) | (cp2_144 & ex3_sh_lvl2[18])));
-   
+
    assign ex3_sh16_r3_b[0] = (~(cp1_000 & ex3_sh_lvl2[0]));
    assign ex3_sh16_r3_b[1] = (~(cp1_000 & ex3_sh_lvl2[1]));
    assign ex3_sh16_r3_b[2] = (~(cp1_000 & ex3_sh_lvl2[2]));
@@ -610,7 +620,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r3_b[13] = (~(cp1_000 & ex3_sh_lvl2[13]));
    assign ex3_sh16_r3_b[14] = (~(cp1_000 & ex3_sh_lvl2[14]));
    assign ex3_sh16_r3_b[15] = (~(cp1_000 & ex3_sh_lvl2[15]));
-   
+
    assign ex3_sh16_r3_b[16] = (~(cp1_016 & ex3_sh_lvl2[0]));
    assign ex3_sh16_r3_b[17] = (~(cp1_016 & ex3_sh_lvl2[1]));
    assign ex3_sh16_r3_b[18] = (~(cp1_016 & ex3_sh_lvl2[2]));
@@ -627,7 +637,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r3_b[29] = (~(cp1_016 & ex3_sh_lvl2[13]));
    assign ex3_sh16_r3_b[30] = (~(cp1_016 & ex3_sh_lvl2[14]));
    assign ex3_sh16_r3_b[31] = (~(cp1_016 & ex3_sh_lvl2[15]));
-   
+
    assign ex3_sh16_r3_b[32] = (~(cp1_032 & ex3_sh_lvl2[0]));
    assign ex3_sh16_r3_b[33] = (~(cp1_032 & ex3_sh_lvl2[1]));
    assign ex3_sh16_r3_b[34] = (~(cp1_032 & ex3_sh_lvl2[2]));
@@ -644,7 +654,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r3_b[45] = (~(cp1_032 & ex3_sh_lvl2[13]));
    assign ex3_sh16_r3_b[46] = (~(cp1_032 & ex3_sh_lvl2[14]));
    assign ex3_sh16_r3_b[47] = (~(cp1_032 & ex3_sh_lvl2[15]));
-   
+
    assign ex3_sh16_r3_b[48] = (~(cp1_048 & ex3_sh_lvl2[0]));
    assign ex3_sh16_r3_b[49] = (~(cp1_048 & ex3_sh_lvl2[1]));
    assign ex3_sh16_r3_b[50] = (~(cp1_048 & ex3_sh_lvl2[2]));
@@ -661,7 +671,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r3_b[61] = (~(cp1_048 & ex3_sh_lvl2[13]));
    assign ex3_sh16_r3_b[62] = (~(cp1_048 & ex3_sh_lvl2[14]));
    assign ex3_sh16_r3_b[63] = (~(cp1_048 & ex3_sh_lvl2[15]));
-   
+
    assign ex3_sh16_r3_b[64] = (~(cp1_064 & ex3_sh_lvl2[0]));
    assign ex3_sh16_r3_b[65] = (~(cp1_064 & ex3_sh_lvl2[1]));
    assign ex3_sh16_r3_b[66] = (~(cp1_064 & ex3_sh_lvl2[2]));
@@ -678,7 +688,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r3_b[77] = (~(cp1_064 & ex3_sh_lvl2[13]));
    assign ex3_sh16_r3_b[78] = (~(cp1_064 & ex3_sh_lvl2[14]));
    assign ex3_sh16_r3_b[79] = (~(cp1_064 & ex3_sh_lvl2[15]));
-   
+
    assign ex3_sh16_r3_b[80] = (~(cp1_080 & ex3_sh_lvl2[0]));
    assign ex3_sh16_r3_b[81] = (~(cp1_080 & ex3_sh_lvl2[1]));
    assign ex3_sh16_r3_b[82] = (~(cp1_080 & ex3_sh_lvl2[2]));
@@ -695,7 +705,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r3_b[93] = (~(cp1_080 & ex3_sh_lvl2[13]));
    assign ex3_sh16_r3_b[94] = (~(cp1_080 & ex3_sh_lvl2[14]));
    assign ex3_sh16_r3_b[95] = (~(cp1_080 & ex3_sh_lvl2[15]));
-   
+
    assign ex3_sh16_r3_b[96] = (~(cp1_096 & ex3_sh_lvl2[0]));
    assign ex3_sh16_r3_b[97] = (~(cp1_096 & ex3_sh_lvl2[1]));
    assign ex3_sh16_r3_b[98] = (~(cp1_096 & ex3_sh_lvl2[2]));
@@ -712,7 +722,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r3_b[109] = (~((cp1_096 & ex3_sh_lvl2[13]) | (cp1_spc & ex3_special[109])));
    assign ex3_sh16_r3_b[110] = (~((cp1_096 & ex3_sh_lvl2[14]) | (cp1_spc & ex3_special[110])));
    assign ex3_sh16_r3_b[111] = (~((cp1_096 & ex3_sh_lvl2[15]) | (cp1_spc & ex3_special[111])));
-   
+
    assign ex3_sh16_r3_b[112] = (~((cp1_112 & ex3_sh_lvl2[0]) | (cp2_spc & ex3_special[112])));
    assign ex3_sh16_r3_b[113] = (~((cp1_112 & ex3_sh_lvl2[1]) | (cp2_spc & ex3_special[113])));
    assign ex3_sh16_r3_b[114] = (~((cp1_112 & ex3_sh_lvl2[2]) | (cp2_spc & ex3_special[114])));
@@ -729,7 +739,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r3_b[125] = (~((cp1_112 & ex3_sh_lvl2[13]) | (cp2_spc & ex3_special[125])));
    assign ex3_sh16_r3_b[126] = (~((cp1_112 & ex3_sh_lvl2[14]) | (cp2_spc & ex3_special[126])));
    assign ex3_sh16_r3_b[127] = (~((cp1_112 & ex3_sh_lvl2[15]) | (cp2_spc & ex3_special[127])));
-   
+
    assign ex3_sh16_r3_b[128] = (~((cp1_128 & ex3_sh_lvl2[0]) | (cp3_spc & ex3_special[128])));
    assign ex3_sh16_r3_b[129] = (~((cp1_128 & ex3_sh_lvl2[1]) | (cp3_spc & ex3_special[129])));
    assign ex3_sh16_r3_b[130] = (~((cp1_128 & ex3_sh_lvl2[2]) | (cp3_spc & ex3_special[130])));
@@ -746,7 +756,7 @@ module fu_alg_sh16(
    assign ex3_sh16_r3_b[141] = (~((cp1_128 & ex3_sh_lvl2[13]) | (cp3_spc & ex3_special[141])));
    assign ex3_sh16_r3_b[142] = (~((cp1_128 & ex3_sh_lvl2[14]) | (cp3_spc & ex3_special[142])));
    assign ex3_sh16_r3_b[143] = (~((cp1_128 & ex3_sh_lvl2[15]) | (cp3_spc & ex3_special[143])));
-   
+
    assign ex3_sh16_r3_b[144] = (~((cp1_144 & ex3_sh_lvl2[0]) | (cp4_spc & ex3_special[144])));
    assign ex3_sh16_r3_b[145] = (~((cp1_144 & ex3_sh_lvl2[1]) | (cp4_spc & ex3_special[145])));
    assign ex3_sh16_r3_b[146] = (~((cp1_144 & ex3_sh_lvl2[2]) | (cp4_spc & ex3_special[146])));
@@ -763,11 +773,11 @@ module fu_alg_sh16(
    assign ex3_sh16_r3_b[157] = (~((cp1_144 & ex3_sh_lvl2[13]) | (cp4_spc & ex3_special[157])));
    assign ex3_sh16_r3_b[158] = (~((cp1_144 & ex3_sh_lvl2[14]) | (cp4_spc & ex3_special[158])));
    assign ex3_sh16_r3_b[159] = (~((cp1_144 & ex3_sh_lvl2[15]) | (cp4_spc & ex3_special[159])));
-   
+
    assign ex3_sh16_r3_b[160] = (~((cp1_160 & ex3_sh_lvl2[0]) | (cp5_spc & ex3_special[160])));
    assign ex3_sh16_r3_b[161] = (~((cp1_160 & ex3_sh_lvl2[1]) | (cp5_spc & ex3_special[161])));
    assign ex3_sh16_r3_b[162] = (~((cp1_160 & ex3_sh_lvl2[2]) | (cp5_spc & ex3_special[162])));
-   
+
    assign ex3_sh_lvl3[0] = (~(ex3_sh16_r1_b[0] & ex3_sh16_r2_b[0] & ex3_sh16_r3_b[0]));
    assign ex3_sh_lvl3[1] = (~(ex3_sh16_r1_b[1] & ex3_sh16_r2_b[1] & ex3_sh16_r3_b[1]));
    assign ex3_sh_lvl3[2] = (~(ex3_sh16_r1_b[2] & ex3_sh16_r2_b[2] & ex3_sh16_r3_b[2]));
@@ -931,18 +941,21 @@ module fu_alg_sh16(
    assign ex3_sh_lvl3[160] = (~(ex3_sh16_r1_b[160] & ex3_sh16_r2_b[160] & ex3_sh16_r3_b[160]));
    assign ex3_sh_lvl3[161] = (~(ex3_sh16_r1_b[161] & ex3_sh16_r2_b[161] & ex3_sh16_r3_b[161]));
    assign ex3_sh_lvl3[162] = (~(ex3_sh16_r1_b[162] & ex3_sh16_r2_b[162] & ex3_sh16_r3_b[162]));
-   
-   
+
+   //--------------------------------------
+   // replicated logic for sticky bit
+   //--------------------------------------
+
    assign ex3_sh16_r3_162_b = (~((ex3_lvl3_shdcd160 & ex3_sh_lvl2[2]) | (ex3_sel_special & ex3_special[162])));
    assign ex3_sh16_r3_163_b = (~(ex3_lvl3_shdcd160 & ex3_sh_lvl2[3]));
-   
+
    assign ex3_sh16_r2_162_b = (~((ex3_lvl3_shdcd128 & ex3_sh_lvl2[34]) | (ex3_lvl3_shdcd144 & ex3_sh_lvl2[18])));
    assign ex3_sh16_r2_163_b = (~((ex3_lvl3_shdcd128 & ex3_sh_lvl2[35]) | (ex3_lvl3_shdcd144 & ex3_sh_lvl2[19])));
-   
+
    assign ex3_sh16_r1_162_b = (~((ex3_lvl3_shdcd096 & ex3_sh_lvl2[66]) | (ex3_lvl3_shdcd112 & ex3_sh_lvl2[50])));
    assign ex3_sh16_r1_163_b = (~((ex3_lvl3_shdcd096 & ex3_sh_lvl2[67]) | (ex3_lvl3_shdcd112 & ex3_sh_lvl2[51])));
-   
+
    assign ex3_sh16_162 = (~(ex3_sh16_r1_162_b & ex3_sh16_r2_162_b & ex3_sh16_r3_162_b));
    assign ex3_sh16_163 = (~(ex3_sh16_r1_163_b & ex3_sh16_r2_163_b & ex3_sh16_r3_163_b));
-   
+
 endmodule

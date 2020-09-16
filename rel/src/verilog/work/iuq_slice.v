@@ -9,10 +9,15 @@
 
 `timescale 1 ns / 1 ns
 
+//********************************************************************
+//*
+//* TITLE:
+//*
+//* NAME: iuq_slice.vhdl
+//*
+//*********************************************************************
 
 `include "tri_a2o.vh"
-
-
 
 
 module iuq_slice(
@@ -31,6 +36,9 @@ module iuq_slice(
    input [0:6]                    scan_in,
    output [0:6]                   scan_out,
 
+   //-------------------------------
+   // Performance interface with I$
+   //-------------------------------
    input                          pc_iu_event_bus_enable,
    output                         perf_iu5_stall,
    output                         perf_iu5_cpl_credit_stall,
@@ -41,17 +49,20 @@ module iuq_slice(
    output                         perf_iu5_xer_credit_stall,
    output                         perf_iu5_br_hold_stall,
    output                         perf_iu5_axu_hold_stall,
-   
+
    input                          cp_iu_iu4_flush,
    input                          cp_flush_into_uc,
-   
+
    input                          xu_iu_epcr_dgtmi,
    input                          xu_iu_msrp_uclep,
    input                          xu_iu_msr_pr,
    input                          xu_iu_msr_gs,
    input                          xu_iu_msr_ucle,
    input                          xu_iu_ccr2_ucode_dis,
-   
+
+   //-----------------------------
+   // SPR values
+   //-----------------------------
    input                          spr_high_pri_mask,
    input                          spr_cpcr_we,
    input [0:6]                    spr_cpcr3_cp_cnt,
@@ -61,15 +72,18 @@ module iuq_slice(
    input [0:31]                   spr_dec_match,
    input [0:7]                    iu_au_config_iucr,
    input                          mm_iu_tlbwe_binv,
-   
+
+   //----------------------------
+   // Ifetch with slice
+   //----------------------------
    output                         ib_rm_rdy,
    input                          rm_ib_iu3_val,
    input [0:35]                   rm_ib_iu3_instr,
-   
+
    input [0:3]                    uc_ib_iu3_invalid,
-   
+
    output [0:(`IBUFF_DEPTH/4)-1]   ib_ic_need_fetch,
-   
+
    input [62-`EFF_IFAR_WIDTH:61]   bp_ib_iu3_ifar,
    input [0:3]                    bp_ib_iu3_val,
    input [0:`IBUFF_INSTR_WIDTH-1]  bp_ib_iu3_0_instr,
@@ -77,7 +91,10 @@ module iuq_slice(
    input [0:`IBUFF_INSTR_WIDTH-1]  bp_ib_iu3_2_instr,
    input [0:`IBUFF_INSTR_WIDTH-1]  bp_ib_iu3_3_instr,
    input [62-`EFF_IFAR_WIDTH:61]   bp_ib_iu3_bta,
-   
+
+   //----------------------------
+   // Ucode interface with IB
+   //----------------------------
    output                         ib_uc_rdy,
    input [0:1]                    uc_ib_val,
    input                          uc_ib_done,
@@ -87,7 +104,10 @@ module iuq_slice(
    input [62-`EFF_IFAR_WIDTH:61]   uc_ib_ifar1,
    input [0:3]                    uc_ib_ext0,
    input [0:3]                    uc_ib_ext1,
-   
+
+   //----------------------------
+   // Completion Interface
+   //----------------------------
    input                          cp_rn_i0_axu_exception_val,
    input [0:3]                    cp_rn_i0_axu_exception,
    input                          cp_rn_i1_axu_exception_val,
@@ -107,7 +127,7 @@ module iuq_slice(
    input [0:2]                    cp_rn_i0_t3_t,
    input [0:`GPR_POOL_ENC-1]       cp_rn_i0_t3_p,
    input [0:`GPR_POOL_ENC-1]       cp_rn_i0_t3_a,
-   
+
    input                          cp_rn_i1_v,
    input [0:`ITAG_SIZE_ENC-1]      cp_rn_i1_itag,
    input                          cp_rn_i1_t1_v,
@@ -122,15 +142,21 @@ module iuq_slice(
    input [0:2]                    cp_rn_i1_t3_t,
    input [0:`GPR_POOL_ENC-1]       cp_rn_i1_t3_p,
    input [0:`GPR_POOL_ENC-1]       cp_rn_i1_t3_a,
-   
+
    input                          iu_flush,
    input                          cp_flush,
    input                          br_iu_redirect,
    input			  uc_ib_iu3_flush_all,
    input                          cp_rn_uc_credit_free,
-   
+
+   //-----------------------------
+   // Stall from dispatch
+   //-----------------------------
    input                          fdis_frn_iu6_stall,
-   
+
+   //----------------------------------------------------------------
+   // Interface to reservation station - Completion is snooping also
+   //----------------------------------------------------------------
    output                         frn_fdis_iu6_i0_vld,
    output [0:`ITAG_SIZE_ENC-1]     frn_fdis_iu6_i0_itag,
    output [0:2]                   frn_fdis_iu6_i0_ucode,
@@ -201,7 +227,7 @@ module iuq_slice(
    output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_s3_p,
    output [0:`ITAG_SIZE_ENC-1]     frn_fdis_iu6_i0_s3_itag,
    output [0:2]                   frn_fdis_iu6_i0_s3_t,
-   
+
    output                         frn_fdis_iu6_i1_vld,
    output [0:`ITAG_SIZE_ENC-1]     frn_fdis_iu6_i1_itag,
    output [0:2]                   frn_fdis_iu6_i1_ucode,
@@ -276,7 +302,8 @@ module iuq_slice(
    output                         frn_fdis_iu6_i1_s3_dep_hit
 
    );
-   
+
+   // Ibuffer to decode
       wire                           ib_id_iu4_0_valid;
       wire [62-`EFF_IFAR_WIDTH:61]    ib_id_iu4_0_ifar;
       wire [62-`EFF_IFAR_WIDTH:61]    ib_id_iu4_0_bta;
@@ -296,7 +323,8 @@ module iuq_slice(
       wire                           ib_id_iu4_1_fuse_val;
       wire [0:31]                    ib_id_iu4_1_fuse_data;
       wire                           id_ib_iu4_stall;
-      
+
+      // Decoded instruction to send to rename
       wire                           fdec_frn_iu5_i0_vld;
       wire [0:2]                     fdec_frn_iu5_i0_ucode;
       wire                           fdec_frn_iu5_i0_2ucode;
@@ -414,10 +442,11 @@ module iuq_slice(
       wire                           fdec_frn_iu5_i1_btb_entry;
       wire [0:1]                     fdec_frn_iu5_i1_btb_hist;
       wire                           fdec_frn_iu5_i1_bta_val;
-      
+
       wire                           frn_fdec_iu5_stall;
-      
-      
+
+
+      //`IBUFF_IFAR_WIDTH           => `IBUFF_IFAR_WIDTH,
       iuq_ibuf  iuq_ibuf0(
          .vdd(vdd),
          .gnd(gnd),
@@ -478,8 +507,8 @@ module iuq_slice(
          .ib_id_iu4_1_fuse_data(ib_id_iu4_1_fuse_data),
          .ib_id_iu4_1_fuse_val(ib_id_iu4_1_fuse_val)
       );
-      
-      
+
+
       iuq_dec_top  dec_top0(
          .vdd(vdd),
          .gnd(gnd),
@@ -495,23 +524,23 @@ module iuq_slice(
          .mpw2_b(mpw2_b),
          .scan_in(scan_in[0:3]),
          .scan_out(scan_out[0:3]),
-         
+
          .xu_iu_epcr_dgtmi(xu_iu_epcr_dgtmi),
          .xu_iu_msrp_uclep(tc_ac_ccflush_dc),
          .xu_iu_msr_pr(xu_iu_msr_pr),
          .xu_iu_msr_gs(xu_iu_msr_gs),
          .xu_iu_msr_ucle(xu_iu_msr_ucle),
          .xu_iu_ccr2_ucode_dis(xu_iu_ccr2_ucode_dis),
-         
+
          .spr_dec_mask(spr_dec_mask),
          .spr_dec_match(spr_dec_match),
          .iu_au_config_iucr(iu_au_config_iucr),
          .mm_iu_tlbwe_binv(mm_iu_tlbwe_binv),
-         
+
          .cp_iu_iu4_flush(cp_iu_iu4_flush),
          .uc_ib_iu3_flush_all(uc_ib_iu3_flush_all),
          .br_iu_redirect(br_iu_redirect),
-         
+
          .ib_id_iu4_0_valid(ib_id_iu4_0_valid),
          .ib_id_iu4_0_ifar(ib_id_iu4_0_ifar),
          .ib_id_iu4_0_bta(ib_id_iu4_0_bta),
@@ -521,7 +550,7 @@ module iuq_slice(
          .ib_id_iu4_0_isram(ib_id_iu4_0_isram),
          .ib_id_iu4_0_fuse_data(ib_id_iu4_0_fuse_data),
          .ib_id_iu4_0_fuse_val(ib_id_iu4_0_fuse_val),
-         
+
          .ib_id_iu4_1_valid(ib_id_iu4_1_valid),
          .ib_id_iu4_1_ifar(ib_id_iu4_1_ifar),
          .ib_id_iu4_1_bta(ib_id_iu4_1_bta),
@@ -531,9 +560,10 @@ module iuq_slice(
          .ib_id_iu4_1_isram(ib_id_iu4_1_isram),
          .ib_id_iu4_1_fuse_data(ib_id_iu4_1_fuse_data),
          .ib_id_iu4_1_fuse_val(ib_id_iu4_1_fuse_val),
-         
+
          .id_ib_iu4_stall(id_ib_iu4_stall),
-         
+
+         // Decoded instruction to send to rename
          .fdec_frn_iu5_i0_vld(fdec_frn_iu5_i0_vld),
          .fdec_frn_iu5_i0_ucode(fdec_frn_iu5_i0_ucode),
          .fdec_frn_iu5_i0_2ucode(fdec_frn_iu5_i0_2ucode),
@@ -593,7 +623,7 @@ module iuq_slice(
          .fdec_frn_iu5_i0_btb_entry(fdec_frn_iu5_i0_btb_entry),
          .fdec_frn_iu5_i0_btb_hist(fdec_frn_iu5_i0_btb_hist),
          .fdec_frn_iu5_i0_bta_val(fdec_frn_iu5_i0_bta_val),
-         
+
          .fdec_frn_iu5_i1_vld(fdec_frn_iu5_i1_vld),
          .fdec_frn_iu5_i1_ucode(fdec_frn_iu5_i1_ucode),
          .fdec_frn_iu5_i1_fuse_nop(fdec_frn_iu5_i1_fuse_nop),
@@ -652,11 +682,11 @@ module iuq_slice(
          .fdec_frn_iu5_i1_btb_entry(fdec_frn_iu5_i1_btb_entry),
          .fdec_frn_iu5_i1_btb_hist(fdec_frn_iu5_i1_btb_hist),
          .fdec_frn_iu5_i1_bta_val(fdec_frn_iu5_i1_bta_val),
-         
+
          .frn_fdec_iu5_stall(frn_fdec_iu5_stall)
       );
-      
-      
+
+
       iuq_rn_top  rn_top0(
          .vdd(vdd),
          .gnd(gnd),
@@ -673,6 +703,9 @@ module iuq_slice(
          .func_scan_in(scan_in[4:5]),
          .func_scan_out(scan_out[4:5]),
 
+         //-------------------------------
+         // Performance interface with I$
+         //-------------------------------
          .pc_iu_event_bus_enable(pc_iu_event_bus_enable),
          .perf_iu5_stall(perf_iu5_stall),
          .perf_iu5_cpl_credit_stall(perf_iu5_cpl_credit_stall),
@@ -683,7 +716,10 @@ module iuq_slice(
          .perf_iu5_xer_credit_stall(perf_iu5_xer_credit_stall),
          .perf_iu5_br_hold_stall(perf_iu5_br_hold_stall),
          .perf_iu5_axu_hold_stall(perf_iu5_axu_hold_stall),
-         
+
+         //-----------------------------
+         // Inputs to rename from decode
+         //-----------------------------
          .fdec_frn_iu5_i0_vld(fdec_frn_iu5_i0_vld),
          .fdec_frn_iu5_i0_ucode(fdec_frn_iu5_i0_ucode),
          .fdec_frn_iu5_i0_2ucode(fdec_frn_iu5_i0_2ucode),
@@ -743,7 +779,7 @@ module iuq_slice(
          .fdec_frn_iu5_i0_s3_v(fdec_frn_iu5_i0_s3_v),
          .fdec_frn_iu5_i0_s3_a(fdec_frn_iu5_i0_s3_a),
          .fdec_frn_iu5_i0_s3_t(fdec_frn_iu5_i0_s3_t),
-         
+
          .fdec_frn_iu5_i1_vld(fdec_frn_iu5_i1_vld),
          .fdec_frn_iu5_i1_ucode(fdec_frn_iu5_i1_ucode),
          .fdec_frn_iu5_i1_fuse_nop(fdec_frn_iu5_i1_fuse_nop),
@@ -802,17 +838,29 @@ module iuq_slice(
          .fdec_frn_iu5_i1_s3_v(fdec_frn_iu5_i1_s3_v),
          .fdec_frn_iu5_i1_s3_a(fdec_frn_iu5_i1_s3_a),
          .fdec_frn_iu5_i1_s3_t(fdec_frn_iu5_i1_s3_t),
-         
+
+         //-----------------------------
+         // SPR values
+         //-----------------------------
          .spr_high_pri_mask(spr_high_pri_mask),
          .spr_cpcr_we(spr_cpcr_we),
          .spr_cpcr3_cp_cnt(spr_cpcr3_cp_cnt),
          .spr_cpcr5_cp_cnt(spr_cpcr5_cp_cnt),
          .spr_single_issue(spr_single_issue),
-         
+
+         //-----------------------------
+         // Stall to decode
+         //-----------------------------
          .frn_fdec_iu5_stall(frn_fdec_iu5_stall),
-         
+
+         //-----------------------------
+         // Stall from dispatch
+         //-----------------------------
          .fdis_frn_iu6_stall(fdis_frn_iu6_stall),
-         
+
+         //----------------------------
+         // Completion Interface
+         //----------------------------
          .cp_rn_i0_axu_exception_val(cp_rn_i0_axu_exception_val),
          .cp_rn_i0_axu_exception(cp_rn_i0_axu_exception),
          .cp_rn_i1_axu_exception_val(cp_rn_i1_axu_exception_val),
@@ -832,7 +880,7 @@ module iuq_slice(
          .cp_rn_i0_t3_t(cp_rn_i0_t3_t),
          .cp_rn_i0_t3_p(cp_rn_i0_t3_p),
          .cp_rn_i0_t3_a(cp_rn_i0_t3_a),
-         
+
          .cp_rn_i1_v(cp_rn_i1_v),
          .cp_rn_i1_itag(cp_rn_i1_itag),
          .cp_rn_i1_t1_v(cp_rn_i1_t1_v),
@@ -847,12 +895,15 @@ module iuq_slice(
          .cp_rn_i1_t3_t(cp_rn_i1_t3_t),
          .cp_rn_i1_t3_p(cp_rn_i1_t3_p),
          .cp_rn_i1_t3_a(cp_rn_i1_t3_a),
-         
+
          .cp_flush(cp_flush),
          .cp_flush_into_uc(cp_flush_into_uc),
          .br_iu_redirect(br_iu_redirect),
          .cp_rn_uc_credit_free(cp_rn_uc_credit_free),
-         
+
+         //----------------------------------------------------------------
+         // Interface to reservation station - Completion is snooping also
+         //----------------------------------------------------------------
          .frn_fdis_iu6_i0_vld(frn_fdis_iu6_i0_vld),
          .frn_fdis_iu6_i0_itag(frn_fdis_iu6_i0_itag),
          .frn_fdis_iu6_i0_ucode(frn_fdis_iu6_i0_ucode),
@@ -923,7 +974,7 @@ module iuq_slice(
          .frn_fdis_iu6_i0_s3_p(frn_fdis_iu6_i0_s3_p),
          .frn_fdis_iu6_i0_s3_itag(frn_fdis_iu6_i0_s3_itag),
          .frn_fdis_iu6_i0_s3_t(frn_fdis_iu6_i0_s3_t),
-         
+
          .frn_fdis_iu6_i1_vld(frn_fdis_iu6_i1_vld),
          .frn_fdis_iu6_i1_itag(frn_fdis_iu6_i1_itag),
          .frn_fdis_iu6_i1_ucode(frn_fdis_iu6_i1_ucode),
@@ -997,6 +1048,6 @@ module iuq_slice(
          .frn_fdis_iu6_i1_s3_t(frn_fdis_iu6_i1_s3_t),
          .frn_fdis_iu6_i1_s3_dep_hit(frn_fdis_iu6_i1_s3_dep_hit)
       );
-      
+
 
 endmodule

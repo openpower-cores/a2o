@@ -9,11 +9,6 @@
 
 `timescale 1 ns / 1 ns
 
-
-
-
-
-
 module iuq_bp(
    iu2_0_bh0_rd_data,
    iu2_1_bh0_rd_data,
@@ -128,24 +123,29 @@ module iuq_bp(
    scan_in,
    scan_out
 );
+//   parameter                     `EFF_IFAR_ARCH = 62;
+//   parameter                     `EFF_IFAR_WIDTH = 20;
+//   parameter                     PRED_TYPE = 0;		// 0 = hybrid, 1 = gskew
 
 `include "tri_a2o.vh"
-   
+
+   //in from bht
    input [0:1]                   iu2_0_bh0_rd_data;
    input [0:1]                   iu2_1_bh0_rd_data;
    input [0:1]                   iu2_2_bh0_rd_data;
    input [0:1]                   iu2_3_bh0_rd_data;
-   
+
    input [0:1]                   iu2_0_bh1_rd_data;
    input [0:1]                   iu2_1_bh1_rd_data;
    input [0:1]                   iu2_2_bh1_rd_data;
    input [0:1]                   iu2_3_bh1_rd_data;
-   
+
    input			iu2_0_bh2_rd_data;
    input			iu2_1_bh2_rd_data;
    input			iu2_2_bh2_rd_data;
    input			iu2_3_bh2_rd_data;
-   
+
+   //out to bht
    output [0:9]                  iu0_bh0_rd_addr;
    output [0:9]                  iu0_bh1_rd_addr;
    output [0:8]                  iu0_bh2_rd_addr;
@@ -161,17 +161,20 @@ module iuq_bp(
    output [0:3]                  ex5_bh0_wr_act;
    output [0:3]                  ex5_bh1_wr_act;
    output [0:3]                  ex5_bh2_wr_act;
-   
+
+   //in/out to btb
    output [0:5]                  iu0_btb_rd_addr;
    output                        iu0_btb_rd_act;
    input  [0:63]		 iu2_btb_rd_data;
    output [0:5]                  ex5_btb_wr_addr;
    output                        ex5_btb_wr_act;
    output [0:63]		 ex5_btb_wr_data;
-   
+
+   //iu0
    input                         ic_bp_iu0_val;
    input [50:59]                 ic_bp_iu0_ifar;
-   
+
+   //iu2
    input [0:3]                   ic_bp_iu2_val;
    input [62-`EFF_IFAR_WIDTH:61]  ic_bp_iu2_ifar;
    input [0:2]                   ic_bp_iu2_error;
@@ -179,27 +182,32 @@ module iuq_bp(
    input                         ic_bp_iu2_flush;
    input                         ic_bp_iu3_flush;
    input                         ic_bp_iu3_ecc_err;
-   
+
+   //iu2 instruction(0:31) + predecode(32:35)
    input [0:35]                  ic_bp_iu2_0_instr;
    input [0:35]                  ic_bp_iu2_1_instr;
    input [0:35]                  ic_bp_iu2_2_instr;
    input [0:35]                  ic_bp_iu2_3_instr;
-   
+
+   //iu3
    output [0:3]                  bp_ib_iu3_val;
    output [62-`EFF_IFAR_WIDTH:61] bp_ib_iu3_ifar;
    output [62-`EFF_IFAR_WIDTH:61] bp_ib_iu3_bta;
-   
+
+   //iu3 instruction(0:31) +
    output [0:69]                 bp_ib_iu3_0_instr;
    output [0:69]                 bp_ib_iu3_1_instr;
    output [0:69]                 bp_ib_iu3_2_instr;
    output [0:69]                 bp_ib_iu3_3_instr;
-   
+
+   //iu4 hold/redirect
    output                        bp_ic_iu3_hold;
    output                        bp_ic_iu2_redirect;
    output                        bp_ic_iu3_redirect;
    output                        bp_ic_iu4_redirect;
    output [62-`EFF_IFAR_WIDTH:61] bp_ic_redirect_ifar;
-   
+
+   //ex4 update
    input [62-`EFF_IFAR_WIDTH:61]  cp_bp_ifar;
    input                         cp_bp_val;
    input [0:1]                   cp_bp_bh0_hist;
@@ -219,18 +227,21 @@ module iuq_bp(
    input [0:2]                   cp_bp_ls_ptr;
    input [0:1]                   cp_bp_btb_hist;
    input                         cp_bp_btb_entry;
-   
+
+   //br unit repairs
    input [0:17]                  br_iu_gshare;
    input [0:2]                   br_iu_ls_ptr;
    input [62-`EFF_IFAR_WIDTH:61]  br_iu_ls_data;
    input                         br_iu_ls_update;
-   
+
+   //flush conditions
    input                         iu_flush;
    input                         br_iu_redirect;
    input                         cp_flush;
    input                         ib_ic_iu4_redirect;
    input                         uc_iu4_flush;
-   
+
+   //config bits
    input [0:5]                   spr_bp_config;
    input [0:1]                   spr_bp_size;
    input                         xu_iu_msr_de;
@@ -243,7 +254,8 @@ module iuq_bp(
    input                         lq_iu_spr_dbcr3_ivc;
    input                         xu_iu_single_instr_mode;
    input                         spr_single_issue;
-   
+
+   //pervasive
    inout                         vdd;
    inout                         gnd;
    (* pin_data="PIN_FUNCTION=/G_CLK/" *)
@@ -258,20 +270,21 @@ module iuq_bp(
    input                         mpw1_b;
    input                         mpw2_b;
    input [0:1]                   scan_in;
-   
+
    output [0:1]                  scan_out;
 
-   localparam [0:31]					value_1 = 32'h00000001;							 
-   localparam [0:31]					value_2 = 32'h00000002;							 
+   localparam [0:31]					value_1 = 32'h00000001;
+   localparam [0:31]					value_2 = 32'h00000002;
 
+   //--------------------------
+   // components
+   //--------------------------
 
-   
-   
-   
-   
-   
-   
-   
+   //--------------------------
+   // constants
+   //--------------------------
+
+   //scan chain 0
 
       parameter                     iu0_btb_hist_offset = 0;
       parameter                     iu1_btb_hist_offset = iu0_btb_hist_offset + 128;
@@ -316,7 +329,8 @@ module iuq_bp(
       parameter                     iu4_ls_pop_offset = iu4_ls_push_offset + 1;
       parameter                     iu4_ifar_offset = iu4_ls_pop_offset + 1;
       parameter                     scan_right0 = iu4_ifar_offset + `EFF_IFAR_WIDTH - 1;
-      
+
+      //scan chain 1
       parameter                     iu5_ls_t0_ptr_offset = 0;
       parameter                     iu5_ls_t00_offset = iu5_ls_t0_ptr_offset + 8;
       parameter                     iu5_ls_t01_offset = iu5_ls_t00_offset + `EFF_IFAR_WIDTH;
@@ -376,24 +390,27 @@ module iuq_bp(
       parameter                     bcache_data7_offset = bcache_data6_offset + 16;
       parameter                     scan_right1 = bcache_data7_offset + 16 - 1;
 
-      
+      //--------------------------
+      // signals
+      //--------------------------
+
       wire                          fuse_en;
-      
+
       wire                          bp_dy_en;
       wire                          bp_st_en;
       wire                          bp_bt_en;
       wire [0:1]		    bp_gs_mode;
-      
+
       wire [0:6]                    bp_config_d;
       wire [0:6]                    bp_config_q;
-      
+
       wire [0:9]                    iu0_bh_ti0gs0_rd_addr;
       wire [0:9]                    iu0_bh_ti0gs1_rd_addr;
       wire [0:8]                    iu0_bh_ti0gs2_rd_addr;
       wire [0:9]                    iu0_gshare0;
       wire [0:9]                    iu0_gshare1;
       wire [0:8]                    iu0_gshare2;
-      
+
       wire [0:9]                    ex5_bh_ti0gs0_wr_addr;
       wire [0:9]                    ex5_bh_ti0gs1_wr_addr;
       wire [0:8]                    ex5_bh_ti0gs2_wr_addr;
@@ -401,10 +418,10 @@ module iuq_bp(
       wire [0:9]                    ex5_gshare1;
       wire [0:8]                    ex5_gshare2;
       wire [0:3]                    ex5_bh_wr_act;
-      
+
       wire [0:0]                    gshare_act;
       wire                          gshare_taken;
-      
+
       wire [0:4]                    gshare_shift;
       wire [0:4]                    gshare_shift1;
       wire [0:4]                    gshare_shift2;
@@ -412,40 +429,40 @@ module iuq_bp(
       wire [0:4]                    gshare_shift4;
       wire [0:4]                    gshare_shift0_d;
       wire [0:4]                    gshare_shift0_q;
-      
+
       wire                          cp_gshare_shift;
       wire                          cp_gshare_taken;
       wire [0:15]                   cp_gshare_d;
       wire [0:15]                   cp_gshare_q;
-      
+
       wire [0:15]                   gshare_d;
       wire [0:15]                   gshare_q;
-      
+
       wire [0:9]                    iu1_gshare_d;
       wire [0:9]                    iu1_gshare_q;
       wire [0:9]                    iu2_gshare_d;
       wire [0:9]                    iu2_gshare_q;
-      
+
       wire                          iu2_0_bh_pred;
       wire                          iu2_1_bh_pred;
       wire                          iu2_2_bh_pred;
       wire                          iu2_3_bh_pred;
-      
+
       wire [0:1]                    iu2_0_bh0_hist;
       wire [0:1]                    iu2_1_bh0_hist;
       wire [0:1]                    iu2_2_bh0_hist;
       wire [0:1]                    iu2_3_bh0_hist;
-      
+
       wire [0:1]                    iu2_0_bh1_hist;
       wire [0:1]                    iu2_1_bh1_hist;
       wire [0:1]                    iu2_2_bh1_hist;
       wire [0:1]                    iu2_3_bh1_hist;
-      
+
       wire			    iu2_0_bh2_hist;
       wire			    iu2_1_bh2_hist;
       wire			    iu2_2_bh2_hist;
       wire			    iu2_3_bh2_hist;
-      
+
       wire [0:3]                    iu2_fuse;
       wire [0:3]                    iu2_uc;
       wire [0:3]                    iu2_br_val;
@@ -453,26 +470,26 @@ module iuq_bp(
       wire [0:3]                    iu2_hint_val;
       wire [0:3]                    iu2_hint;
       wire [0:3]                    iu2_bh_pred;
-      
+
       wire [0:3]                    iu2_bh_update;
       wire [0:3]                    iu2_br_dynamic;
       wire [0:3]                    iu2_br_static;
       wire [0:3]                    iu2_br_pred;
-      
+
       wire [0:33]                   iu2_instr_pri;
-      
+
       wire [62-`EFF_IFAR_WIDTH:61]   iu2_lnk;
       wire [62-`EFF_IFAR_WIDTH:61]   iu2_btb;
       wire [0:2]                    iu2_ls_ptr;
-      
+
       wire [62-`EFF_IFAR_WIDTH:61]   iu2_btb_tag;
       wire                          iu2_btb_link;
       wire [0:1]                    iu2_btb_hist;
       wire [0:3]                    iu2_btb_entry;
-      
+
       wire                          iu1_flush;
       wire                          iu2_flush;
-      
+
       wire                          iu2_redirect;
       wire                          iu3_btb_redirect_d;
       wire                          iu3_btb_redirect_q;
@@ -480,7 +497,7 @@ module iuq_bp(
       wire                          iu3_btb_misdirect_q;
       wire                          iu3_btb_link_d;
       wire                          iu3_btb_link_q;
-      
+
       wire [0:1]                    iu0_btb_hist_new;
       wire [0:127]                  iu0_btb_hist_out;
       wire                          iu0_btb_hist_act;
@@ -490,7 +507,7 @@ module iuq_bp(
       wire [0:1]                    iu1_btb_hist_q;
       wire [0:1]                    iu2_btb_hist_d;
       wire [0:1]                    iu2_btb_hist_q;
-      
+
       wire [0:127]                  ex5_btb_hist_out;
       wire [0:1]                    ex5_btb_hist;
       wire [0:1]                    ex5_btb_repl_cnt;
@@ -498,30 +515,30 @@ module iuq_bp(
       wire [0:127]                  ex5_btb_repl_out;
       wire [0:127]                  ex5_btb_repl_d;
       wire [0:127]                  ex5_btb_repl_q;
-      
+
       wire                          iu3_b_d;
       wire                          iu3_b_q;
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_bd;
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_li;
-      
+
       wire                          iu3_act;
       wire [0:3]                    iu3_instr_act;
-      
+
       wire [0:3]                    iu3_bh_update;
       wire [0:3]                    iu3_br_pred;
-      
+
       wire [0:1]                    iu3_bh_d;
       wire [0:1]                    iu3_bh_q;
       wire                          iu3_lk_d;
       wire                          iu3_lk_q;
       wire                          iu3_aa_d;
       wire                          iu3_aa_q;
-      
+
       wire                          iu3_bclr_d;
       wire                          iu3_bclr_q;
       wire                          iu3_bcctr_d;
       wire                          iu3_bcctr_q;
-      
+
       wire [0:5]                    iu3_opcode_d;
       wire [0:5]                    iu3_opcode_q;
       wire [6:10]                   iu3_bo_d;
@@ -529,33 +546,32 @@ module iuq_bp(
       wire [11:15]                  iu3_bi_d;
       wire [11:15]                  iu3_bi_q;
       wire                          iu3_getNIA;
-      
+
       wire [6:29]                   iu3_tar_d;
       wire [6:29]                   iu3_tar_q;
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_abs;
-      
+
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_ifar_d;
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_ifar_q;
       wire [60:61]                  iu3_ifar_pri_d;
       wire [60:61]                  iu3_ifar_pri_q;
-      
+
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_off;
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_bta;
-      
+
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_lnk_d;
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_lnk_q;
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_btb_d;
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_btb_q;
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_nfg_d;
       wire [62-`EFF_IFAR_WIDTH:61]   iu3_nfg_q;
-      
-      
+
       wire                          iu3_pr_val_d;
       wire                          iu3_pr_val_q;
-      
+
       wire [0:3]                    iu3_val_d;
       wire [0:3]                    iu3_val_q;
-      
+
       wire [0:60]                   iu3_0_instr_d;
       wire [0:60]                   iu3_0_instr_q;
       wire [0:60]                   iu3_1_instr_d;
@@ -564,31 +580,31 @@ module iuq_bp(
       wire [0:60]                   iu3_2_instr_q;
       wire [0:60]                   iu3_3_instr_d;
       wire [0:60]                   iu3_3_instr_q;
-      
+
       wire                          bp_ib_iu3_bta_val;
-      
+
       wire                          iu3_flush;
       wire                          iu3_redirect;
       wire                          iu3_redirect_early;
-      
+
       wire                          iu4_flush;
-      
+
       wire [62-`EFF_IFAR_WIDTH:61]   iu4_redirect_ifar_d;
       wire [62-`EFF_IFAR_WIDTH:61]   iu4_redirect_ifar_q;
       wire                          iu4_redirect_d;
       wire                          iu4_redirect_q;
       wire                          iu4_redirect_act;
-      
+
       wire                          iu4_act;
-      
+
       wire                          iu4_ls_push_d;
       wire                          iu4_ls_push_q;
       wire                          iu4_ls_pop_d;
       wire                          iu4_ls_pop_q;
-      
+
       wire [62-`EFF_IFAR_WIDTH:61]   iu4_ifar_d;
       wire [62-`EFF_IFAR_WIDTH:61]   iu4_ifar_q;
-      
+
       wire [62-`EFF_IFAR_WIDTH:61]   ex5_ifar_d;
       wire [62-`EFF_IFAR_WIDTH:61]   ex5_ifar_q;
       wire                          ex5_val_d;
@@ -627,41 +643,41 @@ module iuq_bp(
       wire [0:1]                    ex5_btb_hist_q;
       wire                          ex5_btb_entry_d;
       wire                          ex5_btb_entry_q;
-      
+
       wire                          ex5_ls_push_d;
       wire                          ex5_ls_push_q;
       wire                          ex5_ls_pop_d;
       wire                          ex5_ls_pop_q;
-      
+
       wire                          ex6_ls_ptr_act;
       wire [0:7]                    ex6_ls_t0_ptr_d;
       wire [0:7]                    ex6_ls_t0_ptr_q;
-      
+
       wire                          ex5_flush_d;
       wire                          ex5_flush_q;
-      
+
       wire                          ex5_bh0_dec;
       wire                          ex5_bh0_inc;
       wire                          ex5_bh1_dec;
       wire                          ex5_bh1_inc;
       wire                          ex5_bh2_dec;
       wire                          ex5_bh2_inc;
-      
+
       wire                          ex5_bh0_wr_en;
       wire                          ex5_bh1_wr_en;
       wire                          ex5_bh2_wr_en;
-      
+
       wire [0:7]                    iu5_ls_t0_ptr_d;
       wire [0:7]                    iu5_ls_t0_ptr_q;
       wire [0:0]                    iu5_ls_ptr_act;
-      
+
       wire                          iu4_ls_update;
       wire                          ex5_ls_update;
       wire                          ex5_repair;
-      
+
       wire [62-`EFF_IFAR_WIDTH:61]   iu4_nia;
       wire [62-`EFF_IFAR_WIDTH:61]   ex5_nia;
-      
+
       wire [62-`EFF_IFAR_WIDTH:61]   iu5_ls_t00_d;
       wire [62-`EFF_IFAR_WIDTH:61]   iu5_ls_t00_q;
       wire [62-`EFF_IFAR_WIDTH:61]   iu5_ls_t01_d;
@@ -679,8 +695,7 @@ module iuq_bp(
       wire [62-`EFF_IFAR_WIDTH:61]   iu5_ls_t07_d;
       wire [62-`EFF_IFAR_WIDTH:61]   iu5_ls_t07_q;
       wire [0:7]                    iu5_ls_t0_act;
-      
-      
+
       wire [62-`EFF_IFAR_WIDTH:61]   ex6_ls_t00_d;
       wire [62-`EFF_IFAR_WIDTH:61]   ex6_ls_t00_q;
       wire [62-`EFF_IFAR_WIDTH:61]   ex6_ls_t01_d;
@@ -698,11 +713,11 @@ module iuq_bp(
       wire [62-`EFF_IFAR_WIDTH:61]   ex6_ls_t07_d;
       wire [62-`EFF_IFAR_WIDTH:61]   ex6_ls_t07_q;
       wire [0:7]                    ex6_ls_t0_act;
-      
+
       wire                          br_iu_redirect_q;
       wire                          cp_flush_q;
       wire                          iu_flush_q;
-      
+
       wire [0:17]                   br_iu_gshare_d;
       wire [0:17]                   br_iu_gshare_q;
       wire [0:7]                    br_iu_ls_ptr_d;
@@ -711,22 +726,22 @@ module iuq_bp(
       wire [62-`EFF_IFAR_WIDTH:61]  br_iu_ls_data_q;
       wire                          br_iu_ls_update_d;
       wire                          br_iu_ls_update_q;
-      
+
       wire [0:31]                   xnop;
-      
+
       wire                          tiup;
       wire                          tidn;
-      
+
       wire                          pc_iu_func_sl_thold_1;
       wire                          pc_iu_func_sl_thold_0;
       wire                          pc_iu_func_sl_thold_0_b;
       wire                          pc_iu_sg_1;
       wire                          pc_iu_sg_0;
       wire                          force_t;
-      
+
       wire [0:scan_right0]          siv0;
       wire [0:scan_right0]          sov0;
-      
+
       wire [0:scan_right1]          siv1;
       wire [0:scan_right1]          sov1;
 
@@ -781,17 +796,15 @@ wire [0:15] bcache_data7_q;
 wire [0:7] bcache_hit;
 wire [0:7] bcache_shift;
 
-
-
-
-
-      
       assign tiup = 1'b1;
       assign tidn = 1'b0;
-      
-      
+
+      //-------------------------------------------------
+      //-- config bits
+      //-------------------------------------------------
+
       assign bp_config_d[0:5] = spr_bp_config[0:5];
- 
+
       assign bp_config_d[6] = xu_iu_msr_de |
                               xu_iu_dbcr0_icmp |
 	                      xu_iu_dbcr0_brt |
@@ -803,19 +816,23 @@ wire [0:7] bcache_shift;
                               xu_iu_single_instr_mode |
                               spr_single_issue;
 
-      
-      assign bp_dy_en = bp_config_q[0];		
-      assign bp_st_en = bp_config_q[1];		
-      assign bp_bt_en = bp_config_q[2];		
-      
-      assign fuse_en = bp_config_q[3] & (~bp_config_q[6]);		
 
-      assign bp_gs_mode[0:1] = bp_config_q[4:5];	
-      
-     
-      
+      assign bp_dy_en = bp_config_q[0];		//dynamic prediction enable     default = 1
+      assign bp_st_en = bp_config_q[1];		//static prediction enable      default = 0
+      assign bp_bt_en = bp_config_q[2];		//btb enable                    default = 1
+
+      //fused branches enable default = 1
+      assign fuse_en = bp_config_q[3] & (~bp_config_q[6]);		//disable compare/branch fusion when debug enable or single instruction mode
+
+      assign bp_gs_mode[0:1] = bp_config_q[4:5];	//length of BHT2 gshare hash	00 = 0 bits (default), 01 = 2 bits, 10 = 6 bits
+
+
+      //-----------------------------------------------
+      // latched xu interface
+      //-----------------------------------------------
+
       assign ex5_flush_d = cp_flush_q & iu_flush_q;
-      
+
       assign ex5_ifar_d = cp_bp_ifar;
       assign ex5_val_d = cp_bp_val & (~cp_flush_q);
       assign ex5_bh0_hist_d = cp_bp_bh0_hist;
@@ -834,7 +851,7 @@ wire [0:7] bcache_shift;
       assign ex5_bta_d = cp_bp_bta;
       assign ex5_btb_hist_d = cp_bp_btb_hist;
       assign ex5_btb_entry_d = cp_bp_btb_entry;
-      
+
       assign ex5_ls_ptr_d[0] = cp_bp_ls_ptr[0:2] == 3'b000;
       assign ex5_ls_ptr_d[1] = cp_bp_ls_ptr[0:2] == 3'b001;
       assign ex5_ls_ptr_d[2] = cp_bp_ls_ptr[0:2] == 3'b010;
@@ -843,12 +860,15 @@ wire [0:7] bcache_shift;
       assign ex5_ls_ptr_d[5] = cp_bp_ls_ptr[0:2] == 3'b101;
       assign ex5_ls_ptr_d[6] = cp_bp_ls_ptr[0:2] == 3'b110;
       assign ex5_ls_ptr_d[7] = cp_bp_ls_ptr[0:2] == 3'b111;
-      
-      
+
+      //-----------------------------------------------
+      // latched br interface
+      //-----------------------------------------------
+
       assign br_iu_gshare_d = br_iu_gshare;
       assign br_iu_ls_data_d = br_iu_ls_data;
       assign br_iu_ls_update_d = br_iu_ls_update;
-      
+
       assign br_iu_ls_ptr_d[0] = br_iu_ls_ptr[0:2] == 3'b000;
       assign br_iu_ls_ptr_d[1] = br_iu_ls_ptr[0:2] == 3'b001;
       assign br_iu_ls_ptr_d[2] = br_iu_ls_ptr[0:2] == 3'b010;
@@ -857,8 +877,11 @@ wire [0:7] bcache_shift;
       assign br_iu_ls_ptr_d[5] = br_iu_ls_ptr[0:2] == 3'b101;
       assign br_iu_ls_ptr_d[6] = br_iu_ls_ptr[0:2] == 3'b110;
       assign br_iu_ls_ptr_d[7] = br_iu_ls_ptr[0:2] == 3'b111;
-      
-      
+
+      //-----------------------------------------------
+      // read branch history table
+      //-----------------------------------------------
+
       assign iu0_bh0_rd_act = iu0_val;
       assign iu0_bh1_rd_act = iu0_val;
       assign iu0_bh2_rd_act = iu0_val;
@@ -868,12 +891,11 @@ wire [0:7] bcache_shift;
       assign iu0_bh_ti0gs0_rd_addr[0:9] = (ic_bp_iu0_ifar[50:59] ^ iu0_gshare0[0:9]);
       assign iu0_bh_ti0gs1_rd_addr[0:9] = (ic_bp_iu0_ifar[50:59] ^ iu0_gshare1[0:9]);
       assign iu0_bh_ti0gs2_rd_addr[0:8] = (ic_bp_iu0_ifar[51:59] ^ iu0_gshare2[0:8]);
-      
-      
+
       assign iu0_bh0_rd_addr[0:9] = iu0_bh_ti0gs0_rd_addr[0:9];
       assign iu0_bh1_rd_addr[0:9] = iu0_bh_ti0gs1_rd_addr[0:9];
       assign iu0_bh2_rd_addr[0:8] = iu0_bh_ti0gs2_rd_addr[0:8];
-      
+
       assign iu0_gshare0[0:9] = gshare_q[0:9];
       assign iu0_gshare1[0:9] = gshare_q[0:9];
 
@@ -881,26 +903,25 @@ wire [0:7] bcache_shift;
 	                        bp_gs_mode[0:1] == 2'b01 ? {gshare_q[0:1], 7'b0000000} :
                                                                            9'b000000000;
 
-      
-
       assign iu1_gshare_d[0:9] = gshare_q[0:9];
       assign iu2_gshare_d[0:9] = iu1_gshare_q[0:9];
 
-      
+      //-----------------------------------------------
+      // write branch history table
+      //-----------------------------------------------
 
       assign ex5_bh0_wr_act = ({4{ex5_bh0_wr_en}} & ex5_bh_wr_act);
       assign ex5_bh1_wr_act = ({4{ex5_bh1_wr_en}} & ex5_bh_wr_act);
       assign ex5_bh2_wr_act = ({4{ex5_bh2_wr_en}} & ex5_bh_wr_act);
-     
+
       assign ex5_bh_ti0gs0_wr_addr[0:9] = (ex5_ifar_q[50:59] ^ ex5_gshare0[0:9]);
       assign ex5_bh_ti0gs1_wr_addr[0:9] = (ex5_ifar_q[50:59] ^ ex5_gshare1[0:9]);
       assign ex5_bh_ti0gs2_wr_addr[0:8] = (ex5_ifar_q[51:59] ^ ex5_gshare2[0:8]);
-      
-      
+
       assign ex5_bh0_wr_addr[0:9] = ex5_bh_ti0gs0_wr_addr[0:9];
       assign ex5_bh1_wr_addr[0:9] = ex5_bh_ti0gs1_wr_addr[0:9];
       assign ex5_bh2_wr_addr[0:8] = ex5_bh_ti0gs2_wr_addr[0:8];
-      
+
       assign ex5_gshare0[0:9] = ex5_gshare_q[0:9];
       assign ex5_gshare1[0:9] = ex5_gshare_q[0:9];
 
@@ -908,34 +929,67 @@ wire [0:7] bcache_shift;
 	                        bp_gs_mode[0:1] == 2'b01 ? {ex5_gshare_q[0:1], 7'b0000000} :
                                                                                9'b000000000;
 
-      
+
+      //-----------------------------------------------
+      // update branch hitstory
+      //-----------------------------------------------
+
+/*
+      assign ex5_bh_wr_act[0] = ex5_ifar_q[60:61] == 2'b00;
+      assign ex5_bh_wr_act[1] = ex5_ifar_q[60:61] == 2'b01;
+      assign ex5_bh_wr_act[2] = ex5_ifar_q[60:61] == 2'b10;
+      assign ex5_bh_wr_act[3] = ex5_ifar_q[60:61] == 2'b11;
+
+      assign ex5_bh0_dec = ex5_br_taken_q == 1'b0 & ex5_bh0_hist_q[0:1] != 2'b00;
+      assign ex5_bh1_dec = ex5_br_taken_q == 1'b0 & ex5_bh1_hist_q[0:1] != 2'b00;
+      assign ex5_bh2_dec = ex5_br_taken_q == 1'b0 & ex5_bh2_hist_q[0] != 1'b0;
+
+      assign ex5_bh0_inc = ex5_br_taken_q == 1'b1 & ex5_bh0_hist_q[0:1] != 2'b11;
+      assign ex5_bh1_inc = ex5_br_taken_q == 1'b1 & ex5_bh1_hist_q[0:1] != 2'b11;
+      assign ex5_bh2_inc = ex5_br_taken_q == 1'b1 & ex5_bh2_hist_q[0] != 1'b1;
+
+      assign ex5_bh0_wr_data[0:1] = (ex5_bh0_inc == 1'b1) ? ex5_bh0_hist_q[0:1] + 2'b01 :
+                                    (ex5_bh0_dec == 1'b1) ? ex5_bh0_hist_q[0:1] - 2'b01 :
+                                    ex5_bh0_hist_q[0:1];
+      assign ex5_bh1_wr_data[0:1] = (ex5_bh1_inc == 1'b1) ? ex5_bh1_hist_q[0:1] + 2'b01 :
+                                    (ex5_bh1_dec == 1'b1) ? ex5_bh1_hist_q[0:1] - 2'b01 :
+                                    ex5_bh1_hist_q[0:1];
+      assign ex5_bh2_wr_data = ex5_br_taken_q;
+
+      assign ex5_bh0_wr_en = ex5_val_q == 1'b1 & ex5_bh_update_q == 1'b1 & ex5_bh2_hist_q[0] == 1'b0;
+      assign ex5_bh1_wr_en = ex5_val_q == 1'b1 & ex5_bh_update_q == 1'b1 & ex5_bh2_hist_q[0] == 1'b1;
+      assign ex5_bh2_wr_en = ex5_val_q == 1'b1 & ex5_bh_update_q == 1'b1;
+*/
 
       assign ex5_bh_wr_act[0] = ex5_ifar_q[60:61] == 2'b00;
       assign ex5_bh_wr_act[1] = ex5_ifar_q[60:61] == 2'b01;
       assign ex5_bh_wr_act[2] = ex5_ifar_q[60:61] == 2'b10;
       assign ex5_bh_wr_act[3] = ex5_ifar_q[60:61] == 2'b11;
-      
+
       assign ex5_bh0_dec = ex5_br_taken_q == 1'b0 & ex5_bh0_hist[0:1] != 2'b00 & ex5_bh2_hist_q[0] == 1'b0;
       assign ex5_bh1_dec = ex5_br_taken_q == 1'b0 & ex5_bh1_hist[0:1] != 2'b00 & ex5_bh2_hist_q[0] == 1'b1;
       assign ex5_bh2_dec = ex5_br_taken_q == 1'b0 & ex5_bh2_hist_q[0] != 1'b0;
-      
+
       assign ex5_bh0_inc = ex5_br_taken_q == 1'b1 & ex5_bh0_hist[0:1] != 2'b11 & ex5_bh2_hist_q[0] == 1'b0;
       assign ex5_bh1_inc = ex5_br_taken_q == 1'b1 & ex5_bh1_hist[0:1] != 2'b11 & ex5_bh2_hist_q[0] == 1'b1;
       assign ex5_bh2_inc = ex5_br_taken_q == 1'b1 & ex5_bh2_hist_q[0] != 1'b1;
-      
-      assign bcache_bh0_wr_data[0:1] = (ex5_bh0_inc == 1'b1) ? ex5_bh0_hist[0:1] + 2'b01 : 
-                                       (ex5_bh0_dec == 1'b1) ? ex5_bh0_hist[0:1] - 2'b01 : 
+
+      assign bcache_bh0_wr_data[0:1] = (ex5_bh0_inc == 1'b1) ? ex5_bh0_hist[0:1] + 2'b01 :
+                                       (ex5_bh0_dec == 1'b1) ? ex5_bh0_hist[0:1] - 2'b01 :
                                         ex5_bh0_hist[0:1];
-      assign bcache_bh1_wr_data[0:1] = (ex5_bh1_inc == 1'b1) ? ex5_bh1_hist[0:1] + 2'b01 : 
-                                       (ex5_bh1_dec == 1'b1) ? ex5_bh1_hist[0:1] - 2'b01 : 
+      assign bcache_bh1_wr_data[0:1] = (ex5_bh1_inc == 1'b1) ? ex5_bh1_hist[0:1] + 2'b01 :
+                                       (ex5_bh1_dec == 1'b1) ? ex5_bh1_hist[0:1] - 2'b01 :
                                         ex5_bh1_hist[0:1];
       assign ex5_bh2_wr_data         = ex5_br_taken_q;
-      
+
       assign ex5_bh0_wr_en = ex5_val_q == 1'b1 & ex5_bh_update_q == 1'b1 & ex5_bh2_hist_q[0] == 1'b0;
       assign ex5_bh1_wr_en = ex5_val_q == 1'b1 & ex5_bh_update_q == 1'b1 & ex5_bh2_hist_q[0] == 1'b1;
       assign ex5_bh2_wr_en = ex5_val_q == 1'b1 & ex5_bh_update_q == 1'b1;
 
 
+      //-----------------------------------------------
+      // recent branch history cache
+      //----------------------------------------------
 
       assign ex5_bh0_hist = |(bcache_hit[0:7]) ? bcache_bh0_hist : ex5_bh0_hist_q;
       assign ex5_bh1_hist = |(bcache_hit[0:7]) ? bcache_bh1_hist : ex5_bh1_hist_q;
@@ -945,6 +999,7 @@ wire [0:7] bcache_shift;
 
       assign bcache_wr_addr = {ex5_bh_ti0gs0_wr_addr, ex5_ifar_q[60:61]};
 
+      //branch cache:  bht_index[0:9], bht0_hist[0:1], bht1_hist[0:1]
       assign bcache_data_new[0:15] = {bcache_wr_addr[0:11], bcache_bh0_wr_data[0:1], bcache_bh1_wr_data[0:1]};
 
       assign bcache_data0_d = bcache_shift[0] ? bcache_data1_q  :
@@ -971,7 +1026,7 @@ wire [0:7] bcache_shift;
       assign bcache_data7_d = bcache_shift[7] ? bcache_data_new :
 	                                        bcache_data7_q  ;
 
-						
+
       assign bcache_hit[0] = ex5_val_q & ex5_bh_update_q & (bcache_data0_q[0:11] == bcache_data_new[0:11]);
       assign bcache_hit[1] = ex5_val_q & ex5_bh_update_q & (bcache_data1_q[0:11] == bcache_data_new[0:11]);
       assign bcache_hit[2] = ex5_val_q & ex5_bh_update_q & (bcache_data2_q[0:11] == bcache_data_new[0:11]);
@@ -1011,6 +1066,9 @@ wire [0:7] bcache_shift;
                                                                2'b00 ;
 
 
+      //-----------------------------------------------
+      // update global history
+      //-----------------------------------------------
 
       assign gshare_shift0_d[0:4] = (ex5_repair & cp_gs_count_d[0:1] == 2'b00)          ? 5'b10000 :
                                     (ex5_repair & cp_gs_count_d[0:1] == 2'b01)          ? 5'b01000 :
@@ -1021,31 +1079,33 @@ wire [0:7] bcache_shift;
                                     (br_iu_redirect_q & br_iu_gshare_q[16:17] == 2'b10) ? 5'b00100 :
 				    (br_iu_redirect_q & br_iu_gshare_q[16:17] == 2'b11) ? 5'b00010 :
                                     (iu3_val_q[0])                                      ? 5'b10000 :
-				     gshare_shift0_q[0:4];  
+				     gshare_shift0_q[0:4];
 
-
-      assign gshare_shift1[0:4] = ((iu3_val_q[0] & iu3_bh_update[0]) == 1'b1) ? {1'b0, gshare_shift0_q[0:3]} : 
+      assign gshare_shift1[0:4] = ((iu3_val_q[0] & iu3_bh_update[0]) == 1'b1) ? {1'b0, gshare_shift0_q[0:3]} :
 				  gshare_shift0_q[0:4];
-      assign gshare_shift2[0:4] = ((iu3_val_q[1] & iu3_bh_update[1]) == 1'b1) ? {1'b0, gshare_shift1[0:3]} : 
+      assign gshare_shift2[0:4] = ((iu3_val_q[1] & iu3_bh_update[1]) == 1'b1) ? {1'b0, gshare_shift1[0:3]} :
                                   gshare_shift1[0:4];
-      assign gshare_shift3[0:4] = ((iu3_val_q[2] & iu3_bh_update[2]) == 1'b1) ? {1'b0, gshare_shift2[0:3]} : 
+      assign gshare_shift3[0:4] = ((iu3_val_q[2] & iu3_bh_update[2]) == 1'b1) ? {1'b0, gshare_shift2[0:3]} :
                                   gshare_shift2[0:4];
-      assign gshare_shift4[0:4] = ((iu3_val_q[3] & iu3_bh_update[3]) == 1'b1) ? {1'b0, gshare_shift3[0:3]} : 
+      assign gshare_shift4[0:4] = ((iu3_val_q[3] & iu3_bh_update[3]) == 1'b1) ? {1'b0, gshare_shift3[0:3]} :
                                   gshare_shift3[0:4];
-      
+
       assign gshare_shift = ({5{~iu3_flush}} & gshare_shift4);
       assign gshare_taken = |(iu3_val_q[0:3] & iu3_bh_update[0:3] & iu3_br_pred[0:3]);
 
 
-      assign gshare_d[0:2] =    (ex5_repair) ? cp_gshare_d[0:2] : 
+      //need to make pipeline gshares the NEXT CYCLE value to give me a pre-shifted restore point (iu3 uses iu2 to assume shift)
+      //taken branches per fetch group
+      assign gshare_d[0:2] =    (ex5_repair) ? cp_gshare_d[0:2] :
                                 (br_iu_redirect_q) ? br_iu_gshare_q[0:2] :
 	                        (iu3_redirect) ? ({iu3_pr_val_q, iu2_gshare_q[1:2]}) :
 	                        (iu2_redirect) ? ({1'b1, iu1_gshare_q[1:2]}) :
                                 (iu0_val) ? ({1'b0, gshare_q[0:1]}) :
                                 gshare_q[0:2];
 
-      assign gshare_d[3:9] =    (ex5_repair == 1'b1) ? cp_gshare_d[3:9] : 
-                                (br_iu_redirect_q == 1'b1) ? br_iu_gshare_q[3:9] : 
+      //taken branches
+      assign gshare_d[3:9] =    (ex5_repair == 1'b1) ? cp_gshare_d[3:9] :
+                                (br_iu_redirect_q == 1'b1) ? br_iu_gshare_q[3:9] :
 	                        (iu3_redirect) ? ({iu2_gshare_q[3:9]}) :
 	                        (iu2_redirect) ? ({iu1_gshare_q[3:9]}) :
 	                        ((iu0_val) & (iu3_gs_count_next[0:1] == 2'b11))  ? ({gshare_q[2], 2'b00, gshare_q[3:6]}) :
@@ -1057,6 +1117,7 @@ wire [0:7] bcache_shift;
 
 
 
+      //branches per fetch group
       assign iu3_gs_count_next[0:1] = (iu3_gs_pos[2]) ? iu3_gs_count[0:1] : gshare_q[14:15];
 
       assign iu3_gs_count[0:1] = (gshare_shift[4] == 1'b1) ? 2'b11 :
@@ -1065,7 +1126,7 @@ wire [0:7] bcache_shift;
                                  (gshare_shift[1] == 1'b1) ? 2'b01 :
                                                              2'b00 ;
 
-
+//if a CURRENT instruction is in a given position, the OLD/RECOVERY point is pushed forward by that amount
       assign iu3_gs_counts[0:1] = (iu3_gs_pos[0]) ? (gshare_q[12:13]) :
                                   (iu3_gs_pos[1]) ? (gshare_q[14:15]) :
                                   (iu3_gs_pos[2]) ? (gshare_q[10:11]) :
@@ -1082,17 +1143,18 @@ wire [0:7] bcache_shift;
                                                                   2'b00 ;
 
 
+      //track position of current instruction in gshare history
       assign iu1_gs_pos_d[0:2] = (iu0_val) ? 3'b100 :
                                                    3'b000 ;
       assign iu2_gs_pos_d[0:2] = (iu0_val) ? ({1'b0, iu1_gs_pos_q[0:1]}) :
                                                            iu1_gs_pos_q[0:2];
-      assign iu3_gs_pos_d[0:2] = (iu2_redirect) ? 3'b100 : 
+      assign iu3_gs_pos_d[0:2] = (iu2_redirect) ? 3'b100 :
                                  (iu0_val) ? ({1'b0, iu2_gs_pos_q[0:1]}) :
                                                            iu2_gs_pos_q[0:2];
 
       assign iu3_gs_pos[0:2] = iu3_gs_pos_q[0:2] & {3{iu3_val_q[0] & ~iu3_flush}};
 
-      assign gshare_d[10:15] = (ex5_repair) ? cp_gshare_d[10:15] : 
+      assign gshare_d[10:15] = (ex5_repair) ? cp_gshare_d[10:15] :
                                   (br_iu_redirect_q) ? br_iu_gshare_q[10:15] :
 	                          (iu3_redirect & iu3_gs_pos[0]) ? ({iu3_gs_count[0:1], gshare_q[12:15]}) :
 	                          (iu3_redirect & iu3_gs_pos[1]) ? ({iu3_gs_count[0:1], gshare_q[14:15], gshare_q[10:11]}) :
@@ -1112,6 +1174,7 @@ wire [0:7] bcache_shift;
 
 
 
+      //replace iu3_gshare[10:11] per instruction with the following counts for outgoing instructions.
       assign iu3_gs_count0[0:1] = (gshare_shift1[1] == 1'b1) ? 2'b01 :
                                                                2'b00 ;
 
@@ -1130,15 +1193,16 @@ wire [0:7] bcache_shift;
                                   (gshare_shift4[1] == 1'b1) ? 2'b01 :
                                                                2'b00 ;
 
-      
+
 
 
       assign gshare_act[0] = tiup;
 
 
+      //completion time repair
       assign cp_gshare_shift = ex5_val_q & ex5_bh_update_q;
       assign cp_gshare_taken = ex5_val_q & ex5_br_taken_q;
-      
+
       assign cp_gshare_d[0:2] = (cp_gs_group) ? ({cp_gs_taken, cp_gshare_q[0:1]}) :
 	                        cp_gshare_q[0:2];
 
@@ -1150,7 +1214,7 @@ wire [0:7] bcache_shift;
 
       assign cp_gshare_d[10:15] = (cp_gs_group) ? ({cp_gs_count[0:1], cp_gshare_q[10:13]}) :
 	                          cp_gshare_q[10:15];
-						  
+
       assign cp_gs_group        = cp_gshare_taken | ex5_group_q;
 
       assign cp_gs_count[0:1]   = (cp_gs_count_q[0:1] == 2'b11) ? 2'b11 :
@@ -1164,100 +1228,112 @@ wire [0:7] bcache_shift;
 
       assign cp_gs_taken_d = (cp_gs_group) ? 1'b0 :
 		              cp_gs_taken;
-  
-                                  
-      
-      
-      assign iu2_0_bh0_hist = (ic_bp_iu2_ifar[60:61] == 2'b11) ? iu2_3_bh0_rd_data[0:1] : 
-                              (ic_bp_iu2_ifar[60:61] == 2'b10) ? iu2_2_bh0_rd_data[0:1] : 
-                              (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_1_bh0_rd_data[0:1] : 
+
+
+
+      //-----------------------------------------------
+      // rotate branch history to match instructions
+      //-----------------------------------------------
+
+      assign iu2_0_bh0_hist = (ic_bp_iu2_ifar[60:61] == 2'b11) ? iu2_3_bh0_rd_data[0:1] :
+                              (ic_bp_iu2_ifar[60:61] == 2'b10) ? iu2_2_bh0_rd_data[0:1] :
+                              (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_1_bh0_rd_data[0:1] :
                               iu2_0_bh0_rd_data[0:1];
-      assign iu2_1_bh0_hist = (ic_bp_iu2_ifar[60:61] == 2'b10) ? iu2_3_bh0_rd_data[0:1] : 
-                              (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_2_bh0_rd_data[0:1] : 
+      assign iu2_1_bh0_hist = (ic_bp_iu2_ifar[60:61] == 2'b10) ? iu2_3_bh0_rd_data[0:1] :
+                              (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_2_bh0_rd_data[0:1] :
                               iu2_1_bh0_rd_data[0:1];
-      assign iu2_2_bh0_hist = (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_3_bh0_rd_data[0:1] : 
+      assign iu2_2_bh0_hist = (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_3_bh0_rd_data[0:1] :
                               iu2_2_bh0_rd_data[0:1];
       assign iu2_3_bh0_hist = iu2_3_bh0_rd_data[0:1];
-      
-      assign iu2_0_bh1_hist = (ic_bp_iu2_ifar[60:61] == 2'b11) ? iu2_3_bh1_rd_data[0:1] : 
-                              (ic_bp_iu2_ifar[60:61] == 2'b10) ? iu2_2_bh1_rd_data[0:1] : 
-                              (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_1_bh1_rd_data[0:1] : 
+
+      assign iu2_0_bh1_hist = (ic_bp_iu2_ifar[60:61] == 2'b11) ? iu2_3_bh1_rd_data[0:1] :
+                              (ic_bp_iu2_ifar[60:61] == 2'b10) ? iu2_2_bh1_rd_data[0:1] :
+                              (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_1_bh1_rd_data[0:1] :
                               iu2_0_bh1_rd_data[0:1];
-      assign iu2_1_bh1_hist = (ic_bp_iu2_ifar[60:61] == 2'b10) ? iu2_3_bh1_rd_data[0:1] : 
-                              (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_2_bh1_rd_data[0:1] : 
+      assign iu2_1_bh1_hist = (ic_bp_iu2_ifar[60:61] == 2'b10) ? iu2_3_bh1_rd_data[0:1] :
+                              (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_2_bh1_rd_data[0:1] :
                               iu2_1_bh1_rd_data[0:1];
-      assign iu2_2_bh1_hist = (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_3_bh1_rd_data[0:1] : 
+      assign iu2_2_bh1_hist = (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_3_bh1_rd_data[0:1] :
                               iu2_2_bh1_rd_data[0:1];
       assign iu2_3_bh1_hist = iu2_3_bh1_rd_data[0:1];
-      
-      assign iu2_0_bh2_hist = (ic_bp_iu2_ifar[60:61] == 2'b11) ? iu2_3_bh2_rd_data  : 
-	                      (ic_bp_iu2_ifar[60:61] == 2'b10) ? iu2_2_bh2_rd_data  : 
-			      (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_1_bh2_rd_data : 
+
+      assign iu2_0_bh2_hist = (ic_bp_iu2_ifar[60:61] == 2'b11) ? iu2_3_bh2_rd_data  :
+	                      (ic_bp_iu2_ifar[60:61] == 2'b10) ? iu2_2_bh2_rd_data  :
+			      (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_1_bh2_rd_data :
 			      iu2_0_bh2_rd_data;
-      assign iu2_1_bh2_hist = (ic_bp_iu2_ifar[60:61] == 2'b10) ? iu2_3_bh2_rd_data : 
-                              (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_2_bh2_rd_data : 
+      assign iu2_1_bh2_hist = (ic_bp_iu2_ifar[60:61] == 2'b10) ? iu2_3_bh2_rd_data :
+                              (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_2_bh2_rd_data :
                               iu2_1_bh2_rd_data;
-      assign iu2_2_bh2_hist = (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_3_bh2_rd_data : 
+      assign iu2_2_bh2_hist = (ic_bp_iu2_ifar[60:61] == 2'b01) ? iu2_3_bh2_rd_data :
                               iu2_2_bh2_rd_data;
       assign iu2_3_bh2_hist = iu2_3_bh2_rd_data;
-      
-      
+
+      //-----------------------------------------------
+      // bht selection
+      //-----------------------------------------------
+
       assign iu2_0_bh_pred = (iu2_0_bh0_hist[0] & iu2_0_bh2_hist == 1'b0) | (iu2_0_bh1_hist[0] & iu2_0_bh2_hist == 1'b1);
-      
+
       assign iu2_1_bh_pred = (iu2_1_bh0_hist[0] & iu2_1_bh2_hist == 1'b0) | (iu2_1_bh1_hist[0] & iu2_1_bh2_hist == 1'b1);
-      
+
       assign iu2_2_bh_pred = (iu2_2_bh0_hist[0] & iu2_2_bh2_hist == 1'b0) | (iu2_2_bh1_hist[0] & iu2_2_bh2_hist == 1'b1);
-      
+
       assign iu2_3_bh_pred = (iu2_3_bh0_hist[0] & iu2_3_bh2_hist == 1'b0) | (iu2_3_bh1_hist[0] & iu2_3_bh2_hist == 1'b1);
-      
-      
+
+      //-----------------------------------------------
+      // predict branches
+      //-----------------------------------------------
+
       assign iu2_uc[0:3] = ({ic_bp_iu2_0_instr[33], ic_bp_iu2_1_instr[33], ic_bp_iu2_2_instr[33], ic_bp_iu2_3_instr[33]}) & (~({ic_bp_iu2_0_instr[32], ic_bp_iu2_1_instr[32], ic_bp_iu2_2_instr[32], ic_bp_iu2_3_instr[32]}));
-      
 
       assign iu2_fuse[0:3] = ({4{fuse_en}} & ({ic_bp_iu2_0_instr[34], ic_bp_iu2_1_instr[34], ic_bp_iu2_2_instr[34], ic_bp_iu2_3_instr[34]}) &
                                              (~{ic_bp_iu2_0_instr[32], ic_bp_iu2_1_instr[32], ic_bp_iu2_2_instr[32], ic_bp_iu2_3_instr[32]}));
-      
+
       assign iu2_br_val[0:3] = {ic_bp_iu2_0_instr[32], ic_bp_iu2_1_instr[32], ic_bp_iu2_2_instr[32], ic_bp_iu2_3_instr[32]};
       assign iu2_br_hard[0:3] = {ic_bp_iu2_0_instr[33], ic_bp_iu2_1_instr[33], ic_bp_iu2_2_instr[33], ic_bp_iu2_3_instr[33]};
       assign iu2_hint_val[0:3] = {ic_bp_iu2_0_instr[34], ic_bp_iu2_1_instr[34], ic_bp_iu2_2_instr[34], ic_bp_iu2_3_instr[34]};
       assign iu2_hint[0:3] = {ic_bp_iu2_0_instr[35], ic_bp_iu2_1_instr[35], ic_bp_iu2_2_instr[35], ic_bp_iu2_3_instr[35]};
-      
+
       assign iu2_bh_pred[0:3] = {iu2_0_bh_pred, iu2_1_bh_pred, iu2_2_bh_pred, iu2_3_bh_pred};
-      
 
       assign iu2_br_dynamic[0:3] = ({4{bp_dy_en}} & ~(iu2_br_hard[0:3] | iu2_hint_val[0:3]));
       assign iu2_br_static[0:3]  = ({4{bp_st_en & ~bp_dy_en}} & ~(iu2_br_hard[0:3] | iu2_hint_val[0:3]));
-      
+
       assign iu2_br_pred[0:3] = ic_bp_iu2_val[0:3] & iu2_br_val[0:3] & (iu2_br_hard[0:3] | (iu2_hint_val[0:3] & iu2_hint[0:3]) | (iu2_br_dynamic[0:3] & iu2_bh_pred[0:3]) | (iu2_br_static[0:3]));
-      
+
       assign iu2_bh_update[0:3] = iu2_br_val[0:3] & iu2_br_dynamic[0:3];
-      
-      
-      assign iu2_instr_pri[0:33] = (iu2_br_pred[0] == 1'b1) ? ic_bp_iu2_0_instr[0:33] : 
-                                   (iu2_br_pred[1] == 1'b1) ? ic_bp_iu2_1_instr[0:33] : 
-                                   (iu2_br_pred[2] == 1'b1) ? ic_bp_iu2_2_instr[0:33] : 
+
+      //-----------------------------------------------
+      // prioritize branch instructions
+      //-----------------------------------------------
+
+      assign iu2_instr_pri[0:33] = (iu2_br_pred[0] == 1'b1) ? ic_bp_iu2_0_instr[0:33] :
+                                   (iu2_br_pred[1] == 1'b1) ? ic_bp_iu2_1_instr[0:33] :
+                                   (iu2_br_pred[2] == 1'b1) ? ic_bp_iu2_2_instr[0:33] :
                                    ic_bp_iu2_3_instr[0:33];
-      
-      assign iu3_ifar_pri_d[60:61] = (iu2_br_pred[0] == 1'b1) ? ic_bp_iu2_ifar[60:61] : 
-                                     (iu2_br_pred[1] == 1'b1) ? ic_bp_iu2_ifar[60:61] + 2'b01 : 
-                                     (iu2_br_pred[2] == 1'b1) ? ic_bp_iu2_ifar[60:61] + 2'b10 : 
+
+      assign iu3_ifar_pri_d[60:61] = (iu2_br_pred[0] == 1'b1) ? ic_bp_iu2_ifar[60:61] :
+                                     (iu2_br_pred[1] == 1'b1) ? ic_bp_iu2_ifar[60:61] + 2'b01 :
+                                     (iu2_br_pred[2] == 1'b1) ? ic_bp_iu2_ifar[60:61] + 2'b10 :
                                      ic_bp_iu2_ifar[60:61] + 2'b11;
-      
-      assign iu3_bclr_d = (iu2_br_pred[0] == 1'b1) ? ic_bp_iu2_0_instr[0:5] == 6'b010011 & ic_bp_iu2_0_instr[21:30] == 10'b0000010000 : 
-                          (iu2_br_pred[1] == 1'b1) ? ic_bp_iu2_1_instr[0:5] == 6'b010011 & ic_bp_iu2_1_instr[21:30] == 10'b0000010000 : 
-                          (iu2_br_pred[2] == 1'b1) ? ic_bp_iu2_2_instr[0:5] == 6'b010011 & ic_bp_iu2_2_instr[21:30] == 10'b0000010000 : 
+
+      assign iu3_bclr_d = (iu2_br_pred[0] == 1'b1) ? ic_bp_iu2_0_instr[0:5] == 6'b010011 & ic_bp_iu2_0_instr[21:30] == 10'b0000010000 :
+                          (iu2_br_pred[1] == 1'b1) ? ic_bp_iu2_1_instr[0:5] == 6'b010011 & ic_bp_iu2_1_instr[21:30] == 10'b0000010000 :
+                          (iu2_br_pred[2] == 1'b1) ? ic_bp_iu2_2_instr[0:5] == 6'b010011 & ic_bp_iu2_2_instr[21:30] == 10'b0000010000 :
                           ic_bp_iu2_3_instr[0:5] == 6'b010011 & ic_bp_iu2_3_instr[21:30] == 10'b0000010000;
-      
-      
-      assign iu3_bcctr_d = (iu2_br_pred[0] == 1'b1) ? (ic_bp_iu2_0_instr[0:5] == 6'b010011 & ic_bp_iu2_0_instr[21:30] == 10'b1000110000) | (ic_bp_iu2_0_instr[0:5] == 6'b010011 & ic_bp_iu2_0_instr[21:30] == 10'b1000010000) : 		
-                           (iu2_br_pred[1] == 1'b1) ? (ic_bp_iu2_1_instr[0:5] == 6'b010011 & ic_bp_iu2_1_instr[21:30] == 10'b1000110000) | (ic_bp_iu2_1_instr[0:5] == 6'b010011 & ic_bp_iu2_1_instr[21:30] == 10'b1000010000) : 		
-                           (iu2_br_pred[2] == 1'b1) ? (ic_bp_iu2_2_instr[0:5] == 6'b010011 & ic_bp_iu2_2_instr[21:30] == 10'b1000110000) | (ic_bp_iu2_2_instr[0:5] == 6'b010011 & ic_bp_iu2_2_instr[21:30] == 10'b1000010000) : 		
-                           (ic_bp_iu2_3_instr[0:5] == 6'b010011 & ic_bp_iu2_3_instr[21:30] == 10'b1000110000) | (ic_bp_iu2_3_instr[0:5] == 6'b010011 & ic_bp_iu2_3_instr[21:30] == 10'b1000010000);		
-      
-      
+
+      assign iu3_bcctr_d = (iu2_br_pred[0] == 1'b1) ? (ic_bp_iu2_0_instr[0:5] == 6'b010011 & ic_bp_iu2_0_instr[21:30] == 10'b1000110000) | (ic_bp_iu2_0_instr[0:5] == 6'b010011 & ic_bp_iu2_0_instr[21:30] == 10'b1000010000) : 		//bctar
+                           (iu2_br_pred[1] == 1'b1) ? (ic_bp_iu2_1_instr[0:5] == 6'b010011 & ic_bp_iu2_1_instr[21:30] == 10'b1000110000) | (ic_bp_iu2_1_instr[0:5] == 6'b010011 & ic_bp_iu2_1_instr[21:30] == 10'b1000010000) : 		//bctar
+                           (iu2_br_pred[2] == 1'b1) ? (ic_bp_iu2_2_instr[0:5] == 6'b010011 & ic_bp_iu2_2_instr[21:30] == 10'b1000110000) | (ic_bp_iu2_2_instr[0:5] == 6'b010011 & ic_bp_iu2_2_instr[21:30] == 10'b1000010000) : 		//bctar
+                           (ic_bp_iu2_3_instr[0:5] == 6'b010011 & ic_bp_iu2_3_instr[21:30] == 10'b1000110000) | (ic_bp_iu2_3_instr[0:5] == 6'b010011 & ic_bp_iu2_3_instr[21:30] == 10'b1000010000);		//bctar
+
+      //-----------------------------------------------
+      // decode priority branch instruction
+      //-----------------------------------------------
+
       assign iu3_b_d = iu2_instr_pri[33];
       assign iu3_tar_d[6:29] = iu2_instr_pri[6:29];
-      
+
       generate
          begin : xhdl1
             genvar                        i;
@@ -1287,25 +1363,32 @@ assign iu3_bh_d[0:1] = iu2_instr_pri[19:20];
 assign iu3_lk_d = iu2_instr_pri[31];
 assign iu3_aa_d = iu2_instr_pri[30];
 
-
 assign iu3_pr_val_d = |(iu2_br_pred[0:3]) & (~iu2_flush) & (~ic_bp_iu2_error[0]);
 
+// bcl 20,31,$+4 is special case.  not a subroutine call, used to get next instruction address, should not be placed on link stack.
 assign iu3_opcode_d[0:5] = iu2_instr_pri[0:5];
 assign iu3_bo_d[6:10] = iu2_instr_pri[6:10];
 assign iu3_bi_d[11:15] = iu2_instr_pri[11:15];
 
 assign iu3_getNIA = iu3_opcode_q[0:5] == 6'b010000 & iu3_bo_q[6:10] == 5'b10100 & iu3_bi_q[11:15] == 5'b11111 & iu3_bd[62-`EFF_IFAR_WIDTH:61] == value_1[32-`EFF_IFAR_WIDTH:31] & iu3_aa_q == 1'b0 & iu3_lk_q == 1'b1;
 
+//-----------------------------------------------
+// calculate branch target address
+//-----------------------------------------------
 
-assign iu3_abs[62 - `EFF_IFAR_WIDTH:61] = (iu3_b_q == 1'b1) ? iu3_li[62 - `EFF_IFAR_WIDTH:61] : 
+assign iu3_abs[62 - `EFF_IFAR_WIDTH:61] = (iu3_b_q == 1'b1) ? iu3_li[62 - `EFF_IFAR_WIDTH:61] :
                                          iu3_bd[62 - `EFF_IFAR_WIDTH:61];
 
 assign iu3_off[62 - `EFF_IFAR_WIDTH:61] = iu3_abs[62 - `EFF_IFAR_WIDTH:61] + ({iu3_ifar_q[62 - `EFF_IFAR_WIDTH:59], iu3_ifar_pri_q[60:61]});
 
-assign iu3_bta[62 - `EFF_IFAR_WIDTH:61] = (iu3_aa_q == 1'b1) ? iu3_abs[62 - `EFF_IFAR_WIDTH:61] : 
+assign iu3_bta[62 - `EFF_IFAR_WIDTH:61] = (iu3_aa_q == 1'b1) ? iu3_abs[62 - `EFF_IFAR_WIDTH:61] :
                                          iu3_off[62 - `EFF_IFAR_WIDTH:61];
 
+//-----------------------------------------------
+// forward validated instructions
+//-----------------------------------------------
 
+// Using xori 0,0,0 (xnop) when erat error
 assign xnop[0:31] = {6'b011010, 26'b0};
 
 assign iu3_act = ic_bp_iu2_val[0];
@@ -1318,13 +1401,13 @@ assign iu3_val_d[1] = (~iu2_flush) & ic_bp_iu2_val[1] & (ic_bp_iu2_error[0] | ((
 assign iu3_val_d[2] = (~iu2_flush) & ic_bp_iu2_val[2] & (ic_bp_iu2_error[0] | ((~iu2_br_pred[0]) & (~iu2_br_pred[1])));
 assign iu3_val_d[3] = (~iu2_flush) & ic_bp_iu2_val[3] & (ic_bp_iu2_error[0] | ((~iu2_br_pred[0]) & (~iu2_br_pred[1]) & (~iu2_br_pred[2])));
 
-assign iu3_0_instr_d[0:31] = (ic_bp_iu2_error[0] == 1'b0) ? ic_bp_iu2_0_instr[0:31] : 
+assign iu3_0_instr_d[0:31] = (ic_bp_iu2_error[0] == 1'b0) ? ic_bp_iu2_0_instr[0:31] :
                              xnop[0:31];
-assign iu3_1_instr_d[0:31] = (ic_bp_iu2_error[0] == 1'b0) ? ic_bp_iu2_1_instr[0:31] : 
+assign iu3_1_instr_d[0:31] = (ic_bp_iu2_error[0] == 1'b0) ? ic_bp_iu2_1_instr[0:31] :
                              xnop[0:31];
-assign iu3_2_instr_d[0:31] = (ic_bp_iu2_error[0] == 1'b0) ? ic_bp_iu2_2_instr[0:31] : 
+assign iu3_2_instr_d[0:31] = (ic_bp_iu2_error[0] == 1'b0) ? ic_bp_iu2_2_instr[0:31] :
                              xnop[0:31];
-assign iu3_3_instr_d[0:31] = (ic_bp_iu2_error[0] == 1'b0) ? ic_bp_iu2_3_instr[0:31] : 
+assign iu3_3_instr_d[0:31] = (ic_bp_iu2_error[0] == 1'b0) ? ic_bp_iu2_3_instr[0:31] :
                              xnop[0:31];
 
 assign iu3_0_instr_d[32] = iu2_br_pred[0] & (~ic_bp_iu2_error[0]);
@@ -1387,7 +1470,6 @@ assign iu3_1_instr_d[58] = iu2_btb_entry[1];
 assign iu3_2_instr_d[58] = iu2_btb_entry[2];
 assign iu3_3_instr_d[58] = iu2_btb_entry[3];
 
-
 assign iu3_0_instr_d[59] = ic_bp_iu2_2ucode;
 assign iu3_1_instr_d[59] = ic_bp_iu2_2ucode;
 assign iu3_2_instr_d[59] = ic_bp_iu2_2ucode;
@@ -1401,6 +1483,9 @@ assign iu3_3_instr_d[60] = 1'b0;
 assign iu3_br_pred[0:3] = {iu3_0_instr_q[32], iu3_1_instr_q[32], iu3_2_instr_q[32], iu3_3_instr_q[32]};
 assign iu3_bh_update[0:3] = {iu3_0_instr_q[33], iu3_1_instr_q[33], iu3_2_instr_q[33], iu3_3_instr_q[33]};
 
+//-----------------------------------------------
+// detect incoming flushes
+//-----------------------------------------------
 
 assign iu1_flush = iu2_flush | iu2_redirect;
 
@@ -1408,56 +1493,69 @@ assign iu2_flush = iu_flush_q | br_iu_redirect_q | ic_bp_iu2_flush | ic_bp_iu3_f
 
 assign iu3_flush = iu_flush_q | br_iu_redirect_q | ic_bp_iu3_flush | iu4_redirect_q | ib_ic_iu4_redirect | uc_iu4_flush;
 
-assign iu4_flush = iu_flush_q | br_iu_redirect_q | ib_ic_iu4_redirect | uc_iu4_flush;		
+assign iu4_flush = iu_flush_q | br_iu_redirect_q | ib_ic_iu4_redirect | uc_iu4_flush;		//it is possible to remove iu_flush from iu4_flush for timing but will have performance impact
 
+//-----------------------------------------------
+// ex link stack pointers
+//-----------------------------------------------
 
+//valid can be concurrent with flush
 assign ex5_ls_push_d = ex5_val_d & ex5_br_taken_d & (~ex5_bclr_d) & ex5_lk_d & (~ex5_getNIA_d);
 assign ex5_ls_pop_d = ex5_val_d & ex5_br_taken_d & ex5_bclr_d & ex5_bh_d[0:1] == 2'b00;
 
-assign ex6_ls_t0_ptr_d[0:7] = (ex5_ls_push_q == 1'b1 & ex5_ls_pop_q == 1'b0) ? {ex5_ls_ptr_q[7], ex5_ls_ptr_q[0:6]} : 
-                              (ex5_ls_push_q == 1'b0 & ex5_ls_pop_q == 1'b1) ? {ex5_ls_ptr_q[1:7], ex5_ls_ptr_q[0]} : 
+assign ex6_ls_t0_ptr_d[0:7] = (ex5_ls_push_q == 1'b1 & ex5_ls_pop_q == 1'b0) ? {ex5_ls_ptr_q[7], ex5_ls_ptr_q[0:6]} :
+                              (ex5_ls_push_q == 1'b0 & ex5_ls_pop_q == 1'b1) ? {ex5_ls_ptr_q[1:7], ex5_ls_ptr_q[0]} :
                               ex6_ls_t0_ptr_q[0:7];
 
 assign ex6_ls_ptr_act = ex5_ls_push_q ^ ex5_ls_pop_q;
+//-----------------------------------------------
+// maintain link stack contents
+//-----------------------------------------------
 
 assign ex5_ls_update = ex5_ls_push_q;
 
 assign ex5_nia[62 - `EFF_IFAR_WIDTH:61] = ex5_ifar_q[62-`EFF_IFAR_WIDTH:61] + value_1[32-`EFF_IFAR_WIDTH:31];
 
-assign ex6_ls_t00_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign ex6_ls_t00_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               ex6_ls_t00_q[62 - `EFF_IFAR_WIDTH:61];
-assign ex6_ls_t01_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign ex6_ls_t01_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               ex6_ls_t01_q[62 - `EFF_IFAR_WIDTH:61];
-assign ex6_ls_t02_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign ex6_ls_t02_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               ex6_ls_t02_q[62 - `EFF_IFAR_WIDTH:61];
-assign ex6_ls_t03_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign ex6_ls_t03_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               ex6_ls_t03_q[62 - `EFF_IFAR_WIDTH:61];
-assign ex6_ls_t04_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign ex6_ls_t04_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               ex6_ls_t04_q[62 - `EFF_IFAR_WIDTH:61];
-assign ex6_ls_t05_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign ex6_ls_t05_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               ex6_ls_t05_q[62 - `EFF_IFAR_WIDTH:61];
-assign ex6_ls_t06_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign ex6_ls_t06_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               ex6_ls_t06_q[62 - `EFF_IFAR_WIDTH:61];
-assign ex6_ls_t07_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign ex6_ls_t07_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_ls_update == 1'b1) ? ex5_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               ex6_ls_t07_q[62 - `EFF_IFAR_WIDTH:61];
 
-assign ex6_ls_t0_act[0:7] = (ex5_ls_update == 1'b1) ? ex6_ls_t0_ptr_d[0:7] : 
+assign ex6_ls_t0_act[0:7] = (ex5_ls_update == 1'b1) ? ex6_ls_t0_ptr_d[0:7] :
                             8'b00000000;
 
+//-----------------------------------------------
+// iu link stack pointers
+//-----------------------------------------------
 
 assign iu4_ls_push_d = iu3_pr_val_q & (~iu3_flush) & (~iu3_bclr_q) & iu3_lk_q & (~iu3_getNIA);
 assign iu4_ls_pop_d = iu3_pr_val_q & (~iu3_flush) & iu3_bclr_q & iu3_bh_q[0:1] == 2'b00;
 
 assign ex5_repair = ex5_flush_q;
 
-assign iu5_ls_t0_ptr_d[0:7] = (ex5_repair == 1'b1) ? ex6_ls_t0_ptr_d[0:7] : 
-                              (br_iu_redirect_q == 1'b1) ? br_iu_ls_ptr_q[0:7] : 
-                              (iu4_ls_push_q == 1'b1 & iu4_ls_pop_q == 1'b0) ? {iu5_ls_t0_ptr_q[7], iu5_ls_t0_ptr_q[0:6]} : 
-                              (iu4_ls_push_q == 1'b0 & iu4_ls_pop_q == 1'b1) ? {iu5_ls_t0_ptr_q[1:7], iu5_ls_t0_ptr_q[0]} : 
+assign iu5_ls_t0_ptr_d[0:7] = (ex5_repair == 1'b1) ? ex6_ls_t0_ptr_d[0:7] :
+                              (br_iu_redirect_q == 1'b1) ? br_iu_ls_ptr_q[0:7] :
+                              (iu4_ls_push_q == 1'b1 & iu4_ls_pop_q == 1'b0) ? {iu5_ls_t0_ptr_q[7], iu5_ls_t0_ptr_q[0:6]} :
+                              (iu4_ls_push_q == 1'b0 & iu4_ls_pop_q == 1'b1) ? {iu5_ls_t0_ptr_q[1:7], iu5_ls_t0_ptr_q[0]} :
                               iu5_ls_t0_ptr_q[0:7];
 
 assign iu5_ls_ptr_act[0] = br_iu_redirect_q | ex5_repair | (~iu4_flush);
 
+//-----------------------------------------------
+// maintain link stack contents
+//-----------------------------------------------
 
 assign iu4_ls_update = iu4_ls_push_q & (~iu4_flush);
 
@@ -1466,45 +1564,46 @@ assign iu4_act = iu3_pr_val_q & iu3_lk_q;
 
 assign iu4_nia[62 - `EFF_IFAR_WIDTH:61] = iu4_ifar_q[62 - `EFF_IFAR_WIDTH:61] + value_1[32-`EFF_IFAR_WIDTH:31];
 
-assign iu5_ls_t00_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t00_d[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign iu5_ls_t00_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t00_d[62 - `EFF_IFAR_WIDTH:61] :
+                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] :
+                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               iu5_ls_t00_q[62 - `EFF_IFAR_WIDTH:61];
-assign iu5_ls_t01_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t01_d[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign iu5_ls_t01_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t01_d[62 - `EFF_IFAR_WIDTH:61] :
+                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] :
+                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               iu5_ls_t01_q[62 - `EFF_IFAR_WIDTH:61];
-assign iu5_ls_t02_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t02_d[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign iu5_ls_t02_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t02_d[62 - `EFF_IFAR_WIDTH:61] :
+                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] :
+                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               iu5_ls_t02_q[62 - `EFF_IFAR_WIDTH:61];
-assign iu5_ls_t03_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t03_d[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign iu5_ls_t03_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t03_d[62 - `EFF_IFAR_WIDTH:61] :
+                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] :
+                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               iu5_ls_t03_q[62 - `EFF_IFAR_WIDTH:61];
-assign iu5_ls_t04_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t04_d[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign iu5_ls_t04_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t04_d[62 - `EFF_IFAR_WIDTH:61] :
+                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] :
+                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               iu5_ls_t04_q[62 - `EFF_IFAR_WIDTH:61];
-assign iu5_ls_t05_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t05_d[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign iu5_ls_t05_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t05_d[62 - `EFF_IFAR_WIDTH:61] :
+                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] :
+                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               iu5_ls_t05_q[62 - `EFF_IFAR_WIDTH:61];
-assign iu5_ls_t06_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t06_d[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign iu5_ls_t06_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t06_d[62 - `EFF_IFAR_WIDTH:61] :
+                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] :
+                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               iu5_ls_t06_q[62 - `EFF_IFAR_WIDTH:61];
-assign iu5_ls_t07_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t07_d[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] : 
-                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] : 
+assign iu5_ls_t07_d[62 - `EFF_IFAR_WIDTH:61] = (ex5_repair == 1'b1) ? ex6_ls_t07_d[62 - `EFF_IFAR_WIDTH:61] :
+                                              (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1) ? br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61] :
+                                              (iu4_ls_update == 1'b1) ? iu4_nia[62 - `EFF_IFAR_WIDTH:61] :
                                               iu5_ls_t07_q[62 - `EFF_IFAR_WIDTH:61];
 
-assign iu5_ls_t0_act[0:7] = (ex5_repair == 1'b1) ? 8'b11111111 : 
-                            (iu4_ls_push_q == 1'b1 | (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1)) ? iu5_ls_t0_ptr_d[0:7] : 
+assign iu5_ls_t0_act[0:7] = (ex5_repair == 1'b1) ? 8'b11111111 :
+                            (iu4_ls_push_q == 1'b1 | (br_iu_redirect_q == 1'b1 & br_iu_ls_update_q == 1'b1)) ? iu5_ls_t0_ptr_d[0:7] :
                             8'b00000000;
 
-
-
+//-----------------------------------------------
+// mux out link address
+//-----------------------------------------------
 
 assign iu2_lnk[62-`EFF_IFAR_WIDTH:61] = ({`EFF_IFAR_WIDTH{iu5_ls_t0_ptr_q[0]}} & iu5_ls_t00_q[62 - `EFF_IFAR_WIDTH:61]) |
                                         ({`EFF_IFAR_WIDTH{iu5_ls_t0_ptr_q[1]}} & iu5_ls_t01_q[62 - `EFF_IFAR_WIDTH:61]) |
@@ -1526,7 +1625,11 @@ assign iu2_ls_ptr[0:2] = ({3{iu5_ls_t0_ptr_q[0]}} & 3'b000) |
 
 
 
+//-----------------------------------------------
+// read btb for bcctr
+//-----------------------------------------------
 
+//btb has READ gating to prevent r/w collisions, with external write thru.  writes are never blocked, so its okay to read as often as we like
 assign iu0_btb_rd_act = ic_bp_iu0_val;
 assign iu0_btb_rd_addr[0:5] = ic_bp_iu0_ifar[54:59];
 
@@ -1535,17 +1638,19 @@ assign iu2_btb_tag[62 - `EFF_IFAR_WIDTH:61] = iu2_btb_rd_data[`EFF_IFAR_WIDTH:2 
 assign iu2_btb_link = iu2_btb_rd_data[2 * `EFF_IFAR_WIDTH];
 assign iu2_btb_hist[0:1] = iu2_btb_hist_q[0:1];
 
-
 assign iu2_btb_entry[0] = ic_bp_iu2_ifar[62 - `EFF_IFAR_WIDTH:59] == iu2_btb_tag[62 - `EFF_IFAR_WIDTH:59] & iu2_btb_tag[60:61] == ic_bp_iu2_ifar[60:61];
 assign iu2_btb_entry[1] = ic_bp_iu2_ifar[62 - `EFF_IFAR_WIDTH:59] == iu2_btb_tag[62 - `EFF_IFAR_WIDTH:59] & iu2_btb_tag[60:61] == ic_bp_iu2_ifar[60:61] + 2'b01;
 assign iu2_btb_entry[2] = ic_bp_iu2_ifar[62 - `EFF_IFAR_WIDTH:59] == iu2_btb_tag[62 - `EFF_IFAR_WIDTH:59] & iu2_btb_tag[60:61] == ic_bp_iu2_ifar[60:61] + 2'b10;
 assign iu2_btb_entry[3] = ic_bp_iu2_ifar[62 - `EFF_IFAR_WIDTH:59] == iu2_btb_tag[62 - `EFF_IFAR_WIDTH:59] & iu2_btb_tag[60:61] == ic_bp_iu2_ifar[60:61] + 2'b11;
 
+//-----------------------------------------------
+// read/write btb replacement counter
+//-----------------------------------------------
 
-assign ex5_btb_repl_new[0:1] = ((ex5_btb_entry_q == 1'b0 & ex5_br_taken_q == 1'b1 & (ex5_btb_repl_cnt[0:1] == 2'b00 | ex5_bcctr_q == 1'b1 | (ex5_bclr_q == 1'b1 & ex5_bh_q[0:1] != 2'b00)))) ? 2'b01 : 
-                               (ex5_btb_entry_q == 1'b0 & ex5_br_taken_q == 1'b1 & ex5_btb_repl_cnt[0:1] != 2'b00) ? ex5_btb_repl_cnt[0:1] - 2'b01 : 
-                               (ex5_br_taken_q == 1'b1 & ex5_btb_hist[0] == 1'b1 & (ex5_bcctr_q == 1'b1 | (ex5_bclr_q == 1'b1 & ex5_bh_q[0:1] != 2'b00))) ? 2'b11 : 
-                               (ex5_br_taken_q == 1'b1 & ex5_btb_hist[0] == 1'b1 & ex5_btb_repl_cnt[0:1] != 2'b11) ? ex5_btb_repl_cnt[0:1] + 2'b01 : 
+assign ex5_btb_repl_new[0:1] = ((ex5_btb_entry_q == 1'b0 & ex5_br_taken_q == 1'b1 & (ex5_btb_repl_cnt[0:1] == 2'b00 | ex5_bcctr_q == 1'b1 | (ex5_bclr_q == 1'b1 & ex5_bh_q[0:1] != 2'b00)))) ? 2'b01 :
+                               (ex5_btb_entry_q == 1'b0 & ex5_br_taken_q == 1'b1 & ex5_btb_repl_cnt[0:1] != 2'b00) ? ex5_btb_repl_cnt[0:1] - 2'b01 :
+                               (ex5_br_taken_q == 1'b1 & ex5_btb_hist[0] == 1'b1 & (ex5_bcctr_q == 1'b1 | (ex5_bclr_q == 1'b1 & ex5_bh_q[0:1] != 2'b00))) ? 2'b11 :
+                               (ex5_br_taken_q == 1'b1 & ex5_btb_hist[0] == 1'b1 & ex5_btb_repl_cnt[0:1] != 2'b11) ? ex5_btb_repl_cnt[0:1] + 2'b01 :
                                ex5_btb_repl_cnt[0:1];
 
 generate
@@ -1554,7 +1659,7 @@ begin : xhdl2
    for (i = 0; i <= 63; i = i + 1)
    begin : repl_cnt
    	wire [54:59] id = i;
-      assign ex5_btb_repl_d[2 * i:2 * i + 1] = (ex5_ifar_q[54:59] == id) ? ex5_btb_repl_new[0:1] : 
+      assign ex5_btb_repl_d[2 * i:2 * i + 1] = (ex5_ifar_q[54:59] == id) ? ex5_btb_repl_new[0:1] :
                                                ex5_btb_repl_q[2 * i:2 * i + 1];
       assign ex5_btb_repl_out[i] = ex5_btb_repl_q[2 * i] & ex5_ifar_q[54:59] == id;
       assign ex5_btb_repl_out[i + 64] = ex5_btb_repl_q[2 * i + 1] & ex5_ifar_q[54:59] == id;
@@ -1564,11 +1669,14 @@ endgenerate
 
 assign ex5_btb_repl_cnt[0:1] = {|(ex5_btb_repl_out[0:63]), |(ex5_btb_repl_out[64:127])};
 
+//-----------------------------------------------
+// read/write btb history
+//-----------------------------------------------
 
-assign iu0_btb_hist_new[0:1] = (ex5_val_q == 1'b0 & ex5_btb_entry_q == 1'b1 & ex5_btb_hist[0:1] != 2'b00) ? ex5_btb_hist[0:1] - 2'b01 : 
-                               ((ex5_btb_entry_q == 1'b0 & ex5_br_taken_q == 1'b1 & (ex5_btb_repl_cnt[0:1] == 2'b00 | ex5_bcctr_q == 1'b1 | (ex5_bclr_q == 1'b1 & ex5_bh_q[0:1] != 2'b00)))) ? 2'b10 : 
-                               (ex5_br_taken_q == 1'b1 & ex5_btb_hist[0:1] != 2'b11) ? ex5_btb_hist[0:1] + 2'b01 : 
-                               (ex5_br_taken_q == 1'b0 & ex5_btb_hist[0:1] != 2'b00) ? ex5_btb_hist[0:1] - 2'b01 : 
+assign iu0_btb_hist_new[0:1] = (ex5_val_q == 1'b0 & ex5_btb_entry_q == 1'b1 & ex5_btb_hist[0:1] != 2'b00) ? ex5_btb_hist[0:1] - 2'b01 :
+                               ((ex5_btb_entry_q == 1'b0 & ex5_br_taken_q == 1'b1 & (ex5_btb_repl_cnt[0:1] == 2'b00 | ex5_bcctr_q == 1'b1 | (ex5_bclr_q == 1'b1 & ex5_bh_q[0:1] != 2'b00)))) ? 2'b10 :
+                               (ex5_br_taken_q == 1'b1 & ex5_btb_hist[0:1] != 2'b11) ? ex5_btb_hist[0:1] + 2'b01 :
+                               (ex5_br_taken_q == 1'b0 & ex5_btb_hist[0:1] != 2'b00) ? ex5_btb_hist[0:1] - 2'b01 :
                                ex5_btb_hist[0:1];
 
 generate
@@ -1577,7 +1685,7 @@ generate
       for (i = 0; i <= 63; i = i + 1)
       begin : btb_hist
       	wire [54:59] id = i;
-         assign iu0_btb_hist_d[2 * i:2 * i + 1] = (ex5_ifar_q[54:59] == id) ? iu0_btb_hist_new[0:1] : 
+         assign iu0_btb_hist_d[2 * i:2 * i + 1] = (ex5_ifar_q[54:59] == id) ? iu0_btb_hist_new[0:1] :
                                                   iu0_btb_hist_q[2 * i:2 * i + 1];
          assign iu0_btb_hist_out[i] = iu0_btb_hist_q[2 * i] & ic_bp_iu0_ifar[54:59] == id;
          assign iu0_btb_hist_out[i + 64] = iu0_btb_hist_q[2 * i + 1] & ic_bp_iu0_ifar[54:59] == id;
@@ -1586,77 +1694,97 @@ generate
       end
    end
    endgenerate
-   
+
    assign iu1_btb_hist_d[0:1] = {|(iu0_btb_hist_out[0:63]), |(iu0_btb_hist_out[64:127])};
    assign iu2_btb_hist_d[0:1] = iu1_btb_hist_q[0:1];
-   
+
    assign ex5_btb_hist[0:1] = {|(ex5_btb_hist_out[0:63]), |(ex5_btb_hist_out[64:127])};
 
    assign iu0_btb_hist_act = (ex5_val_q == 1'b0 & ex5_btb_entry_q == 1'b1) | (ex5_val_q == 1'b1 & ((ex5_btb_entry_q == 1'b1) | (ex5_btb_entry_q == 1'b0 & ex5_br_taken_q & (ex5_btb_repl_cnt[0:1] == 2'b00 | ex5_bcctr_q == 1'b1 | (ex5_bclr_q == 1'b1 & ex5_bh_q[0:1] != 2'b00)))));
-   
-   
-     assign ex5_btb_wr_data[0:63] = {ex5_bta_q[62 - `EFF_IFAR_WIDTH:61], ex5_ifar_q[62 - `EFF_IFAR_WIDTH:61], (ex5_bclr_q & ex5_bh_q[0:1] == 2'b00), {(64-(2*`EFF_IFAR_WIDTH + 1)){1'b0}}};		
-   
+
+   //-----------------------------------------------
+   // write btb
+   //-----------------------------------------------
+
+   //target
+   //branch to link
+     assign ex5_btb_wr_data[0:63] = {ex5_bta_q[62 - `EFF_IFAR_WIDTH:61], ex5_ifar_q[62 - `EFF_IFAR_WIDTH:61], (ex5_bclr_q & ex5_bh_q[0:1] == 2'b00), {(64-(2*`EFF_IFAR_WIDTH + 1)){1'b0}}};		//tag
+
    assign ex5_btb_wr_addr[0:5] = ex5_ifar_q[54:59];
-   
+
    assign ex5_btb_wr_act = (ex5_val_q == 1'b1 & ((ex5_btb_entry_q == 1'b1 & ex5_br_taken_q) | (ex5_btb_entry_q == 1'b0 & ex5_br_taken_q & (ex5_btb_repl_cnt[0:1] == 2'b00 | ex5_bcctr_q == 1'b1 | (ex5_bclr_q == 1'b1 & ex5_bh_q[0:1] != 2'b00)))));
-   
-   
-   
+
+   //-----------------------------------------------
+   // select indirect ifar
+   //-----------------------------------------------
+
    assign iu3_lnk_d[62 - `EFF_IFAR_WIDTH:61] = iu2_lnk[62 - `EFF_IFAR_WIDTH:61];
    assign iu3_btb_d[62 - `EFF_IFAR_WIDTH:61] = iu2_btb[62 - `EFF_IFAR_WIDTH:61];
-   
+
+   //next fetch group address
    assign iu3_nfg_d[62-`EFF_IFAR_WIDTH:59] = ic_bp_iu2_ifar[62 - `EFF_IFAR_WIDTH:59] + value_1[34-`EFF_IFAR_WIDTH:31];
    assign iu3_nfg_d[60:61] = 2'b00;
-   
-   
+
+   //-----------------------------------------------
+   // redirect instruction pointer
+   //-----------------------------------------------
+
    assign iu2_redirect = bp_bt_en & ic_bp_iu2_val[0] & ic_bp_iu2_error[0:2] == 3'b000 & iu2_btb_hist[0] & ic_bp_iu2_ifar[62 - `EFF_IFAR_WIDTH:53] == iu2_btb_tag[62 - `EFF_IFAR_WIDTH:53] & ic_bp_iu2_ifar[60:61] <= iu2_btb_tag[60:61];
-   
+
    assign iu3_btb_redirect_d = iu2_redirect & (~iu2_flush);
    assign iu3_btb_misdirect_d = iu2_redirect & (~iu2_flush) & iu2_btb_tag[60:61] != iu3_ifar_pri_d[60:61];
    assign iu3_btb_link_d = iu2_btb_link;
-   
+
    assign iu4_redirect_act = iu3_redirect;
-   
+
    assign iu4_redirect_ifar_d[62 - `EFF_IFAR_WIDTH:61] = iu3_bta[62 - `EFF_IFAR_WIDTH:61];
-   
-   assign iu3_redirect = (iu3_pr_val_q ^ iu3_btb_redirect_q) | (iu3_btb_redirect_q & ((iu3_bclr_q == 1'b1 & iu3_bh_q[0:1] == 2'b00) ^ iu3_btb_link_q == 1'b1)) | (iu3_btb_misdirect_q & (~(((iu3_bcctr_q == 1'b1 | (iu3_bclr_q == 1'b1 & iu3_bh_q[0:1] != 2'b00)) & iu3_btb_link_q == 1'b0) | (iu3_bclr_q == 1'b1 & iu3_bh_q[0:1] == 2'b00 & iu3_btb_link_q == 1'b1))));		
-   
+
+   assign iu3_redirect = (iu3_pr_val_q ^ iu3_btb_redirect_q) | (iu3_btb_redirect_q & ((iu3_bclr_q == 1'b1 & iu3_bh_q[0:1] == 2'b00) ^ iu3_btb_link_q == 1'b1)) | (iu3_btb_misdirect_q & (~(((iu3_bcctr_q == 1'b1 | (iu3_bclr_q == 1'b1 & iu3_bh_q[0:1] != 2'b00)) & iu3_btb_link_q == 1'b0) | (iu3_bclr_q == 1'b1 & iu3_bh_q[0:1] == 2'b00 & iu3_btb_link_q == 1'b1))));
+
    assign iu3_redirect_early = iu3_bclr_q | iu3_bcctr_q | (~iu3_pr_val_q);
    assign iu4_redirect_d = iu3_redirect & (~iu3_redirect_early) & (~iu3_flush);
-   
-   assign bp_ic_redirect_ifar[62 - `EFF_IFAR_WIDTH:61] = (iu4_redirect_q == 1'b1) ? iu4_redirect_ifar_q[62 - `EFF_IFAR_WIDTH:61] : 
-                                                        ((iu3_redirect == 1'b1 & iu3_pr_val_q == 1'b0)) ? iu3_nfg_q[62 - `EFF_IFAR_WIDTH:61] : 
-                                                        ((iu3_redirect == 1'b1 & iu3_bclr_q == 1'b1 & iu3_bh_q[0:1] == 2'b00)) ? iu3_lnk_q[62 - `EFF_IFAR_WIDTH:61] : 
-                                                        ((iu3_redirect == 1'b1)) ? iu3_btb_q[62 - `EFF_IFAR_WIDTH:61] : 
-                                                        ((iu2_btb_link == 1'b1)) ? iu3_lnk_d[62 - `EFF_IFAR_WIDTH:61] : 
+
+   assign bp_ic_redirect_ifar[62 - `EFF_IFAR_WIDTH:61] = (iu4_redirect_q == 1'b1) ? iu4_redirect_ifar_q[62 - `EFF_IFAR_WIDTH:61] :
+                                                        ((iu3_redirect == 1'b1 & iu3_pr_val_q == 1'b0)) ? iu3_nfg_q[62 - `EFF_IFAR_WIDTH:61] :
+                                                        ((iu3_redirect == 1'b1 & iu3_bclr_q == 1'b1 & iu3_bh_q[0:1] == 2'b00)) ? iu3_lnk_q[62 - `EFF_IFAR_WIDTH:61] :
+                                                        ((iu3_redirect == 1'b1)) ? iu3_btb_q[62 - `EFF_IFAR_WIDTH:61] :
+                                                        ((iu2_btb_link == 1'b1)) ? iu3_lnk_d[62 - `EFF_IFAR_WIDTH:61] :
                                                         iu3_btb_d[62 - `EFF_IFAR_WIDTH:61];
-   
+
    assign bp_ic_iu4_redirect = iu4_redirect_q;
    assign bp_ic_iu3_redirect = iu3_redirect;
    assign bp_ic_iu2_redirect = iu2_redirect;
-   
-   
+
+   //-----------------------------------------------
+   // out of sync hold of link stack instructions
+   //-----------------------------------------------
+
    assign bp_ic_iu3_hold = 1'b0;
-   
-   
+
+   //-----------------------------------------------
+   // output validated instructions
+   //-----------------------------------------------
+
    assign bp_ib_iu3_ifar[62 - `EFF_IFAR_WIDTH:61] = iu3_ifar_q[62 - `EFF_IFAR_WIDTH:61];
-   
+
    assign bp_ib_iu3_val[0:3] = ({4{~ic_bp_iu3_flush}} & iu3_val_q[0:3]);
 
-   
    assign bp_ib_iu3_0_instr[0:69] = {iu3_0_instr_q[0:53], (iu3_0_instr_q[54] | ic_bp_iu3_ecc_err), iu3_0_instr_q[55:60], bp_ib_iu3_bta_val, iu3_gs_counts[0:5], iu3_gs_count0[0:1]};
    assign bp_ib_iu3_1_instr[0:69] = {iu3_1_instr_q[0:53], (iu3_1_instr_q[54] | ic_bp_iu3_ecc_err), iu3_1_instr_q[55:60], bp_ib_iu3_bta_val, iu3_gs_counts[0:5], iu3_gs_count1[0:1]};
    assign bp_ib_iu3_2_instr[0:69] = {iu3_2_instr_q[0:53], (iu3_2_instr_q[54] | ic_bp_iu3_ecc_err), iu3_2_instr_q[55:60], bp_ib_iu3_bta_val, iu3_gs_counts[0:5], iu3_gs_count2[0:1]};
    assign bp_ib_iu3_3_instr[0:69] = {iu3_3_instr_q[0:53], (iu3_3_instr_q[54] | ic_bp_iu3_ecc_err), iu3_3_instr_q[55:60], bp_ib_iu3_bta_val, iu3_gs_counts[0:5], iu3_gs_count3[0:1]};
-   
-   assign bp_ib_iu3_bta[62 - `EFF_IFAR_WIDTH:61] = ((iu3_bclr_q == 1'b1 & iu3_bh_q[0:1] == 2'b00)) ? iu3_lnk_q[62 - `EFF_IFAR_WIDTH:61] : 		
+
+   assign bp_ib_iu3_bta[62 - `EFF_IFAR_WIDTH:61] = ((iu3_bclr_q == 1'b1 & iu3_bh_q[0:1] == 2'b00)) ? iu3_lnk_q[62 - `EFF_IFAR_WIDTH:61] :
                                                   iu3_btb_q[62 - `EFF_IFAR_WIDTH:61];
-   
+
    assign bp_ib_iu3_bta_val = (~iu4_redirect_d);
-   
-   
-   
+
+   //-----------------------------------------------
+   // latches
+   //-----------------------------------------------
+
+   //scan chain 0
+
    tri_rlmreg_p #(.WIDTH(128), .INIT(0)) iu0_btb_hist_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1674,8 +1802,8 @@ generate
       .din(iu0_btb_hist_d[0:127]),
       .dout(iu0_btb_hist_q[0:127])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0)) iu1_btb_hist_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1693,8 +1821,8 @@ generate
       .din(iu1_btb_hist_d[0:1]),
       .dout(iu1_btb_hist_q[0:1])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0)) iu2_btb_hist_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1712,8 +1840,8 @@ generate
       .din(iu2_btb_hist_d[0:1]),
       .dout(iu2_btb_hist_q[0:1])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(16), .INIT(0)) gshare_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1750,8 +1878,6 @@ generate
       .dout(gshare_shift0_q[0:4])
    );
 
-   
-   
    tri_rlmreg_p #(.WIDTH(16), .INIT(0)) cp_gshare_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1769,7 +1895,7 @@ generate
       .din(cp_gshare_d[0:15]),
       .dout(cp_gshare_q[0:15])
    );
-   
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0)) cp_gs_count_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1877,8 +2003,8 @@ generate
       .din(iu1_gshare_d[0:9]),
       .dout(iu1_gshare_q[0:9])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(10), .INIT(0)) iu2_gshare_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1896,8 +2022,8 @@ generate
       .din(iu2_gshare_d[0:9]),
       .dout(iu2_gshare_q[0:9])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0)) iu3_bh_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1915,8 +2041,8 @@ generate
       .din(iu3_bh_d[0:1]),
       .dout(iu3_bh_q[0:1])
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu3_lk_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1934,8 +2060,8 @@ generate
       .din(iu3_lk_d),
       .dout(iu3_lk_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu3_aa_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1953,8 +2079,8 @@ generate
       .din(iu3_aa_d),
       .dout(iu3_aa_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu3_b_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1972,8 +2098,8 @@ generate
       .din(iu3_b_d),
       .dout(iu3_b_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu3_bclr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1991,8 +2117,8 @@ generate
       .din(iu3_bclr_d),
       .dout(iu3_bclr_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu3_bcctr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2010,8 +2136,8 @@ generate
       .din(iu3_bcctr_d),
       .dout(iu3_bcctr_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(6), .INIT(0)) iu3_opcode_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2029,8 +2155,8 @@ generate
       .din(iu3_opcode_d[0:5]),
       .dout(iu3_opcode_q[0:5])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(5), .INIT(0)) iu3_bo_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2048,8 +2174,8 @@ generate
       .din(iu3_bo_d[6:10]),
       .dout(iu3_bo_q[6:10])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(5), .INIT(0)) iu3_bi_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2067,8 +2193,8 @@ generate
       .din(iu3_bi_d[11:15]),
       .dout(iu3_bi_q[11:15])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(24), .INIT(0)) iu3_tar_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2086,8 +2212,8 @@ generate
       .din(iu3_tar_d[6:29]),
       .dout(iu3_tar_q[6:29])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) iu3_ifar_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2105,8 +2231,8 @@ generate
       .din(iu3_ifar_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(iu3_ifar_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0)) iu3_ifar_pri_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2124,8 +2250,8 @@ generate
       .din(iu3_ifar_pri_d[60:61]),
       .dout(iu3_ifar_pri_q[60:61])
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu3_pr_val_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2143,9 +2269,7 @@ generate
       .din(iu3_pr_val_d),
       .dout(iu3_pr_val_q)
    );
-   
-   
-   
+
    tri_rlmreg_p #(.WIDTH((`EFF_IFAR_WIDTH)), .INIT(0)) iu3_lnk_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2163,8 +2287,8 @@ generate
       .din(iu3_lnk_d),
       .dout(iu3_lnk_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH((`EFF_IFAR_WIDTH)), .INIT(0)) iu3_btb_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2182,8 +2306,8 @@ generate
       .din(iu3_btb_d),
       .dout(iu3_btb_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(4), .INIT(0)) iu3_val_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2201,8 +2325,8 @@ generate
       .din(iu3_val_d[0:3]),
       .dout(iu3_val_q[0:3])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(61), .INIT(0)) iu3_0_instr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2220,8 +2344,8 @@ generate
       .din(iu3_0_instr_d),
       .dout(iu3_0_instr_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(61), .INIT(0)) iu3_1_instr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2239,8 +2363,8 @@ generate
       .din(iu3_1_instr_d),
       .dout(iu3_1_instr_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(61), .INIT(0)) iu3_2_instr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2258,8 +2382,8 @@ generate
       .din(iu3_2_instr_d),
       .dout(iu3_2_instr_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(61), .INIT(0)) iu3_3_instr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2277,8 +2401,8 @@ generate
       .din(iu3_3_instr_d),
       .dout(iu3_3_instr_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu3_btb_redirect_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2296,8 +2420,8 @@ generate
       .din(iu3_btb_redirect_d),
       .dout(iu3_btb_redirect_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu3_btb_misdirect_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2315,8 +2439,8 @@ generate
       .din(iu3_btb_misdirect_d),
       .dout(iu3_btb_misdirect_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu3_btb_link_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2334,8 +2458,8 @@ generate
       .din(iu3_btb_link_d),
       .dout(iu3_btb_link_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) iu3_nfg_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2353,8 +2477,8 @@ generate
       .din(iu3_nfg_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(iu3_nfg_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) iu4_redirect_ifar_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2372,8 +2496,8 @@ generate
       .din(iu4_redirect_ifar_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(iu4_redirect_ifar_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu4_redirect_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2391,8 +2515,8 @@ generate
       .din(iu4_redirect_d),
       .dout(iu4_redirect_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu4_ls_push_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2410,8 +2534,8 @@ generate
       .din(iu4_ls_push_d),
       .dout(iu4_ls_push_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu4_ls_pop_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2429,8 +2553,8 @@ generate
       .din(iu4_ls_pop_d),
       .dout(iu4_ls_pop_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) iu4_ifar_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2448,8 +2572,9 @@ generate
       .din(iu4_ifar_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(iu4_ifar_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+   //scan chain 1
+
    tri_rlmreg_p #(.WIDTH(8), .INIT(128)) iu5_ls_t0_ptr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2467,9 +2592,7 @@ generate
       .din(iu5_ls_t0_ptr_d[0:7]),
       .dout(iu5_ls_t0_ptr_q[0:7])
    );
-   
-   
-   
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) iu5_ls_t00_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2487,8 +2610,8 @@ generate
       .din(iu5_ls_t00_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(iu5_ls_t00_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) iu5_ls_t01_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2506,8 +2629,8 @@ generate
       .din(iu5_ls_t01_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(iu5_ls_t01_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) iu5_ls_t02_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2525,8 +2648,8 @@ generate
       .din(iu5_ls_t02_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(iu5_ls_t02_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) iu5_ls_t03_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2544,8 +2667,8 @@ generate
       .din(iu5_ls_t03_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(iu5_ls_t03_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) iu5_ls_t04_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2563,8 +2686,8 @@ generate
       .din(iu5_ls_t04_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(iu5_ls_t04_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) iu5_ls_t05_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2582,8 +2705,8 @@ generate
       .din(iu5_ls_t05_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(iu5_ls_t05_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) iu5_ls_t06_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2601,8 +2724,8 @@ generate
       .din(iu5_ls_t06_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(iu5_ls_t06_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) iu5_ls_t07_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2620,16 +2743,8 @@ generate
       .din(iu5_ls_t07_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(iu5_ls_t07_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) ex6_ls_t00_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2647,8 +2762,8 @@ generate
       .din(ex6_ls_t00_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(ex6_ls_t00_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) ex6_ls_t01_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2666,8 +2781,8 @@ generate
       .din(ex6_ls_t01_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(ex6_ls_t01_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) ex6_ls_t02_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2685,8 +2800,8 @@ generate
       .din(ex6_ls_t02_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(ex6_ls_t02_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) ex6_ls_t03_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2704,8 +2819,8 @@ generate
       .din(ex6_ls_t03_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(ex6_ls_t03_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) ex6_ls_t04_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2723,8 +2838,8 @@ generate
       .din(ex6_ls_t04_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(ex6_ls_t04_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) ex6_ls_t05_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2742,8 +2857,8 @@ generate
       .din(ex6_ls_t05_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(ex6_ls_t05_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) ex6_ls_t06_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2761,8 +2876,8 @@ generate
       .din(ex6_ls_t06_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(ex6_ls_t06_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) ex6_ls_t07_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2780,7 +2895,7 @@ generate
       .din(ex6_ls_t07_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(ex6_ls_t07_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
+
    tri_rlmlatch_p #(.INIT(0)) ex5_val_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2798,8 +2913,8 @@ generate
       .din(ex5_val_d),
       .dout(ex5_val_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) ex5_ifar_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2817,8 +2932,8 @@ generate
       .din(ex5_ifar_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(ex5_ifar_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) ex5_bh_update_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2836,8 +2951,8 @@ generate
       .din(ex5_bh_update_d),
       .dout(ex5_bh_update_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(10), .INIT(0)) ex5_gshare_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2855,8 +2970,8 @@ generate
       .din(ex5_gshare_d[0:9]),
       .dout(ex5_gshare_q[0:9])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0)) ex5_bh0_hist_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2874,8 +2989,8 @@ generate
       .din(ex5_bh0_hist_d[0:1]),
       .dout(ex5_bh0_hist_q[0:1])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0)) ex5_bh1_hist_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2893,8 +3008,8 @@ generate
       .din(ex5_bh1_hist_d[0:1]),
       .dout(ex5_bh1_hist_q[0:1])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0)) ex5_bh2_hist_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2912,8 +3027,8 @@ generate
       .din(ex5_bh2_hist_d[0:1]),
       .dout(ex5_bh2_hist_q[0:1])
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) ex5_br_pred_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2931,8 +3046,8 @@ generate
       .din(ex5_br_pred_d),
       .dout(ex5_br_pred_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) ex5_br_taken_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2950,8 +3065,8 @@ generate
       .din(ex5_br_taken_d),
       .dout(ex5_br_taken_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) ex5_bcctr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2969,8 +3084,8 @@ generate
       .din(ex5_bcctr_d),
       .dout(ex5_bcctr_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) ex5_bclr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2988,8 +3103,8 @@ generate
       .din(ex5_bclr_d),
       .dout(ex5_bclr_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) ex5_getNIA_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3007,8 +3122,8 @@ generate
       .din(ex5_getNIA_d),
       .dout(ex5_getNIA_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) ex5_lk_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3026,8 +3141,8 @@ generate
       .din(ex5_lk_d),
       .dout(ex5_lk_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0)) ex5_bh_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3045,8 +3160,8 @@ generate
       .din(ex5_bh_d[0:1]),
       .dout(ex5_bh_q[0:1])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) ex5_bta_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3064,8 +3179,8 @@ generate
       .din(ex5_bta_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(ex5_bta_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(8), .INIT(0)) ex5_ls_ptr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3083,8 +3198,8 @@ generate
       .din(ex5_ls_ptr_d[0:7]),
       .dout(ex5_ls_ptr_q[0:7])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0)) ex5_btb_hist_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3102,8 +3217,8 @@ generate
       .din(ex5_btb_hist_d[0:1]),
       .dout(ex5_btb_hist_q[0:1])
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) ex5_btb_entry_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3121,8 +3236,8 @@ generate
       .din(ex5_btb_entry_d),
       .dout(ex5_btb_entry_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(128), .INIT(0)) ex5_btb_repl_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3140,8 +3255,8 @@ generate
       .din(ex5_btb_repl_d[0:127]),
       .dout(ex5_btb_repl_q[0:127])
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) ex5_ls_push_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3159,8 +3274,8 @@ generate
       .din(ex5_ls_push_d),
       .dout(ex5_ls_push_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) ex5_ls_pop_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3178,8 +3293,8 @@ generate
       .din(ex5_ls_pop_d),
       .dout(ex5_ls_pop_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) ex5_group_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3215,8 +3330,8 @@ generate
       .din(ex5_flush_d),
       .dout(ex5_flush_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(8), .INIT(128)) ex6_ls_t0_ptr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3234,9 +3349,8 @@ generate
       .din(ex6_ls_t0_ptr_d[0:7]),
       .dout(ex6_ls_t0_ptr_q[0:7])
    );
-   
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(7), .INIT(0)) bp_config_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3254,8 +3368,8 @@ generate
       .din(bp_config_d[0:6]),
       .dout(bp_config_q[0:6])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(18), .INIT(0)) br_iu_gshare_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3273,8 +3387,8 @@ generate
       .din(br_iu_gshare_d[0:17]),
       .dout(br_iu_gshare_q[0:17])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(8), .INIT(0)) br_iu_ls_ptr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3292,8 +3406,8 @@ generate
       .din(br_iu_ls_ptr_d[0:7]),
       .dout(br_iu_ls_ptr_q[0:7])
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_WIDTH), .INIT(0)) br_iu_ls_data_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3311,8 +3425,8 @@ generate
       .din(br_iu_ls_data_d[62 - `EFF_IFAR_WIDTH:61]),
       .dout(br_iu_ls_data_q[62 - `EFF_IFAR_WIDTH:61])
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) br_iu_ls_update_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3330,8 +3444,8 @@ generate
       .din(br_iu_ls_update_d),
       .dout(br_iu_ls_update_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) br_iu_redirect_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3349,8 +3463,8 @@ generate
       .din(br_iu_redirect),
       .dout(br_iu_redirect_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) cp_flush_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3368,8 +3482,8 @@ generate
       .din(cp_flush),
       .dout(cp_flush_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0)) iu_flush_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3534,8 +3648,11 @@ generate
    );
 
 
+   //-----------------------------------------------
+   // pervasive
+   //-----------------------------------------------
 
-   
+
    tri_plat #(.WIDTH(2)) perv_2to1_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3544,8 +3661,8 @@ generate
       .din({pc_iu_func_sl_thold_2,pc_iu_sg_2}),
       .q({pc_iu_func_sl_thold_1,pc_iu_sg_1})
    );
-   
-   
+
+
    tri_plat #(.WIDTH(2)) perv_1to0_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3554,8 +3671,8 @@ generate
       .din({pc_iu_func_sl_thold_1,pc_iu_sg_1}),
       .q({pc_iu_func_sl_thold_0,pc_iu_sg_0})
    );
-   
-   
+
+
    tri_lcbor  perv_lcbor(
       .clkoff_b(clkoff_b),
       .thold(pc_iu_func_sl_thold_0),
@@ -3564,12 +3681,15 @@ generate
       .force_t(force_t),
       .thold_b(pc_iu_func_sl_thold_0_b)
    );
-   
-   
+
+   //-----------------------------------------------
+   // scan
+   //-----------------------------------------------
+
    assign siv0[0:scan_right0] = {scan_in[0], sov0[0:scan_right0 - 1]};
    assign scan_out[0] = sov0[scan_right0];
-   
+
    assign siv1[0:scan_right1] = {scan_in[1], sov1[0:scan_right1 - 1]};
    assign scan_out[1] = sov1[scan_right1];
-   
+
 endmodule

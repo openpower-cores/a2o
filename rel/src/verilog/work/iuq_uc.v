@@ -7,12 +7,15 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
-
-
+//********************************************************************
+//*
+//* TITLE: IU Microcode
+//*
+//* NAME: iuq_uc.v
+//*
+//*********************************************************************
 
 `include "tri_a2o.vh"
-
-
 
 
 module iuq_uc(
@@ -69,11 +72,11 @@ module iuq_uc(
    uc_ib_ext1
 );
 
-    
+
    inout                         vdd;
-    
+
    inout                         gnd;
-    
+
     (* pin_data="PIN_FUNCTION=/G_CLK/" *)
    input [0:`NCLK_WIDTH-1]       nclk;
    input                         pc_iu_func_sl_thold_2;
@@ -85,10 +88,10 @@ module iuq_uc(
    input                         delay_lclkr;
    input                         mpw1_b;
    input                         mpw2_b;
-    
+
     (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)
    input                         scan_in;
-    
+
     (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
    output                        scan_out;
 
@@ -119,6 +122,7 @@ module iuq_uc(
    input                         ic_bp_iu3_flush;
    input                         ic_bp_iu3_ecc_err;
 
+   // iu2 instruction(0:31) + predecode(32:35); (32:33) = "01" when uCode
    input [0:33]                  ic_bp_iu2_0_instr;
    input [0:33]                  ic_bp_iu2_1_instr;
    input [0:33]                  ic_bp_iu2_2_instr;
@@ -136,9 +140,10 @@ module iuq_uc(
    output reg [0:31]              uc_ib_instr1;
    output reg [62-`EFF_IFAR_WIDTH:61] uc_ib_ifar0;
    output reg [62-`EFF_IFAR_WIDTH:61] uc_ib_ifar1;
-   output reg [0:3]               uc_ib_ext0;   
-   output reg [0:3]               uc_ib_ext1;   
+   output reg [0:3]               uc_ib_ext0;   //RT, S1, S2, S3
+   output reg [0:3]               uc_ib_ext1;   //RT, S1, S2, S3
 
+   //@@  Signal Declarations
    wire [1:78]                   get_address_pt;
    wire                          force_ep;
    wire                          fxm_type;
@@ -181,6 +186,7 @@ module iuq_uc(
    parameter                     iu4_ov_done_offset = iu4_ov_ext1_offset + 4;
    parameter                     scan_right = iu4_ov_done_offset + 1 - 1;
 
+   // Latches
    wire [0:3]                    iu3_val_d;
    wire [62-`EFF_IFAR_WIDTH:61]  iu3_ifar_d;
    wire                          iu3_2ucode_d;
@@ -221,7 +227,7 @@ module iuq_uc(
 
    reg  [0:1]                    iu4_valid_d;
    wire [62-uc_ifar:61]          iu4_ifar_d;
-   wire [0:3]                    iu4_ext0_d;    
+   wire [0:3]                    iu4_ext0_d;    //RT, S1, S2, S3
    wire [0:3]                    iu4_ext1_d;
    wire                          iu4_done_d;
    wire [0:1]                    iu4_valid_l2;
@@ -308,10 +314,12 @@ module iuq_uc(
    wire                          tidn;
    wire                          tiup;
 
-
    assign tidn = 1'b0;
    assign tiup = 1'b1;
 
+   //---------------------------------------------------------------------
+   // latch inputs
+   //---------------------------------------------------------------------
    assign iu3_val_d = {4{(~iu2_flush) & (~xu_iu_flush) & (~ic_bp_iu2_error)}} & ic_bp_iu2_val;
    assign iu3_ifar_d = ic_bp_iu2_ifar;
    assign iu3_2ucode_d = ic_bp_iu2_2ucode & ic_bp_iu2_val[0];
@@ -321,6 +329,9 @@ module iuq_uc(
    assign iu3_2_instr_d = ic_bp_iu2_2_instr;
    assign iu3_3_instr_d = ic_bp_iu2_3_instr;
 
+   //---------------------------------------------------------------------
+   // buffers
+   //---------------------------------------------------------------------
 
    iuq_uc_buffer  iuq_uc_buffer0(
       .vdd(vdd),
@@ -366,24 +377,34 @@ module iuq_uc(
 
    assign uc_iu4_flush = uc_iu4_flush_int;
 
+   //---------------------------------------------------------------------
+   // new command
+   //---------------------------------------------------------------------
    assign uc_default_act = flush_into_uc_l2 | next_valid | uc_val | iu4_valid_l2[0] | iu4_ov_valid_l2[0];
 
+   // stall if same command in buffer0 next cycle
    assign uc_stall = (uc_val & (~uc_end)) |
-                      br_hold_l2 | cplbuffer_full;   
+                      br_hold_l2 | cplbuffer_full;   // we need this line if we use new_command to increment cplbuffer (br_hold_l2 prevents underwrap, cplbuffer_full prevents overflow)
 
 
-   assign new_command = next_valid & (~uc_stall);    
+   assign new_command = next_valid & (~uc_stall);    // Check that it can receive next command
 
    assign advance_buffers_d = new_command & uc_val;
 
-   assign msr_64bit = tidn;     
+   assign msr_64bit = tidn;     // Unused
 
+   // output
    assign early_end = (~late_end);
 
+   // If '1', will skip lines with skip_cond bit set
    assign new_cond = (~iu3_2ucode_type_l2);
 
+   //---------------------------------------------------------------------
+   // look up address
+   //---------------------------------------------------------------------
 
 /*
+//table_start
 ?TABLE get_address LISTING(final) OPTIMIZE PARMS(ON-SET, DC-SET);
 *INPUTS*============================================*OUTPUTS*====================*
 |                                                   |                            |
@@ -553,587 +574,589 @@ module iuq_uc(
 | 111111 1011000111.  . . .                         | 1100000000 0 1 0 0 1       | mtfsf
 *END*===============================================+============================+
 ?TABLE END get_address ;
+//table_end
 */
 
+//assign_start
 
 assign get_address_pt[1] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 16'b0001001101001110);
 assign get_address_pt[2] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 16'b1111110010000000);
 assign get_address_pt[3] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 16'b0111111000000000);
 assign get_address_pt[4] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 15'b011111101011111);
 assign get_address_pt[5] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[30] , iu3_2ucode_l2
      }) === 16'b0111110000110110);
 assign get_address_pt[6] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] , iu3_2ucode_l2
      }) === 16'b0111111001101110);
 assign get_address_pt[7] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[30] , iu3_2ucode_l2
      }) === 16'b0111110101110111);
 assign get_address_pt[8] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 15'b011111010110101);
 assign get_address_pt[9] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
-    next_instr[29] , next_instr[30] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
+    next_instr[29] , next_instr[30] ,
     iu3_2ucode_l2 }) === 17'b01111101001101110);
 assign get_address_pt[10] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 15'b011111101101111);
 assign get_address_pt[11] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[23] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[23] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 15'b011111111010111);
 assign get_address_pt[12] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 14'b01111100011111);
 assign get_address_pt[13] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[3] , next_instr[4] , 
-    next_instr[5] , next_instr[21] , 
-    next_instr[22] , next_instr[23] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[3] , next_instr[4] ,
+    next_instr[5] , next_instr[21] ,
+    next_instr[22] , next_instr[23] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 15'b111111011000111);
 assign get_address_pt[14] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
     next_instr[28] , next_instr[30]
      }) === 14'b01111100001111);
 assign get_address_pt[15] =
-    (({ next_instr[1] , next_instr[2] , 
-    next_instr[3] , next_instr[4] , 
-    next_instr[5] , next_instr[21] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[1] , next_instr[2] ,
+    next_instr[3] , next_instr[4] ,
+    next_instr[5] , next_instr[21] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 14'b11111110010110);
 assign get_address_pt[16] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[30] , iu3_2ucode_l2
      }) === 16'b0111110101110110);
 assign get_address_pt[17] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[30] }) === 15'b011111010101011);
 assign get_address_pt[18] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 15'b011111100010101);
 assign get_address_pt[19] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 16'b0111110010010000);
 assign get_address_pt[20] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 16'b0111111101110111);
 assign get_address_pt[21] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 16'b0111110001110111);
 assign get_address_pt[22] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 15'b011111101110111);
 assign get_address_pt[23] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[22] , next_instr[24] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[22] , next_instr[24] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] , iu3_2ucode_l2
      }) === 14'b01111100101111);
 assign get_address_pt[24] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
     next_instr[27] , next_instr[28]
      }) === 14'b01111110100101);
 assign get_address_pt[25] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[23] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[23] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 14'b01111101001111);
 assign get_address_pt[26] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
-    next_instr[29] , next_instr[30] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
+    next_instr[29] , next_instr[30] ,
     iu3_2ucode_l2 }) === 15'b011111001101111);
 assign get_address_pt[27] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
     next_instr[28] , next_instr[30]
      }) === 14'b01111100100111);
 assign get_address_pt[28] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 14'b01111100001111);
 assign get_address_pt[29] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 16'b0111110000010011);
 assign get_address_pt[30] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[24] , 
-    next_instr[26] , next_instr[27] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[24] ,
+    next_instr[26] , next_instr[27] ,
     next_instr[28] , next_instr[30]
      }) === 14'b01111100101011);
 assign get_address_pt[31] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
     next_instr[28] , next_instr[30]
      }) === 14'b01111110101011);
 assign get_address_pt[32] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[3] , next_instr[4] , 
-    next_instr[5] , next_instr[21] , 
-    next_instr[22] , next_instr[24] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[3] , next_instr[4] ,
+    next_instr[5] , next_instr[21] ,
+    next_instr[22] , next_instr[24] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 13'b1111100000000);
 assign get_address_pt[33] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
     next_instr[28] , next_instr[29]
      }) === 14'b01111110001011);
 assign get_address_pt[34] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 15'b011111000110101);
 assign get_address_pt[35] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 14'b01111110010110);
 assign get_address_pt[36] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[23] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[23] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 14'b01111110110111);
 assign get_address_pt[37] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[23] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[23] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 15'b011111010110111);
 assign get_address_pt[38] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[4] , 
-    next_instr[5] , next_instr[21] , 
-    next_instr[22] , next_instr[24] , 
-    next_instr[25] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[4] ,
+    next_instr[5] , next_instr[21] ,
+    next_instr[22] , next_instr[24] ,
+    next_instr[25] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 13'b1111111101110);
 assign get_address_pt[39] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
     next_instr[28] , next_instr[29]
      }) === 14'b01111110001010);
 assign get_address_pt[40] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 15'b011111101010101);
 assign get_address_pt[41] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 14'b01111100001101);
 assign get_address_pt[42] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 15'b011111111010111);
 assign get_address_pt[43] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[22] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[22] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 14'b01111100110111);
 assign get_address_pt[44] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[24] , next_instr[25] , 
-    next_instr[26] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[24] , next_instr[25] ,
+    next_instr[26] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 14'b01111110101111);
 assign get_address_pt[45] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[24] , 
-    next_instr[25] , next_instr[26] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[24] ,
+    next_instr[25] , next_instr[26] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 13'b0111110001111);
 assign get_address_pt[46] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[30] , next_instr[31] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[30] , next_instr[31] ,
     iu3_2ucode_l2 }) === 9'b111010010);
 assign get_address_pt[47] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
-    next_instr[21] , next_instr[22] , 
-    next_instr[26] , next_instr[27] , 
-    next_instr[28] , next_instr[29] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
+    next_instr[21] , next_instr[22] ,
+    next_instr[26] , next_instr[27] ,
+    next_instr[28] , next_instr[29] ,
     next_instr[30] }) === 13'b0111111010111);
 assign get_address_pt[48] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[4] , 
-    next_instr[5] , next_instr[26] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[4] ,
+    next_instr[5] , next_instr[26] ,
     next_instr[28] , next_instr[30]
      }) === 8'b00000001);
 assign get_address_pt[49] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[4] , 
-    next_instr[5] , next_instr[26] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[4] ,
+    next_instr[5] , next_instr[26] ,
     next_instr[27] , next_instr[30]
      }) === 8'b00000110);
 assign get_address_pt[50] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[4] , 
-    next_instr[5] , next_instr[26] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[4] ,
+    next_instr[5] , next_instr[26] ,
     next_instr[27] , next_instr[28]
      }) === 8'b00000111);
 assign get_address_pt[51] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[4] , 
-    next_instr[5] , next_instr[26] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[4] ,
+    next_instr[5] , next_instr[26] ,
     next_instr[28] , next_instr[29]
      }) === 8'b00000110);
 assign get_address_pt[52] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
     iu3_2ucode_l2 }) === 7'b1100110);
 assign get_address_pt[53] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[4] , 
-    next_instr[5] , next_instr[30] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[4] ,
+    next_instr[5] , next_instr[30] ,
     next_instr[31] }) === 7'b1111001);
 assign get_address_pt[54] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
     iu3_2ucode_l2 }) === 7'b1010010);
 assign get_address_pt[55] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
     next_instr[30] , next_instr[31]
      }) === 8'b11101010);
 assign get_address_pt[56] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
-    next_instr[4] , next_instr[5] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
+    next_instr[4] , next_instr[5] ,
     iu3_2ucode_l2 }) === 7'b1010110);
 assign get_address_pt[57] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[4] , 
-    next_instr[5] , next_instr[26] , 
-    next_instr[27] , next_instr[28] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[4] ,
+    next_instr[5] , next_instr[26] ,
+    next_instr[27] , next_instr[28] ,
     next_instr[29] , next_instr[30]
      }) === 10'b1111110010);
 assign get_address_pt[58] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
     next_instr[5] , iu3_2ucode_l2
      }) === 6'b110010);
 assign get_address_pt[59] =
-    (({ next_instr[0] , next_instr[2] , 
-    next_instr[3] , next_instr[5] , 
+    (({ next_instr[0] , next_instr[2] ,
+    next_instr[3] , next_instr[5] ,
     iu3_2ucode_l2 }) === 5'b10010);
 assign get_address_pt[60] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[3] , next_instr[4] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[3] , next_instr[4] ,
     next_instr[5] , next_instr[30]
      }) === 6'b111100);
 assign get_address_pt[61] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
     next_instr[4] , next_instr[5]
      }) === 6'b100011);
 assign get_address_pt[62] =
-    (({ next_instr[0] , next_instr[1] , 
+    (({ next_instr[0] , next_instr[1] ,
     next_instr[3] , next_instr[4]
      }) === 4'b1010);
 assign get_address_pt[63] =
-    (({ next_instr[0] , next_instr[1] , 
+    (({ next_instr[0] , next_instr[1] ,
     next_instr[3] , next_instr[5]
      }) === 4'b1001);
 assign get_address_pt[64] =
-    (({ next_instr[0] , next_instr[2] , 
+    (({ next_instr[0] , next_instr[2] ,
     next_instr[4] , next_instr[5]
      }) === 4'b1001);
 assign get_address_pt[65] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[4] , next_instr[5] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[4] , next_instr[5] ,
     next_instr[30] }) === 5'b11100);
 assign get_address_pt[66] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[4] , 
-    next_instr[5] , next_instr[26] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[4] ,
+    next_instr[5] , next_instr[26] ,
     next_instr[27] , next_instr[30]
      }) === 8'b11111110);
 assign get_address_pt[67] =
-    (({ next_instr[0] , next_instr[1] , 
+    (({ next_instr[0] , next_instr[1] ,
     next_instr[2] , next_instr[4]
      }) === 4'b1011);
 assign get_address_pt[68] =
-    (({ next_instr[0] , next_instr[1] , 
+    (({ next_instr[0] , next_instr[1] ,
     next_instr[2] , next_instr[3]
      }) === 4'b1101);
 assign get_address_pt[69] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
     next_instr[4] }) === 5'b10111);
 assign get_address_pt[70] =
-    (({ next_instr[0] , next_instr[2] , 
+    (({ next_instr[0] , next_instr[2] ,
     next_instr[4] }) === 3'b100);
 assign get_address_pt[71] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[4] , 
-    next_instr[5] , next_instr[26] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[4] ,
+    next_instr[5] , next_instr[26] ,
     next_instr[27] , next_instr[28]
      }) === 8'b11111111);
 assign get_address_pt[72] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[4] , 
-    next_instr[5] , next_instr[26] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[4] ,
+    next_instr[5] , next_instr[26] ,
     next_instr[28] , next_instr[29]
      }) === 8'b11111110);
 assign get_address_pt[73] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[3] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[3] ,
     next_instr[5] }) === 5'b10111);
 assign get_address_pt[74] =
-    (({ next_instr[0] , next_instr[1] , 
+    (({ next_instr[0] , next_instr[1] ,
     next_instr[2] , next_instr[5]
      }) === 4'b1101);
 assign get_address_pt[75] =
-    (({ next_instr[0] , next_instr[1] , 
-    next_instr[2] , next_instr[4] , 
-    next_instr[5] , next_instr[26] , 
+    (({ next_instr[0] , next_instr[1] ,
+    next_instr[2] , next_instr[4] ,
+    next_instr[5] , next_instr[26] ,
     next_instr[28] , next_instr[30]
      }) === 8'b11111110);
 assign get_address_pt[76] =
-    (({ next_instr[0] , next_instr[1] , 
+    (({ next_instr[0] , next_instr[1] ,
     next_instr[2] }) === 3'b110);
 assign get_address_pt[77] =
-    (({ next_instr[0] , next_instr[1] , 
+    (({ next_instr[0] , next_instr[1] ,
     next_instr[2] }) === 3'b101);
 assign get_address_pt[78] =
-    (({ next_instr[0] , next_instr[1] , 
+    (({ next_instr[0] , next_instr[1] ,
     next_instr[2] , next_instr[4]
      }) === 4'b1101);
-assign start_addr[0] = 
+assign start_addr[0] =
     (get_address_pt[1] | get_address_pt[5]
      | get_address_pt[9] | get_address_pt[13]
      | get_address_pt[16] | get_address_pt[20]
@@ -1148,7 +1171,7 @@ assign start_addr[0] =
      | get_address_pt[66] | get_address_pt[71]
      | get_address_pt[72] | get_address_pt[75]
      | get_address_pt[76]);
-assign start_addr[1] = 
+assign start_addr[1] =
     (get_address_pt[1] | get_address_pt[3]
      | get_address_pt[6] | get_address_pt[10]
      | get_address_pt[11] | get_address_pt[13]
@@ -1166,7 +1189,7 @@ assign start_addr[1] =
      | get_address_pt[71] | get_address_pt[72]
      | get_address_pt[73] | get_address_pt[75]
     );
-assign start_addr[2] = 
+assign start_addr[2] =
     (get_address_pt[5] | get_address_pt[6]
      | get_address_pt[9] | get_address_pt[16]
      | get_address_pt[19] | get_address_pt[21]
@@ -1177,7 +1200,7 @@ assign start_addr[2] =
      | get_address_pt[59] | get_address_pt[61]
      | get_address_pt[65] | get_address_pt[69]
      | get_address_pt[78]);
-assign start_addr[3] = 
+assign start_addr[3] =
     (get_address_pt[3] | get_address_pt[5]
      | get_address_pt[6] | get_address_pt[8]
      | get_address_pt[16] | get_address_pt[18]
@@ -1187,7 +1210,7 @@ assign start_addr[3] =
      | get_address_pt[46] | get_address_pt[55]
      | get_address_pt[56] | get_address_pt[58]
      | get_address_pt[70]);
-assign start_addr[4] = 
+assign start_addr[4] =
     (get_address_pt[3] | get_address_pt[7]
      | get_address_pt[9] | get_address_pt[16]
      | get_address_pt[17] | get_address_pt[19]
@@ -1196,7 +1219,7 @@ assign start_addr[4] =
      | get_address_pt[42] | get_address_pt[54]
      | get_address_pt[55] | get_address_pt[61]
      | get_address_pt[67]);
-assign start_addr[5] = 
+assign start_addr[5] =
     (get_address_pt[1] | get_address_pt[7]
      | get_address_pt[8] | get_address_pt[9]
      | get_address_pt[17] | get_address_pt[19]
@@ -1210,20 +1233,20 @@ assign start_addr[5] =
      | get_address_pt[44] | get_address_pt[45]
      | get_address_pt[46] | get_address_pt[52]
      | get_address_pt[54]);
-assign start_addr[6] = 
+assign start_addr[6] =
     (get_address_pt[2] | get_address_pt[5]
      | get_address_pt[6] | get_address_pt[9]
      | get_address_pt[16] | get_address_pt[21]
      | get_address_pt[57]);
-assign start_addr[7] = 
+assign start_addr[7] =
     1'b0;
-assign start_addr[8] = 
+assign start_addr[8] =
     1'b0;
-assign start_addr[9] = 
+assign start_addr[9] =
     1'b0;
-assign xer_type = 
+assign xer_type =
     (get_address_pt[18]);
-assign late_end = 
+assign late_end =
     (get_address_pt[1] | get_address_pt[3]
      | get_address_pt[7] | get_address_pt[9]
      | get_address_pt[13] | get_address_pt[16]
@@ -1243,12 +1266,12 @@ assign late_end =
      | get_address_pt[72] | get_address_pt[73]
      | get_address_pt[74] | get_address_pt[75]
     );
-assign force_ep = 
+assign force_ep =
     (get_address_pt[4] | get_address_pt[12]
      | get_address_pt[14]);
-assign fxm_type = 
+assign fxm_type =
     (get_address_pt[19]);
-assign uc_legal = 
+assign uc_legal =
     (get_address_pt[1] | get_address_pt[3]
      | get_address_pt[7] | get_address_pt[9]
      | get_address_pt[13] | get_address_pt[16]
@@ -1271,12 +1294,20 @@ assign uc_legal =
      | get_address_pt[77] | get_address_pt[78]
     );
 
+//assign_end
 
+   //---------------------------------------------------------------------
+   // illegal op
+   //---------------------------------------------------------------------
 
+   // Need to handle the cmodx case where load/store gets flushed to uCode,
+   // then that instruction is changed to some non-uCode instruction.
+   // Solution: Any time an instruction was flushed_2ucode and doesn't hit
+   // in table, flush instruction to clear flush_2ucode bit.  Instruction
+   // will then re-fetch as regular instruction.
    assign clear_ill_flush_2ucode = new_command & (~uc_legal) & iu3_2ucode_l2;
 
    assign flush_next_control = flush_next | clear_ill_flush_2ucode;
-
 
    assign iu_pc_err_ucode_illegal_d = new_command & (~uc_legal) & (~iu3_2ucode_l2) & (~flush_next);
 
@@ -1287,11 +1318,16 @@ assign uc_legal =
       .err_out(iu_pc_err_ucode_illegal)
    );
 
+   //---------------------------------------------------------------------
+   // create instruction
+   //---------------------------------------------------------------------
    assign xu_iu_flush = iu_flush_l2 | br_iu_redirect_l2;
    assign iu_flush_d = iu_flush;
    assign cp_flush_d = cp_flush;
    assign br_iu_redirect_d = br_iu_redirect & (~(cp_flush_l2 | iu_flush_l2));
 
+   // When br_iu_redirect happens, hold off uCode commands until cp_flush
+   // otherwise weird things happen
    assign br_hold_d = (cp_flush_l2 == 1'b1) ? 1'b0 :
                       (br_iu_redirect_l2 == 1'b1) ? 1'b1 :
                       br_hold_l2;
@@ -1327,7 +1363,7 @@ assign uc_legal =
       .next_valid(next_valid),
       .new_command(new_command),
       .new_instr(next_instr),
-      .start_addr(start_addr[0:8]),  
+      .start_addr(start_addr[0:8]),  // bit (9) is unused - always even
       .xer_type(xer_type),
       .early_end(early_end),
       .force_ep(force_ep),
@@ -1352,16 +1388,22 @@ assign uc_legal =
       .ucode_ext_odd(ucode_ext_odd)
    );
 
+   //---------------------------------------------------------------------
+   // ROM
+   //---------------------------------------------------------------------
 
    assign romvalid_d = ra_valid;
 
    assign rom_addr_even = {rom_ra[0:8], 1'b0};
    assign rom_addr_odd = {rom_ra[0:8], 1'b1};
 
-   assign iu4_stall = iu4_valid_l2[0] & iu4_ov_valid_l2[0];        
+   assign iu4_stall = iu4_valid_l2[0] & iu4_ov_valid_l2[0];        // ??? Need to check vector if ever switch to only i1 being valid
 
    assign data_valid = romvalid_l2 & (~iu4_stall);
 
+   //---------------------------------------------------------------------
+   // ROM Lookup
+   //---------------------------------------------------------------------
 
    iuq_uc_rom_even  uc_rom_even(
       .vdd(vdd),
@@ -1401,7 +1443,10 @@ assign uc_legal =
    );
    assign rom_data_odd_late_d = rom_data_odd[0:31];
 
-   assign iu4_stage_act = data_valid;  
+   //---------------------------------------------------------------------
+   // Staging latches
+   //---------------------------------------------------------------------
+   assign iu4_stage_act = data_valid;  // ??? Removed "not flush and not skip" from act.  Do we want to add in some form of skip check?
 
    generate
    begin : xhdl1
@@ -1410,7 +1455,7 @@ assign uc_legal =
      begin : gen_iu4_val
        always @(*) iu4_valid_d[i] <= ((ucode_valid[i] & (~iu4_stall)) |
                                       (iu4_valid_l2[i] & iu4_stall)) &
-                     (~(iu_flush_l2 | br_iu_redirect_l2));     
+                     (~(iu_flush_l2 | br_iu_redirect_l2));     // clear on flush
      end
    end
    endgenerate
@@ -1419,11 +1464,13 @@ assign uc_legal =
    assign iu4_ext0_d = ucode_ext_even;
    assign iu4_ext1_d = ucode_ext_odd;
 
+   //late data
    assign iu4_instr0_l2 = ucode_instr_even;
    assign iu4_instr1_l2 = ucode_instr_odd;
 
    assign iu4_done_d = uc_end;
 
+   // Overflow latches
    assign iu4_ov_stage_act = iu4_valid_l2[0] & (~iu4_ov_valid_l2[0]);
    generate
    begin : xhdl2
@@ -1442,6 +1489,9 @@ assign uc_legal =
    assign iu4_ov_instr1_d = iu4_instr1_l2;
    assign iu4_ov_done_d = iu4_done_l2;
 
+   // If uc_ifar > `EFF_IFAR_WIDTH, we
+   //     need to change uc_control so uc_ifar is not bigger than EFF_IFAR_WIDTH
+   //     so that we don't lose part of ifar on flush
 
    generate
    begin
@@ -1486,6 +1536,9 @@ assign uc_legal =
       end
    end
 
+   //---------------------------------------------------------------------
+   // Latches
+   //---------------------------------------------------------------------
 
    tri_rlmreg_p #(.WIDTH(4), .INIT(0), .NEEDS_SRESET(1)) iu3_val_latch(
       .vd(vdd),
@@ -1563,7 +1616,7 @@ assign uc_legal =
       .vd(vdd),
       .gd(gnd),
       .nclk(nclk),
-      .act(ic_bp_iu2_val[0]),    
+      .act(ic_bp_iu2_val[0]),    // ??? Could create act for 0:31 when buffers full?
       .thold_b(pc_iu_func_sl_thold_0_b),
       .sg(pc_iu_sg_0),
       .force_t(force_t),
@@ -1739,6 +1792,7 @@ assign uc_legal =
       .dout(advance_buffers_l2)
    );
 
+   // ROM
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) romvalid_latch(
       .vd(vdd),
       .gd(gnd),
@@ -1793,6 +1847,7 @@ assign uc_legal =
       .dout(rom_data_odd_late_l2)
    );
 
+   // Staging latches
    tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) iu4_valid_latch(
       .vd(vdd),
       .gd(gnd),
@@ -1883,6 +1938,7 @@ assign uc_legal =
       .dout(iu4_done_l2)
    );
 
+   // Overflow Staging latches
    tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) iu4_ov_valid_latch(
       .vd(vdd),
       .gd(gnd),
@@ -2009,6 +2065,9 @@ assign uc_legal =
       .dout(iu4_ov_done_l2)
    );
 
+   //---------------------------------------------------------------------
+   // pervasive thold/sg latches
+   //---------------------------------------------------------------------
 
    tri_plat #(.WIDTH(2)) perv_2to1_reg(
       .vd(vdd),
@@ -2037,8 +2096,10 @@ assign uc_legal =
       .thold_b(pc_iu_func_sl_thold_0_b)
    );
 
+   //---------------------------------------------------------------------
+   // Scan
+   //---------------------------------------------------------------------
    assign siv[0:scan_right + 4] = {sov[1:scan_right + 4], scan_in};
    assign scan_out = sov[0];
 
 endmodule
-

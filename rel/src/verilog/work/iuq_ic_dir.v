@@ -9,9 +9,15 @@
 
 `timescale 1 ns / 1 ns
 
+//********************************************************************
+//*
+//* TITLE:
+//*
+//* NAME: iuq_ic_dir.v
+//*
+//*********************************************************************
 
 `include "tri_a2o.vh"
-
 
 module iuq_ic_dir(
    inout                          vcs,
@@ -75,7 +81,7 @@ module iuq_ic_dir(
     (* pin_data ="PIN_FUNCTION=/SCAN_OUT/" *)
    output [0:2]                   abst_scan_out,
 
-   input                          spr_ic_cls,		
+   input                          spr_ic_cls,		// (0): 64B cacheline, (1): 128B cacheline
    input                          spr_ic_ierat_byp_dis,
 
    input [0:1]                    spr_ic_idir_way,
@@ -118,7 +124,7 @@ module iuq_ic_dir(
    input                          pc_iu_abist_g6t_r_wb,
    input                          an_ac_lbist_ary_wrt_thru_dc,
 
-   input                          pc_iu_bo_enable_2,		
+   input                          pc_iu_bo_enable_2,		// bolt-on ABIST
    input                          pc_iu_bo_reset,
    input                          pc_iu_bo_unload,
    input                          pc_iu_bo_repair,
@@ -141,8 +147,10 @@ module iuq_ic_dir(
    input [0:`THREADS-1]           ierat_iu_iu2_flush_req,
    input                          ierat_iu_cam_change,
 
+   // Cache invalidate
    input                          lq_iu_ici_val,
 
+   // IU IC Select
    input                          ics_icd_dir_rd_act,
    input [0:1]                    ics_icd_data_rd_act,
    input                          ics_icd_iu0_valid,
@@ -177,6 +185,7 @@ module iuq_ic_dir(
    output                         icd_ics_iu3_2ucode,
    output                         icd_ics_iu3_2ucode_type,
 
+   // IU IC Miss
    input [51:57]                  icm_icd_lru_addr,
    input                          icm_icd_dir_inval,
    input                          icm_icd_dir_val,
@@ -206,7 +215,7 @@ module iuq_ic_dir(
    output [0:`THREADS-1]          icd_icm_tid,
    output [64-`REAL_IFAR_WIDTH:61] icd_icm_addr_real,
    output [62-`EFF_IFAR_WIDTH:51]  icd_icm_addr_eff,
-   output [0:4]                   icd_icm_wimge,		
+   output [0:4]                   icd_icm_wimge,		// (1): CI
    output [0:3]                   icd_icm_userdef,
    output                         icd_icm_2ucode,
    output                         icd_icm_2ucode_type,
@@ -216,6 +225,8 @@ module iuq_ic_dir(
    output [0:2]                   icd_icm_row_lru,
    output [0:3]                   icd_icm_row_val,
 
+   //Branch Predict
+   // iu3
    output [0:3]                   ic_bp_iu2_t0_val,
  `ifndef THREADS1
      output [0:3]                   ic_bp_iu2_t1_val,
@@ -226,6 +237,7 @@ module iuq_ic_dir(
    output [0:2]                   ic_bp_iu2_error,
    output [0:`THREADS-1]          ic_bp_iu3_flush,
 
+   // iu3 instruction(0:31) + predecode(32:35)
    output [0:35]                  ic_bp_iu2_0_instr,
    output [0:35]                  ic_bp_iu2_1_instr,
    output [0:35]                  ic_bp_iu2_2_instr,
@@ -262,9 +274,9 @@ module iuq_ic_dir(
    parameter                      iu2_stored_rpn_offset = iu2_cam_change_etc_offset + 1;
    parameter                      iu2_dir_rd_val_offset = iu2_stored_rpn_offset + `REAL_IFAR_WIDTH-12;
    parameter                      iu2_dir_dataout_offset = iu2_dir_rd_val_offset + 4;
-   parameter                      iu3_dir_parity_err_way_offset = iu2_dir_dataout_offset + 1;  
+   parameter                      iu3_dir_parity_err_way_offset = iu2_dir_dataout_offset + 1;  //handled in tri
    parameter                      iu2_data_dataout_offset = iu3_dir_parity_err_way_offset + 4;
-   parameter                      dir_val_offset = iu2_data_dataout_offset + 1;	
+   parameter                      dir_val_offset = iu2_data_dataout_offset + 1;	//handled in tri
    parameter                      dir_lru_offset = dir_val_offset + (128 * 4);
    parameter                      iu3_miss_flush_offset = dir_lru_offset + (128 * 3);
    parameter                      iu3_tid_offset = iu3_miss_flush_offset + 1;
@@ -292,11 +304,11 @@ module iuq_ic_dir(
    parameter                      pc_iu_inj_offset = perf_event_offset + 2;
    parameter                      scan_right = pc_iu_inj_offset + 3 - 1;
 
-
-
    wire                           tidn;
    wire                           tiup;
 
+   // Latch inputs
+   // IU1 pipeline
    wire                           iu1_valid_d;
    wire                           iu1_valid_l2;
    wire [0:`THREADS-1]            iu1_tid_d;
@@ -316,6 +328,7 @@ module iuq_ic_dir(
    wire                           iu1_2ucode_type_d;
    wire                           iu1_2ucode_type_l2;
 
+   // IU2 pipeline
    wire                           iu2_valid_d;
    wire                           iu2_valid_l2;
    wire [0:`THREADS-1]            iu2_tid_d;
@@ -343,24 +356,26 @@ module iuq_ic_dir(
    wire [0:3]                     iu3_dir_parity_err_way_d;
    wire [0:3]                     iu3_dir_parity_err_way_l2;
 
+   // Dir val & LRU
    wire [0:3]                     dir_val_d[0:127];
    wire [0:3]                     dir_val_l2[0:127];
    wire [0:2]                     dir_lru_d[0:127];
    wire [0:2]                     dir_lru_l2[0:127];
 
+   // IU3 pipeline
    wire                           iu3_miss_flush_d;
    wire                           iu3_miss_flush_l2;
    wire [0:3]                     iu3_instr_valid_d;
    wire [0:`THREADS-1]            iu3_tid_d;
    wire [0:`THREADS-1]            iu3_tid_l2;
    wire [62-`EFF_IFAR_WIDTH:61]   iu3_ifar_d;
-   wire [62-`EFF_IFAR_WIDTH:61]   iu3_ifar_l2;		
+   wire [62-`EFF_IFAR_WIDTH:61]   iu3_ifar_l2;		//20
    wire                           iu3_2ucode_d;
    wire                           iu3_2ucode_l2;
    wire                           iu3_2ucode_type_d;
    wire                           iu3_2ucode_type_l2;
    wire [0:2]                     iu3_erat_err_d;
-   wire [0:0]                     iu3_erat_err_l2;		
+   wire [0:0]                     iu3_erat_err_l2;		// Only latch 1 bit
    wire [0:3]                     iu3_multihit_err_way_d;
    wire [0:3]                     iu3_multihit_err_way_l2;
    wire                           iu3_multihit_flush_d;
@@ -372,6 +387,7 @@ module iuq_ic_dir(
    wire [51:57]                   iu3_parity_tag_d;
    wire [51:57]                   iu3_parity_tag_l2;
 
+   // ICI
    wire                           ici_val_d;
    wire                           ici_val_l2;
 
@@ -386,6 +402,7 @@ module iuq_ic_dir(
    wire [0:2]                     iu2_spr_idir_lru_d;
    wire [0:2]                     iu2_spr_idir_lru_l2;
 
+   // IERAT Storing
    wire [64-`REAL_IFAR_WIDTH:51]  stored_erat_rpn_d[0:`THREADS-1];
    wire [64-`REAL_IFAR_WIDTH:51]  stored_erat_rpn_l2[0:`THREADS-1];
    wire [0:4]                     stored_erat_wimge_d[0:`THREADS-1];
@@ -403,6 +420,7 @@ module iuq_ic_dir(
    wire                           pc_iu_inj_icachedir_parity_l2;
    wire                           pc_iu_inj_icachedir_multihit_l2;
 
+   // Stored IERAT
    wire                           iu2_valid_erat_read;
    wire [0:`THREADS-1]            stored_erat_act;
    wire                           iu1_stored_erat_updating;
@@ -416,6 +434,7 @@ module iuq_ic_dir(
    wire                           iu2_ci;
    wire                           iu2_endian;
 
+   // IDIR
    wire                           dir_rd_act;
    wire                           dir_write;
    wire [0:ways-1]                dir_way;
@@ -432,6 +451,7 @@ module iuq_ic_dir(
    reg [0:3]                      dir_rd_val;
    reg [0:2]                      iu1_spr_idir_lru;
 
+   // IDATA
    wire [0:1]                     data_read;
    wire                           data_write;
    wire [0:3]                     data_write_act;
@@ -442,6 +462,7 @@ module iuq_ic_dir(
    wire [0:162*ways-1]            data_dataout;
    wire [0:162*ways-1]            iu2_data_dataout;
 
+   // Compare
    wire [0:3]                     iu2_rd_tag_hit;
    wire [0:3]                     iu2_rd_hit;
    wire [0:3]                     iu2_rd_tag_hit_erat;
@@ -462,10 +483,12 @@ module iuq_ic_dir(
    reg [0:2]                      dir_lru_read[0:127];
    reg [0:2]                      dir_lru_write[0:127];
    wire [0:15]                    dir_lru_act;
+   // Check multihit
    wire                           iu2_multihit_err;
    wire                           iu3_multihit_err;
    wire                           iu2_pc_inj_icachedir_multihit;
 
+   // Check parity
    wire [0:dir_parity_width*8-1]  ext_dir_dataout[0:3];
    wire [0:dir_parity_width-1]    dir_parity_out[0:3];
    wire [0:dir_parity_width-1]    dir_parity_err_byte[0:3];
@@ -481,16 +504,18 @@ module iuq_ic_dir(
 
    wire                           data_parity_err;
 
+   // Update Valid Bit
    reg [0:2]                      return_lru;
    reg [0:3]                      return_val;
 
+   // IU2
    wire                           iu2_rd_miss;
    wire                           iu2_valid_or_load;
-   wire [0:35]                    iu2_instr0_cache_rot[0:3];	
+   wire [0:35]                    iu2_instr0_cache_rot[0:3];	// 4 ways
    wire [0:35]                    iu2_instr1_cache_rot[0:3];
    wire [0:35]                    iu2_instr2_cache_rot[0:3];
    wire [0:35]                    iu2_instr3_cache_rot[0:3];
-   wire [0:35]                    iu2_reload_rot[0:3];		
+   wire [0:35]                    iu2_reload_rot[0:3];		// instructions 0-3
    wire [0:35]                    iu2_hit_rot[0:3];
    wire [0:35]                    iu2_instr[0:3];
    wire [0:3]                     iu2_uc_illegal_cache_rot;
@@ -498,9 +523,11 @@ module iuq_ic_dir(
    wire                           iu2_uc_illegal_cache;
    wire                           iu2_uc_illegal;
 
+   // performance events
    wire [0:2]                     iu2_instr_count;
    wire [0:2]                     perf_instr_count_new[0:`THREADS-1];
 
+   // abist
    wire                           stage_abist_g8t_wenb;
    wire                           stage_abist_g8t1p_renb_0;
    wire [0:3]                     stage_abist_di_0;
@@ -516,6 +543,7 @@ module iuq_ic_dir(
    wire [0:3]                     stage_abist_dcomp_g6t_2r;
    wire                           stage_abist_g6t_r_wb;
 
+   // scan
    wire [0:scan_right]            siv;
    wire [0:scan_right]            sov;
    wire [0:44]                    abst_siv;
@@ -525,14 +553,15 @@ module iuq_ic_dir(
    wire [0:1]                     repr_siv;
    wire [0:1]                     repr_sov;
 
-
    assign tidn = 1'b0;
    assign tiup = 1'b1;
-
 
    assign spr_ic_cls_d = spr_ic_cls;
    assign spr_ic_idir_way_d = spr_ic_idir_way;
 
+   //---------------------------------------------------------------------
+   // IU1 Latches
+   //---------------------------------------------------------------------
    assign iu1_valid_d = ics_icd_iu0_valid;
    assign iu1_tid_d = ics_icd_iu0_tid;
    assign iu1_ifar_d = ics_icd_iu0_ifar;
@@ -552,9 +581,13 @@ module iuq_ic_dir(
    assign icd_ics_iu1_2ucode = iu1_2ucode_l2;
    assign icd_ics_iu1_2ucode_type = iu1_2ucode_type_l2;
 
+   //---------------------------------------------------------------------
+   // Stored IERAT
+   //---------------------------------------------------------------------
+   // Keep copy of IERAT output so it is not necessary to read IERAT each time, for power savings
    assign iu2_valid_erat_read = (iu2_valid_l2 | iu2_prefetch_l2) & iu2_read_erat_l2;
    assign stored_erat_act = {`THREADS{iu2_valid_erat_read & (~spr_ic_ierat_byp_dis)}} & iu2_tid_l2;
-   assign iu1_stored_erat_updating = |(stored_erat_act & iu1_tid_l2);  
+   assign iu1_stored_erat_updating = |(stored_erat_act & iu1_tid_l2);  //'1' if stored erat is updating in IU2 for same thread that is in IU1
 
    generate
       begin : xhdl1
@@ -568,7 +601,13 @@ module iuq_ic_dir(
     end
     endgenerate
 
+   //---------------------------------------------------------------------
+   // ERAT Output
+   //---------------------------------------------------------------------
+   // Need to mux between threads
+   // Need to mux between stored & non-stored
 
+   //always @(iu2_tid_l2 or stored_erat_rpn_l2 or stored_erat_wimge_l2 or stored_erat_u_l2)
    always @ (*)
    begin: stored_erat_proc
       reg [64-`REAL_IFAR_WIDTH:51]   iu1_stored_rpn_calc;
@@ -608,17 +647,21 @@ module iuq_ic_dir(
 
    assign iu2_ierat_error = {3{iu2_read_erat_l2}} & ierat_iu_iu2_error;
 
-   assign iu2_ci = iu2_wimge[1];	
+   assign iu2_ci = iu2_wimge[1];	// Note: Must check iu2_valid everywhere this is used.  Otherwise, set to 0 if iu2_inval_l2
    assign iu2_endian = iu2_wimge[4];
 
+   // Timing: Moved muxing to ierat, since similar mux exists there
 
    assign iu2_ifar_eff_d = iu1_ifar_l2;
    assign iu2_index51_d = iu1_index51_l2;
 
+   //---------------------------------------------------------------------
+   // Access IDIR, Valid, & LRU
+   //---------------------------------------------------------------------
    assign dir_rd_act = ics_icd_dir_rd_act;
    assign dir_write = icm_icd_dir_write;
    assign dir_way = icm_icd_dir_write_way;
-   assign dir_wr_addr = {icm_icd_dir_write_addr[51:56], (icm_icd_dir_write_addr[57] & (~spr_ic_cls_l2))};		
+   assign dir_wr_addr = {icm_icd_dir_write_addr[51:56], (icm_icd_dir_write_addr[57] & (~spr_ic_cls_l2))};		// Use even row for 128B mode
    assign dir_rd_addr = {ics_icd_iu0_index51, ics_icd_iu0_ifar[52:56], (ics_icd_iu0_ifar[57] & (~(spr_ic_cls_l2 & (~ics_icd_iu0_spr_idir_read))))};
 
    generate
@@ -634,6 +677,7 @@ module iuq_ic_dir(
          assign ext_dir_datain[i] = 1'b0;
      end
 
+     //genvar  i;
      for (i = 0; i < dir_parity_width; i = i + 1)
      begin : gen_dir_parity
        assign dir_parity_in[i] = ^(ext_dir_datain[i * 8:i * 8 + 7]);
@@ -651,10 +695,11 @@ module iuq_ic_dir(
 
    assign dir_datain = {way_datain, way_datain, way_datain, way_datain};
 
+   // 0:28 - tag, 29 - endianness, 30:33 - parity
    tri_128x34_4w_1r1w  idir(
       .gnd(gnd),
       .vdd(vdd),
-      .vcs(vdd),	
+      .vcs(vdd),
       .nclk(nclk),
       .rd_act(dir_rd_act),
       .wr_act(dir_write),
@@ -716,11 +761,12 @@ module iuq_ic_dir(
 
    assign dir_dataout_act = iu1_valid_l2 | iu1_inval_l2 | iu1_spr_idir_read_l2 | iu1_prefetch_l2;
 
-
+   // Muxing the val for directory access
    assign iu1_ifar_cacheline = {iu1_index51_l2, iu1_ifar_l2[52:56],
               (iu1_ifar_l2[57] & (~(spr_ic_cls_l2 & (~iu1_spr_idir_read_l2))))};
 
 
+   //always @(iu1_ifar_cacheline or dir_val_l2)
    always @(*)
    begin: dir_rd_val_proc
       (* analysis_not_referenced="true" *)
@@ -738,6 +784,7 @@ module iuq_ic_dir(
                               (spr_ic_idir_way_l2 == 2'b10) ? iu2_dir_rd_val_l2[2] :
                                                               iu2_dir_rd_val_l2[3];
 
+   //always @(iu1_index51_l2 or iu1_ifar_l2 or dir_lru_l2)
    always @ (*)
    begin: iu2_spr_idir_lru_proc
       (* analysis_not_referenced="true" *)
@@ -748,7 +795,7 @@ module iuq_ic_dir(
             iu1_spr_idir_lru <= dir_lru_l2[i];
    end
 
-   assign iu2_spr_idir_lru_d = {3{iu1_spr_idir_read_l2}} & iu1_spr_idir_lru;	
+   assign iu2_spr_idir_lru_d = {3{iu1_spr_idir_read_l2}} & iu1_spr_idir_lru;	// gate to reduce switching/power
 
    assign ic_spr_idir_lru = iu2_spr_idir_lru_l2;
 
@@ -768,9 +815,12 @@ module iuq_ic_dir(
                                                                iu2_dir_dataout[3 * dir_way_width + 30:4 * dir_way_width - 1];
    assign ic_spr_idir_done = iu2_spr_idir_read_l2;
 
+   //---------------------------------------------------------------------
+   // Access IData
+   //---------------------------------------------------------------------
    assign data_read = ics_icd_data_rd_act;
    assign data_write = icm_icd_data_write;
-   assign data_way = icm_icd_reload_way;		
+   assign data_way = icm_icd_reload_way;		// write
 
    assign data_addr = (data_write == 1'b1) ? icm_icd_reload_addr[51:59] :
                       {ics_icd_iu0_index51, ics_icd_iu0_ifar[52:59]};
@@ -797,7 +847,7 @@ module iuq_ic_dir(
    tri_512x162_4w_0  idata(
       .gnd(gnd),
       .vdd(vdd),
-      .vcs(vdd),	
+      .vcs(vdd),
       .nclk(nclk),
       .ccflush_dc(tc_ac_ccflush_dc),
       .lcb_clkoff_dc_b(g6t_clkoff_b),
@@ -868,6 +918,9 @@ module iuq_ic_dir(
    assign iu2_data_dataout[0] = data_dataout[0] ^ pc_iu_inj_icache_parity_l2;
    assign iu2_data_dataout[1:162*ways-1] = data_dataout[1:162*ways-1];
 
+   //---------------------------------------------------------------------
+   // Compare Tag
+   //---------------------------------------------------------------------
    generate
    begin : xhdl5
      genvar  i;
@@ -884,15 +937,17 @@ module iuq_ic_dir(
    end
    endgenerate
 
-   
+
    assign iu2_dir_miss = (~|(iu2_rd_hit));
 
    assign iu2_wrong_ra = (iu2_rpn[51] != iu2_index51_l2) & (~iu2_ierat_error[0]) & (~iu2_cam_change_etc_flush);
    assign icd_ics_iu2_wrong_ra_flush = {`THREADS{iu2_valid_l2 & iu2_wrong_ra}} & iu2_tid_l2;
 
+   // Cam change is IU1 phase.  Need to flush if cam changes and we didn't read erat.
+   // Latch IU1 flushes and do flush in IU2 (less muxing for IU0 ifar). Flush if cam changes & didn't read erat
    assign iu2_cam_change_etc_d = (ierat_iu_cam_change & (~iu1_read_erat_l2)) |
-     (ierat_iu_iu2_error[0] & iu2_valid_erat_read & (~iu1_read_erat_l2) & (iu1_tid_l2 == iu2_tid_l2)) |		
-     (|(ierat_iu_iu2_flush_req & iu1_tid_l2) & (iu1_tid_l2 == iu2_tid_l2));   
+     (ierat_iu_iu2_error[0] & iu2_valid_erat_read & (~iu1_read_erat_l2) & (iu1_tid_l2 == iu2_tid_l2)) |		// Flush next command (IU1) if IU2 error
+     (|(ierat_iu_iu2_flush_req & iu1_tid_l2) & (iu1_tid_l2 == iu2_tid_l2));   // Flush next command (IU1) if ierat flush and iu2_prefetch, in order to get the correct iu0_ifar
 
    assign iu2_cam_change_etc_flush = iu2_cam_change_etc_l2 & (iu2_valid_l2 | iu2_prefetch_l2);
    assign icd_ics_iu2_cam_etc_flush = {`THREADS{iu2_cam_change_etc_flush}} & iu2_tid_l2;
@@ -903,7 +958,6 @@ module iuq_ic_dir(
 
    assign iu2_2ucode_d = iu1_2ucode_l2;
    assign iu2_2ucode_type_d = iu1_2ucode_type_l2;
-
 
    assign iu2_inval_d = iu1_inval_l2;
 
@@ -916,7 +970,11 @@ module iuq_ic_dir(
    assign icd_ics_iu1_read_erat       = {`THREADS{(iu1_valid_l2 | iu1_prefetch_l2) & iu1_read_erat_l2}} & iu1_tid_l2;
    assign icd_ics_iu2_read_erat_error = {`THREADS{(iu2_valid_l2 | iu2_prefetch_l2) & iu2_read_erat_l2 & ierat_iu_iu2_error[0]}} & iu2_tid_l2;
 
-   assign iu2_multihit_err = (iu2_valid_l2 | iu2_inval_l2 | iu2_spr_idir_read_l2 | iu2_prefetch_l2) &   
+   //---------------------------------------------------------------------
+   // Check Multihit
+   //---------------------------------------------------------------------
+   // Set if more than 1 way matches (not 0000, 0001, 0010, 0100, 1000)
+   assign iu2_multihit_err = (iu2_valid_l2 | iu2_inval_l2 | iu2_spr_idir_read_l2 | iu2_prefetch_l2) &   // Don't want to set error if array not read this cycle
                          (~((iu2_rd_hit[0:2] == 3'b000) |
                             (({iu2_rd_hit[0:1], iu2_rd_hit[3]}) == 3'b000) |
                             (({iu2_rd_hit[0], iu2_rd_hit[2:3]}) == 3'b000) |
@@ -938,6 +996,10 @@ module iuq_ic_dir(
       .err_out(iu_pc_err_icachedir_multihit)
    );
 
+   //---------------------------------------------------------------------
+   // Check Parity
+   //---------------------------------------------------------------------
+   // Dir
    generate
    begin : xhdl9
      genvar  w;
@@ -954,6 +1016,7 @@ module iuq_ic_dir(
 
        assign dir_parity_out[w] = iu2_dir_dataout[w * dir_way_width + 52 - (64 - `REAL_IFAR_WIDTH):w * dir_way_width + 52 - (64 - `REAL_IFAR_WIDTH) + dir_parity_width - 1];
 
+       //genvar  i;
        for (i = 0; i < dir_parity_width; i = i + 1)
        begin : chk_dir_parity
          assign gen_dir_parity_out[w][i] = ^(ext_dir_dataout[w][i * 8:i * 8 + 7]) ^ pc_iu_inj_icachedir_parity_l2;
@@ -961,7 +1024,7 @@ module iuq_ic_dir(
 
        assign dir_parity_err_byte[w] = dir_parity_out[w] ^ gen_dir_parity_out[w];
 
-       assign iu2_dir_parity_err_way[w] = (|(dir_parity_err_byte[w])) & iu2_dir_rd_val_l2[w] & (iu2_valid_l2 | iu2_inval_l2 | iu2_spr_idir_read_l2 | iu2_prefetch_l2);		
+       assign iu2_dir_parity_err_way[w] = (|(dir_parity_err_byte[w])) & iu2_dir_rd_val_l2[w] & (iu2_valid_l2 | iu2_inval_l2 | iu2_spr_idir_read_l2 | iu2_prefetch_l2);		// Don't want to set error if array not read this cycle
      end
    end
    endgenerate
@@ -980,6 +1043,7 @@ module iuq_ic_dir(
       .err_out(iu_pc_err_icachedir_parity)
    );
 
+   //Data
    generate
    begin : xhdl11
      genvar  w;
@@ -1000,7 +1064,6 @@ module iuq_ic_dir(
    end
    endgenerate
 
-
    assign data_parity_err = |(iu3_data_parity_err_way_l2);
 
 
@@ -1011,11 +1074,15 @@ module iuq_ic_dir(
       .err_out(iu_pc_err_icache_parity)
    );
 
-   assign iu3_parity_needs_flush_d = iu2_valid_l2 & (|(iu2_tid_l2 & (~ics_icd_iu2_flush))) & (~iu2_rd_miss) & (|(iu3_data_parity_err_way_d & iu2_rd_hit));		
+   assign iu3_parity_needs_flush_d = iu2_valid_l2 & (|(iu2_tid_l2 & (~ics_icd_iu2_flush))) & (~iu2_rd_miss) & (|(iu3_data_parity_err_way_d & iu2_rd_hit));
    assign icd_ics_iu3_parity_flush = {`THREADS{iu3_parity_needs_flush_l2 | iu3_multihit_flush_l2}} & iu3_tid_l2;
 
    assign iu3_parity_tag_d = {iu2_index51_l2, iu2_ifar_eff_l2[52:56], (iu2_ifar_eff_l2[57] & (~(spr_ic_cls_l2 & (~iu2_spr_idir_read_l2))))};
 
+   //---------------------------------------------------------------------
+   // Update LRU
+   //---------------------------------------------------------------------
+   // For 128B cacheline mode, use even dir rows
    assign iu2_ifar_eff_cacheline = {iu2_index51_l2, iu2_ifar_eff_l2[52:56], (iu2_ifar_eff_l2[57] & (~(spr_ic_cls_l2 & (~iu2_spr_idir_read_l2))))};
    assign reload_cacheline = {icm_icd_reload_addr[51:56], (icm_icd_reload_addr[57] & (~spr_ic_cls_l2))};
    assign ecc_inval_cacheline = {icm_icd_ecc_addr[51:56], (icm_icd_ecc_addr[57] & (~spr_ic_cls_l2))};
@@ -1023,8 +1090,10 @@ module iuq_ic_dir(
 
    assign iu3_any_parity_err_way = iu3_multihit_err_way_l2 | iu3_dir_parity_err_way_l2 | iu3_data_parity_err_way_l2;
 
+   // ICI Latches
    assign ici_val_d = lq_iu_ici_val;
 
+   // update LRU in IU2 on read hit or dir_write
    generate
    begin : xhdl12
      genvar  a;
@@ -1034,6 +1103,7 @@ module iuq_ic_dir(
        assign dir_lru_d[a] = (icm_icd_lru_write == 1'b0) ? dir_lru_read[a] :
                                                            dir_lru_write[a];
 
+       //always @(dir_lru_l2 or iu2_lru_rd_update or iu2_ifar_eff_cacheline or iu2_way_select_no_par_err or icm_icd_lru_write or lru_write_cacheline or icm_icd_lru_write_way)
        always @ (*)
        begin: lru_proc
          dir_lru_read[a] <= dir_lru_l2[a];
@@ -1050,15 +1120,18 @@ module iuq_ic_dir(
                                ({3{icm_icd_lru_write_way[3]}} & {1'b0, dir_lru_l2[a][1], 1'b0});
        end
 
+       //---------------------------------------------------------------------
+       // Update Valid Bits
+       //---------------------------------------------------------------------
 
        assign dir_val_d[a] =
          ((dir_val_l2[a] &
-           (~({4{iu3_parity_tag_l2[51:57] == index_v7}} & iu3_any_parity_err_way))) |		
-          ({4{icm_icd_dir_val & (reload_cacheline[51:57] == index_v7)}} & icm_icd_reload_way)) &       
-         (~({4{icm_icd_dir_inval & (reload_cacheline[51:57] == index_v7)}} & icm_icd_reload_way)) &    
-         (~({4{icm_icd_ecc_inval & (ecc_inval_cacheline[51:57] == index_v7)}} & icm_icd_ecc_way)) &    
-         (~(({4{iu2_inval_l2 & (iu2_ifar_eff_cacheline[51:57] == index_v7)}} & dir_val_l2[a]) &  iu2_rd_tag_hit)) &      
-         (~({4{ici_val_l2}}));   
+           (~({4{iu3_parity_tag_l2[51:57] == index_v7}} & iu3_any_parity_err_way))) |		// clear on dir parity, data parity, or multihit error
+          ({4{icm_icd_dir_val & (reload_cacheline[51:57] == index_v7)}} & icm_icd_reload_way)) &       // set when writing to this entry
+         (~({4{icm_icd_dir_inval & (reload_cacheline[51:57] == index_v7)}} & icm_icd_reload_way)) &    // clear when invalidating way for new reload
+         (~({4{icm_icd_ecc_inval & (ecc_inval_cacheline[51:57] == index_v7)}} & icm_icd_ecc_way)) &    // clear when bad ecc on data written last cycle
+         (~(({4{iu2_inval_l2 & (iu2_ifar_eff_cacheline[51:57] == index_v7)}} & dir_val_l2[a]) &  iu2_rd_tag_hit)) &      // clear on back_invalidate
+         (~({4{ici_val_l2}}));   // clear on ICI
      end
    end
    endgenerate
@@ -1077,11 +1150,15 @@ module iuq_ic_dir(
 
    assign dir_val_act = ici_val_l2 | (|(iu3_any_parity_err_way)) | icm_icd_any_reld_r2 | icm_icd_ecc_inval | iu2_inval_l2;
 
+   // All erat errors except for erat parity error, for timing
    assign iu2_erat_err_lite = (ierat_iu_iu2_miss | ierat_iu_iu2_multihit | ierat_iu_iu2_isi) & iu2_read_erat_l2;
 
+   // Note: if timing is bad, can remove parity err check
    assign iu2_lru_rd_update = iu2_valid_l2 & (~iu2_erat_err_lite) & (|(iu2_rd_hit)) & (~iu2_rd_parity_err) & (~iu2_multihit_err) & (~pc_iu_inj_icachedir_multihit_l2);
 
+   // ic miss latches the location for data write to prevent data from moving around in Data cache
 
+   //always @(icm_icd_lru_addr or dir_lru_l2)
    always @ (*)
    begin: return_lru_proc
       (* analysis_not_referenced="true" *)
@@ -1095,6 +1172,7 @@ module iuq_ic_dir(
    assign icd_icm_row_lru = return_lru;
 
 
+   //always @(icm_icd_lru_addr or dir_val_l2)
    always @ (*)
    begin: return_val_proc
       (* analysis_not_referenced="true" *)
@@ -1107,6 +1185,10 @@ module iuq_ic_dir(
 
    assign icd_icm_row_val = return_val;
 
+   //---------------------------------------------------------------------
+   // IU2
+   //---------------------------------------------------------------------
+   // IU2 Output
    generate
    begin : xhdl14
      genvar  i;
@@ -1120,7 +1202,7 @@ module iuq_ic_dir(
    end
    endgenerate
 
-
+   // Handle Miss
    assign iu2_rd_miss = (iu2_valid_l2 | iu2_prefetch_l2) & (~|(ierat_iu_iu2_flush_req)) &
                         (iu2_dir_miss | iu2_ci | iu2_rd_parity_err) &
                         (~iu2_ierat_error[0]) & (~iu2_cam_change_etc_flush) & (~iu2_wrong_ra) &
@@ -1129,14 +1211,14 @@ module iuq_ic_dir(
    assign icd_icm_miss = iu2_rd_miss;
    assign icd_icm_prefetch = iu2_prefetch_l2;
    assign icd_icm_tid = iu2_tid_l2;
-   assign icd_icm_addr_real = {iu2_rpn[64 - `REAL_IFAR_WIDTH:51], iu2_ifar_eff_l2[52:61]};	
+   assign icd_icm_addr_real = {iu2_rpn[64 - `REAL_IFAR_WIDTH:51], iu2_ifar_eff_l2[52:61]};	// ???? Could use iu2_index51
    assign icd_icm_addr_eff = iu2_ifar_eff_l2[62 - `EFF_IFAR_WIDTH:51];
    assign icd_icm_wimge = iu2_wimge;
    assign icd_icm_userdef = iu2_u;
    assign icd_icm_2ucode = iu2_2ucode_l2;
    assign icd_icm_2ucode_type = iu2_2ucode_type_l2;
    assign icd_icm_iu2_inval = iu2_inval_l2;
-   assign icd_icm_any_iu2_valid = iu2_valid_l2 | iu2_prefetch_l2;		
+   assign icd_icm_any_iu2_valid = iu2_valid_l2 | iu2_prefetch_l2;		// for act's in ic_miss
 
    assign icd_ics_iu3_miss_flush = {`THREADS{iu3_miss_flush_l2}} & iu3_tid_l2 ;
    assign icd_ics_iu2_ifar_eff = iu2_ifar_eff_l2[62 - `EFF_IFAR_WIDTH:61];
@@ -1144,8 +1226,8 @@ module iuq_ic_dir(
    assign icd_ics_iu2_2ucode_type = iu2_2ucode_type_l2;
    assign icd_ics_iu2_valid = iu2_valid_l2;
 
-
-
+   // Moved flushes to ic_bp_iu2_flush
+   // Note: iu2_valid_l2 and icm_icd_load must never be on at same time
    assign iu2_valid_or_load = iu2_valid_l2 | (|(icm_icd_load));
 
    assign iu3_instr_valid_d[0:3] = ({iu2_valid_or_load, iu3_ifar_d[60:61]} == 3'b100) ? 4'b1111 :
@@ -1168,7 +1250,7 @@ module iuq_ic_dir(
 
    assign iu3_erat_err_d = iu2_ierat_error[0:2] & {3{iu2_valid_l2}};
 
-
+   // Rotate instructions
    generate
    begin : xhdl15
      genvar  w;
@@ -1191,6 +1273,10 @@ module iuq_ic_dir(
 
        assign iu2_instr3_cache_rot[w] = iu2_data_dataout[w * 162 + 108:w * 162 + 143];
 
+       // Force 2ucode to 0 if branch instructions or no-op.  No other
+       // instructions are legal when dynamically changing code.
+       // Note: This signal does not include all non-ucode ops - just the ones
+       // that will cause problems with flush_2ucode.
        assign iu2_uc_illegal_cache_rot[w] = iu2_instr0_cache_rot[w][32] | (iu2_instr0_cache_rot[w][0:5] == 6'b011000);
      end
    end
@@ -1212,6 +1298,7 @@ module iuq_ic_dir(
 
    assign iu2_uc_illegal_reload = iu2_reload_rot[0][32] | (iu2_reload_rot[0][0:5] == 6'b011000);
 
+   // Select way hit
    assign iu2_hit_rot[0] = ({36{iu2_rd_hit[0]}} & iu2_instr0_cache_rot[0]) |
                            ({36{iu2_rd_hit[1]}} & iu2_instr0_cache_rot[1]) |
                            ({36{iu2_rd_hit[2]}} & iu2_instr0_cache_rot[2]) |
@@ -1234,6 +1321,9 @@ module iuq_ic_dir(
 
    assign iu2_uc_illegal_cache = |(iu2_rd_hit & iu2_uc_illegal_cache_rot);
 
+   // Timing: moved xnop to bp
+   // Using xori 0,0,0 (xnop) when erat error
+   //xnop <= "011010" & ZEROS(6 to 35);
 
    generate
    begin : xhdl16
@@ -1249,7 +1339,9 @@ module iuq_ic_dir(
    assign iu2_uc_illegal = (iu2_valid_l2 == 1'b1) ? iu2_uc_illegal_cache :
                                                     iu2_uc_illegal_reload;
 
-
+   //---------------------------------------------------------------------
+   // IU3
+   //---------------------------------------------------------------------
 
    assign ic_bp_iu2_t0_val = {4{iu3_tid_d[0]}} & iu3_instr_valid_d;
  `ifndef THREADS1
@@ -1259,27 +1351,38 @@ module iuq_ic_dir(
    assign ic_bp_iu2_ifar = iu3_ifar_d;
    assign ic_bp_iu2_2ucode = iu3_2ucode_d & (~iu2_uc_illegal);
    assign ic_bp_iu2_2ucode_type = iu3_2ucode_type_d;
+   // Moved ecc_err muxing to BP IU3
    assign ic_bp_iu2_error = iu3_erat_err_d;
    assign ic_bp_iu2_0_instr = iu2_instr[0];
    assign ic_bp_iu2_1_instr = iu2_instr[1];
    assign ic_bp_iu2_2_instr = iu2_instr[2];
    assign ic_bp_iu2_3_instr = iu2_instr[3];
 
+   // Moved ic_bp_iu2_flush to iuq_ic_select
    assign ic_bp_iu3_flush = {`THREADS{iu3_miss_flush_l2 | icm_icd_iu3_ecc_fp_cancel | ((iu3_parity_needs_flush_l2 | iu3_multihit_flush_l2) & (~iu3_erat_err_l2[0]))}} & iu3_tid_l2;
 
    assign icd_ics_iu3_ifar = iu3_ifar_l2;
    assign icd_ics_iu3_2ucode = iu3_2ucode_l2;
    assign icd_ics_iu3_2ucode_type = iu3_2ucode_type_l2;
 
+   //---------------------------------------------------------------------
+   // Performance Events
+   //---------------------------------------------------------------------
    generate
    begin : xhdl10
      genvar  i;
      for (i = 0; i < `THREADS; i = i + 1)
      begin : gen_perf
+       // IERAT Miss
+       //      - IU2 ierat miss
        assign perf_t_event_d[i][9] = iu2_valid_l2 & iu2_tid_l2[i] & iu2_read_erat_l2 & ierat_iu_iu2_miss;
 
+       // I-Cache Fetch
+       //      - Number of times ICache is read for instruction
        assign perf_t_event_d[i][10] = iu2_valid_l2 & iu2_tid_l2[i];
 
+       // Instructions Fetched
+       //      - Number of instructions fetched, divided by 4.
        assign perf_instr_count_new[i][0:2] = {1'b0, perf_instr_count_l2[i][0:1]} + iu2_instr_count;
        assign perf_instr_count_d[i][0:1] = (iu2_valid_l2 & iu2_tid_l2[i]) ? perf_instr_count_new[i][1:2] :
                                                                             perf_instr_count_l2[i];
@@ -1293,8 +1396,11 @@ module iuq_ic_dir(
                             (iu2_ifar_eff_l2[60:61] == 2'b10) ? 3'b010 :
                                                                 3'b001;
 
+   // Events not per thread
+   // L2 Back Invalidates I-Cache
    assign perf_event_d[0] = iu2_inval_l2;
 
+   // L2 Back Invalidates I-Cache - Hits
    assign perf_event_d[1] = iu2_inval_l2 & |(iu2_rd_tag_hit & iu2_dir_rd_val_l2);
 
    assign ic_perf_t0_event = perf_t_event_l2[0];
@@ -1303,7 +1409,11 @@ module iuq_ic_dir(
  `endif
    assign ic_perf_event = perf_event_l2;
 
+   //---------------------------------------------------------------------
+   // Latches
+   //---------------------------------------------------------------------
 
+   // IU1
    tri_rlmlatch_p #(.INIT(0)) iu1_valid_latch(
       .vd(vdd),
       .gd(gnd),
@@ -1325,7 +1435,8 @@ module iuq_ic_dir(
    generate
      if (`THREADS == 1)
      begin : iu1_tid1
-       assign iu1_tid_l2 = iu1_tid_d | 1'b1;	
+       assign iu1_tid_l2 = iu1_tid_d | 1'b1;	// Need to always be '1' when single thread since we aren't latching.
+                                                // 'iu1_tid_d' part is to get rid of unused warnings
        assign sov[iu1_tid_offset] = siv[iu1_tid_offset];
      end
    endgenerate
@@ -1337,7 +1448,7 @@ module iuq_ic_dir(
           .vd(vdd),
           .gd(gnd),
           .nclk(nclk),
-          .act(dir_rd_act),		
+          .act(dir_rd_act),		// ??? Is this act worth it?  Only tid, 2ucode, & 2ucode_type use for non-slp
           .thold_b(pc_iu_func_sl_thold_0_b),
           .sg(pc_iu_sg_0),
           .force_t(force_t),
@@ -1353,6 +1464,7 @@ module iuq_ic_dir(
      end
    endgenerate
 
+   // Note: Technically, only need REAL_IFAR range during sleep mode
    tri_rlmreg_p #(.WIDTH(`EFF_IFAR_ARCH), .INIT(0), .NEEDS_SRESET(0)) iu1_ifar_latch(
       .vd(vdd),
       .gd(gnd),
@@ -1492,6 +1604,7 @@ module iuq_ic_dir(
       .dout(iu1_2ucode_type_l2)
    );
 
+   // IU2
    tri_rlmlatch_p #(.INIT(0)) iu2_valid_latch(
       .vd(vdd),
       .gd(gnd),
@@ -1559,6 +1672,7 @@ module iuq_ic_dir(
       .dout(iu2_ifar_eff_l2[62 - `EFF_IFAR_ARCH:51])
    );
 
+   // Only need 52:57 in sleep mode
    tri_rlmreg_p #(.WIDTH(10), .INIT(0), .NEEDS_SRESET(0)) iu2_ifar_eff_slp_latch(
       .vd(vdd),
       .gd(gnd),
@@ -1576,8 +1690,6 @@ module iuq_ic_dir(
       .din(iu2_ifar_eff_d[52:61]),
       .dout(iu2_ifar_eff_l2[52:61])
    );
-
-
 
    tri_rlmlatch_p #(.INIT(0)) iu2_2ucode_latch(
       .vd(vdd),
@@ -1756,8 +1868,6 @@ module iuq_ic_dir(
       .dout(iu2_dir_rd_val_l2)
    );
 
-
-
    tri_rlmreg_p #(.WIDTH(4), .INIT(0)) iu3_dir_parity_err_way_latch(
       .vd(vdd),
       .gd(gnd),
@@ -1776,7 +1886,7 @@ module iuq_ic_dir(
       .dout(iu3_dir_parity_err_way_l2)
    );
 
-
+   // Dir
    generate
    begin : xhdl17
      genvar  a;
@@ -1822,7 +1932,6 @@ module iuq_ic_dir(
    end
    endgenerate
 
-
    tri_rlmlatch_p #(.INIT(0)) iu3_miss_flush(
       .vd(vdd),
       .gd(gnd),
@@ -1844,7 +1953,8 @@ module iuq_ic_dir(
    generate
       if (`THREADS == 1)
       begin : iu3_tid1
-         assign iu3_tid_l2 = iu3_tid_d | 1'b1;	
+         assign iu3_tid_l2 = iu3_tid_d | 1'b1;	// Need to always be '1' when single thread since we aren't latching.
+                                                // 'iu3_tid_d' part is to get rid of unused warnings
          assign sov[iu3_tid_offset] = siv[iu3_tid_offset];
       end
    endgenerate
@@ -1943,7 +2053,6 @@ module iuq_ic_dir(
       .din(iu3_erat_err_d[0:0]),
       .dout(iu3_erat_err_l2)
    );
-
 
    tri_rlmreg_p #(.WIDTH(4), .INIT(0)) iu3_multihit_err_way_latch(
       .vd(vdd),
@@ -2150,7 +2259,7 @@ module iuq_ic_dir(
        genvar  i;
        for (i = 0; i < `THREADS; i = i + 1)
        begin : thr0
-         assign stored_erat_rpn_l2[i] = {`REAL_IFAR_WIDTH-12{1'b0}} & stored_erat_rpn_d[i];	
+         assign stored_erat_rpn_l2[i] = {`REAL_IFAR_WIDTH-12{1'b0}} & stored_erat_rpn_d[i];	// ..._d part is to get rid of unused warnings
          assign stored_erat_wimge_l2[i] = 5'b0 & stored_erat_wimge_d[i];
          assign stored_erat_u_l2[i] = 4'b0 & stored_erat_u_d[i];
        end
@@ -2305,6 +2414,9 @@ module iuq_ic_dir(
             pc_iu_inj_icachedir_multihit_l2})
    );
 
+   //---------------------------------------------------------------------
+   // abist latches
+   //---------------------------------------------------------------------
    tri_rlmreg_p #(.INIT(0), .WIDTH(41), .NEEDS_SRESET(0)) ab_reg(
       .vd(vdd),
       .gd(gnd),
@@ -2331,14 +2443,20 @@ module iuq_ic_dir(
              stage_abist_dcomp_g6t_2r, stage_abist_g6t_r_wb})
    );
 
+   //---------------------------------------------------------------------
+   // Scan
+   //---------------------------------------------------------------------
    assign siv[0:scan_right] = {sov[1:scan_right], func_scan_in};
    assign func_scan_out = sov[0] & tc_ac_scan_dis_dc_b;
+   // Chain 0: WAY01 IDIR & IDATA
    assign abst_siv[0:1] = {abst_sov[1], abst_scan_in[0]};
    assign abst_scan_out[0] = abst_sov[0] & tc_ac_scan_dis_dc_b;
 
+   // Chain 1: WAY23 IDIR & IDATA
    assign abst_siv[2:3] = {abst_sov[3], abst_scan_in[1]};
    assign abst_scan_out[1] = abst_sov[2] & tc_ac_scan_dis_dc_b;
 
+   // Chain 2: AB_REG - tack on to BHT's scan chain
    assign abst_siv[4:44] = {abst_sov[5:44], abst_scan_in[2]};
    assign abst_scan_out[2] = abst_sov[4] & tc_ac_scan_dis_dc_b;
 
@@ -2348,4 +2466,3 @@ module iuq_ic_dir(
    assign repr_scan_out = repr_sov[0] & tc_ac_scan_dis_dc_b;
 
 endmodule
-

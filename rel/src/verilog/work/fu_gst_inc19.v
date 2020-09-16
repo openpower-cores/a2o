@@ -9,36 +9,37 @@
 
 `timescale 1 ns / 1 ns
 
-
-
-
+////############################################################################
+////#####  FUQ_GEST_inc19.VHDL                                         #########
+////#####  side pipe for graphics estimates                            #########
+////#####  flogefp, fexptefp                                           #########
+////#####                                                              #########
+////############################################################################
 
 module fu_gst_inc19(
    a,
    o
 );
    `include "tri_a2o.vh"
-   
 
-   
+
+
    input [1:19]  a;
-   
-   output [1:19] o;		
-   
-   
+
+   output [1:19] o;		// sum if ci=1
+
+
    wire [01:19]  a_sum;
    wire [02:19]  a_cout_b;
-   (* NO_MODIFICATION="TRUE" *) 
+   (* NO_MODIFICATION="TRUE" *)
    wire [02:19]  g2_b;
-   (* NO_MODIFICATION="TRUE" *) 
+   (* NO_MODIFICATION="TRUE" *)
    wire [02:19]  g4;
-   (* NO_MODIFICATION="TRUE" *) 
+   (* NO_MODIFICATION="TRUE" *)
    wire [02:19]  g8_b;
-   (* NO_MODIFICATION="TRUE" *) 
+   (* NO_MODIFICATION="TRUE" *)
    wire [02:19]  g16;
-   
- 
-   
+
    assign g2_b[19] = (~(a[19]));
    assign g2_b[18] = (~(a[18] & a[19]));
    assign g2_b[17] = (~(a[17] & a[18]));
@@ -57,7 +58,7 @@ module fu_gst_inc19(
    assign g2_b[4] = (~(a[4] & a[5]));
    assign g2_b[3] = (~(a[3] & a[4]));
    assign g2_b[2] = (~(a[2] & a[3]));
-   
+
    assign g4[19] = (~(g2_b[19]));
    assign g4[18] = (~(g2_b[18]));
    assign g4[17] = (~(g2_b[17] | g2_b[19]));
@@ -76,7 +77,7 @@ module fu_gst_inc19(
    assign g4[4] = (~(g2_b[4] | g2_b[6]));
    assign g4[3] = (~(g2_b[3] | g2_b[5]));
    assign g4[2] = (~(g2_b[2] | g2_b[4]));
-   
+
    assign g8_b[19] = (~(g4[19]));
    assign g8_b[18] = (~(g4[18]));
    assign g8_b[17] = (~(g4[17]));
@@ -95,7 +96,7 @@ module fu_gst_inc19(
    assign g8_b[4] = (~(g4[4] & g4[8]));
    assign g8_b[3] = (~(g4[3] & g4[7]));
    assign g8_b[2] = (~(g4[2] & g4[6]));
-   
+
    assign g16[19] = (~(g8_b[19]));
    assign g16[18] = (~(g8_b[18]));
    assign g16[17] = (~(g8_b[17]));
@@ -114,7 +115,7 @@ module fu_gst_inc19(
    assign g16[4] = (~(g8_b[4] | g8_b[12]));
    assign g16[3] = (~(g8_b[3] | g8_b[11]));
    assign g16[2] = (~(g8_b[2] | g8_b[10]));
-   
+
    assign a_cout_b[19] = (~(g16[19]));
    assign a_cout_b[18] = (~(g16[18]));
    assign a_cout_b[17] = (~(g16[17]));
@@ -133,11 +134,12 @@ module fu_gst_inc19(
    assign a_cout_b[4] = (~(g16[4]));
    assign a_cout_b[3] = (~(g16[3] & g16[19]));
    assign a_cout_b[2] = (~(g16[2] & g16[18]));
-   
+
+   //---------------------------------------------------------
    assign a_sum[1:18] = a[1:18];
    assign a_sum[19] = (~a[19]);
-   
-   assign o[01:18] = (~(a_sum[01:18] ^ a_cout_b[02:19]));		
-   assign o[19] = a_sum[19];		
-   
+
+   assign o[01:18] = (~(a_sum[01:18] ^ a_cout_b[02:19]));		//output
+   assign o[19] = a_sum[19];		//output
+
 endmodule

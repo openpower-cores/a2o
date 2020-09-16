@@ -7,10 +7,11 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU SPR - DAC Enable Component
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
-
-
 
 module lq_spr_dacen(
    spr_msr_pr,
@@ -25,6 +26,10 @@ module lq_spr_dacen(
    dacw_en
 );
 
+//-------------------------------------------------------------------
+// Generics
+//-------------------------------------------------------------------
+//parameter            `THREADS = 4;
 
 input [0:`THREADS-1]  spr_msr_pr;
 input [0:`THREADS-1]  spr_msr_ds;
@@ -40,6 +45,7 @@ input                 store;
 output [0:`THREADS-1] dacr_en;
 output [0:`THREADS-1] dacw_en;
 
+// Signals
 wire [0:1]            spr_dbcr0_dac_tid[0:`THREADS-1];
 wire [0:1]            spr_dbcr_dac_us_tid[0:`THREADS-1];
 wire [0:1]            spr_dbcr_dac_er_tid[0:`THREADS-1];
@@ -60,7 +66,7 @@ endgenerate
 
 generate begin : dacen_gen
       genvar               t;
-      for (t = 0; t <= `THREADS - 1; t = t + 1) begin : dacen_gen         
+      for (t = 0; t <= `THREADS - 1; t = t + 1) begin : dacen_gen
          assign dac_ld_en[t] = spr_dbcr0_dac_tid[t][0] & load;
          assign dac_st_en[t] = spr_dbcr0_dac_tid[t][1] & store;
 
@@ -72,6 +78,6 @@ generate begin : dacen_gen
       end
    end
 endgenerate
-   
+
 endmodule
 

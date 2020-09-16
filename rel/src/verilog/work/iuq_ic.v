@@ -7,10 +7,15 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
-
+//********************************************************************
+//*
+//* TITLE: Instruction Cache
+//*
+//* NAME: iuq_ic.v
+//*
+//*********************************************************************
 
 `include "tri_a2o.vh"
-
 
 module iuq_ic(
    inout                           vcs,
@@ -25,8 +30,8 @@ module iuq_ic(
 
    input                           pc_iu_func_sl_thold_2,
    input                           pc_iu_func_slp_sl_thold_2,
-   input                           pc_iu_func_nsl_thold_2,		
-   input                           pc_iu_cfg_slp_sl_thold_2,		
+   input                           pc_iu_func_nsl_thold_2,		// added for custom cam
+   input                           pc_iu_cfg_slp_sl_thold_2,		// for boot config slats
    input                           pc_iu_regf_slp_sl_thold_2,
    input                           pc_iu_time_sl_thold_2,
    input                           pc_iu_abst_sl_thold_2,
@@ -118,7 +123,7 @@ module iuq_ic(
    input                           an_ac_atpg_en_dc,
    input                           an_ac_grffence_en_dc,
 
-   input                           pc_iu_bo_enable_3,		
+   input                           pc_iu_bo_enable_3,		// bolt-on ABIST
    input                           pc_iu_bo_reset,
    input                           pc_iu_bo_unload,
    input                           pc_iu_bo_repair,
@@ -127,13 +132,16 @@ module iuq_ic(
    output [0:3]                    iu_pc_bo_fail,
    output [0:3]                    iu_pc_bo_diagout,
 
+   // ICBI Interface to IU
    input [0:`THREADS-1]            lq_iu_icbi_val,
    input [64-`REAL_IFAR_WIDTH:57]  lq_iu_icbi_addr,
    output [0:`THREADS-1]           iu_lq_icbi_complete,
    input                           lq_iu_ici_val,
 
+   // ERAT
    input                           pc_iu_init_reset,
 
+   // XU IERAT interface
    input [0:`THREADS-1]            xu_iu_val,
    input                           xu_iu_is_eratre,
    input                           xu_iu_is_eratwe,
@@ -155,7 +163,7 @@ module iuq_ic(
    input [0:`THREADS-1]            xu_iu_msr_is,
    input                           xu_iu_hid_mmu_mode,
    input                           xu_iu_spr_ccr2_ifrat,
-   input [0:8]                     xu_iu_spr_ccr2_ifratsc,	
+   input [0:8]                     xu_iu_spr_ccr2_ifratsc,	// 0:4: wimge, 5:8: u0:3
    input                           xu_iu_xucr4_mmu_mchk,
    output [64-`GPR_WIDTH:63]       iu_xu_ex5_data,
 
@@ -165,7 +173,7 @@ module iuq_ic(
    output [0:`THREADS-1]           iu_mm_ierat_thdid,
    output [0:3]                    iu_mm_ierat_state,
    output [0:13]                   iu_mm_ierat_tid,
-   output [0:`THREADS-1]           iu_mm_ierat_flush,		
+   output [0:`THREADS-1]           iu_mm_ierat_flush,
    output [0:`THREADS-1]           iu_mm_perf_itlb,
 
    input [0:4]                     mm_iu_ierat_rel_val,
@@ -189,11 +197,13 @@ module iuq_ic(
    input [62-`EFF_IFAR_ARCH:51]    mm_iu_ierat_snoop_vpn,
    output                          iu_mm_ierat_snoop_ack,
 
+   // MMU Connections
    input [0:`THREADS-1]            mm_iu_hold_req,
    input [0:`THREADS-1]            mm_iu_hold_done,
    input [0:`THREADS-1]            mm_iu_bus_snoop_hold_req,
    input [0:`THREADS-1]            mm_iu_bus_snoop_hold_done,
 
+   // SELECT, DIR, & MISS
    input [0:`THREADS-1]            pc_iu_ram_active,
    input [0:`THREADS-1]            pc_iu_pm_fetch_halt,
    input [0:`THREADS-1]            xu_iu_run_thread,
@@ -217,11 +227,11 @@ module iuq_ic(
 
    input                           an_ac_back_inv,
    input [64-`REAL_IFAR_WIDTH:57]  an_ac_back_inv_addr,
-   input                           an_ac_back_inv_target,	
+   input                           an_ac_back_inv_target,	// connect to bit(0)
 
-   input [0:3]                     spr_ic_bp_config,		
+   input [0:3]                     spr_ic_bp_config,		// (0): bc, (1): bclr, (2): bcctr, (3): sw
 
-   input                           spr_ic_cls,                  
+   input                           spr_ic_cls,                  // (0): 64B cacheline, (1): 128B cacheline
    input                           spr_ic_prefetch_dis,
    input                           spr_ic_ierat_byp_dis,
 
@@ -254,6 +264,7 @@ module iuq_ic(
    input                           an_ac_reld_ecc_err,
    input                           an_ac_reld_ecc_err_ue,
 
+   //iu5 hold/redirect
    input [0:`THREADS-1]            bp_ic_iu2_redirect,
    input [0:`THREADS-1]            bp_ic_iu3_redirect,
    input [0:`THREADS-1]            bp_ic_iu4_redirect,
@@ -262,9 +273,11 @@ module iuq_ic(
    input [62-`EFF_IFAR_WIDTH:61]   bp_ic_t1_redirect_ifar,
  `endif
 
+   // iu1
    output [0:`THREADS-1]           ic_bp_iu0_val,
    output [50:59]                  ic_bp_iu0_ifar,
 
+   // iu3
    output [0:3]                    ic_bp_iu2_t0_val,
  `ifndef THREADS1
    output [0:3]                    ic_bp_iu2_t1_val,
@@ -276,6 +289,7 @@ module iuq_ic(
    output [0:`THREADS-1]           ic_bp_iu2_flush,
    output [0:`THREADS-1]           ic_bp_iu3_flush,
 
+   // iu3 instruction(0:31) + predecode(32:35)
    output [0:35]                   ic_bp_iu2_0_instr,
    output [0:35]                   ic_bp_iu2_1_instr,
    output [0:35]                   ic_bp_iu2_2_instr,
@@ -283,11 +297,13 @@ module iuq_ic(
 
    output                          ic_bp_iu3_ecc_err,
 
+   //Instruction Buffer
    input [0:`IBUFF_DEPTH/4-1]      ib_ic_t0_need_fetch,
  `ifndef THREADS1
    input [0:`IBUFF_DEPTH/4-1]      ib_ic_t1_need_fetch,
  `endif
 
+   // ucode
    input [0:`THREADS-1]            uc_iu4_flush,
    input [62-`EFF_IFAR_WIDTH:61]   uc_iu4_t0_flush_ifar,
  `ifndef THREADS1
@@ -325,7 +341,7 @@ module iuq_ic(
    wire [0:2]                      ierat_iu_iu2_error;
    wire                            ierat_iu_iu2_miss;
    wire                            ierat_iu_iu2_multihit;
-   wire                            ierat_iu_cam_change;		
+   wire                            ierat_iu_cam_change;
    wire                            ierat_iu_iu2_isi;
    wire [0:`THREADS-1]             ierat_iu_hold_req;
    wire [0:`THREADS-1]             ierat_iu_iu2_flush_req;
@@ -463,8 +479,8 @@ module iuq_ic(
 
    wire [0:scan_right]             siv;
    wire [0:scan_right]             sov;
-   wire [0:1]                      tsiv;		
-   wire [0:1]                      tsov;		
+   wire [0:1]                      tsiv;		// time scan path
+   wire [0:1]                      tsov;		// time scan path
    wire                            func_scan_in_cam;
    wire                            func_scan_out_cam;
 
@@ -481,14 +497,17 @@ module iuq_ic(
 
    assign br_iu_flush = br_iu_redirect;
 
+   // ??? Temp: Need to connect
    assign lcb_mpw1_dc_b = {2{mpw1_b}};
    assign lcb_delay_lclkr_dc = {2{delay_lclkr}};
 
    iuq_ic_ierat  iuq_ic_ierat0(
+      // POWER PINS
       .gnd(gnd),
       .vdd(vdd),
-      .vcs(vdd),	
+      .vcs(vdd),
 
+      // CLOCK and CLOCKCONTROL ports
       .nclk(nclk),
       .pc_iu_init_reset(pc_iu_init_reset),
       .tc_ccflush_dc(tc_ac_ccflush_dc),
@@ -528,7 +547,10 @@ module iuq_ic(
       .regf_scan_in(regf_scan_in),
       .regf_scan_out(regf_scan_out),
 
+      // Functional ports
+      // act control
       .spr_ic_clockgate_dis(1'b0),
+      // ttypes
       .iu_ierat_iu0_val(iu_ierat_iu0_val),
       .iu_ierat_iu0_thdid(iu_ierat_iu0_thdid),
       .iu_ierat_iu0_ifar(iu_ierat_iu0_ifar),
@@ -538,6 +560,7 @@ module iuq_ic(
       .iu_ierat_iu0_flush(iu_ierat_flush),
       .iu_ierat_iu1_flush(iu_ierat_flush),
 
+      // ordered instructions
       .xu_iu_val(xu_iu_val),
       .xu_iu_is_eratre(xu_iu_is_eratre),
       .xu_iu_is_eratwe(xu_iu_is_eratwe),
@@ -552,26 +575,32 @@ module iuq_ic(
       .iu_xu_ord_write_done(iu_xu_ord_write_done),
       .iu_xu_ord_par_err(iu_xu_ord_par_err),
 
+      // context synchronizing event
       .cp_ic_is_isync(cp_is_isync),
       .cp_ic_is_csync(cp_is_csync),
 
+      // reload from mmu
       .mm_iu_ierat_rel_val(mm_iu_ierat_rel_val),
       .mm_iu_ierat_rel_data(mm_iu_ierat_rel_data),
 
       .ierat_iu_hold_req(ierat_iu_hold_req),
 
+      // I$ snoop
       .iu_ierat_iu1_back_inv(iu_ierat_iu1_back_inv),
       .iu_ierat_ium1_back_inv(iu_ierat_ium1_back_inv),
 
+      // tlbivax or tlbilx snoop
       .mm_iu_ierat_snoop_coming(mm_iu_ierat_snoop_coming),
       .mm_iu_ierat_snoop_val(mm_iu_ierat_snoop_val),
       .mm_iu_ierat_snoop_attr(mm_iu_ierat_snoop_attr),
       .mm_iu_ierat_snoop_vpn(mm_iu_ierat_snoop_vpn),
       .iu_mm_ierat_snoop_ack(iu_mm_ierat_snoop_ack),
 
+      // pipeline controls
       .xu_iu_flush(iu_flush),
       .br_iu_flush(br_iu_flush),
 
+      // all tied to cp_flush
       .xu_rf1_flush(cp_flush),
       .xu_ex1_flush(cp_flush),
       .xu_ex2_flush(cp_flush),
@@ -579,6 +608,7 @@ module iuq_ic(
       .xu_ex4_flush(cp_flush),
       .xu_ex5_flush(cp_flush),
 
+      // cam _np2 ports
       .ierat_iu_iu2_rpn(ierat_iu_iu2_rpn),
       .ierat_iu_iu2_wimge(ierat_iu_iu2_wimge),
       .ierat_iu_iu2_u(ierat_iu_iu2_u),
@@ -593,7 +623,10 @@ module iuq_ic(
       .iu_pc_err_ierat_multihit(iu_pc_err_ierat_multihit),
       .iu_pc_err_ierat_parity(iu_pc_err_ierat_parity),
 
+      // noop_touch
+      // fir_par,  fir_multihit
 
+      // erat request to mmu
       .iu_mm_ierat_req(iu_mm_ierat_req),
       .iu_mm_ierat_req_nonspec(iu_mm_ierat_req_nonspec),
       .iu_mm_ierat_thdid(iu_mm_ierat_thdid),
@@ -602,11 +635,14 @@ module iuq_ic(
       .iu_mm_ierat_flush(iu_mm_ierat_flush),
       .iu_mm_perf_itlb(iu_mm_perf_itlb),
 
+      // write interface to mmucr0,1
       .iu_mm_ierat_mmucr0(iu_mm_ierat_mmucr0),
       .iu_mm_ierat_mmucr0_we(iu_mm_ierat_mmucr0_we),
       .iu_mm_ierat_mmucr1(iu_mm_ierat_mmucr1),
       .iu_mm_ierat_mmucr1_we(iu_mm_ierat_mmucr1_we),
 
+      // spr's
+      // clkg_ctl
       .xu_iu_msr_hv(xu_iu_msr_hv),
       .xu_iu_msr_pr(xu_iu_msr_pr),
       .xu_iu_msr_is(xu_iu_msr_is),
@@ -628,6 +664,7 @@ module iuq_ic(
     `endif
       .mm_iu_ierat_mmucr1(mm_iu_ierat_mmucr1),
 
+      // debug
       .pc_iu_trace_bus_enable(1'b0),
       .ierat_iu_debug_group0(ierat_iu_debug_group0),
       .ierat_iu_debug_group1(ierat_iu_debug_group1),
@@ -767,7 +804,7 @@ module iuq_ic(
 
 
    iuq_ic_dir  iuq_ic_dir0(
-      .vcs(vdd),	
+      .vcs(vdd),
       .vdd(vdd),
       .gnd(gnd),
       .nclk(nclk),
@@ -1048,11 +1085,15 @@ module iuq_ic(
       .event_bus_enable(pc_iu_event_bus_enable)
    );
 
+   //-----------------------------------------------
+   // performance
+   //-----------------------------------------------
 
-   assign unit_t0_events_en = (pc_iu_event_count_mode[0] &  xu_iu_msr_pr[0]              ) |	
-                              (pc_iu_event_count_mode[1] & ~xu_iu_msr_pr[0] &  xu_iu_msr_hv[0]) |	
-                              (pc_iu_event_count_mode[2] & ~xu_iu_msr_pr[0] & ~xu_iu_msr_hv[0]) ;	
+   assign unit_t0_events_en = (pc_iu_event_count_mode[0] &  xu_iu_msr_pr[0]              ) |	//problem state
+                              (pc_iu_event_count_mode[1] & ~xu_iu_msr_pr[0] &  xu_iu_msr_hv[0]) |	//guest supervisor state
+                              (pc_iu_event_count_mode[2] & ~xu_iu_msr_pr[0] & ~xu_iu_msr_hv[0]) ;	//hypervisor state
 
+   // events_in(1:63). Decode 0 is used for event_bus_in
    assign unit_t0_events_in = {ic_perf_t0_event[0:11], ic_perf_event[0:1], 1'b0,
                                16'b0,
                                slice_ic_t0_perf_events, 11'b0} &
@@ -1068,9 +1109,9 @@ module iuq_ic(
    );
 
  `ifndef THREADS1
-   assign unit_t1_events_en = (pc_iu_event_count_mode[0] &  xu_iu_msr_pr[1]                 ) |	
-                              (pc_iu_event_count_mode[1] & ~xu_iu_msr_pr[1] &  xu_iu_msr_hv[1]) |	
-                              (pc_iu_event_count_mode[2] & ~xu_iu_msr_pr[1] & ~xu_iu_msr_hv[1]) ;	
+   assign unit_t1_events_en = (pc_iu_event_count_mode[0] &  xu_iu_msr_pr[1]                 ) |	//problem state
+                              (pc_iu_event_count_mode[1] & ~xu_iu_msr_pr[1] &  xu_iu_msr_hv[1]) |	//guest supervisor state
+                              (pc_iu_event_count_mode[2] & ~xu_iu_msr_pr[1] & ~xu_iu_msr_hv[1]) ;	//hypervisor state
 
 
    assign unit_t1_events_in = {ic_perf_t1_event[0:11], ic_perf_event[0:1], 1'b0,
@@ -1108,6 +1149,9 @@ module iuq_ic(
 
    assign event_bus_out = event_bus_out_l2;
 
+   //-----------------------------------------------
+   // pervasive
+   //-----------------------------------------------
 
    tri_plat #(.WIDTH(1)) perv_3to2_reg(
       .vd(vdd),
@@ -1203,6 +1247,9 @@ module iuq_ic(
       .thold_b(pc_iu_abst_sl_thold_0_b)
    );
 
+   //---------------------------------------------------------------------
+   // Scan
+   //---------------------------------------------------------------------
    assign func_scan_in_cam = func_scan_in;
    assign siv = {func_scan_out_cam, sov[0:scan_right-1]};
    assign func_scan_out = sov[scan_right] & tc_ac_scan_dis_dc_b;
@@ -1211,5 +1258,3 @@ module iuq_ic(
    assign time_scan_out = tsov[1] & tc_ac_scan_dis_dc_b;
 
 endmodule
-
-

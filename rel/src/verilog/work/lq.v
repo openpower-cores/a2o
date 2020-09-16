@@ -9,6 +9,9 @@
 
 `timescale 1 ns / 1 ns
 
+//  Description:  lq Top
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
 
@@ -135,7 +138,7 @@ module lq(
    xu_lq_rs_data,
    xu_lq_hold_req,
    lq_xu_ex5_data,
-   lq_xu_ord_par_err,   
+   lq_xu_ord_par_err,
    lq_xu_ord_read_done,
    lq_xu_ord_write_done,
    lq_xu_dbell_val,
@@ -382,6 +385,9 @@ module lq(
    ac_an_st_data,
    ac_an_req_endian,
    ac_an_st_data_pwr_token,
+//   vcs,
+//   vdd,
+//   gnd,
    nclk,
    pc_lq_init_reset,
    pc_lq_ccflush_dc,
@@ -448,59 +454,109 @@ module lq(
    func_scan_out
 );
 
+// Parameters used from tri_a2o.vh
+//   parameter                                                    `THREADS = 2;
+//   parameter                                                    THREAD_POOL_ENC = 1;
+//   parameter                                                    EFF_IFAR_WIDTH = 20;
+//   parameter                                                    EFF_IFAR = 62;
+//   parameter                                                    ITAG_SIZE_ENC = 7;
+//   parameter                                                    GPR_WIDTH = 64;
+//   parameter                                                    GPR_WIDTH_ENC = 6;
+//   parameter                                                    GPR_POOL_ENC = 6;
+//   parameter                                                    AXU_SPARE_ENC = 3;
+//   parameter                                                    XER_WIDTH = 10;
+//   parameter                                                    XER_POOL_ENC = 4;
+//   parameter                                                    CR_WIDTH = 4;
+//   parameter                                                    CR_POOL_ENC = 5;
+//   parameter                                                    XU0_PIPE_START = 2;
+//   parameter                                                    XU0_PIPE_END = 8;
+//   parameter                                                    XU1_PIPE_START = 2;
+//   parameter                                                    XU1_PIPE_END = 5;
+//   parameter                                                    LQ_LOAD_PIPE_START = 4;
+//   parameter                                                    LQ_LOAD_PIPE_END = 8;
+//   parameter                                                    LQ_REL_PIPE_START = 2;
+//   parameter                                                    LQ_REL_PIPE_END = 4;
+//   parameter                                                    EMQ_ENTRIES = 4;
+//   parameter                                                    LMQ_ENTRIES = 8;
+//   parameter                                                    LMQ_ENTRIES_ENC = 3;
+//   parameter                                                    LGQ_ENTRIES = 8;		// Load Gather Queue Size
+//   parameter                                                    STQ_ENTRIES = 12;
+//   parameter                                                    STQ_FWD_ENTRIES = 4;
+//   parameter                                                    STQ_ENTRIES_ENC = 4;
+//   parameter                                                    STQ_DATA_SIZE = 64;		// 64 or 128 Bit store data sizes supported
+//   parameter                                                    LDSTQ_ENTRIES = 16;
+//   parameter                                                    LDSTQ_ENTRIES_ENC = 4;
+//   parameter                                                    IUQ_ENTRIES = 4;
+//   parameter                                                    MMQ_ENTRIES = 1;
+//   parameter                                                    REAL_IFAR_WIDTH = 42;
+//   parameter                                                    L_ENDIAN_M = 1;
+//   parameter                                                    DC_SIZE = 15;
+//   parameter                                                    CL_SIZE = 6;
+//   parameter                                                    LOAD_CREDITS = 8;
+//   parameter                                                    STORE_CREDITS = 32;
+//   parameter                                                    UCODE_ENTRIES_ENC = 3;
+//   parameter                                                    BUILD_PFETCH = 1;		// 1=> include pfetch in the build, 0=> build without pfetch
+//   parameter                                                    PF_IFAR_WIDTH = 12;		// number of IAR bits used by prefetch
+//   parameter                                                    PFETCH_INITIAL_DEPTH = 0;		// the initial value for the SPR that determines how many lines to prefetch
+//   parameter                                                    PFETCH_Q_SIZE_ENC = 3;		// number of bits to address queue size (3 => 8 entries, 4 => 16 entries)
+//   parameter                                                    PFETCH_Q_SIZE = 8;		// number of entries in prefetch queue
 parameter                                                   XU0_PIPE_START = `FXU0_PIPE_START+1;
 parameter                                                   XU0_PIPE_END   = `FXU0_PIPE_END;
 parameter                                                   XU1_PIPE_START = `FXU1_PIPE_START+1;
 parameter                                                   XU1_PIPE_END   = `FXU1_PIPE_END;
 
-input                                                        xu_lq_spr_ccr2_en_trace;    
-input                                                        xu_lq_spr_ccr2_en_pc;		
-input                                                        xu_lq_spr_ccr2_en_ditc;		
-input                                                        xu_lq_spr_ccr2_en_icswx;    
-input                                                        xu_lq_spr_ccr2_dfrat;		
-input  [0:8]                                                 xu_lq_spr_ccr2_dfratsc;		
-input                                                        xu_lq_spr_ccr2_ap;		    
-input                                                        xu_lq_spr_ccr2_ucode_dis;   
-input                                                        xu_lq_spr_ccr2_notlb;		
-input                                                        xu_lq_spr_xucr4_mmu_mchk;   
-input                                                        xu_lq_spr_xucr4_mddmh;		
-input                                                        xu_lq_spr_xucr0_clkg_ctl;   
-input                                                        xu_lq_spr_xucr0_wlk;		
-input                                                        xu_lq_spr_xucr0_mbar_ack;	
-input                                                        xu_lq_spr_xucr0_tlbsync;	
-input                                                        xu_lq_spr_xucr0_dcdis;		
-input                                                        xu_lq_spr_xucr0_aflsta;		
-input                                                        xu_lq_spr_xucr0_flsta;		
-input                                                        xu_lq_spr_xucr0_clfc;		
-input                                                        xu_lq_spr_xucr0_cls;		
-input  [0:`THREADS-1]                                        xu_lq_spr_xucr0_trace_um;	
-input                                                        xu_lq_spr_xucr0_cred;		
-input                                                        xu_lq_spr_xucr0_mddp;		
-input                                                        xu_lq_spr_xucr0_mdcp;		
+//--------------------------------------------------------------
+// SPR Interface
+//--------------------------------------------------------------
+input                                                        xu_lq_spr_ccr2_en_trace;    // MTSPR Trace is Enabled
+input                                                        xu_lq_spr_ccr2_en_pc;		// MSGSND is Enabled
+input                                                        xu_lq_spr_ccr2_en_ditc;		// DITC is Enabled
+input                                                        xu_lq_spr_ccr2_en_icswx;    // ICSWX is Enabled
+input                                                        xu_lq_spr_ccr2_dfrat;		// Force Real Address Translation
+input  [0:8]                                                 xu_lq_spr_ccr2_dfratsc;		// 0:4: wimge, 5:8: u0:3
+input                                                        xu_lq_spr_ccr2_ap;		    // AP Available
+input                                                        xu_lq_spr_ccr2_ucode_dis;   // Ucode Disabled
+input                                                        xu_lq_spr_ccr2_notlb;		// MMU is disabled
+input                                                        xu_lq_spr_xucr4_mmu_mchk;   // Machine Check on a Data ERAT Parity or Multihit Error
+input                                                        xu_lq_spr_xucr4_mddmh;		// Machine Check on Data Cache Directory Multihit Error
+input                                                        xu_lq_spr_xucr0_clkg_ctl;   // Clock Gating Override
+input                                                        xu_lq_spr_xucr0_wlk;		// Data Cache Way Locking Enable
+input                                                        xu_lq_spr_xucr0_mbar_ack;	// L2 ACK of membar and lwsync
+input                                                        xu_lq_spr_xucr0_tlbsync;	// L2 ACK of tlbsync
+input                                                        xu_lq_spr_xucr0_dcdis;		// Data Cache Disable
+input                                                        xu_lq_spr_xucr0_aflsta;		// AXU Force Load/Store Alignment interrupt
+input                                                        xu_lq_spr_xucr0_flsta;		// FX Force Load/Store Alignment interrupt
+input                                                        xu_lq_spr_xucr0_clfc;		// Cache Directory Lock Flash Clear
+input                                                        xu_lq_spr_xucr0_cls;		// Cacheline Size = 1 => 128Byte size, 0 => 64Byte size
+input  [0:`THREADS-1]                                        xu_lq_spr_xucr0_trace_um;	// TRACE SPR is Enabled in user mode
+input                                                        xu_lq_spr_xucr0_cred;		// L2 Credit Control
+input                                                        xu_lq_spr_xucr0_mddp;		// Machine Check on Data Cache Directory Parity Error
+input                                                        xu_lq_spr_xucr0_mdcp;		// Machine Check on Data Cache Parity Error
 
-input  [0:(`THREADS*2)-1]                                    xu_lq_spr_dbcr0_dac1;		
-input  [0:(`THREADS*2)-1]                                    xu_lq_spr_dbcr0_dac2;		
-input  [0:(`THREADS*2)-1]                                    xu_lq_spr_dbcr0_dac3;		
-input  [0:(`THREADS*2)-1]                                    xu_lq_spr_dbcr0_dac4;		
+ // JK Multidimmensional port
+input  [0:(`THREADS*2)-1]                                    xu_lq_spr_dbcr0_dac1;		// Data Address Compare 1 Debug Event Enable
+input  [0:(`THREADS*2)-1]                                    xu_lq_spr_dbcr0_dac2;		// Data Address Compare 2 Debug Event Enable
+input  [0:(`THREADS*2)-1]                                    xu_lq_spr_dbcr0_dac3;		// Data Address Compare 3 Debug Event Enable
+input  [0:(`THREADS*2)-1]                                    xu_lq_spr_dbcr0_dac4;		// Data Address Compare 4 Debug Event Enable
 
 
-input  [0:`THREADS-1]                                        xu_lq_spr_dbcr0_idm;		
-input  [0:`THREADS-1]                                        xu_lq_spr_epcr_duvd;		
-input  [0:`THREADS-1]                                        xu_lq_spr_msr_cm;		    
-input  [0:`THREADS-1]                                        xu_lq_spr_msr_fp;		    
-input  [0:`THREADS-1]                                        xu_lq_spr_msr_spv;		    
-input  [0:`THREADS-1]                                        xu_lq_spr_msr_gs;		    
-input  [0:`THREADS-1]                                        xu_lq_spr_msr_pr;	        
-input  [0:`THREADS-1]                                        xu_lq_spr_msr_ds;		    
-input  [0:`THREADS-1]                                        xu_lq_spr_msr_de;		    
-input  [0:`THREADS-1]                                        xu_lq_spr_msr_ucle;         
-input  [0:`THREADS-1]                                        xu_lq_spr_msrp_uclep;		
-input                                                        iu_lq_spr_iucr0_icbi_ack;	
-output                                                       lq_xu_spr_xucr0_cul;		
-output                                                       lq_xu_spr_xucr0_cslc_xuop;	
-output                                                       lq_xu_spr_xucr0_cslc_binv;	
-output                                                       lq_xu_spr_xucr0_clo;		
-output [0:`THREADS-1]                                        lq_iu_spr_dbcr3_ivc;		
+input  [0:`THREADS-1]                                        xu_lq_spr_dbcr0_idm;		// Internal Debug Mode Enable
+input  [0:`THREADS-1]                                        xu_lq_spr_epcr_duvd;		// Disable Hypervisor Debug
+input  [0:`THREADS-1]                                        xu_lq_spr_msr_cm;		    // 64bit mode enable
+input  [0:`THREADS-1]                                        xu_lq_spr_msr_fp;		    // FP Available
+input  [0:`THREADS-1]                                        xu_lq_spr_msr_spv;		    // VEC Available
+input  [0:`THREADS-1]                                        xu_lq_spr_msr_gs;		    // Guest State
+input  [0:`THREADS-1]                                        xu_lq_spr_msr_pr;	        // Problem State
+input  [0:`THREADS-1]                                        xu_lq_spr_msr_ds;		    // Data Address Space
+input  [0:`THREADS-1]                                        xu_lq_spr_msr_de;		    // Debug Interrupt Enable
+input  [0:`THREADS-1]                                        xu_lq_spr_msr_ucle;         // User Cache Locking Enable
+input  [0:`THREADS-1]                                        xu_lq_spr_msrp_uclep;		// User Cache Locking Enable Protect
+input                                                        iu_lq_spr_iucr0_icbi_ack;	// L2 ICBI ACK Enable
+output                                                       lq_xu_spr_xucr0_cul;		// Cache Lock unable to lock
+output                                                       lq_xu_spr_xucr0_cslc_xuop;	// Invalidate type instruction invalidated lock
+output                                                       lq_xu_spr_xucr0_cslc_binv;	// Back-Invalidate invalidated lock
+output                                                       lq_xu_spr_xucr0_clo;		// Cache Lock instruction caused an overlock
+output [0:`THREADS-1]                                        lq_iu_spr_dbcr3_ivc;		// Instruction Value Compare Enabled
 input                                                        slowspr_val_in;
 input                                                        slowspr_rw_in;
 input  [0:1]                                                 slowspr_etid_in;
@@ -514,8 +570,12 @@ output [0:9]                                                 slowspr_addr_out;
 output [64-(2**`GPR_WIDTH_ENC):63]                           slowspr_data_out;
 output                                                       slowspr_done_out;
 
+//--------------------------------------------------------------
+// CP Interface
+//--------------------------------------------------------------
 input  [0:`THREADS-1]                                        iu_lq_cp_flush;
 input  [0:`THREADS-1]                                        iu_lq_recirc_val;
+ // JK Multidimmensional port
 input  [0:`ITAG_SIZE_ENC-1]                                  iu_lq_cp_next_itag_t0;
 `ifndef THREADS1
    input  [0:`ITAG_SIZE_ENC-1]                               iu_lq_cp_next_itag_t1;
@@ -550,11 +610,13 @@ output [0:`THREADS-1]                                        lq_iu_credit_free;
 output [0:`THREADS-1]                                        sq_iu_credit_free;
 
 input  [0:`THREADS-1]                                        iu_lq_i0_completed;
+ // JK Multidimmensional port
 input  [0:`ITAG_SIZE_ENC-1]                                  iu_lq_i0_completed_itag_t0;
 `ifndef THREADS1
    input  [0:`ITAG_SIZE_ENC-1]                               iu_lq_i0_completed_itag_t1;
 `endif
 input  [0:`THREADS-1]                                        iu_lq_i1_completed;
+ // JK Multidimmensional port
 input  [0:`ITAG_SIZE_ENC-1]                                  iu_lq_i1_completed_itag_t0;
 `ifndef THREADS1
    input  [0:`ITAG_SIZE_ENC-1]                               iu_lq_i1_completed_itag_t1;
@@ -569,6 +631,9 @@ output [64-`REAL_IFAR_WIDTH:57]                              lq_iu_icbi_addr;
 input [0:`THREADS-1]                                         iu_lq_icbi_complete;
 output                                                       lq_iu_ici_val;
 
+//--------------------------------------------------------------
+// Interface with XU DERAT
+//--------------------------------------------------------------
 input                                                        xu_lq_act;
 input  [0:`THREADS-1]                                        xu_lq_val;
 input                                                        xu_lq_is_eratre;
@@ -580,16 +645,22 @@ input  [0:4]                                                 xu_lq_ra_entry;
 input  [64-(2**`GPR_WIDTH_ENC):63]                           xu_lq_rs_data;
 input                                                        xu_lq_hold_req;
 output [64-(2**`GPR_WIDTH_ENC):63]                           lq_xu_ex5_data;
-output                                                       lq_xu_ord_par_err;  
+output                                                       lq_xu_ord_par_err;
 output                                                       lq_xu_ord_read_done;
 output                                                       lq_xu_ord_write_done;
 
+//--------------------------------------------------------------
+// Doorbell Interface with XU
+//--------------------------------------------------------------
 output                                                       lq_xu_dbell_val;
 output [0:4]                                                 lq_xu_dbell_type;
 output                                                       lq_xu_dbell_brdcast;
 output                                                       lq_xu_dbell_lpid_match;
 output [50:63]                                               lq_xu_dbell_pirtag;
 
+//--------------------------------------------------------------
+// Interface with RV
+//--------------------------------------------------------------
 input  [0:`THREADS-1]                                        rv_lq_rv1_i0_vld;
 input                                                        rv_lq_rv1_i0_ucode_preissue;
 input                                                        rv_lq_rv1_i0_2ucode;
@@ -642,6 +713,9 @@ output [0:`THREADS-1]                                        lq_rv_itag2_vld;
 output [0:`ITAG_SIZE_ENC-1]                                  lq_rv_itag2;
 output [0:`THREADS-1]                                        lq_rv_clr_hold;
 
+//-------------------------------------------------------------------
+// Interface with Bypass Controller
+//-------------------------------------------------------------------
 input [2:12]                                                 rv_lq_ex0_s1_xu0_sel;
 input [2:12]                                                 rv_lq_ex0_s2_xu0_sel;
 input [2:7]                                                  rv_lq_ex0_s1_xu1_sel;
@@ -651,6 +725,9 @@ input [4:8]                                                  rv_lq_ex0_s2_lq_sel
 input [2:3]                                                  rv_lq_ex0_s1_rel_sel;
 input [2:3]                                                  rv_lq_ex0_s2_rel_sel;
 
+//--------------------------------------------------------------
+// Interface with Regfiles
+//--------------------------------------------------------------
 input [0:`THREADS-1]                                         xu_lq_xer_cp_rd;
 input [64-(2**`GPR_WIDTH_ENC):63]                            rv_lq_gpr_ex1_r0d;
 input [64-(2**`GPR_WIDTH_ENC):63]                            rv_lq_gpr_ex1_r1d;
@@ -674,6 +751,9 @@ output                                                       lq_xu_cr_ex5_we;
 output [0:`CR_POOL_ENC+`THREAD_POOL_ENC-1]                   lq_xu_cr_ex5_wa;
 output                                                       lq_xu_ex5_abort;
 
+//-------------------------------------------------------------------
+// Interface with XU0
+//-------------------------------------------------------------------
 input                                                        xu0_lq_ex3_act;
 input                                                        xu0_lq_ex3_abort;
 input [64-(2**`GPR_WIDTH_ENC):63]                            xu0_lq_ex3_rt;
@@ -684,6 +764,9 @@ output                                                       lq_xu_ex5_act;
 output [0:`CR_WIDTH-1]                                       lq_xu_ex5_cr;
 output [(128-`STQ_DATA_SIZE):127]                            lq_xu_ex5_rt;
 
+//-------------------------------------------------------------------
+// Interface with XU1
+//-------------------------------------------------------------------
 input                                                        xu1_lq_ex3_act;
 input                                                        xu1_lq_ex3_abort;
 input [64-(2**`GPR_WIDTH_ENC):63]                            xu1_lq_ex3_rt;
@@ -695,6 +778,9 @@ input [(64-(2**`GPR_WIDTH_ENC))/8:7]                         xu1_lq_ex2_stq_dvc2
 input                                                        xu1_lq_ex3_illeg_lswx;
 input                                                        xu1_lq_ex3_strg_noop;
 
+//-------------------------------------------------------------------
+// Interface with AXU PassThru with XU
+//-------------------------------------------------------------------
 input [0:`THREADS-1]                                         xu_lq_axu_ex_stq_val;
 input [0:`ITAG_SIZE_ENC-1]                                   xu_lq_axu_ex_stq_itag;
 input [(128-`STQ_DATA_SIZE):127]                             xu_lq_axu_exp1_stq_data;
@@ -702,6 +788,9 @@ output [59:63]                                               lq_xu_axu_ex4_addr;
 output                                                       lq_xu_axu_ex5_we;
 output                                                       lq_xu_axu_ex5_le;
 
+//--------------------------------------------------------------
+// Interface with MMU
+//--------------------------------------------------------------
 input [0:`THREADS-1]                                         mm_lq_lsu_req;
 input [0:1]                                                  mm_lq_lsu_ttype;
 input [0:4]                                                  mm_lq_lsu_wimge;
@@ -715,6 +804,7 @@ input [0:7]                                                  mm_lq_lsu_lpidr;
 output                                                       lq_mm_lsu_token;
 input                                                        mm_lq_hold_req;
 input                                                        mm_lq_hold_done;
+ // JK Multidimmensional port
 input [0:13]                                                 mm_lq_pid_t0;
 input [0:19]                                                 mm_lq_mmucr0_t0;
 `ifndef THREADS1
@@ -727,13 +817,13 @@ input [0:4]                                                  mm_lq_rel_val;
 input [0:131]                                                mm_lq_rel_data;
 input [0:`EMQ_ENTRIES-1]                                     mm_lq_rel_emq;
 input [0:`ITAG_SIZE_ENC-1]                                   mm_lq_itag;
-input [0:`THREADS-1]                                         mm_lq_tlb_miss;		    
-input [0:`THREADS-1]                                         mm_lq_tlb_inelig;		
-input [0:`THREADS-1]                                         mm_lq_pt_fault;		    
-input [0:`THREADS-1]                                         mm_lq_lrat_miss;		
-input [0:`THREADS-1]                                         mm_lq_tlb_multihit;		
-input [0:`THREADS-1]                                         mm_lq_tlb_par_err;		
-input [0:`THREADS-1]                                         mm_lq_lru_par_err;		
+input [0:`THREADS-1]                                         mm_lq_tlb_miss;		    // Request got a TLB Miss
+input [0:`THREADS-1]                                         mm_lq_tlb_inelig;		// Request got a TLB Ineligible
+input [0:`THREADS-1]                                         mm_lq_pt_fault;		    // Request got a PT Fault
+input [0:`THREADS-1]                                         mm_lq_lrat_miss;		// Request got an LRAT Miss
+input [0:`THREADS-1]                                         mm_lq_tlb_multihit;		// Request got a TLB Multihit Error
+input [0:`THREADS-1]                                         mm_lq_tlb_par_err;		// Request got a TLB Parity Error
+input [0:`THREADS-1]                                         mm_lq_lru_par_err;		// Request got a LRU Parity Error
 input                                                        mm_lq_snoop_coming;
 input                                                        mm_lq_snoop_val;
 input [0:25]                                                 mm_lq_snoop_attr;
@@ -753,13 +843,16 @@ output [0:`THREADS-1]                                        lq_mm_mmucr0_we;
 output [0:17]                                                lq_mm_mmucr0;
 output [0:`THREADS-1]                                        lq_mm_mmucr1_we;
 output [0:4]                                                 lq_mm_mmucr1;
-output [0:`THREADS-1]                                        lq_xu_quiesce;		
-output [0:`THREADS-1]                                        lq_pc_ldq_quiesce;      
+output [0:`THREADS-1]                                        lq_xu_quiesce;		// Load and Store Queue is empty
+output [0:`THREADS-1]                                        lq_pc_ldq_quiesce;
 output [0:`THREADS-1]                                        lq_pc_stq_quiesce;
 output [0:`THREADS-1]                                        lq_pc_pfetch_quiesce;
 output                                                       lq_mm_lmq_stq_empty;
 output [0:`THREADS-1]                                        lq_mm_perf_dtlb;
 
+//--------------------------------------------------------------
+// Interface with PC
+//--------------------------------------------------------------
 input                                                        pc_lq_inj_dcachedir_ldp_parity;
 input                                                        pc_lq_inj_dcachedir_ldp_multihit;
 input                                                        pc_lq_inj_dcachedir_stp_parity;
@@ -775,32 +868,43 @@ output                                                       lq_pc_err_dcache_pa
 output                                                       lq_pc_err_derat_multihit;
 output                                                       lq_pc_err_dir_ldp_multihit;
 output                                                       lq_pc_err_dir_stp_multihit;
-output                                                       lq_pc_err_invld_reld;		    
-output                                                       lq_pc_err_l2intrf_ecc;		    
-output                                                       lq_pc_err_l2intrf_ue;		    
-output                                                       lq_pc_err_l2credit_overrun;    
-input  [0:`THREADS-1]                                        pc_lq_ram_active;              
+output                                                       lq_pc_err_invld_reld;		    // Reload detected without Loadmiss waiting for reload or got extra beats for cacheable request
+output                                                       lq_pc_err_l2intrf_ecc;		    // Reload detected with an ECC error
+output                                                       lq_pc_err_l2intrf_ue;		    // Reload detected with an uncorrectable ECC error
+output                                                       lq_pc_err_l2credit_overrun;    // L2 Credits were Overrun
+input  [0:`THREADS-1]                                        pc_lq_ram_active;              // Thread is in RAM mode
 output                                                       lq_pc_ram_data_val;
 output [64-(2**`GPR_WIDTH_ENC):63]                           lq_pc_ram_data;
 output                                                       lq_pc_err_prefetcher_parity;
 
+//--------------------------------------------------------------
+// Debug Bus Control
+//--------------------------------------------------------------
+// Pervasive Debug Control
 input                                                        pc_lq_trace_bus_enable;
 input [0:10]                                                 pc_lq_debug_mux1_ctrls;
 input [0:10]                                                 pc_lq_debug_mux2_ctrls;
 input                                                        pc_lq_instr_trace_mode;
 input [0:`THREADS-1]                                         pc_lq_instr_trace_tid;
 
+// Pass Thru Debug Trace Bus
 input [0:31]                                                 debug_bus_in;
 input [0:3]                                                  coretrace_ctrls_in;
 
 output [0:31]                                                debug_bus_out;
 output [0:3]                                                 coretrace_ctrls_out;
 
+//--------------------------------------------------------------
+// Performance Event Control
+//--------------------------------------------------------------
 input                                                        pc_lq_event_bus_enable;
 input [0:2]                                                  pc_lq_event_count_mode;
 input [0:(4*`THREADS)-1]                                     event_bus_in;
 output [0:(4*`THREADS)-1]                                    event_bus_out;
 
+//--------------------------------------------------------------
+// Interface with L2
+//--------------------------------------------------------------
 input  [6:7]                                                 an_ac_coreid;
 input  [0:`THREADS-1]                                        an_ac_sync_ack;
 input  [0:`THREADS-1]                                        an_ac_stcx_complete;
@@ -845,11 +949,12 @@ output [0:255]                                               ac_an_st_data;
 output                                                       ac_an_req_endian;
 output                                                       ac_an_st_data_pwr_token;
 
-
+// Pervasive
 
 (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)
 input [0:`NCLK_WIDTH-1]                                      nclk;
 
+// Thold inputs
 input                                                        pc_lq_init_reset;
 input                                                        pc_lq_ccflush_dc;
 input                                                        pc_lq_gptr_sl_thold_3;
@@ -870,6 +975,7 @@ input                                                        pc_lq_ary_slp_nsl_t
 input                                                        pc_lq_sg_3;
 input                                                        pc_lq_fce_3;
 
+// G8T ABIST Control
 input                                                        pc_lq_abist_wl64_comp_ena;
 input                                                        pc_lq_abist_g8t_wenb;
 input                                                        pc_lq_abist_g8t1p_renb_0;
@@ -879,6 +985,7 @@ input                                                        pc_lq_abist_g8t_bw_
 input [0:3]                                                  pc_lq_abist_di_0;
 input [2:9]                                                  pc_lq_abist_waddr_0;
 
+// G6T ABIST Control
 input                                                        pc_lq_abist_ena_dc;
 input                                                        pc_lq_abist_raw_dc_b;
 input [0:1]                                                  pc_lq_abist_g6t_bw;
@@ -897,6 +1004,7 @@ input [0:13]                                                 pc_lq_bo_select;
 output [0:13]                                                lq_pc_bo_fail;
 output [0:13]                                                lq_pc_bo_diagout;
 
+// Core Level Signals
 input                                                        an_ac_lbist_ary_wrt_thru_dc;
 input                                                        an_ac_scan_dis_dc_b;
 input                                                        an_ac_scan_diag_dc;
@@ -904,6 +1012,7 @@ input                                                        an_ac_lbist_en_dc;
 input                                                        an_ac_atpg_en_dc;
 input                                                        an_ac_grffence_en_dc;
 
+// SCAN
 
 (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)
 
@@ -1142,11 +1251,13 @@ wire [0:3]                                                   ctl_dat_ex3_le_alg_
 wire [64-(2**`GPR_WIDTH_ENC):63]                             ctl_spr_dvc1_dbg;
 wire [64-(2**`GPR_WIDTH_ENC):63]                             ctl_spr_dvc2_dbg;
 
+ // JK Multidimmensional wire
 wire [0:(`THREADS*8)-1]                                      ctl_spr_dbcr2_dvc1be;
 wire [0:(`THREADS*8)-1]                                      ctl_spr_dbcr2_dvc2be;
 wire [0:(`THREADS*2)-1]                                      ctl_spr_dbcr2_dvc1m;
 wire [0:(`THREADS*2)-1]                                      ctl_spr_dbcr2_dvc2m;
 
+// LQ Pervasive
 wire [0:18+`THREADS-1]                                       ctl_perv_ex6_perf_events;
 wire [0:6+`THREADS-1]                                        ctl_perv_stq4_perf_events;
 wire [0:(`THREADS*3)+1]                                      ctl_perv_dir_perf_events;
@@ -1231,8 +1342,6 @@ wire [0:31]                                                  lq_debug_bus0;
 wire							     vdd;
 wire							     gnd;
 
-
-
 `ifdef THREADS1
     assign iu_lq_cp_next_itag = iu_lq_cp_next_itag_t0;
     assign iu_lq_i0_completed_itag = iu_lq_i0_completed_itag_t0;
@@ -1249,11 +1358,19 @@ wire							     gnd;
 `endif
 
 assign vdd = 1'b1;
+//assign vcs = 1'b1;
 assign gnd = 1'b0;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// LQ CONTROL
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE_START(XU1_PIPE_START), .XU1_PIPE_END(XU1_PIPE_END), .WAYDATASIZE(WAYDATASIZE)) ctl(		
-   
+// Order Queue Size
+lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE_START(XU1_PIPE_START), .XU1_PIPE_END(XU1_PIPE_END), .WAYDATASIZE(WAYDATASIZE)) ctl(
+
+   //--------------------------------------------------------------
+   // SPR Interface
+   //--------------------------------------------------------------
    .xu_lq_spr_ccr2_en_trace(xu_lq_spr_ccr2_en_trace),
    .xu_lq_spr_ccr2_en_pc(xu_lq_spr_ccr2_en_pc),
    .xu_lq_spr_ccr2_en_ditc(xu_lq_spr_ccr2_en_ditc),
@@ -1309,7 +1426,10 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .slowspr_addr_out(slowspr_addr_out),
    .slowspr_data_out(slowspr_data_out),
    .slowspr_done_out(slowspr_done_out),
-   
+
+   //--------------------------------------------------------------
+   // Interface with IU
+   //--------------------------------------------------------------
    .iu_lq_cp_flush(iu_lq_cp_flush),
    .iu_lq_recirc_val(iu_lq_recirc_val),
    .iu_lq_cp_next_itag(iu_lq_cp_next_itag),
@@ -1329,7 +1449,9 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .lq0_iu_dacrw(lq0_iu_dacrw),
    .lq0_iu_instr(lq0_iu_instr),
    .lq0_iu_eff_addr(lq0_iu_eff_addr),
-   
+
+   //   IU interface to RV for pfetch predictor table0
+   // port 0
    .rv_lq_rv1_i0_vld(rv_lq_rv1_i0_vld),
    .rv_lq_rv1_i0_ucode_preissue(rv_lq_rv1_i0_ucode_preissue),
    .rv_lq_rv1_i0_2ucode(rv_lq_rv1_i0_2ucode),
@@ -1338,7 +1460,8 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .rv_lq_rv1_i0_itag(rv_lq_rv1_i0_itag),
    .rv_lq_rv1_i0_rte_lq(rv_lq_rv1_i0_rte_lq),
    .rv_lq_rv1_i0_ifar(rv_lq_rv1_i0_ifar),
-   
+
+   // port 1
    .rv_lq_rv1_i1_vld(rv_lq_rv1_i1_vld),
    .rv_lq_rv1_i1_ucode_preissue(rv_lq_rv1_i1_ucode_preissue),
    .rv_lq_rv1_i1_2ucode(rv_lq_rv1_i1_2ucode),
@@ -1347,11 +1470,15 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .rv_lq_rv1_i1_itag(rv_lq_rv1_i1_itag),
    .rv_lq_rv1_i1_rte_lq(rv_lq_rv1_i1_rte_lq),
    .rv_lq_rv1_i1_ifar(rv_lq_rv1_i1_ifar),
-   
+
+   // release itag to pfetch
    .odq_pf_report_tid(odq_pf_report_tid),
    .odq_pf_report_itag(odq_pf_report_itag),
    .odq_pf_resolved(odq_pf_resolved),
-   
+
+   //--------------------------------------------------------------
+   // Interface with XU DERAT
+   //--------------------------------------------------------------
    .xu_lq_act(xu_lq_act),
    .xu_lq_val(xu_lq_val),
    .xu_lq_is_eratre(xu_lq_is_eratre),
@@ -1363,10 +1490,13 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .xu_lq_rs_data(xu_lq_rs_data),
    .xu_lq_hold_req(xu_lq_hold_req),
    .lq_xu_ex5_data(lq_xu_ex5_data),
-   .lq_xu_ord_par_err(lq_xu_ord_par_err),   
+   .lq_xu_ord_par_err(lq_xu_ord_par_err),
    .lq_xu_ord_read_done(lq_xu_ord_read_done),
    .lq_xu_ord_write_done(lq_xu_ord_write_done),
-   
+
+   //--------------------------------------------------------------
+   // Interface with RV
+   //--------------------------------------------------------------
    .rv_lq_vld(rv_lq_vld),
    .rv_lq_ex0_itag(rv_lq_ex0_itag),
    .rv_lq_ex0_instr(rv_lq_ex0_instr),
@@ -1377,7 +1507,7 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .rv_lq_ex0_t3_p(rv_lq_ex0_t3_p),
    .rv_lq_ex0_s1_v(rv_lq_ex0_s1_v),
    .rv_lq_ex0_s2_v(rv_lq_ex0_s2_v),
-   
+
    .lq_rv_itag0(lq_rv_itag0),
    .lq_rv_itag0_vld(lq_rv_itag0_vld),
    .lq_rv_itag0_abort(lq_rv_itag0_abort),
@@ -1391,7 +1521,10 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .lq_rv_itag1_hold(lq_rv_itag1_hold),
    .lq_rv_itag1_cord(lq_rv_itag1_cord),
    .lq_rv_clr_hold(lq_rv_clr_hold),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with Bypass Controller
+   //-------------------------------------------------------------------
    .rv_lq_ex0_s1_xu0_sel(rv_lq_ex0_s1_xu0_sel),
    .rv_lq_ex0_s2_xu0_sel(rv_lq_ex0_s2_xu0_sel),
    .rv_lq_ex0_s1_xu1_sel(rv_lq_ex0_s1_xu1_sel),
@@ -1400,7 +1533,10 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .rv_lq_ex0_s2_lq_sel(rv_lq_ex0_s2_lq_sel),
    .rv_lq_ex0_s1_rel_sel(rv_lq_ex0_s1_rel_sel),
    .rv_lq_ex0_s2_rel_sel(rv_lq_ex0_s2_rel_sel),
-   
+
+   //--------------------------------------------------------------
+   // Interface with Regfiles
+   //--------------------------------------------------------------
    .xu_lq_xer_cp_rd(xu_lq_xer_cp_rd),
    .rv_lq_gpr_ex1_r0d(rv_lq_gpr_ex1_r0d),
    .rv_lq_gpr_ex1_r1d(rv_lq_gpr_ex1_r1d),
@@ -1418,7 +1554,10 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .lq_xu_gpr_rel_wd(lq_xu_gpr_rel_wd),
    .lq_xu_cr_ex5_we(lq_xu_cr_ex5_we),
    .lq_xu_cr_ex5_wa(lq_xu_cr_ex5_wa),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with XU0
+   //-------------------------------------------------------------------
    .xu0_lq_ex3_act(xu0_lq_ex3_act),
    .xu0_lq_ex3_abort(xu0_lq_ex3_abort),
    .xu0_lq_ex3_rt(xu0_lq_ex3_rt),
@@ -1429,15 +1568,24 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .lq_xu_ex5_cr(lq_xu_ex5_cr),
    .lq_xu_ex5_rt(lq_xu_ex5_rt),
    .lq_xu_ex5_abort(lq_xu_ex5_abort),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with XU1
+   //-------------------------------------------------------------------
    .xu1_lq_ex3_act(xu1_lq_ex3_act),
    .xu1_lq_ex3_abort(xu1_lq_ex3_abort),
    .xu1_lq_ex3_rt(xu1_lq_ex3_rt),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with AXU PassThru with XU
+   //-------------------------------------------------------------------
    .lq_xu_axu_ex4_addr(lq_xu_axu_ex4_addr),
    .lq_xu_axu_ex5_we(lq_xu_axu_ex5_we),
    .lq_xu_axu_ex5_le(lq_xu_axu_ex5_le),
-   
+
+   //--------------------------------------------------------------
+   // Interface with MMU
+   //--------------------------------------------------------------
    .mm_lq_hold_req(mm_lq_hold_req),
    .mm_lq_hold_done(mm_lq_hold_done),
    .mm_lq_pid(mm_lq_pid),
@@ -1475,12 +1623,18 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .lq_mm_mmucr1_we(lq_mm_mmucr1_we),
    .lq_mm_mmucr1(lq_mm_mmucr1),
    .lq_mm_perf_dtlb(lq_mm_perf_dtlb),
-   
+
+   //--------------------------------------------------------------
+   // Interface with PC
+   //--------------------------------------------------------------
    .pc_lq_inj_dcachedir_ldp_parity(pc_lq_inj_dcachedir_ldp_parity),
    .pc_lq_inj_dcachedir_ldp_multihit(pc_lq_inj_dcachedir_ldp_multihit),
    .pc_lq_inj_dcachedir_stp_parity(pc_lq_inj_dcachedir_stp_parity),
    .pc_lq_inj_dcachedir_stp_multihit(pc_lq_inj_dcachedir_stp_multihit),
-   
+
+   //--------------------------------------------------------------
+   // Interface with Load/Store Queses
+   //--------------------------------------------------------------
    .lsq_ctl_oldest_tid(lsq_ctl_oldest_tid),
    .lsq_ctl_oldest_itag(lsq_ctl_oldest_itag),
    .lsq_ctl_stq1_stg_act(lsq_ctl_stq1_stg_act),
@@ -1631,13 +1785,19 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .ctl_lsq_ex4_xu1_data(ctl_lsq_ex4_xu1_data),
 
    .ctl_lsq_pf_empty(ctl_lsq_pf_empty),
-   
+
+   //--------------------------------------------------------------
+   // Interface with Commit Pipe Directories
+   //--------------------------------------------------------------
    .dir_arr_wr_enable(dir_arr_wr_enable),
    .dir_arr_wr_way(dir_arr_wr_way),
    .dir_arr_wr_addr(dir_arr_wr_addr),
    .dir_arr_wr_data(dir_arr_wr_data),
    .dir_arr_rd_data1(dir_arr_rd_data1),
-   
+
+   //--------------------------------------------------------------
+   // Interface with DATA
+   //--------------------------------------------------------------
    .ctl_dat_ex1_data_act(ctl_dat_ex1_data_act),
    .ctl_dat_ex2_eff_addr(ctl_dat_ex2_eff_addr),
    .ctl_dat_ex3_opsize(ctl_dat_ex3_opsize),
@@ -1650,10 +1810,13 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .dat_ctl_dcarr_perr_way(dat_ctl_dcarr_perr_way),
    .dat_ctl_ex5_load_data(dat_ctl_ex5_load_data),
    .dat_ctl_stq6_axu_data(dat_ctl_stq6_axu_data),
-   
+
    .stq4_dcarr_wren(stq4_dcarr_wren),
    .stq4_dcarr_way_en(stq4_dcarr_way_en),
-   
+
+   //--------------------------------------------------------------
+   // Common Interface
+   //--------------------------------------------------------------
    .ctl_spr_dvc1_dbg(ctl_spr_dvc1_dbg),
    .ctl_spr_dvc2_dbg(ctl_spr_dvc2_dbg),
    .ctl_perv_spr_lesr1(ctl_perv_spr_lesr1),
@@ -1663,10 +1826,12 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .ctl_spr_dbcr2_dvc1m(ctl_spr_dbcr2_dvc1m),
    .ctl_spr_dbcr2_dvc2m(ctl_spr_dbcr2_dvc2m),
 
+   // LQ Pervasive
    .ctl_perv_ex6_perf_events(ctl_perv_ex6_perf_events),
    .ctl_perv_stq4_perf_events(ctl_perv_stq4_perf_events),
    .ctl_perv_dir_perf_events(ctl_perv_dir_perf_events),
-   
+
+   // Error Reporting
    .lq_pc_err_derat_parity(lq_pc_err_derat_parity),
    .lq_pc_err_dir_ldp_parity(lq_pc_err_dir_ldp_parity),
    .lq_pc_err_dir_stp_parity(lq_pc_err_dir_stp_parity),
@@ -1676,7 +1841,8 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .lq_pc_err_dir_stp_multihit(lq_pc_err_dir_stp_multihit),
    .pc_lq_inj_prefetcher_parity(pc_lq_inj_prefetcher_parity),
    .lq_pc_err_prefetcher_parity(lq_pc_err_prefetcher_parity),
-   
+
+   // Pervasive
    .vcs(vdd),
    .vdd(vdd),
    .gnd(gnd),
@@ -1725,11 +1891,13 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .pc_lq_bo_select(pc_lq_bo_select[4:7]),
    .lq_pc_bo_fail(lq_pc_bo_fail[4:7]),
    .lq_pc_bo_diagout(lq_pc_bo_diagout[4:7]),
-   
+
+   // RAM Control
    .pc_lq_ram_active(pc_lq_ram_active),
    .lq_pc_ram_data_val(lq_pc_ram_data_val),
    .lq_pc_ram_data(lq_pc_ram_data),
-   
+
+   // G8T ABIST Control
    .pc_lq_abist_wl64_comp_ena(pc_lq_abist_wl64_comp_ena),
    .pc_lq_abist_g8t_wenb(pc_lq_abist_g8t_wenb),
    .pc_lq_abist_g8t1p_renb_0(pc_lq_abist_g8t1p_renb_0),
@@ -1739,14 +1907,16 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .pc_lq_abist_di_0(pc_lq_abist_di_0),
    .pc_lq_abist_waddr_0(pc_lq_abist_waddr_0[4:9]),
    .pc_lq_abist_raddr_0(pc_lq_abist_raddr_0[3:8]),
-   
+
+   // D-ERAT CAM ABIST Control
    .cam_clkoff_dc_b(cam_clkoff_dc_b),
    .cam_d_mode_dc(cam_d_mode_dc),
    .cam_act_dis_dc(cam_act_dis_dc),
    .cam_delay_lclkr_dc(cam_delay_lclkr_dc),
    .cam_mpw1_dc_b(cam_mpw1_dc_b),
    .cam_mpw2_dc_b(cam_mpw2_dc_b),
-   
+
+   // SCAN Ports
    .abst_scan_in(abst_scan_in[4]),
    .time_scan_in(time_scan_in),
    .repr_scan_in(repr_scan_in),
@@ -1761,9 +1931,13 @@ lq_ctl #(.XU0_PIPE_START(XU0_PIPE_START), .XU0_PIPE_END(XU0_PIPE_END), .XU1_PIPE
    .ccfg_scan_out(ccfg_scan_out)
 );
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// DATA
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 lq_data  dat(
-   
+
+   // Execution Pipe
    .ctl_dat_ex1_data_act(ctl_dat_ex1_data_act),
    .ctl_dat_ex2_eff_addr(ctl_dat_ex2_eff_addr),
    .ctl_dat_ex3_opsize(ctl_dat_ex3_opsize),
@@ -1773,9 +1947,11 @@ lq_data  dat(
    .ctl_dat_ex3_le_alg_rotsel(ctl_dat_ex3_le_alg_rotsel),
    .ctl_dat_ex3_le_mode(ctl_dat_ex3_le_mode),
    .ctl_dat_ex4_way_hit(ctl_dat_ex4_way_hit),
-   
+
+   // Config Bits
    .xu_lq_spr_xucr0_dcdis(xu_lq_spr_xucr0_dcdis),
-   
+
+   // RELOAD/STORE PIPE
    .lsq_dat_stq1_stg_act(lsq_dat_stq1_stg_act),
    .lsq_dat_stq1_val(lsq_dat_stq1_val),
    .lsq_dat_stq1_mftgpr_val(lsq_dat_stq1_mftgpr_val),
@@ -1788,20 +1964,26 @@ lq_data  dat(
    .lsq_dat_stq2_store_data(lsq_dat_stq2_store_data),
    .lsq_dat_rel1_data_val(lsq_dat_rel1_data_val),
    .lsq_dat_rel1_qw(lsq_dat_rel1_qw),
-   
+
+   // L1 D$ update Enable
    .stq4_dcarr_wren(stq4_dcarr_wren),
    .stq4_dcarr_way_en(stq4_dcarr_way_en),
    .ctl_dat_stq5_way_perr_inval(ctl_dat_stq5_way_perr_inval),
-   
+
+   // Execution Pipe Outputs
    .dat_ctl_dcarr_perr_way(dat_ctl_dcarr_perr_way),
-   
+
+   //Rotated Data
    .dat_ctl_ex5_load_data(dat_ctl_ex5_load_data),
    .dat_ctl_stq6_axu_data(dat_ctl_stq6_axu_data),
-   
+
+   // Debug Data Compare
    .dat_lsq_stq4_128data(dat_lsq_stq4_128data),
-   
+
+   // Error Inject
    .pc_lq_inj_dcache_parity(pc_lq_inj_dcache_parity),
-   
+
+   //pervasive
    .vdd(vdd),
    .gnd(gnd),
    .vcs(vdd),
@@ -1829,7 +2011,8 @@ lq_data  dat(
    .bo_enable_2(bo_enable_2),
    .an_ac_scan_dis_dc_b(an_ac_scan_dis_dc_b),
    .an_ac_scan_diag_dc(an_ac_scan_diag_dc),
-   
+
+   // G6T ABIST Control
    .an_ac_lbist_ary_wrt_thru_dc(an_ac_lbist_ary_wrt_thru_dc),
    .pc_lq_abist_ena_dc(pc_lq_abist_ena_dc),
    .pc_lq_abist_raw_dc_b(pc_lq_abist_raw_dc_b),
@@ -1849,7 +2032,8 @@ lq_data  dat(
    .pc_lq_bo_select(pc_lq_bo_select[0:3]),
    .lq_pc_bo_fail(lq_pc_bo_fail[0:3]),
    .lq_pc_bo_diagout(lq_pc_bo_diagout[0:3]),
-   
+
+   // SCAN Ports
    .abst_scan_in(abst_scan_in[0:3]),
    .time_scan_in(ctl_time_scan_out),
    .repr_scan_in(ctl_repr_scan_out),
@@ -1860,9 +2044,14 @@ lq_data  dat(
    .func_scan_out(func_scan_out[11:17])
 );
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// LOADMISS/STORE QUEUES
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 lq_lsq  lsq(
-   
+
+   //   IU interface to RV for instruction insertion
+   // port 0
    .rv_lq_rv1_i0_vld(rv_lq_rv1_i0_vld),
    .rv_lq_rv1_i0_ucode_preissue(rv_lq_rv1_i0_ucode_preissue),
    .rv_lq_rv1_i0_s3_t(rv_lq_rv1_i0_s3_t),
@@ -1871,7 +2060,8 @@ lq_lsq  lsq(
    .rv_lq_rv1_i0_itag(rv_lq_rv1_i0_itag),
    .rv_lq_rv1_i0_rte_lq(rv_lq_rv1_i0_rte_lq),
    .rv_lq_rv1_i0_rte_sq(rv_lq_rv1_i0_rte_sq),
-   
+
+   // port 1
    .rv_lq_rv1_i1_vld(rv_lq_rv1_i1_vld),
    .rv_lq_rv1_i1_ucode_preissue(rv_lq_rv1_i1_ucode_preissue),
    .rv_lq_rv1_i1_s3_t(rv_lq_rv1_i1_s3_t),
@@ -1880,26 +2070,33 @@ lq_lsq  lsq(
    .rv_lq_rv1_i1_itag(rv_lq_rv1_i1_itag),
    .rv_lq_rv1_i1_rte_lq(rv_lq_rv1_i1_rte_lq),
    .rv_lq_rv1_i1_rte_sq(rv_lq_rv1_i1_rte_sq),
-   
+
+   // FXU0 Data interface
    .xu1_lq_ex2_stq_val(xu1_lq_ex2_stq_val),
    .xu1_lq_ex2_stq_itag(xu1_lq_ex2_stq_itag),
+   //     xu1_lq_ex2_stq_size                => xu1_lq_ex2_stq_size,
    .xu1_lq_ex2_stq_dvc1_cmp(xu1_lq_ex2_stq_dvc1_cmp),
    .xu1_lq_ex2_stq_dvc2_cmp(xu1_lq_ex2_stq_dvc2_cmp),
    .ctl_lsq_ex4_xu1_data(ctl_lsq_ex4_xu1_data),
    .xu1_lq_ex3_illeg_lswx(xu1_lq_ex3_illeg_lswx),
    .xu1_lq_ex3_strg_noop(xu1_lq_ex3_strg_noop),
-   
+
+   // AXU Data interface
    .xu_lq_axu_ex_stq_val(xu_lq_axu_ex_stq_val),
    .xu_lq_axu_ex_stq_itag(xu_lq_axu_ex_stq_itag),
    .xu_lq_axu_exp1_stq_data(xu_lq_axu_exp1_stq_data),
-   
+
+   // RV1 RV Issue Valid
    .rv_lq_vld(rv_lq_vld),
    .rv_lq_isLoad(rv_lq_isLoad),
-   
+
+   // RV is empty indicator
    .rv_lq_rvs_empty(rv_lq_rvs_empty),
-   
+
+   // SPR Directory Read Valid
    .ctl_lsq_rv1_dir_rd_val(ctl_lsq_rv1_dir_rd_val),
-   
+
+   // Execution Pipe Outputs
    .ctl_lsq_ex2_streq_val(ctl_lsq_ex2_streq_val),
    .ctl_lsq_ex2_itag(ctl_lsq_ex2_itag),
    .ctl_lsq_ex2_thrd_id(ctl_lsq_ex2_thrd_id),
@@ -1970,9 +2167,11 @@ lq_lsq  lsq(
    .ctl_lsq_ex6_ldh_dacrw(ctl_lsq_ex6_ldh_dacrw),
    .ctl_lsq_dbg_int_en(ctl_lsq_dbg_int_en),
    .ctl_lsq_ldp_idle(ctl_lsq_ldp_idle),
-   
+
+   // ICSWX Data to be sent to the L2
    .ctl_lsq_stq3_icswx_data(ctl_lsq_stq3_icswx_data),
-   
+
+   // Interface with Local SPR's
    .ctl_lsq_spr_dvc1_dbg(ctl_spr_dvc1_dbg),
    .ctl_lsq_spr_dvc2_dbg(ctl_spr_dvc2_dbg),
    .ctl_lsq_spr_dbcr2_dvc1m(ctl_spr_dbcr2_dvc1m),
@@ -1986,38 +2185,49 @@ lq_lsq  lsq(
    .ctl_lsq_spr_lsucr0_dfwd(ctl_lsq_spr_lsucr0_dfwd),
 
    .ctl_lsq_pf_empty(ctl_lsq_pf_empty),
-   
+
+   //--------------------------------------------------------------
+   // Interface with Commit Pipe Directories
+   //--------------------------------------------------------------
    .dir_arr_wr_enable(dir_arr_wr_enable),
    .dir_arr_wr_way(dir_arr_wr_way),
    .dir_arr_wr_addr(dir_arr_wr_addr),
    .dir_arr_wr_data(dir_arr_wr_data),
    .dir_arr_rd_data1(dir_arr_rd_data1),
-   
+
+   // Data Cache Config
    .xu_lq_spr_xucr0_cls(xu_lq_spr_xucr0_cls),
    .xu_lq_spr_xucr0_cred(xu_lq_spr_xucr0_cred),
-   
+
+   // ICBI ACK Enable
    .iu_lq_spr_iucr0_icbi_ack(iu_lq_spr_iucr0_icbi_ack),
-   
+
+   // STQ4 Data for L2 write
    .dat_lsq_stq4_128data(dat_lsq_stq4_128data),
-   
+
+   // Instruction Fetches
    .iu_lq_request(iu_lq_request),
    .iu_lq_cTag(iu_lq_cTag),
    .iu_lq_ra(iu_lq_ra),
    .iu_lq_wimge(iu_lq_wimge),
    .iu_lq_userdef(iu_lq_userdef),
-   
+
+   // ICBI Interface to IU
    .lq_iu_icbi_val(lq_iu_icbi_val),
    .lq_iu_icbi_addr(lq_iu_icbi_addr),
    .iu_lq_icbi_complete(iu_lq_icbi_complete),
-   
+
+   // ICI Interace
    .lq_iu_ici_val(lq_iu_ici_val),
-   
+
+   // MMU instruction interface
    .mm_lq_lsu_req(mm_lq_lsu_req),
    .mm_lq_lsu_ttype(mm_lq_lsu_ttype),
    .mm_lq_lsu_wimge(mm_lq_lsu_wimge),
    .mm_lq_lsu_u(mm_lq_lsu_u),
    .mm_lq_lsu_addr(mm_lq_lsu_addr),
-   
+
+   // TLBI_COMPLETE is address-less
    .mm_lq_lsu_lpid(mm_lq_lsu_lpid),
    .mm_lq_lsu_gs(mm_lq_lsu_gs),
    .mm_lq_lsu_ind(mm_lq_lsu_ind),
@@ -2029,33 +2239,43 @@ lq_lsq  lsq(
    .lq_pc_stq_quiesce(lq_pc_stq_quiesce),
    .lq_pc_pfetch_quiesce(lq_pc_pfetch_quiesce),
    .lq_mm_lmq_stq_empty(lq_mm_lmq_stq_empty),
-   
+
+   // Zap Machine
    .iu_lq_cp_flush(iu_lq_cp_flush),
-   
+
+   // Next Itag Completion
    .iu_lq_recirc_val(iu_lq_recirc_val),
    .iu_lq_cp_next_itag(iu_lq_cp_next_itag),
-   
+
+   // Complete iTag
    .iu_lq_i0_completed(iu_lq_i0_completed),
    .iu_lq_i0_completed_itag(iu_lq_i0_completed_itag),
    .iu_lq_i1_completed(iu_lq_i1_completed),
    .iu_lq_i1_completed_itag(iu_lq_i1_completed_itag),
-   
+
+   // XER Read for long latency CP_NEXT ops stcx./icswx.
    .xu_lq_xer_cp_rd(xu_lq_xer_cp_rd),
-   
+
+   // Sync Ack
    .an_ac_sync_ack(an_ac_sync_ack),
-   
+
+   // Stcx Complete
    .an_ac_stcx_complete(an_ac_stcx_complete),
    .an_ac_stcx_pass(an_ac_stcx_pass),
-   
+
+   // ICBI ACK
    .an_ac_icbi_ack(an_ac_icbi_ack),
    .an_ac_icbi_ack_thread(an_ac_icbi_ack_thread),
-   
+
+   // Core ID
    .an_ac_coreid(an_ac_coreid),
-   
+
+   // L2 Interface Credit Control
    .an_ac_req_ld_pop(an_ac_req_ld_pop),
    .an_ac_req_st_pop(an_ac_req_st_pop),
    .an_ac_req_st_gather(an_ac_req_st_gather),
-   
+
+   // L2 Interface Reload
    .an_ac_reld_data_vld(an_ac_reld_data_vld),
    .an_ac_reld_core_tag(an_ac_reld_core_tag),
    .an_ac_reld_qw(an_ac_reld_qw),
@@ -2066,26 +2286,32 @@ lq_lsq  lsq(
    .an_ac_reld_l1_dump(an_ac_reld_l1_dump),
    .an_ac_reld_ecc_err(an_ac_reld_ecc_err),
    .an_ac_reld_ecc_err_ue(an_ac_reld_ecc_err_ue),
-   
+
+   // L2 Interface Back Invalidate
    .an_ac_back_inv(an_ac_back_inv),
    .an_ac_back_inv_addr(an_ac_back_inv_addr),
    .an_ac_back_inv_target_bit1(an_ac_back_inv_target_bit1),
    .an_ac_back_inv_target_bit3(an_ac_back_inv_target_bit3),
    .an_ac_back_inv_target_bit4(an_ac_back_inv_target_bit4),
    .an_ac_req_spare_ctrl_a1(an_ac_req_spare_ctrl_a1),
-   
+
+   // Credit Release to IU
    .lq_iu_credit_free(lq_iu_credit_free),
    .sq_iu_credit_free(sq_iu_credit_free),
-   
+
+   // Reservation Station Hold indicator
    .lsq_ctl_rv_hold_all(lsq_ctl_rv_hold_all),
-   
+
+   // Reservation station set barrier indicator
    .lsq_ctl_rv_set_hold(lsq_ctl_rv_set_hold),
    .lsq_ctl_rv_clr_hold(lsq_ctl_rv_clr_hold),
-   
+
+   // Reload Itag Complete
    .lsq_ctl_stq_release_itag_vld(lsq_ctl_stq_release_itag_vld),
    .lsq_ctl_stq_release_itag(lsq_ctl_stq_release_itag),
    .lsq_ctl_stq_release_tid(lsq_ctl_stq_release_tid),
-   
+
+   // Store Queue Completion Report
    .lsq_ctl_stq_cpl_ready(lsq_ctl_stq_cpl_ready),
    .lsq_ctl_stq_cpl_ready_itag(lsq_ctl_stq_cpl_ready_itag),
    .lsq_ctl_stq_cpl_ready_tid(lsq_ctl_stq_cpl_ready_tid),
@@ -2096,18 +2322,22 @@ lq_lsq  lsq(
    .lsq_ctl_stq_dacrw(lsq_ctl_stq_dacrw),
    .ctl_lsq_stq_cpl_blk(ctl_lsq_stq_cpl_blk),
    .ctl_lsq_ex_pipe_full(ctl_lsq_ex_pipe_full),
-   
+
+   // LOADMISS Queue RESTART indicator
    .lsq_ctl_ex5_ldq_restart(lsq_ctl_ex5_ldq_restart),
-   
+
+   // Store Data Forward
    .lsq_ctl_ex5_fwd_val(lsq_ctl_ex5_fwd_val),
    .lsq_ctl_ex5_fwd_data(lsq_ctl_ex5_fwd_data),
-   
+
    .lsq_ctl_sync_in_stq(lsq_ctl_sync_in_stq),
    .lsq_ctl_sync_done(lsq_ctl_sync_done),
-   
+
+   // Store Queue RESTART indicator
    .lsq_ctl_ex5_stq_restart(lsq_ctl_ex5_stq_restart),
    .lsq_ctl_ex5_stq_restart_miss(lsq_ctl_ex5_stq_restart_miss),
-   
+
+   // Interface to completion
    .lq1_iu_execute_vld(lq1_iu_execute_vld),
    .lq1_iu_itag(lq1_iu_itag),
    .lq1_iu_exception_val(lq1_iu_exception_val),
@@ -2117,7 +2347,8 @@ lq_lsq  lsq(
    .lq1_iu_dacr_type(lq1_iu_dacr_type),
    .lq1_iu_dacrw(lq1_iu_dacrw),
    .lq1_iu_perf_events(lq1_iu_perf_events),
-   
+
+   // RELOAD/COMMIT Data Control
    .lsq_dat_stq1_stg_act(lsq_dat_stq1_stg_act),
    .lsq_dat_rel1_data_val(lsq_dat_rel1_data_val),
    .lsq_dat_rel1_qw(lsq_dat_rel1_qw),
@@ -2130,7 +2361,8 @@ lq_lsq  lsq(
    .lsq_dat_stq1_le_mode(lsq_dat_stq1_le_mode),
    .lsq_dat_stq2_blk_req(lsq_dat_stq2_blk_req),
    .lsq_dat_stq2_store_data(lsq_dat_stq2_store_data),
-   
+
+   // RELOAD/COMMIT Directory Control
    .lsq_ctl_stq1_stg_act(lsq_ctl_stq1_stg_act),
    .lsq_ctl_oldest_tid(lsq_ctl_oldest_tid),
    .lsq_ctl_oldest_itag(lsq_ctl_oldest_itag),
@@ -2168,41 +2400,50 @@ lq_lsq  lsq(
    .lsq_ctl_stq4_xucr0_cul(lsq_ctl_stq4_xucr0_cul),
    .lsq_ctl_stq5_itag(lsq_ctl_stq5_itag),
    .lsq_ctl_stq5_tgpr(lsq_ctl_stq5_tgpr),
-   
+
+   // RELOAD Register Control
    .lsq_ctl_rel1_gpr_val(lsq_ctl_rel1_gpr_val),
    .lsq_ctl_rel1_ta_gpr(lsq_ctl_rel1_ta_gpr),
    .lsq_ctl_rel1_upd_gpr(lsq_ctl_rel1_upd_gpr),
    .lsq_ctl_stq1_resv(lsq_ctl_stq1_resv),
-   
+
+   // Illegal LSWX has been determined
    .lsq_ctl_ex3_strg_val(lsq_ctl_ex3_strg_val),
    .lsq_ctl_ex3_strg_noop(lsq_ctl_ex3_strg_noop),
    .lsq_ctl_ex3_illeg_lswx(lsq_ctl_ex3_illeg_lswx),
    .lsq_ctl_ex3_ct_val(lsq_ctl_ex3_ct_val),
    .lsq_ctl_ex3_be_ct(lsq_ctl_ex3_be_ct),
    .lsq_ctl_ex3_le_ct(lsq_ctl_ex3_le_ct),
-   
+
+   // release itag to pfetch
    .odq_pf_report_tid(odq_pf_report_tid),
    .odq_pf_report_itag(odq_pf_report_itag),
    .odq_pf_resolved(odq_pf_resolved),
-   
+
+   // STCX Update
    .lq_xu_cr_l2_we(lq_xu_cr_l2_we),
    .lq_xu_cr_l2_wa(lq_xu_cr_l2_wa),
    .lq_xu_cr_l2_wd(lq_xu_cr_l2_wd),
-   
+
+   // PRF update for reloads
    .lq_xu_axu_rel_le(lq_xu_axu_rel_le),
-   
+
+   // Back-Invalidate
    .lsq_ctl_rv0_back_inv(lsq_ctl_rv0_back_inv),
    .lsq_ctl_rv1_back_inv_addr(lsq_ctl_rv1_back_inv_addr),
-   
+
+   // RV Reload Release Dependent ITAGs
    .lq_rv_itag2_vld(lq_rv_itag2_vld),
    .lq_rv_itag2(lq_rv_itag2),
-   
+
+   // Doorbell Interface
    .lq_xu_dbell_val(lq_xu_dbell_val),
    .lq_xu_dbell_type(lq_xu_dbell_type),
    .lq_xu_dbell_brdcast(lq_xu_dbell_brdcast),
    .lq_xu_dbell_lpid_match(lq_xu_dbell_lpid_match),
    .lq_xu_dbell_pirtag(lq_xu_dbell_pirtag),
-   
+
+   // L2 Interface Outputs
    .ac_an_req_pwr_token(ac_an_req_pwr_token),
    .ac_an_req(ac_an_req),
    .ac_an_req_ra(ac_an_req_ra),
@@ -2220,14 +2461,16 @@ lq_lsq  lsq(
    .ac_an_st_byte_enbl(ac_an_st_byte_enbl),
    .ac_an_st_data(ac_an_st_data),
    .ac_an_st_data_pwr_token(ac_an_st_data_pwr_token),
-   
+
+   // Interface to Pervasive Unit
    .pc_lq_inj_relq_parity(pc_lq_inj_relq_parity),
    .lq_pc_err_relq_parity(lq_pc_err_relq_parity),
    .lq_pc_err_invld_reld(lq_pc_err_invld_reld),
    .lq_pc_err_l2intrf_ecc(lq_pc_err_l2intrf_ecc),
    .lq_pc_err_l2intrf_ue(lq_pc_err_l2intrf_ue),
    .lq_pc_err_l2credit_overrun(lq_pc_err_l2credit_overrun),
-   
+
+   // Pervasive
    .vcs(vdd),
    .vdd(vdd),
    .gnd(gnd),
@@ -2266,7 +2509,8 @@ lq_lsq  lsq(
    .pc_lq_bo_select(pc_lq_bo_select[8:13]),
    .lq_pc_bo_fail(lq_pc_bo_fail[8:13]),
    .lq_pc_bo_diagout(lq_pc_bo_diagout[8:13]),
-   
+
+   // G8T ABIST Control
    .pc_lq_abist_wl64_comp_ena(pc_lq_abist_wl64_comp_ena),
    .pc_lq_abist_g8t_wenb(pc_lq_abist_g8t_wenb),
    .pc_lq_abist_g8t1p_renb_0(pc_lq_abist_g8t1p_renb_0),
@@ -2276,7 +2520,8 @@ lq_lsq  lsq(
    .pc_lq_abist_di_0(pc_lq_abist_di_0),
    .pc_lq_abist_waddr_0(pc_lq_abist_waddr_0[4:9]),
    .pc_lq_abist_raddr_0(pc_lq_abist_raddr_0[3:8]),
-   
+
+   // SCAN Ports
    .abst_scan_in(abst_scan_in[5]),
    .time_scan_in(dat_time_scan_out),
    .repr_scan_in(dat_repr_scan_out),
@@ -2287,6 +2532,9 @@ lq_lsq  lsq(
    .func_scan_out(lsq_func_scan_out[18:24])
 );
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// LOCAL PERVASIVE
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign perv_func_scan_in = lsq_func_scan_out[24];
 assign lq_debug_bus0 = 32'h00000000;
 
@@ -2384,5 +2632,5 @@ lq_perv lq_perv(
 );
 
 assign func_scan_out[18:24] = {lsq_func_scan_out[18:23], perv_func_scan_out};
-   
+
 endmodule

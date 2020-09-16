@@ -7,13 +7,21 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
-
+//  Description:  XU_FX ALU Top
+//
+//*****************************************************************************
 `include "tri_a2o.vh"
 module xu_alu(
+   //-------------------------------------------------------------------
+   // Clocks & Power
+   //-------------------------------------------------------------------
    input [0:`NCLK_WIDTH-1]  nclk,
    inout                    vdd,
    inout                    gnd,
-   
+
+   //-------------------------------------------------------------------
+   // Pervasive
+   //-------------------------------------------------------------------
    input                    d_mode_dc,
    input                    delay_lclkr_dc,
    input                    mpw1_dc_b,
@@ -23,10 +31,13 @@ module xu_alu(
    input                    sg_0,
    input                    scan_in,
    output                   scan_out,
-   
+
+   //-------------------------------------------------------------------
+   // Decode Interface
+   //-------------------------------------------------------------------
    input                    dec_alu_ex1_act,
    input [0:31]             dec_alu_ex1_instr,
-   input                    dec_alu_ex1_sel_isel,		
+   input                    dec_alu_ex1_sel_isel,		// Critical!
    input [0:`GPR_WIDTH/8-1]  dec_alu_ex1_add_rs1_inv,
    input [0:1]              dec_alu_ex2_add_ci_sel,
    input                    dec_alu_ex1_sel_trap,
@@ -35,39 +46,47 @@ module xu_alu(
    input                    dec_alu_ex1_msb_64b_sel,
    input                    dec_alu_ex1_xer_ov_en,
    input                    dec_alu_ex1_xer_ca_en,
-   
-   input [64-`GPR_WIDTH:63]  byp_alu_ex2_rs1,		
+
+   //-------------------------------------------------------------------
+   // Bypass Inputs
+   //-------------------------------------------------------------------
+   input [64-`GPR_WIDTH:63]  byp_alu_ex2_rs1,		// Source Data
    input [64-`GPR_WIDTH:63]  byp_alu_ex2_rs2,
-   input                    byp_alu_ex2_cr_bit,		
+   input                    byp_alu_ex2_cr_bit,		// CR bit for isel
    input [0:9]              byp_alu_ex2_xer,
-   
+
+   //-------------------------------------------------------------------
+   // Bypass Outputs
+   //-------------------------------------------------------------------
    output [64-`GPR_WIDTH:63] alu_byp_ex2_add_rt,
    output [64-`GPR_WIDTH:63] alu_byp_ex3_rt,
    output [0:3]             alu_byp_ex3_cr,
    output [0:9]             alu_byp_ex3_xer,
-   
+
    output                   alu_dec_ex3_trap_val
 );
 
    localparam               msb = 64 - `GPR_WIDTH;
-   wire                     ex2_act_q;		
-   wire                     ex2_sel_isel_q;		
-   wire                     ex2_msb_64b_sel_q;		
-   wire                     ex2_sel_trap_q;		
-   wire                     ex2_sel_cmpl_q;		
-   wire                     ex2_sel_cmp_q;		
-   wire [6:10]              ex2_instr_6to10_q;		
-   wire                     ex2_xer_ov_en_q;		
-   wire                     ex2_xer_ca_en_q;		
-   wire                     ex3_add_ca_q;		
+   // Latches
+   wire                     ex2_act_q;		// input=>dec_alu_ex1_act                 ,act=>1'b1
+   wire                     ex2_sel_isel_q;		// input=>dec_alu_ex1_sel_isel            ,act=>dec_alu_ex1_act
+   wire                     ex2_msb_64b_sel_q;		// input=>dec_alu_ex1_msb_64b_sel         ,act=>dec_alu_ex1_act
+   wire                     ex2_sel_trap_q;		// input=>dec_alu_ex1_sel_trap            ,act=>dec_alu_ex1_act
+   wire                     ex2_sel_cmpl_q;		// input=>dec_alu_ex1_sel_cmpl            ,act=>dec_alu_ex1_act
+   wire                     ex2_sel_cmp_q;		// input=>dec_alu_ex1_sel_cmp             ,act=>dec_alu_ex1_act
+   wire [6:10]              ex2_instr_6to10_q;		// input=>dec_alu_ex1_instr(6 to 10)      ,act=>dec_alu_ex1_act
+   wire                     ex2_xer_ov_en_q;		// input=>dec_alu_ex1_xer_ov_en           ,act=>dec_alu_ex1_act
+   wire                     ex2_xer_ca_en_q;		// input=>dec_alu_ex1_xer_ca_en           ,act=>dec_alu_ex1_act
+   wire                     ex3_add_ca_q;		// input=>ex2_add_ca                      ,act=>ex2_act_q
    wire                     ex2_add_ca;
-   wire                     ex3_add_ovf_q;		
+   wire                     ex3_add_ovf_q;		// input=>ex2_add_ovf                     ,act=>ex2_act_q
    wire                     ex2_add_ovf;
-   wire                     ex3_sel_rot_log_q;		
+   wire                     ex3_sel_rot_log_q;		// input=>ex2_sel_rot_log                 ,act=>ex2_act_q
    wire                     ex2_sel_rot_log;
-   wire [0:9]               ex3_xer_q;		
-   wire                     ex3_xer_ov_en_q;		
-   wire                     ex3_xer_ca_en_q;		
+   wire [0:9]               ex3_xer_q;		// input=>byp_alu_ex2_xer(0 to 9)         ,act=>ex2_act_q
+   wire                     ex3_xer_ov_en_q;		// input=>ex2_xer_ov_en_q                 ,act=>ex2_act_q
+   wire                     ex3_xer_ca_en_q;		// input=>ex2_xer_ca_en_q                 ,act=>ex2_act_q
+   // Scanchains
    localparam               ex2_act_offset = 3;
    localparam               ex2_sel_isel_offset = ex2_act_offset + 1;
    localparam               ex2_msb_64b_sel_offset = ex2_sel_isel_offset + 1;
@@ -87,8 +106,10 @@ module xu_alu(
    wire [0:scan_right-1]    siv;
    wire [0:scan_right-1]    sov;
 
-   
-   
+   //!! bugspray include: xu_alu.bil;
+
+
+   // Signals
    wire [msb:63]            ex2_add_rs1;
    wire [msb:63]            ex2_add_rs2;
    wire [msb:63]            ex2_rot_rs0_b;
@@ -102,31 +123,40 @@ module xu_alu(
    wire [0:3]               ex2_isel_type;
    wire                     ex3_alu_so;
 
+   //---------------------------------------------------------------
+   // Source Buffering
+   //---------------------------------------------------------------
    assign ex2_add_rs1 = byp_alu_ex2_rs1;
    assign ex2_add_rs2 = byp_alu_ex2_rs2;
 
    assign ex2_rot_rs0_b = (~byp_alu_ex2_rs1);
    assign ex2_rot_rs1_b = (~byp_alu_ex2_rs2);
 
+   //---------------------------------------------------------------
+   // Target Muxing/Buffering
+   //---------------------------------------------------------------
    assign alu_byp_ex3_rt = ex3_alu_rt;
 
-   assign ex3_alu_ca = (ex3_sel_rot_log_q == 1'b1) ? ex3_rot_ca : 
+   assign ex3_alu_ca = (ex3_sel_rot_log_q == 1'b1) ? ex3_rot_ca :
                        ex3_add_ca_q;
    assign alu_byp_ex3_cr[3] = ex3_alu_so;
    assign alu_byp_ex3_xer[0] = ex3_alu_so;
 
-   assign ex3_alu_so = (ex3_xer_ov_en_q == 1'b1) ? ex3_add_ovf_q | ex3_xer_q[0] : 
+   assign ex3_alu_so = (ex3_xer_ov_en_q == 1'b1) ? ex3_add_ovf_q | ex3_xer_q[0] :
                        ex3_xer_q[0];
 
-   assign alu_byp_ex3_xer[1] = (ex3_xer_ov_en_q == 1'b1) ? ex3_add_ovf_q : 
+   assign alu_byp_ex3_xer[1] = (ex3_xer_ov_en_q == 1'b1) ? ex3_add_ovf_q :
                                ex3_xer_q[1];
 
-   assign alu_byp_ex3_xer[2] = (ex3_xer_ca_en_q == 1'b1) ? ex3_alu_ca : 
+   assign alu_byp_ex3_xer[2] = (ex3_xer_ca_en_q == 1'b1) ? ex3_alu_ca :
                                ex3_xer_q[2];
    assign alu_byp_ex3_xer[3:9] = ex3_xer_q[3:9];
 
    assign alu_byp_ex2_add_rt = ex2_add_rt;
 
+   //---------------------------------------------------------------
+   // Add
+   //---------------------------------------------------------------
 
    xu_alu_add add(
       .nclk(nclk),
@@ -151,8 +181,11 @@ module xu_alu(
       .ex2_add_ca(ex2_add_ca)
    );
 
-   assign ex2_add_ci = (dec_alu_ex2_add_ci_sel == 2'b10) ? byp_alu_ex2_xer[2] : 
-                       (dec_alu_ex2_add_ci_sel == 2'b01) ? 1'b1 : 
+   //---------------------------------------------------------------
+   // Rotate / Logical
+   //---------------------------------------------------------------
+   assign ex2_add_ci = (dec_alu_ex2_add_ci_sel == 2'b10) ? byp_alu_ex2_xer[2] :
+                       (dec_alu_ex2_add_ci_sel == 2'b01) ? 1'b1 :
                                                            1'b0;
 
    tri_st_rot rot(
@@ -172,11 +205,15 @@ module xu_alu(
       .ex1_instr(dec_alu_ex1_instr),
       .ex2_isel_fcn(ex2_isel_fcn),
       .ex2_sel_rot_log(ex2_sel_rot_log),
+      // Source Inputs
       .ex2_rs0_b(ex2_rot_rs0_b),
       .ex2_rs1_b(ex2_rot_rs1_b),
+      // Other ALU Inputs for muxing
       .ex2_alu_rt(ex2_add_rt),
+      // EX3 Bypass Tap
       .ex3_rt(ex3_alu_rt),
       .ex2_log_rt(),
+      // EX2 Bypass Tap (logicals only)
       .ex3_xer_ca(ex3_rot_ca),
       .ex3_cr_eq()
    );
@@ -184,6 +221,9 @@ module xu_alu(
    assign ex2_isel_type = {1'b0, (~(byp_alu_ex2_cr_bit)), byp_alu_ex2_cr_bit, 1'b1};
    assign ex2_isel_fcn = ex2_sel_isel_q==1'b1 ? ex2_isel_type : 4'b0;
 
+   //---------------------------------------------------------------
+   // Compare / Trap
+   //---------------------------------------------------------------
 
    xu_alu_cmp cmp(
       .nclk(nclk),
@@ -214,6 +254,9 @@ module xu_alu(
       .ex3_trap_val(alu_dec_ex3_trap_val)
    );
 
+   //---------------------------------------------------------------
+   // Latches
+   //---------------------------------------------------------------
 
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ex2_act_latch(
       .nclk(nclk),

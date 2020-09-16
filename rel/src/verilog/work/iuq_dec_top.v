@@ -9,7 +9,13 @@
 
 `timescale 1 ns / 1 ns
 
-
+//********************************************************************
+//*
+//* TITLE:
+//*
+//* NAME: iuq_dec_top.vhdl
+//*
+//*********************************************************************
 
 
 `include "tri_a2o.vh"
@@ -29,23 +35,23 @@ module iuq_dec_top(
    input                         mpw2_b,
    input [0:3]                   scan_in,
    output [0:3]                  scan_out,
-   
+
    input                         xu_iu_epcr_dgtmi,
    input                         xu_iu_msrp_uclep,
    input                         xu_iu_msr_pr,
    input                         xu_iu_msr_gs,
    input                         xu_iu_msr_ucle,
    input                         xu_iu_ccr2_ucode_dis,
-   
+
    input [0:31]                  spr_dec_mask,
    input [0:31]                  spr_dec_match,
    input [0:7]                   iu_au_config_iucr,
    input                         mm_iu_tlbwe_binv,
-   
+
    input                         cp_iu_iu4_flush,
    input			 uc_ib_iu3_flush_all,
    input                         br_iu_redirect,
-   
+
    input                         ib_id_iu4_0_valid,
    input [62-`EFF_IFAR_WIDTH:61]  ib_id_iu4_0_ifar,
    input [62-`EFF_IFAR_WIDTH:61]  ib_id_iu4_0_bta,
@@ -55,7 +61,7 @@ module iuq_dec_top(
    input                         ib_id_iu4_0_isram,
    input [0:31]                  ib_id_iu4_0_fuse_data,
    input                         ib_id_iu4_0_fuse_val,
-   
+
    input                         ib_id_iu4_1_valid,
    input [62-`EFF_IFAR_WIDTH:61]  ib_id_iu4_1_ifar,
    input [62-`EFF_IFAR_WIDTH:61]  ib_id_iu4_1_bta,
@@ -65,9 +71,10 @@ module iuq_dec_top(
    input                         ib_id_iu4_1_isram,
    input [0:31]                  ib_id_iu4_1_fuse_data,
    input                         ib_id_iu4_1_fuse_val,
-   
+
    output                        id_ib_iu4_stall,
-   
+
+   // Decoded instruction to send to rename
    output                        fdec_frn_iu5_i0_vld,
    output [0:2]                  fdec_frn_iu5_i0_ucode,
    output                        fdec_frn_iu5_i0_2ucode,
@@ -127,7 +134,7 @@ module iuq_dec_top(
    output                        fdec_frn_iu5_i0_btb_entry,
    output [0:1]                  fdec_frn_iu5_i0_btb_hist,
    output                        fdec_frn_iu5_i0_bta_val,
-   
+
    output                        fdec_frn_iu5_i1_vld,
    output [0:2]                  fdec_frn_iu5_i1_ucode,
    output                        fdec_frn_iu5_i1_fuse_nop,
@@ -186,10 +193,11 @@ module iuq_dec_top(
    output                        fdec_frn_iu5_i1_btb_entry,
    output [0:1]                  fdec_frn_iu5_i1_btb_hist,
    output                        fdec_frn_iu5_i1_bta_val,
-   
+
    input                         frn_fdec_iu5_stall
    );
 
+   //AXU Interface
    wire                          au_iu_iu4_i0_i_dec_b;
    wire [0:2]                    au_iu_iu4_i0_ucode;
    wire                          au_iu_iu4_i0_t1_v;
@@ -226,8 +234,8 @@ module iuq_dec_top(
    wire                          au_iu_iu4_i0_rte_axu0;
    wire                          au_iu_iu4_i0_rte_axu1;
    wire                          au_iu_iu4_i0_no_ram;
-   
-   wire                          au_iu_iu4_i1_i_dec_b;		
+
+   wire                          au_iu_iu4_i1_i_dec_b;		// decoded a valid FU instruction (inverted) 0509
    wire [0:2]                    au_iu_iu4_i1_ucode;
    wire                          au_iu_iu4_i1_t1_v;
    wire [0:2]                    au_iu_iu4_i1_t1_t;
@@ -263,14 +271,14 @@ module iuq_dec_top(
    wire                          au_iu_iu4_i1_rte_axu0;
    wire                          au_iu_iu4_i1_rte_axu1;
    wire                          au_iu_iu4_i1_no_ram;
-   
+
    wire                          fdec_frn_iu5_i0_vld_int;
    wire                          iu5_stall;
-   
+
    assign iu5_stall = frn_fdec_iu5_stall & fdec_frn_iu5_i0_vld_int;
    assign id_ib_iu4_stall = iu5_stall;
-   assign fdec_frn_iu5_i0_vld = fdec_frn_iu5_i0_vld_int;      
-      
+   assign fdec_frn_iu5_i0_vld = fdec_frn_iu5_i0_vld_int;
+
    iuq_idec  fx_dec0(
   		.vdd(vdd),
   		.gnd(gnd),
@@ -286,7 +294,7 @@ module iuq_dec_top(
   		.mpw2_b(mpw2_b),
   		.scan_in(scan_in[0]),
   		.scan_out(scan_out[0]),
-  		
+
   		.xu_iu_epcr_dgtmi(xu_iu_epcr_dgtmi),
   		.xu_iu_msrp_uclep(xu_iu_msrp_uclep),
   		.xu_iu_msr_pr(xu_iu_msr_pr),
@@ -294,14 +302,14 @@ module iuq_dec_top(
   		.xu_iu_msr_ucle(xu_iu_msr_ucle),
   		.xu_iu_ccr2_ucode_dis(xu_iu_ccr2_ucode_dis),
   		.mm_iu_tlbwe_binv(mm_iu_tlbwe_binv),
-  		
+
   		.spr_dec_mask(spr_dec_mask),
   		.spr_dec_match(spr_dec_match),
-  		
+
   		.cp_iu_iu4_flush(cp_iu_iu4_flush),
                 .uc_ib_iu3_flush_all(uc_ib_iu3_flush_all),
   		.br_iu_redirect(br_iu_redirect),
-  		
+
   		.ib_id_iu4_valid(ib_id_iu4_0_valid),
   		.ib_id_iu4_ifar(ib_id_iu4_0_ifar),
   		.ib_id_iu4_bta(ib_id_iu4_0_bta),
@@ -311,7 +319,8 @@ module iuq_dec_top(
   		.ib_id_iu4_isram(ib_id_iu4_0_isram),
   		.ib_id_iu4_fuse_data(ib_id_iu4_0_fuse_data),
   		.ib_id_iu4_fuse_val(ib_id_iu4_0_fuse_val),
-  		
+
+  		//AXU Interface
   		.au_iu_iu4_i_dec_b(au_iu_iu4_i0_i_dec_b),
   		.au_iu_iu4_ucode(au_iu_iu4_i0_ucode),
   		.au_iu_iu4_t1_v(au_iu_iu4_i0_t1_v),
@@ -348,7 +357,8 @@ module iuq_dec_top(
   		.au_iu_iu4_rte_axu0(au_iu_iu4_i0_rte_axu0),
   		.au_iu_iu4_rte_axu1(au_iu_iu4_i0_rte_axu1),
   		.au_iu_iu4_no_ram(au_iu_iu4_i0_no_ram),
-  		
+
+  		// Decoded instruction to send to rename
   		.fdec_frn_iu5_ix_vld(fdec_frn_iu5_i0_vld_int),
   		.fdec_frn_iu5_ix_ucode(fdec_frn_iu5_i0_ucode),
   		.fdec_frn_iu5_ix_2ucode(fdec_frn_iu5_i0_2ucode),
@@ -408,10 +418,10 @@ module iuq_dec_top(
   		.fdec_frn_iu5_ix_btb_entry(fdec_frn_iu5_i0_btb_entry),
   		.fdec_frn_iu5_ix_btb_hist(fdec_frn_iu5_i0_btb_hist),
   		.fdec_frn_iu5_ix_bta_val(fdec_frn_iu5_i0_bta_val),
-  		
+
   		.frn_fdec_iu5_stall(iu5_stall)
-   );      
-      
+   );
+
    iuq_idec  fx_dec1(
    	.vdd(vdd),
    	.gnd(gnd),
@@ -427,7 +437,7 @@ module iuq_dec_top(
    	.mpw2_b(mpw2_b),
    	.scan_in(scan_in[1]),
    	.scan_out(scan_out[1]),
-   	
+
    	.xu_iu_epcr_dgtmi(xu_iu_epcr_dgtmi),
    	.xu_iu_msrp_uclep(xu_iu_msrp_uclep),
    	.xu_iu_msr_pr(xu_iu_msr_pr),
@@ -435,14 +445,14 @@ module iuq_dec_top(
    	.xu_iu_msr_ucle(xu_iu_msr_ucle),
    	.xu_iu_ccr2_ucode_dis(xu_iu_ccr2_ucode_dis),
    	.mm_iu_tlbwe_binv(mm_iu_tlbwe_binv),
-   	
+
    	.spr_dec_mask(spr_dec_mask),
    	.spr_dec_match(spr_dec_match),
-   	
+
    	.cp_iu_iu4_flush(cp_iu_iu4_flush),
         .uc_ib_iu3_flush_all(uc_ib_iu3_flush_all),
    	.br_iu_redirect(br_iu_redirect),
-   	
+
    	.ib_id_iu4_valid(ib_id_iu4_1_valid),
    	.ib_id_iu4_ifar(ib_id_iu4_1_ifar),
    	.ib_id_iu4_bta(ib_id_iu4_1_bta),
@@ -452,7 +462,8 @@ module iuq_dec_top(
    	.ib_id_iu4_isram(ib_id_iu4_1_isram),
    	.ib_id_iu4_fuse_data(ib_id_iu4_1_fuse_data),
    	.ib_id_iu4_fuse_val(ib_id_iu4_1_fuse_val),
-   	
+
+   	//AXU Interface
    	.au_iu_iu4_i_dec_b(au_iu_iu4_i1_i_dec_b),
    	.au_iu_iu4_ucode(au_iu_iu4_i1_ucode),
    	.au_iu_iu4_t1_v(au_iu_iu4_i1_t1_v),
@@ -489,7 +500,8 @@ module iuq_dec_top(
    	.au_iu_iu4_rte_axu0(au_iu_iu4_i1_rte_axu0),
    	.au_iu_iu4_rte_axu1(au_iu_iu4_i1_rte_axu1),
    	.au_iu_iu4_no_ram(au_iu_iu4_i1_no_ram),
-   	
+
+   	// Decoded instruction to send to rename
    	.fdec_frn_iu5_ix_vld(fdec_frn_iu5_i1_vld),
    	.fdec_frn_iu5_ix_ucode(fdec_frn_iu5_i1_ucode),
    	.fdec_frn_iu5_ix_2ucode(),
@@ -549,11 +561,11 @@ module iuq_dec_top(
    	.fdec_frn_iu5_ix_btb_entry(fdec_frn_iu5_i1_btb_entry),
    	.fdec_frn_iu5_ix_btb_hist(fdec_frn_iu5_i1_btb_hist),
    	.fdec_frn_iu5_ix_bta_val(fdec_frn_iu5_i1_bta_val),
-   	
+
    	.frn_fdec_iu5_stall(iu5_stall)
-   );      
-      
-   iuq_axu_fu_dec  axu_dec0(      
+   );
+
+   iuq_axu_fu_dec  axu_dec0(
 	   .vdd(vdd),
 	   .gnd(gnd),
 	   .nclk(nclk),
@@ -568,7 +580,7 @@ module iuq_dec_top(
 	   .delay_lclkr(delay_lclkr),
 	   .mpw1_b(mpw1_b),
 	   .mpw2_b(mpw2_b),
-	   
+
 	   .iu_au_iu4_isram(ib_id_iu4_0_isram),
 	   .iu_au_ucode_restart(1'b0),
 	   .iu_au_config_iucr(iu_au_config_iucr),
@@ -613,8 +625,8 @@ module iuq_dec_top(
 	   .au_iu_iu4_rte_axu0(au_iu_iu4_i0_rte_axu0),
 	   .au_iu_iu4_rte_axu1(au_iu_iu4_i0_rte_axu1),
 	   .au_iu_iu4_no_ram(au_iu_iu4_i0_no_ram)
-   );      
-      
+   );
+
    iuq_axu_fu_dec  axu_dec1(
    	.vdd(vdd),
    	.gnd(gnd),
@@ -630,7 +642,7 @@ module iuq_dec_top(
    	.delay_lclkr(delay_lclkr),
    	.mpw1_b(mpw1_b),
    	.mpw2_b(mpw2_b),
-   	
+
    	.iu_au_iu4_isram(ib_id_iu4_1_isram),
    	.iu_au_ucode_restart(1'b0),
    	.iu_au_config_iucr(iu_au_config_iucr),
@@ -676,5 +688,5 @@ module iuq_dec_top(
    	.au_iu_iu4_rte_axu1(au_iu_iu4_i1_rte_axu1),
    	.au_iu_iu4_no_ram(au_iu_iu4_i1_no_ram)
    );
-      
+
 endmodule

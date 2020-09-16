@@ -7,6 +7,9 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU CPL - Configurable Flush Delay Counter
+//
+//*****************************************************************************
 `include "tri_a2o.vh"
 
 module xu_fctr
@@ -18,7 +21,7 @@ module xu_fctr
 )
 (
    input [0:`NCLK_WIDTH-1] nclk,
-   
+
    input                   force_t,
    input                   thold_b,
    input                   sg,
@@ -26,25 +29,28 @@ module xu_fctr
    input                   delay_lclkr,
    input                   mpw1_b,
    input                   mpw2_b,
-   
+
    input                   scin,
    output                  scout,
-   
+
    input [0:WIDTH-1]       din,
    output [0:WIDTH-1]      dout,
    input [0:DELAY_WIDTH-1] delay,
-   
+
    inout                   vdd,
    inout                   gnd
 );
-   
-   
+
+
+   // Latches
    wire [0:DELAY_WIDTH-1]  delay_q[0:WIDTH-1];
    wire [0:DELAY_WIDTH-1]  delay_d[0:WIDTH-1];
+   // Scanchains
    localparam              delay_offset = 0;
    localparam              scan_right = delay_offset + DELAY_WIDTH*WIDTH;
    wire [0:scan_right-1]   siv;
    wire [0:scan_right-1]   sov;
+   // Signals
    wire [0:WIDTH-1]     set;
    wire [0:WIDTH-1]     zero_b;
    wire [0:WIDTH-1]     act;
@@ -62,15 +68,15 @@ module xu_fctr
          if (CLOCKGATE == 0) begin : clockgate_0
             assign act[t] = set[t] | zero_b[t];
 
-            assign delay_d[t] = ({set[t], zero_b[t]} == 2'b11) ? delay : 
-                                ({set[t], zero_b[t]} == 2'b10) ? delay : 
-                                ({set[t], zero_b[t]} == 2'b01) ? delay_m1 : 
+            assign delay_d[t] = ({set[t], zero_b[t]} == 2'b11) ? delay :
+                                ({set[t], zero_b[t]} == 2'b10) ? delay :
+                                ({set[t], zero_b[t]} == 2'b01) ? delay_m1 :
                                 delay_q[t];
          end
          if (CLOCKGATE == 1) begin : clockgate_1
             assign act[t] = set[t] | zero_b[t];
 
-            assign delay_d[t] = (set[t] == 1'b1) ? delay : 
+            assign delay_d[t] = (set[t] == 1'b1) ? delay :
                                 delay_m1;
          end
 
@@ -80,8 +86,8 @@ module xu_fctr
          if (PASSTHRU == 0) begin : PASSTHRU_gen_0
             assign dout[t] = zero_b[t];
          end
-   
-   
+
+
          tri_rlmreg_p #(.WIDTH(DELAY_WIDTH), .INIT(0), .NEEDS_SRESET(1)) delay_latch(
             .nclk(nclk),
             .vd(vdd),

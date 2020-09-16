@@ -9,13 +9,36 @@
 
 `timescale 1 ns / 1 ns
 
+//
+//  Description:  Store Queue
+//
+//*****************************************************************************
 
+// ##########################################################################################
+// Contents
+// 1) Load Queue
+// 2) Store
+// 3) Load/Store Queue Control
+// ##########################################################################################
 
 `include "tri_a2o.vh"
 
-
-
-
+  // `define                                                   `EXPAND_TYPE   2;
+  // `define                                                   `GPR_WIDTH_ENC   6;		// Register Mode 5   32bit, 6   64bit
+  // `define                                                   `STQ_ENTRIES   12;		// Store Queue Size
+  // `define                                                   STQ_FWD_ENTRIES   4;		// number of stq entries that can be forwarded from
+  // `define                                                   `STQ_ENTRIES_ENC   4;		// Store Queue Encoded Size
+  // `define                                                   STQ_DATA_SIZE   64;		// 64 or 128 Bit store data sizes supported
+  // `define                                                   `ITAG_SIZE_ENC   7;		// ITAG size
+  // `define                                                   `CR_POOL_ENC   5;		// Encode of CR rename pool size
+  // `define                                                   `GPR_POOL_ENC   6;
+  // `define                                                   AXU_SPARE_ENC   3;
+  // `define                                                   THREADS_POOL_ENC   1;
+  // `define                                                   DC_SIZE   15;		// 14  > 16K L1D$, 15  > 32K L1D$
+  // `define                                                   CL_SIZE   6;		// 6  > 64B CLINE, 7  > 128B CLINE
+  // `define                                                   REAL_IFAR_WIDTH   42;		// real addressing bits
+  // `define                                                   `THREADS   2;
+  // `define                                                   LMQ_ENTRIES   8;
 
 module lq_stq(
    rv_lq_rv1_i0_vld,
@@ -178,7 +201,7 @@ module lq_stq(
    lsq_ctl_ex3_illeg_lswx,
    lsq_ctl_ex3_ct_val,
    lsq_ctl_ex3_be_ct,
-   lsq_ctl_ex3_le_ct,		    
+   lsq_ctl_ex3_le_ct,
    lsq_ctl_stq1_resv,
    stq_stq2_blk_req,
    lsq_ctl_ex5_fwd_data,
@@ -225,21 +248,26 @@ module lq_stq(
    scan_out
 );
 
+   //   IU interface to RV for instruction insertion
+   // port 0
    input [0:`THREADS-1]                                        rv_lq_rv1_i0_vld;
    input                                                       rv_lq_rv1_i0_ucode_preissue;
    input [0:2]                                                 rv_lq_rv1_i0_s3_t;
    input                                                       rv_lq_rv1_i0_rte_sq;
    input [0:`ITAG_SIZE_ENC-1]                                  rv_lq_rv1_i0_itag;
-   
+
+   // port 1
    input [0:`THREADS-1]                                        rv_lq_rv1_i1_vld;
    input                                                       rv_lq_rv1_i1_ucode_preissue;
    input [0:2]                                                 rv_lq_rv1_i1_s3_t;
    input                                                       rv_lq_rv1_i1_rte_sq;
    input [0:`ITAG_SIZE_ENC-1]                                  rv_lq_rv1_i1_itag;
-   
+
+   // LQ RV Snoop
    input [0:`THREADS-1]                                        rv_lq_vld;
    input                                                       rv_lq_isLoad;
-      
+
+   // FXU0 Data interface
    input [0:`THREADS-1]                                        xu1_lq_ex2_stq_val;
    input [0:`ITAG_SIZE_ENC-1]                                  xu1_lq_ex2_stq_itag;
    input [(64-(2**`GPR_WIDTH_ENC))/8:7]                        xu1_lq_ex2_stq_dvc1_cmp;
@@ -247,11 +275,13 @@ module lq_stq(
    input [64-(2**`GPR_WIDTH_ENC):63]                           ctl_lsq_ex4_xu1_data;
    input                                                       xu1_lq_ex3_illeg_lswx;
    input                                                       xu1_lq_ex3_strg_noop;
-   
+
+   // AXU Data interface
    input [0:`THREADS-1]                                        xu_lq_axu_ex_stq_val;
    input [0:`ITAG_SIZE_ENC-1]                                  xu_lq_axu_ex_stq_itag;
    input [(128-`STQ_DATA_SIZE):127]                            xu_lq_axu_exp1_stq_data;
-   
+
+   // Store Request Control (data into q)
    input [0:`ITAG_SIZE_ENC-1]                                  ctl_lsq_ex2_itag;
    input [0:`THREADS-1]                                        ctl_lsq_ex2_thrd_id;
    input [0:15]                                                ctl_lsq_ex3_byte_en;
@@ -264,7 +294,7 @@ module lq_stq(
    input [0:`THREADS-1]                                        ctl_lsq_ex3_wchkall_val;
    input [0:2]                                                 ctl_lsq_ex3_opsize;
    input [64-`REAL_IFAR_WIDTH:63]                              ctl_lsq_ex4_p_addr;
-   input                                                       ctl_lsq_ex4_cline_chk;		
+   input                                                       ctl_lsq_ex4_cline_chk;		// cacheline op
    input [0:4]                                                 ctl_lsq_ex4_wimge;
    input                                                       ctl_lsq_ex4_byte_swap;
    input                                                       ctl_lsq_ex4_is_sync;
@@ -284,7 +314,7 @@ module lq_stq(
    input                                                       ctl_lsq_ex4_is_cinval;
    input                                                       ctl_lsq_ex5_lock_clr;
    input [0:5]                                                 ctl_lsq_ex5_ttype;
-   input                                                       ctl_lsq_ex5_axu_val;		
+   input                                                       ctl_lsq_ex5_axu_val;		// XU;AXU type operation
    input                                                       ctl_lsq_ex5_is_epid;
    input [0:3]                                                 ctl_lsq_ex5_usr_def;
    input [0:1]                                                 ctl_lsq_ex5_l_fld;
@@ -294,28 +324,35 @@ module lq_stq(
    input                                                       ctl_lsq_ex5_load_hit;
    input                                                       ctl_lsq_ex5_flush_req;
    input                                                       ctl_lsq_rv1_dir_rd_val;
-   
+
    input [0:`LMQ_ENTRIES-1]                                    ldq_stq_ldm_cpl;
    input [0:`LMQ_ENTRIES-1]                                    ldq_stq_ex5_ldm_hit;
    input [0:`LMQ_ENTRIES-1]                                    ldq_stq_ex5_ldm_entry;
    input                                                       ldq_stq_stq4_dir_upd;
    input [64-(`DC_SIZE-3):57]                                  ldq_stq_stq4_cclass;
-   
+
+   // Age Detection
+   // store tag used when instruction was inserted to store queue
    output [0:`STQ_ENTRIES_ENC-1]                               stq_odq_i0_stTag;
    output [0:`STQ_ENTRIES_ENC-1]                               stq_odq_i1_stTag;
-   
+
+   // store tag is committed; remove from order queue and dont compare against it
    output                                                      stq_odq_stq4_stTag_inval;
    output [0:`STQ_ENTRIES_ENC-1]                               stq_odq_stq4_stTag;
-   
+
+   // order queue closest oldest store to the ex2 load request
    input                                                       odq_stq_ex2_nxt_oldest_val;
    input [0:`STQ_ENTRIES-1]                                    odq_stq_ex2_nxt_oldest_stTag;
-   
+
+   // order queue closest youngest store to the ex2 load request
    input                                                       odq_stq_ex2_nxt_youngest_val;
    input [0:`STQ_ENTRIES-1]                                    odq_stq_ex2_nxt_youngest_stTag;
-   
+
+   // store tag is resolved from odq allow stq to commit
    input                                                       odq_stq_resolved;
    input [0:`STQ_ENTRIES-1]                                    odq_stq_stTag;
-   
+
+   // Interface with Local SPR's
    input [64-(2**`GPR_WIDTH_ENC):63]                           ctl_lsq_spr_dvc1_dbg;
    input [64-(2**`GPR_WIDTH_ENC):63]                           ctl_lsq_spr_dvc2_dbg;
    input [0:2*`THREADS-1]                                      ctl_lsq_spr_dbcr2_dvc1m;
@@ -323,7 +360,8 @@ module lq_stq(
    input [0:2*`THREADS-1]                                      ctl_lsq_spr_dbcr2_dvc2m;
    input [0:8*`THREADS-1]                                      ctl_lsq_spr_dbcr2_dvc2be;
    input [0:`THREADS-1]                                        ctl_lsq_dbg_int_en;
-   
+
+   // Completion Inputs
    input [0:`THREADS-1]                                        iu_lq_cp_next_val;
    input [0:(`ITAG_SIZE_ENC*`THREADS)-1]                       iu_lq_cp_next_itag;
    input [0:`THREADS-1]                                        iu_lq_cp_flush;
@@ -332,6 +370,7 @@ module lq_stq(
    input [0:`THREADS-1]                                        iu_lq_i1_completed;
    input [0:(`ITAG_SIZE_ENC*`THREADS)-1]                       iu_lq_i1_completed_itag;
 
+   // Store Queue Completion Report
    output                                                      lsq_ctl_stq_cpl_ready;
    output [0:`ITAG_SIZE_ENC-1]                                 lsq_ctl_stq_cpl_ready_itag;
    output [0:`THREADS-1]                                       lsq_ctl_stq_cpl_ready_tid;
@@ -342,28 +381,38 @@ module lq_stq(
    output [0:3]                                                lsq_ctl_stq_dacrw;
    input                                                       ctl_lsq_stq_cpl_blk;
    input                                                       ctl_lsq_ex_pipe_full;
-   
+
+   // Store Queue is empty
    output [0:`THREADS-1]                                       stq_ldq_empty;
-   
+
+   // L2 Credits Available
    input                                                       arb_stq_cred_avail;
-   
-   input                                                       xu_lq_spr_xucr0_cls;		
-   
+
+   // Data Cache Config
+   input                                                       xu_lq_spr_xucr0_cls;		// Data Cache Line Size Mode
+
+   // ICBI ACK Enable
    input                                                       iu_lq_spr_iucr0_icbi_ack;
-   
+
+   // LSUCR0 Config Bits
    input [0:2]                                                 ctl_lsq_spr_lsucr0_sca;
    input                                                       ctl_lsq_spr_lsucr0_dfwd;
-   
+
+   // Interface to Store Queue (reload block)
    input                                                       ldq_stq_rel1_blk_store;
-   
+
+   // Reservation station hold (times for forcing a hole)
    output                                                      stq_hold_all_req;
-   
+
+   // Reservation station set barrier indicator
    output                                                      stq_rv_set_hold;
    output [0:`THREADS-1]                                       stq_rv_clr_hold;
-   
+
+   // STORE Queue RESTART indicator
    output                                                      lsq_ctl_ex5_stq_restart;
    output                                                      lsq_ctl_ex5_stq_restart_miss;
-   
+
+   // STQ Request to the L2
    output                                                      stq_arb_st_req_avail;
    output                                                      stq_arb_stq3_cmmt_val;
    output                                                      stq_arb_stq3_cmmt_reject;
@@ -378,8 +427,9 @@ module lq_stq(
    output [0:4]                                                stq_arb_stq3_cTag;
    output reg                                                  stq_arb_stq1_byte_swap;
    output reg [0:`THREADS-1]                                   stq_arb_stq1_thrd_id;
-   
-   output                                                      stq_dat_stq1_stg_act;		
+
+   // Store Commit Data Control
+   output                                                      stq_dat_stq1_stg_act;		// ACT Pin for DAT
    output                                                      lsq_dat_stq1_val;
    output                                                      lsq_dat_stq1_mftgpr_val;
    output reg                                                  lsq_dat_stq1_store_val;
@@ -390,8 +440,9 @@ module lq_stq(
    output [64-`REAL_IFAR_WIDTH:63]                             stq_arb_stq1_p_addr;
    output reg                                                  stq_arb_stq1_wimge_i;
    output reg [(128-`STQ_DATA_SIZE):127]                       stq_arb_stq1_store_data;
-   
-   output                                                      stq_ctl_stq1_stg_act;		
+
+   // Store Commit Directory Control
+   output                                                      stq_ctl_stq1_stg_act;		// ACT Pin for CTL
    output                                                      lsq_ctl_stq1_val;
    output                                                      lsq_ctl_stq1_mftgpr_val;
    output                                                      lsq_ctl_stq1_mfdpf_val;
@@ -406,69 +457,81 @@ module lq_stq(
    output reg [0:`ITAG_SIZE_ENC-1]                             lsq_ctl_stq5_itag;
    output reg [0:`AXU_SPARE_ENC+`GPR_POOL_ENC+`THREADS_POOL_ENC-1] lsq_ctl_stq5_tgpr;
    input                                                       ctl_lsq_stq4_perr_reject;
-   
-   output                                                      lsq_ctl_ex3_strg_val;		
-   output                                                      lsq_ctl_ex3_strg_noop;		
-   output                                                      lsq_ctl_ex3_illeg_lswx;		
-   output                                                      lsq_ctl_ex3_ct_val;		    
-   output [0:5]                                                lsq_ctl_ex3_be_ct;		    
-   output [0:5]                                                lsq_ctl_ex3_le_ct;		    
-   
+
+   // Illegal LSWX has been determined
+   output                                                      lsq_ctl_ex3_strg_val;		// STQ has checked XER valid
+   output                                                      lsq_ctl_ex3_strg_noop;		// STQ detected a noop of LSWX/STSWX
+   output                                                      lsq_ctl_ex3_illeg_lswx;		// STQ detected illegal form of LSWX
+   output                                                      lsq_ctl_ex3_ct_val;		    // ICSWX Data is valid
+   output [0:5]                                                lsq_ctl_ex3_be_ct;		    // Big Endian Coprocessor Type Select
+   output [0:5]                                                lsq_ctl_ex3_le_ct;		    // Little Endian Coprocessor Type Select
+
+   // Store Commit Control
    output reg                                                  lsq_ctl_stq1_resv;
    output                                                      stq_stq2_blk_req;
-   
+
    output [(128-`STQ_DATA_SIZE):127]                           lsq_ctl_ex5_fwd_data;
    output                                                      lsq_ctl_ex5_fwd_val;
    output [0:1]                                                lsq_ctl_ex6_stq_events;
    output [0:(3*`THREADS)+2]                                   lsq_perv_stq_events;
-   
+
    output                                                      lsq_ctl_sync_in_stq;
    output                                                      lsq_ctl_sync_done;
-   
+
    output [0:`THREADS-1]                                       sq_iu_credit_free;
-   
+
    input [0:`THREADS-1]                                        an_ac_sync_ack;
-   
+
+   // ICBI interface
    output [0:`THREADS-1]                                       lq_iu_icbi_val;
    output [64-`REAL_IFAR_WIDTH:57]                             lq_iu_icbi_addr;
    input [0:`THREADS-1]                                        iu_lq_icbi_complete;
-   
+
+   // ICI Interace
    output                                                      lq_iu_ici_val;
-   
+
+   // Back-Invalidate Valid
    input                                                       l2_back_inv_val;
    input [64-(`DC_SIZE-3):63-`CL_SIZE]                         l2_back_inv_addr;
-   
+
+   // L2 Interface Back Invalidate
    input                                                       an_ac_back_inv;
    input                                                       an_ac_back_inv_target_bit3;
    input [58:60]                                               an_ac_back_inv_addr;
    input [62:63]                                               an_ac_back_inv_addr_lo;
-   
+
+   // Stcx Complete
    input [0:`THREADS-1]                                        an_ac_stcx_complete;
    input [0:`THREADS-1]                                        an_ac_stcx_pass;
-   
+
+   // ICBI ACK
    input                                                       an_ac_icbi_ack;
    input [0:1]                                                 an_ac_icbi_ack_thread;
-   
+
+   // Core ID
    input [6:7]                                                 an_ac_coreid;
-   
+
+   // STCX/ICSWX CR Update
    input [0:`THREADS-1]                                        xu_lq_xer_cp_rd;
    output                                                      lq_xu_cr_l2_we;
    output [0:`CR_POOL_ENC+`THREADS_POOL_ENC-1]                 lq_xu_cr_l2_wa;
    output [0:3]                                                lq_xu_cr_l2_wd;
-   
+
+   // Reload Itag Complete
    output                                                      stq_arb_release_itag_vld;
    output [0:`ITAG_SIZE_ENC-1]                                 stq_arb_release_itag;
    output [0:`THREADS-1]                                       stq_arb_release_tid;
-   
-   
-            
+
+   // Pervasive
+
+
    inout                                                       vdd;
-                                      
-                                       
+
+
    inout                                                       gnd;
-           
-   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)     
-                                      
+
+   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)
+
    input [0:`NCLK_WIDTH-1]                                     nclk;
    input                                                       sg_0;
    input                                                       func_sl_thold_0_b;
@@ -477,396 +540,397 @@ module lq_stq(
    input                                                       delay_lclkr_dc;
    input                                                       mpw1_dc_b;
    input                                                       mpw2_dc_b;
-   
+
    (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)
-   
+
    input                                                       scan_in;
-   
+
    (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
-   
+
    output                                                      scan_out;
 
    parameter                                                   tiup = 1'b1;
    parameter                                                   tidn = 1'b0;
    parameter                                                   RI = 64 - `REAL_IFAR_WIDTH;
    parameter                                                   AXU_TARGET_ENC = `AXU_SPARE_ENC + `GPR_POOL_ENC + `THREADS_POOL_ENC;
-   
-   wire                                                        rv_lq_vld_d;		
+
+   // Latches
+   wire                                                        rv_lq_vld_d;		// input=>rv_lq_vld_d               ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        rv_lq_vld_q;
-   wire                                                        rv_lq_ld_vld_d;		
+   wire                                                        rv_lq_ld_vld_d;		// input=>rv_lq_ld_vld_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        rv_lq_ld_vld_q;
-   wire                                                        ex0_dir_rd_val_d;    
+   wire                                                        ex0_dir_rd_val_d;    // input=>ex0_dir_rd_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ex0_dir_rd_val_q;
 
-   wire [0:`THREADS-1] 					       rv0_cp_flush_q;		
+   wire [0:`THREADS-1] 					       rv0_cp_flush_q;		// input=>rv0_cp_flush_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1] 					       rv0_cp_flush_d;
-   wire [0:`THREADS-1] 					       rv1_cp_flush_q;		
+   wire [0:`THREADS-1] 					       rv1_cp_flush_q;		// input=>rv1_cp_flush_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1] 					       rv1_cp_flush_d;
    wire [0:`THREADS-1] 					       rv1_i0_vld;
    wire                                                        rv1_i0_flushed;
    wire [0:`THREADS-1] 					       rv1_i1_vld;
    wire                                                        rv1_i1_flushed;
-   wire [0:`THREADS-1] 					       ex0_i0_vld_q;		
-   wire                                                        ex0_i0_flushed_q;		
-   wire [0:`ITAG_SIZE_ENC-1] 				       ex0_i0_itag_q;		
-   wire [0:`THREADS-1] 					       ex0_i1_vld_q;		
-   wire                                                        ex0_i1_flushed_q;		
-   wire [0:`ITAG_SIZE_ENC-1] 				       ex0_i1_itag_q;		
-   wire [0:`THREADS-1] 					       ex1_i0_vld_q;		
-   wire                                                        ex1_i0_flushed_q;		
-   wire [0:`ITAG_SIZE_ENC-1] 				       ex1_i0_itag_q;		
-   wire [0:`THREADS-1] 					       ex1_i1_vld_q;		
-   wire                                                        ex1_i1_flushed_q;		
-   wire [0:`ITAG_SIZE_ENC-1] 				       ex1_i1_itag_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_alloc_ptr_q;		
+   wire [0:`THREADS-1] 					       ex0_i0_vld_q;		// input=>rv2_i0_vld_q              ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        ex0_i0_flushed_q;		// input=rv2_i0_flushed             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`ITAG_SIZE_ENC-1] 				       ex0_i0_itag_q;		// input=>rv2_i0_itag_q             ,act=>rv2_i0_act           ,scan=>Y ,needs_sreset=>0
+   wire [0:`THREADS-1] 					       ex0_i1_vld_q;		// input=>rv2_i1_vld_q              ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        ex0_i1_flushed_q;		// input=rv2_i1_flushed             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`ITAG_SIZE_ENC-1] 				       ex0_i1_itag_q;		// input=>rv2_i1_itag_q             ,act=>rv2_i1_act           ,scan=>Y ,needs_sreset=>0
+   wire [0:`THREADS-1] 					       ex1_i0_vld_q;		// input=>rv2_i0_vld_q              ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        ex1_i0_flushed_q;		// input=rv2_i0_flushed             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`ITAG_SIZE_ENC-1] 				       ex1_i0_itag_q;		// input=>rv2_i0_itag_q             ,act=>rv2_i0_act           ,scan=>Y ,needs_sreset=>0
+   wire [0:`THREADS-1] 					       ex1_i1_vld_q;		// input=>rv2_i1_vld_q              ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        ex1_i1_flushed_q;		// input=rv2_i1_flushed             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`ITAG_SIZE_ENC-1] 				       ex1_i1_itag_q;		// input=>rv2_i1_itag_q             ,act=>rv2_i1_act           ,scan=>Y ,needs_sreset=>0
+   wire [0:`STQ_ENTRIES-1] 				       stqe_alloc_ptr_q;		// input=>stqe_alloc_ptr_d          ,act=>stq_alloc_val(0)    ,scan=>Y ,needs_sreset=>1 ,init=>2**(`STQ_ENTRIES-1)
    wire [0:`STQ_ENTRIES-1] 				       stqe_alloc_ptr_d;
-   wire [0:`STQ_ENTRIES-1] 				       stqe_alloc_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_alloc_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_addr_val_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_addr_val_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_fwd_addr_val_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_fwd_addr_val_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_data_val_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_data_val_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_data_nxt_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_data_nxt_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_illeg_lswx_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_illeg_lswx_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_strg_noop_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_strg_noop_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_ready_sent_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_ready_sent_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_odq_resolved_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_odq_resolved_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_compl_rcvd_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_compl_rcvd_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_have_cp_next_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_have_cp_next_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_need_ready_ptr_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_need_ready_ptr_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_flushed_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_flushed_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_ack_rcvd_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_ack_rcvd_q;		
-   wire [0:`LMQ_ENTRIES-1] 				       stqe_lmqhit_d[0:`STQ_ENTRIES-1];		
-   wire [0:`LMQ_ENTRIES-1] 				       stqe_lmqhit_q[0:`STQ_ENTRIES];		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_need_ext_ack_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_need_ext_ack_q;		
-   wire [0:`STQ_ENTRIES-1] 				       stqe_blk_loads_d;		
-   wire [0:`STQ_ENTRIES] 				       stqe_blk_loads_q;		
-   wire [0:`STQ_ENTRIES-1]                     stqe_all_thrd_chk_d;     
-   wire [0:`STQ_ENTRIES]                       stqe_all_thrd_chk_q;     
-   wire [0:`ITAG_SIZE_ENC-1] 				       stqe_itag_d[0:`STQ_ENTRIES-1];		
-   wire [0:`ITAG_SIZE_ENC-1] 				       stqe_itag_q[0:`STQ_ENTRIES];		
-   wire [64-`REAL_IFAR_WIDTH:63] 			       stqe_addr_d[0:`STQ_ENTRIES-1];		
-   wire [64-`REAL_IFAR_WIDTH:63] 			       stqe_addr_q[0:`STQ_ENTRIES];		
-   wire [0:15] 						       stqe_rotcmp_d[0:`STQ_ENTRIES-1];		
-   wire [0:15] 						       stqe_rotcmp_q[0:`STQ_ENTRIES];		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_cline_chk_d;		
-   wire [0:`STQ_ENTRIES]                                        stqe_cline_chk_q;		
-   wire [0:5]                                                  stqe_ttype_d[0:`STQ_ENTRIES-1];		
-   wire [0:5]                                                  stqe_ttype_q[0:`STQ_ENTRIES];		
-   wire [0:15]                                                 stqe_byte_en_d[0:`STQ_ENTRIES-1];		
-   wire [0:15]                                                 stqe_byte_en_q[0:`STQ_ENTRIES];		
-   wire [0:4]                                                  stqe_wimge_d[0:`STQ_ENTRIES-1];		
-   wire [0:4]                                                  stqe_wimge_q[0:`STQ_ENTRIES];		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_byte_swap_d;		
-   wire [0:`STQ_ENTRIES]                                        stqe_byte_swap_q;		
-   wire [0:2]                                                  stqe_opsize_d[0:`STQ_ENTRIES-1];		
-   wire [0:2]                                                  stqe_opsize_q[0:`STQ_ENTRIES];		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_axu_val_d;		
-   wire [0:`STQ_ENTRIES]                                        stqe_axu_val_q;		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_epid_val_d;		
-   wire [0:`STQ_ENTRIES]                                        stqe_epid_val_q;		
-   wire [0:3]                                                  stqe_usr_def_d[0:`STQ_ENTRIES-1];		
-   wire [0:3]                                                  stqe_usr_def_q[0:`STQ_ENTRIES];		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_is_store_d;		
-   wire [0:`STQ_ENTRIES]                                        stqe_is_store_q;		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_is_sync_d;		
-   wire [0:`STQ_ENTRIES]                                        stqe_is_sync_q;		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_is_resv_d;		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_is_icswxr_d;		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_is_icbi_d;		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_is_inval_op_d;		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_dreq_val_d;		
-   wire [0:`STQ_ENTRIES]                                        stqe_dreq_val_q;		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_has_data_d;		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_send_l2_d;		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_watch_clr_d;		
-   wire [0:`STQ_ENTRIES]                                        stqe_is_resv_q;		
-   wire [0:`STQ_ENTRIES]                                        stqe_is_icswxr_q;		
-   wire [0:`STQ_ENTRIES]                                        stqe_is_icbi_q;		
-   wire [0:`STQ_ENTRIES]                                        stqe_is_inval_op_q;		
-   wire [0:`STQ_ENTRIES]                                        stqe_has_data_q;		
-   wire [0:`STQ_ENTRIES]                                        stqe_send_l2_q;		
-   wire [0:`STQ_ENTRIES]                                        stqe_watch_clr_q;		
-   wire [0:`STQ_ENTRIES-1]                                      stqe_lock_clr_d;		
-   wire [0:`STQ_ENTRIES]                                        stqe_lock_clr_q;		
-   wire [0:1]                                                  stqe_l_fld_d[0:`STQ_ENTRIES-1];		
-   wire [0:1]                                                  stqe_l_fld_q[0:`STQ_ENTRIES];		
-   wire [0:`THREADS-1]                                          stqe_thrd_id_d[0:`STQ_ENTRIES-1];		
-   wire [0:`THREADS-1]                                          stqe_thrd_id_q[0:`STQ_ENTRIES];		
-   wire [0:AXU_TARGET_ENC-1]                                   stqe_tgpr_d[0:`STQ_ENTRIES-1];		
-   wire [0:AXU_TARGET_ENC-1]                                   stqe_tgpr_q[0:`STQ_ENTRIES];		
-   wire [0:1]                                                  stqe_dvc_en_d[0:`STQ_ENTRIES-1];		
-   wire [0:1]                                                  stqe_dvc_en_q[0:`STQ_ENTRIES];		
-   wire [0:3]                                                  stqe_dacrw_d[0:`STQ_ENTRIES-1];		
-   wire [0:3]                                                  stqe_dacrw_q[0:`STQ_ENTRIES];		
-   wire [0:1]                                                  stqe_dvcr_cmpr_q[0:`STQ_ENTRIES];		
+   wire [0:`STQ_ENTRIES-1] 				       stqe_alloc_d;		// input=>stqe_alloc_d              ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_alloc_q;		// input=>stqe_alloc_d              ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1] 				       stqe_addr_val_d;		// input=>stqe_addr_val_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_addr_val_q;		// input=>stqe_addr_val_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1] 				       stqe_fwd_addr_val_d;		// input=>stqe_fwd_addr_val_d       ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_fwd_addr_val_q;		// input=>stqe_fwd_addr_val_d       ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1] 				       stqe_data_val_d;		// input=>stqe_data_val_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_data_val_q;		// input=>stqe_data_val_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1] 				       stqe_data_nxt_d;		// input=>stqe_data_nxt_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_data_nxt_q;		// input=>stqe_data_nxt_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1] 				       stqe_illeg_lswx_d;		// input=>stqe_illeg_lswx_d         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_illeg_lswx_q;		// input=>stqe_illeg_lswx_d         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1] 				       stqe_strg_noop_d;		// input=>stqe_strg_noop_d          ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_strg_noop_q;		// input=>stqe_strg_noop_d          ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1] 				       stqe_ready_sent_d;		// input=>stqe_ready_sent_d         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_ready_sent_q;		// input=>stqe_ready_sent_d         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1] 				       stqe_odq_resolved_d;		// input=>stqe_odq_resolved_d       ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_odq_resolved_q;		// input=>stqe_odq_resolved_d       ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1] 				       stqe_compl_rcvd_d;		// input=>stqe_compl_rcvd_d         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_compl_rcvd_q;		// input=>stqe_compl_rcvd_d         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1] 				       stqe_have_cp_next_d;		// input=>stqe_have_cp_next_d       ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_have_cp_next_q;		// input=>stqe_have_cp_next_d       ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1] 				       stqe_need_ready_ptr_d;		// input=>stqe_need_ready_ptr_d     ,act=>stqe_need_ready_act  ,scan=>Y ,needs_sreset=>1 ,init=>2**(`STQ_ENTRIES-1)
+   wire [0:`STQ_ENTRIES] 				       stqe_need_ready_ptr_q;		// input=>stqe_need_ready_ptr_d     ,act=>stqe_need_ready_act  ,scan=>Y ,needs_sreset=>1 ,init=>2**(`STQ_ENTRIES-1)
+   wire [0:`STQ_ENTRIES-1] 				       stqe_flushed_d;		// input=>stqe_flushed_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_flushed_q;		// input=>stqe_flushed_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1] 				       stqe_ack_rcvd_d;		// input=>stqe_ack_rcvd_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES] 				       stqe_ack_rcvd_q;		// input=>stqe_ack_rcvd_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`LMQ_ENTRIES-1] 				       stqe_lmqhit_d[0:`STQ_ENTRIES-1];		// input=>stqe_lmqhit_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:`LMQ_ENTRIES-1] 				       stqe_lmqhit_q[0:`STQ_ENTRIES];		// input=>stqe_lmqhit_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:`STQ_ENTRIES-1] 				       stqe_need_ext_ack_d;		// input=>stqe_need_ext_ack_d       ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:`STQ_ENTRIES] 				       stqe_need_ext_ack_q;		// input=>stqe_need_ext_ack_d       ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:`STQ_ENTRIES-1] 				       stqe_blk_loads_d;		// input=>stqe_blk_loads_d          ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:`STQ_ENTRIES] 				       stqe_blk_loads_q;		// input=>stqe_blk_loads_d          ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:`STQ_ENTRIES-1]                     stqe_all_thrd_chk_d;     // input=>stqe_all_thrd_chk_d       ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:`STQ_ENTRIES]                       stqe_all_thrd_chk_q;     // input=>stqe_all_thrd_chk_d       ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:`ITAG_SIZE_ENC-1] 				       stqe_itag_d[0:`STQ_ENTRIES-1];		// input=>stqe_itag_d               ,act=>stqe_itag_act(i)     ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:`ITAG_SIZE_ENC-1] 				       stqe_itag_q[0:`STQ_ENTRIES];		// input=>stqe_itag_d               ,act=>stqe_itag_act(i)     ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [64-`REAL_IFAR_WIDTH:63] 			       stqe_addr_d[0:`STQ_ENTRIES-1];		// input=>ctl_lsq_ex4_p_addr        ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [64-`REAL_IFAR_WIDTH:63] 			       stqe_addr_q[0:`STQ_ENTRIES];		// input=>ctl_lsq_ex4_p_addr        ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:15] 						       stqe_rotcmp_d[0:`STQ_ENTRIES-1];		// input=>stq_rotcmp,               ,act=>ex3_addr_act(i)      ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:15] 						       stqe_rotcmp_q[0:`STQ_ENTRIES];		// input=>stq_rotcmp,               ,act=>ex3_addr_act(i)      ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:`STQ_ENTRIES-1]                                      stqe_cline_chk_d;		// input=>ctl_lsq_ex4_cline_chk     ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_cline_chk_q;		// input=>ctl_lsq_ex4_cline_chk     ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:5]                                                  stqe_ttype_d[0:`STQ_ENTRIES-1];		// input=>ctl_lsq_ex5_ttype         ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:5]                                                  stqe_ttype_q[0:`STQ_ENTRIES];		// input=>ctl_lsq_ex5_ttype         ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:15]                                                 stqe_byte_en_d[0:`STQ_ENTRIES-1];		// input=>ctl_lsq_ex3_byte_en       ,act=>ex3_addr_act(i)      ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:15]                                                 stqe_byte_en_q[0:`STQ_ENTRIES];		// input=>ctl_lsq_ex3_byte_en       ,act=>ex3_addr_act(i)      ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:4]                                                  stqe_wimge_d[0:`STQ_ENTRIES-1];		// input=>ctl_lsq_ex4_wimge         ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:4]                                                  stqe_wimge_q[0:`STQ_ENTRIES];		// input=>ctl_lsq_ex4_wimge         ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:`STQ_ENTRIES-1]                                      stqe_byte_swap_d;		// input=>ctl_lsq_ex4_byte_swap     ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_byte_swap_q;		// input=>ctl_lsq_ex4_byte_swap     ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:2]                                                  stqe_opsize_d[0:`STQ_ENTRIES-1];		// input=>ex4_req_opsize_q          ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:2]                                                  stqe_opsize_q[0:`STQ_ENTRIES];		// input=>ex4_req_opsize_q          ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:`STQ_ENTRIES-1]                                      stqe_axu_val_d;		// input=>ctl_lsq_ex5_axu_val       ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_axu_val_q;		// input=>ctl_lsq_ex5_axu_val       ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>
+   wire [0:`STQ_ENTRIES-1]                                      stqe_epid_val_d;		// input=>ctl_lsq_ex5_is_epid       ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_epid_val_q;		// input=>ctl_lsq_ex5_is_epid       ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:3]                                                  stqe_usr_def_d[0:`STQ_ENTRIES-1];		// input=>ctl_lsq_ex5_usr_def       ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:3]                                                  stqe_usr_def_q[0:`STQ_ENTRIES];		// input=>ctl_lsq_ex5_usr_def       ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:`STQ_ENTRIES-1]                                      stqe_is_store_d;		// input=>ctl_lsq_ex4_is_store      ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_is_store_q;		// input=>ctl_lsq_ex4_is_store      ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES-1]                                      stqe_is_sync_d;		// input=>ctl_lsq_ex4_is_sync       ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_is_sync_q;		// input=>ctl_lsq_ex4_is_sync       ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES-1]                                      stqe_is_resv_d;		// input=>ctl_lsq_ex4_is_resv       ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES-1]                                      stqe_is_icswxr_d;		// input=>ctl_lsq_ex4_is_icswxr     ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES-1]                                      stqe_is_icbi_d;		// input=>ctl_lsq_ex4_is_icbi       ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES-1]                                      stqe_is_inval_op_d;		// input=>ctl_lsq_ex4_is_inval_op   ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES-1]                                      stqe_dreq_val_d;		// input=>ctl_lsq_ex4_dreq_val      ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_dreq_val_q;		// input=>ctl_lsq_ex4_dreq_val      ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES-1]                                      stqe_has_data_d;		// input=>ctl_lsq_ex4_has_data      ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES-1]                                      stqe_send_l2_d;		// input=>ctl_lsq_ex4_send_l2       ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES-1]                                      stqe_watch_clr_d;		// input=>ctl_lsq_ex4_watch_clr     ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_is_resv_q;		// input=>ctl_lsq_ex4_is_resv       ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_is_icswxr_q;		// input=>ctl_lsq_ex4_is_icswxr     ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_is_icbi_q;		// input=>ctl_lsq_ex4_is_icbi       ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_is_inval_op_q;		// input=>ctl_lsq_ex4_is_inval_op   ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_has_data_q;		// input=>ctl_lsq_ex4_has_data      ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_send_l2_q;		// input=>ctl_lsq_ex4_send_l2       ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_watch_clr_q;		// input=>ctl_lsq_ex4_watch_clr     ,act=>ex4_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES-1]                                      stqe_lock_clr_d;		// input=>ctl_lsq_ex5_lock_clr      ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:`STQ_ENTRIES]                                        stqe_lock_clr_q;		// input=>ctl_lsq_ex5_lock_clr      ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i
+   wire [0:1]                                                  stqe_l_fld_d[0:`STQ_ENTRIES-1];		// input=>ctl_lsq_ex5_l_fld         ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:1]                                                  stqe_l_fld_q[0:`STQ_ENTRIES];		// input=>ctl_lsq_ex5_l_fld         ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:`THREADS-1]                                          stqe_thrd_id_d[0:`STQ_ENTRIES-1];		// input=>stqe_thrd_id_d            ,act=>stqe_itag_act(i)     ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:`THREADS-1]                                          stqe_thrd_id_q[0:`STQ_ENTRIES];		// input=>stqe_thrd_id_d            ,act=>stqe_itag_act(i)     ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:AXU_TARGET_ENC-1]                                   stqe_tgpr_d[0:`STQ_ENTRIES-1];		// input=>ctl_lsq_ex5_tgpr          ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:AXU_TARGET_ENC-1]                                   stqe_tgpr_q[0:`STQ_ENTRIES];		// input=>ctl_lsq_ex5_tgpr          ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:1]                                                  stqe_dvc_en_d[0:`STQ_ENTRIES-1];		// input=>ctl_lsq_ex5_dvc           ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:1]                                                  stqe_dvc_en_q[0:`STQ_ENTRIES];		// input=>ctl_lsq_ex5_dvc           ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:3]                                                  stqe_dacrw_d[0:`STQ_ENTRIES-1];		// input=>ctl_lsq_ex5_dacrw         ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:3]                                                  stqe_dacrw_q[0:`STQ_ENTRIES];		// input=>ctl_lsq_ex5_dacrw         ,act=>ex5_addr_act(i)    ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
+   wire [0:1]                                                  stqe_dvcr_cmpr_q[0:`STQ_ENTRIES];		// input=>stqe_dvcr_cmpr_d          ,act=>tiup                 ,scan=>Y ,needs_sreset=>1 ,iterator=>i ,array=>Y
    wire [0:1]                                                  stqe_dvcr_cmpr_d[0:`STQ_ENTRIES-1];
-   wire [0:`STQ_ENTRIES-1]                                      stqe_qHit_held_q;		
+   wire [0:`STQ_ENTRIES-1]                                      stqe_qHit_held_q;		// input=>stqe_qHit_held_d          ,act=>tiup                 ,scan=>Y ,needs_sreset=>1 ,iterator=>i
    wire [0:`STQ_ENTRIES-1]                                      stqe_qHit_held_d;
-   wire [0:`STQ_ENTRIES-1]                                      stqe_held_early_clr_d;		
-   wire [0:`STQ_ENTRIES]                                        stqe_held_early_clr_q;		
-   wire [(128-`STQ_DATA_SIZE):127]                              stqe_data1_d[0:`STQ_ENTRIES-1];		
-   wire [(128-`STQ_DATA_SIZE):127]                              stqe_data1_q[0:`STQ_ENTRIES];		
-   wire [0:`STQ_ENTRIES-1]                                      ex4_fxu1_data_ptr_q;		
+   wire [0:`STQ_ENTRIES-1]                                      stqe_held_early_clr_d;		// input=>stqe_held_early_clr_d     ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES]                                        stqe_held_early_clr_q;		// input=>stqe_held_early_clr_d     ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [(128-`STQ_DATA_SIZE):127]                              stqe_data1_d[0:`STQ_ENTRIES-1];		// input=>stqe_data1_d,             ,act=>stqe_data_val(i)     ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [(128-`STQ_DATA_SIZE):127]                              stqe_data1_q[0:`STQ_ENTRIES];		// input=>stqe_data1_d,             ,act=>stqe_data_val(i)     ,scan=>Y ,needs_sreset=>0 ,iterator=>i ,array=>Y
+   wire [0:`STQ_ENTRIES-1]                                      ex4_fxu1_data_ptr_q;		// input=>ex4_fxu1_data_ptr_d       ,act=>ex3_fxu1_val         ,scan=>Y ,needs_sreset=>0
    wire [0:`STQ_ENTRIES-1]                                      ex4_fxu1_data_ptr_d;
-   wire [0:`STQ_ENTRIES-1]                                      ex4_axu_data_ptr_q;		
+   wire [0:`STQ_ENTRIES-1]                                      ex4_axu_data_ptr_q;		// input=>ex4_axu_data_ptr_d        ,act=>ex3_axu_val          ,scan=>Y ,needs_sreset=>0
    wire [0:`STQ_ENTRIES-1]                                      ex4_axu_data_ptr_d;
-   wire [(128-`STQ_DATA_SIZE):127]                              ex4_fu_data_q;		
-   wire [0:`THREADS-1]                                          cp_flush_q;		
-   wire [0:`THREADS-1]                                          cp_next_val_q;		
-   wire [0:`ITAG_SIZE_ENC-1]                                    cp_next_itag_q[0:`THREADS-1];	
-   wire [0:`THREADS-1]                                          cp_i0_completed_q;		
-   wire [0:`ITAG_SIZE_ENC-1]                                    cp_i0_completed_itag_q[0:`THREADS-1];	
-   wire [0:`THREADS-1]                                          cp_i1_completed_q;		
-   wire [0:`ITAG_SIZE_ENC-1]                                    cp_i1_completed_itag_q[0:`THREADS-1];	
-   wire                                                        stq_cpl_need_hold_q;		
+   wire [(128-`STQ_DATA_SIZE):127]                              ex4_fu_data_q;		// input=>xu_lq_axu_exp1_stq_data   ,act=>ex3_axu_val          ,scan=>Y ,needs_sreset=>0
+   wire [0:`THREADS-1]                                          cp_flush_q;		// input=>iu_lq_cp_flush            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`THREADS-1]                                          cp_next_val_q;		// input=>iu_lq_cp_next_val         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`ITAG_SIZE_ENC-1]                                    cp_next_itag_q[0:`THREADS-1];	// input=>iu_lq_cp_next_itag        ,act=>iu_lq_cp_next_val    ,scan=>Y ,needs_sreset=>0
+   wire [0:`THREADS-1]                                          cp_i0_completed_q;		// input=>iu_lq_i0_completed        ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`ITAG_SIZE_ENC-1]                                    cp_i0_completed_itag_q[0:`THREADS-1];	// input=>iu_lq_i0_completed_itag   ,act=>iu_lq_i0_completed   ,scan=>Y ,needs_sreset=>0
+   wire [0:`THREADS-1]                                          cp_i1_completed_q;		// input=>iu_lq_i1_completed        ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`ITAG_SIZE_ENC-1]                                    cp_i1_completed_itag_q[0:`THREADS-1];	// input=>iu_lq_i1_completed_itag   ,act=>iu_lq_i1_completed   ,scan=>Y ,needs_sreset=>0
+   wire                                                        stq_cpl_need_hold_q;		// input=>stq_cpl_need_hold_d       ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq_cpl_need_hold_d;
-   wire [0:`THREADS-1]                                          iu_lq_icbi_complete_q;		
-   wire                                                        stq2_cmmt_flushed_q;		
+   wire [0:`THREADS-1]                                          iu_lq_icbi_complete_q;		// input=>iu_lq_icbi_complete       ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        stq2_cmmt_flushed_q;		// input=>stq1_cmmt_flushed         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq1_cmmt_flushed;
-   wire                                                        stq3_cmmt_flushed_q;		
-   wire                                                        stq4_cmmt_flushed_q;		
-   wire                                                        stq5_cmmt_flushed_q;		
-   wire                                                        stq6_cmmt_flushed_q;		
-   wire                                                        stq7_cmmt_flushed_q;		
-   wire [0:`STQ_ENTRIES-1]                                      stq1_cmmt_ptr_q;		
+   wire                                                        stq3_cmmt_flushed_q;		// input=>stq1_cmmt_flushed         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        stq4_cmmt_flushed_q;		// input=>stq1_cmmt_flushed         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        stq5_cmmt_flushed_q;		// input=>stq1_cmmt_flushed         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        stq6_cmmt_flushed_q;		// input=>stq1_cmmt_flushed         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        stq7_cmmt_flushed_q;		// input=>stq1_cmmt_flushed         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1]                                      stq1_cmmt_ptr_q;		// input=>stq1_cmmt_ptr_d           ,act=>stq1_cmmt_act        ,scan=>Y ,needs_sreset=>1 ,init=>2**(`STQ_ENTRIES-1)
    wire [0:`STQ_ENTRIES-1]                                      stq1_cmmt_ptr_d;
-   wire [0:`STQ_ENTRIES-1]                                      stq2_cmmt_ptr_q;		
+   wire [0:`STQ_ENTRIES-1]                                      stq2_cmmt_ptr_q;		// input=>stq1_cmmt_ptr_q           ,act=>stq1_cmmt_act        ,scan=>Y ,needs_sreset=>0
    wire [0:`STQ_ENTRIES-1]                                      stq2_cmmt_ptr_d;
-   wire [0:`STQ_ENTRIES-1]                                      stq3_cmmt_ptr_q;		
+   wire [0:`STQ_ENTRIES-1]                                      stq3_cmmt_ptr_q;		// input=>stq2_cmmt_ptr_q           ,act=>stq2_cmmt_val_q      ,scan=>Y ,needs_sreset=>0
    wire [0:`STQ_ENTRIES-1]                                      stq3_cmmt_ptr_d;
-   wire [0:`STQ_ENTRIES-1]                                      stq4_cmmt_ptr_q;		
+   wire [0:`STQ_ENTRIES-1]                                      stq4_cmmt_ptr_q;		// input=>stq3_cmmt_ptr_q           ,act=>stq3_cmmt_val_q      ,scan=>Y ,needs_sreset=>0
    wire [0:`STQ_ENTRIES-1]                                      stq4_cmmt_ptr_d;
-   wire [0:`STQ_ENTRIES-1]                                      stq5_cmmt_ptr_q;		
+   wire [0:`STQ_ENTRIES-1]                                      stq5_cmmt_ptr_q;		// input=>stq4_cmmt_ptr_q           ,act=>stq4_cmmt_val_q      ,scan=>Y ,needs_sreset=>0
    wire [0:`STQ_ENTRIES-1]                                      stq5_cmmt_ptr_d;
-   wire [0:`STQ_ENTRIES-1]                                      stq6_cmmt_ptr_q;		
+   wire [0:`STQ_ENTRIES-1]                                      stq6_cmmt_ptr_q;		// input=>stq5_cmmt_ptr_q           ,act=>stq5_cmmt_val_q      ,scan=>Y ,needs_sreset=>0
    wire [0:`STQ_ENTRIES-1]                                      stq6_cmmt_ptr_d;
-   wire [0:`STQ_ENTRIES-1]                                      stq7_cmmt_ptr_q;		
+   wire [0:`STQ_ENTRIES-1]                                      stq7_cmmt_ptr_q;		// input=>stq7_cmmt_ptr_d           ,act=>stq6_cmmt_val_q      ,scan=>Y ,needs_sreset=>0
    wire [0:`STQ_ENTRIES-1]                                      stq7_cmmt_ptr_d;
-   wire                                                        stq2_cmmt_val_q;		
+   wire                                                        stq2_cmmt_val_q;		// input=>stq1_cmmt_val             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq1_cmmt_val;
-   wire                                                        stq3_cmmt_val_q;		
+   wire                                                        stq3_cmmt_val_q;		// input=>stq2_cmmt_val             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq2_cmmt_val;
-   wire                                                        stq4_cmmt_val_q;		
-   wire                                                        stq5_cmmt_val_q;		
-   wire                                                        stq6_cmmt_val_q;		
-   wire                                                        stq7_cmmt_val_q;		
-   wire [0:`THREADS-1]                                          ext_ack_queue_v_q;		
+   wire                                                        stq4_cmmt_val_q;		// input=>stq3_cmmt_val_q           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        stq5_cmmt_val_q;		// input=>stq4_cmmt_val_q           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        stq6_cmmt_val_q;		// input=>stq5_cmmt_val_q           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        stq7_cmmt_val_q;		// input=>stq6_cmmt_val_q           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`THREADS-1]                                          ext_ack_queue_v_q;		// input=>ext_ack_queue_v_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ext_ack_queue_v_d;
-   wire [0:`THREADS-1]                                          ext_ack_queue_sync_q;		
+   wire [0:`THREADS-1]                                          ext_ack_queue_sync_q;		// input=>ext_ack_queue_sync_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ext_ack_queue_sync_d;
-   wire [0:`THREADS-1]                                          ext_ack_queue_stcx_q;		
+   wire [0:`THREADS-1]                                          ext_ack_queue_stcx_q;		// input=>ext_ack_queue_stcx_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ext_ack_queue_stcx_d;
-   wire [0:`THREADS-1]                                          ext_ack_queue_icswxr_q;		
+   wire [0:`THREADS-1]                                          ext_ack_queue_icswxr_q;		// input=>ext_ack_queue_icswxr_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ext_ack_queue_icswxr_d;
-   wire [0:`ITAG_SIZE_ENC-1]                                    ext_ack_queue_itag_q[0:`THREADS-1];		
+   wire [0:`ITAG_SIZE_ENC-1]                                    ext_ack_queue_itag_q[0:`THREADS-1];		// input=>ext_ack_queue_itag_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`ITAG_SIZE_ENC-1]                                    ext_ack_queue_itag_d[0:`THREADS-1];
-   wire [0:`CR_POOL_ENC+`THREADS_POOL_ENC-1]                      ext_ack_queue_cr_wa_q[0:`THREADS-1];		
+   wire [0:`CR_POOL_ENC+`THREADS_POOL_ENC-1]                      ext_ack_queue_cr_wa_q[0:`THREADS-1];		// input=>ext_ack_queue_cr_wa_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`CR_POOL_ENC+`THREADS_POOL_ENC-1]                      ext_ack_queue_cr_wa_d[0:`THREADS-1];
-   wire [0:3]                                                  ext_ack_queue_dacrw_det_q[0:`THREADS-1];		
+   wire [0:3]                                                  ext_ack_queue_dacrw_det_q[0:`THREADS-1];		// input=>ext_ack_queue_dacrw_det_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:3]                                                  ext_ack_queue_dacrw_det_d[0:`THREADS-1];
-   wire [0:`THREADS-1]                                          ext_ack_queue_dacrw_rpt_q;		
+   wire [0:`THREADS-1]                                          ext_ack_queue_dacrw_rpt_q;		// input=>ext_ack_queue_dacrw_rpt_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ext_ack_queue_dacrw_rpt_d;
-   wire                                                        stq2_mftgpr_val_q;		
+   wire                                                        stq2_mftgpr_val_q;		// input=>stq2_mftgpr_val_d         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq2_mftgpr_val_d;
-   wire [0:2]                                                  stq2_rtry_cnt_q;		
+   wire [0:2]                                                  stq2_rtry_cnt_q;		// input=>stq2_rtry_cnt_d           ,act=>stq2_rtry_cnt_act    ,scan=>Y ,needs_sreset=>1
    wire [0:2]                                                  stq2_rtry_cnt_d;
-   wire                                                        ex5_stq_restart_q;		
+   wire                                                        ex5_stq_restart_q;		// input=>ex5_stq_restart_d         ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ex5_stq_restart_d;
-   wire                                                        ex5_stq_restart_miss_q;		
+   wire                                                        ex5_stq_restart_miss_q;		// input=>ex5_stq_restart_miss_d    ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ex5_stq_restart_miss_d;
    wire [0:`STQ_FWD_ENTRIES-2]                                  stq_fwd_pri_mask_d;
    wire [0:`STQ_FWD_ENTRIES-1]                                  stq_fwd_pri_mask_q;
-   wire                                                        ex5_fwd_val_q;		
+   wire                                                        ex5_fwd_val_q;		// input=>ex5_fwd_val_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ex5_fwd_val_d;
-   wire [(128-`STQ_DATA_SIZE):127]                              ex5_fwd_data_q;		
+   wire [(128-`STQ_DATA_SIZE):127]                              ex5_fwd_data_q;		// input=>ex5_fwd_data_d            ,act=>ex4_ldreq_val_q      ,scan=>Y ,needs_sreset=>1
    reg [(128-`STQ_DATA_SIZE):127]                               ex5_fwd_data_d;
-   wire [0:`STQ_ENTRIES]                                        ex4_set_stq_q;		
-   wire [0:`STQ_ENTRIES]                                        ex5_set_stq_q;		
-   wire [0:`THREADS-1]                                          ex4_ldreq_val_q;		
+   wire [0:`STQ_ENTRIES]                                        ex4_set_stq_q;		// input=>ex3_addr_act              ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES]                                        ex5_set_stq_q;		// input=>ex4_set_stq_q            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`THREADS-1]                                          ex4_ldreq_val_q;		// input=>ex3_ldreq_val             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ex3_ldreq_val;
-   wire                                                         ex4_pfetch_val_q;       
+   wire                                                         ex4_pfetch_val_q;       // input=>ex4_pfetch_val_d          ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                         ex4_pfetch_val_d;
-   wire [0:`THREADS-1]                                          ex3_streq_val_q;		
+   wire [0:`THREADS-1]                                          ex3_streq_val_q;		// input=>ex2_streq_val             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ex2_streq_val;
-   wire [0:`THREADS-1]                                          ex5_streq_val_q;		
+   wire [0:`THREADS-1]                                          ex5_streq_val_q;		// input=>ex4_streq_val             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ex4_streq_val;
-   wire [0:`THREADS-1]                                          ex4_wchkall_val_q;		
+   wire [0:`THREADS-1]                                          ex4_wchkall_val_q;		// input=>ex3_wchkall_val           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ex3_wchkall_val;
-   wire [0:`THREADS-1]                                          hwsync_ack_q;		
+   wire [0:`THREADS-1]                                          hwsync_ack_q;		// input=>hwsync_ack                ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          hwsync_ack;
-   wire [0:`THREADS-1]                                          lwsync_ack_q;		
+   wire [0:`THREADS-1]                                          lwsync_ack_q;		// input=>lwsync_ack                ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          lwsync_ack;
-   wire                                                        icswxr_ack_q;		
+   wire                                                        icswxr_ack_q;		// input=>icswxr_ack                ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        icswxr_ack;
-   wire                                                        icswxr_ack_dly1_q;	
-   wire [0:`THREADS-1]                                          local_instr_ack_q;		
+   wire                                                        icswxr_ack_dly1_q;	// input=>icswxr_ack_q              ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`THREADS-1]                                          local_instr_ack_q;		// input=>local_instr_ack           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          local_instr_ack;
-   wire [0:`THREADS-1]                                          resv_ack_q;		
+   wire [0:`THREADS-1]                                          resv_ack_q;		// input=>resv_ack                  ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          resv_ack_d;
-   wire [0:`THREADS-1]                                          stcx_pass_q;		
-   wire [0:`THREADS-1]                                          icbi_ack_q;		
+   wire [0:`THREADS-1]                                          stcx_pass_q;		// input=>stcx_ack                  ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`THREADS-1]                                          icbi_ack_q;		// input=>icbi_ack                  ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          icbi_ack;
-   wire [0:`THREADS-1]                                          icbi_val_q;		
+   wire [0:`THREADS-1]                                          icbi_val_q;		// input=>icbi_val_d                ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          icbi_val_d;
-   wire [RI:57]                                                icbi_addr_q;		
+   wire [RI:57]                                                icbi_addr_q;		// input=>icbi_addr_d               ,act=>stq2_cmmt_val_q      ,scan=>Y ,needs_sreset=>1
    reg [RI:57]                                                 icbi_addr_d;
-   wire                                                        ici_val_q;		
+   wire                                                        ici_val_q;		// input=>ici_val_d                 ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ici_val_d;
-   wire [0:`THREADS-1]                                          credit_free_q;		
+   wire [0:`THREADS-1]                                          credit_free_q;		// input=>credit_free_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          credit_free_d;
-   wire [0:`STQ_ENTRIES-1]                                      ex4_fwd_agecmp_q;		
+   wire [0:`STQ_ENTRIES-1]                                      ex4_fwd_agecmp_q;		// input=>ex3_fwd_agecmp            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`STQ_ENTRIES-1]                                      ex4_fwd_agecmp_d;
-   wire [0:`ITAG_SIZE_ENC-1]                                    ex3_req_itag_q;		
-   wire [0:`ITAG_SIZE_ENC-1]                                    ex4_req_itag_q;		
-   wire [0:15]                                                 ex4_req_byte_en_q;		
-   wire [58:63]                                                ex4_req_p_addr_l_q;		
-   wire [0:2]                                                  ex4_req_opsize_q;		
-   wire                                                        ex4_req_algebraic_q;		
-   wire [0:`THREADS-1]                                          ex3_req_thrd_id_q;		
-   wire [0:`THREADS-1]                                          ex4_req_thrd_id_q;		
-   wire [0:`THREADS-1]                                          ex5_req_thrd_id_q;		
-   wire [0:`THREADS-1]                                          thrd_held_d;		
+   wire [0:`ITAG_SIZE_ENC-1]                                    ex3_req_itag_q;		// input=>ctl_lsq_ex2_itag          ,act=>tiup                 ,scan=>Y ,needs_sreset=>0
+   wire [0:`ITAG_SIZE_ENC-1]                                    ex4_req_itag_q;		// input=>ex3_req_itag_q          ,act=>tiup                 ,scan=>Y ,needs_sreset=>0
+   wire [0:15]                                                 ex4_req_byte_en_q;		// input=>ctl_lsq_ex3_byte_en       ,act=>ex3_req_act          ,scan=>Y ,needs_sreset=>1
+   wire [58:63]                                                ex4_req_p_addr_l_q;		// input=>ctl_lsq_ex3_p_addr        ,act=>ex3_req_act          ,scan=>Y ,needs_sreset=>1
+   wire [0:2]                                                  ex4_req_opsize_q;		// input=>ctl_lsq_ex3_opsize        ,act=>ex3_req_act          ,scan=>Y ,needs_sreset=>1
+   wire                                                        ex4_req_algebraic_q;		// input=>ctl_lsq_ex3_algebraic     ,act=>ex3_req_act          ,scan=>Y ,needs_sreset=>1
+   wire [0:`THREADS-1]                                          ex3_req_thrd_id_q;		// input=>ctl_lsq_ex2_thrd_id       ,act=>ex3_req_act          ,scan=>Y ,needs_sreset=>1
+   wire [0:`THREADS-1]                                          ex4_req_thrd_id_q;		// input=>ex3_req_thrd_id_q         ,act=>ex3_req_act          ,scan=>Y ,needs_sreset=>1
+   wire [0:`THREADS-1]                                          ex5_req_thrd_id_q;		// input=>ex4_req_thrd_id_q         ,act=>tiup          ,scan=>Y ,needs_sreset=>1
+   wire [0:`THREADS-1]                                          thrd_held_d;		// input=>thrd_held_d               ,act=>tiup          ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          thrd_held_q;
-   wire [0:`THREADS-1]                                          rv0_cr_hole_q;		
+   wire [0:`THREADS-1]                                          rv0_cr_hole_q;		// input=>rv0_cr_hole_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          rv0_cr_hole_d;
-   wire [0:`THREADS-1]                                          rv1_cr_hole_q;		
+   wire [0:`THREADS-1]                                          rv1_cr_hole_q;		// input=>rv1_cr_hole_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          rv1_cr_hole_d;
-   wire [0:`THREADS-1]                                          ex0_cr_hole_q;		
+   wire [0:`THREADS-1]                                          ex0_cr_hole_q;		// input=>ex0_cr_hole_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ex0_cr_hole_d;
-   wire [0:`THREADS-1]                                          cr_ack_q;		
+   wire [0:`THREADS-1]                                          cr_ack_q;		// input=>cr_ack_d                  ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          cr_ack_d;
-   wire                                                        sync_ack_save_q;		
+   wire                                                        sync_ack_save_q;		// input=>sync_ack_save             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        sync_ack_save_d;
-   wire                                                        cr_we_q;		
+   wire                                                        cr_we_q;		// input=>cr_we_d                   ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        cr_we_d;
-   wire [0:`CR_POOL_ENC+`THREADS_POOL_ENC-1]                      cr_wa_q;		
+   wire [0:`CR_POOL_ENC+`THREADS_POOL_ENC-1]                      cr_wa_q;		// input=>cr_wa_d                   ,act=>cr_we_d              ,scan=>Y ,needs_sreset=>0
    reg [0:`CR_POOL_ENC+`THREADS_POOL_ENC-1]                       cr_wa_d;
-   wire [0:3]                                                  cr_wd_q;		
+   wire [0:3]                                                  cr_wd_q;		// input=>cr_wd_d                   ,act=>cr_we_d              ,scan=>Y ,needs_sreset=>0
    wire [0:3]                                                  cr_wd_d;
-   wire [0:`THREADS-1]                                          stcx_thrd_fail_q;   
+   wire [0:`THREADS-1]                                          stcx_thrd_fail_q;   // input=>stcx_thrd_fail_d       ,act=>tiup              ,scan=>Y ,needs_sreset=>0
    wire [0:`THREADS-1]                                          stcx_thrd_fail_d;
-   wire                                                         stq3_cmmt_attmpt_q; 
+   wire                                                         stq3_cmmt_attmpt_q; // input=>stq3_cmmt_attmpt_d       ,act=>tiup              ,scan=>Y ,needs_sreset=>0
    wire                                                         stq3_cmmt_attmpt_d;
-   wire                                                         stq_need_hole_q;    
+   wire                                                         stq_need_hole_q;    // input=>stq_need_hole_d       ,act=>tiup              ,scan=>Y ,needs_sreset=>0
    wire                                                         stq_need_hole_d;
-   wire [0:`THREADS-1]                                          icswxr_thrd_busy_q;   
+   wire [0:`THREADS-1]                                          icswxr_thrd_busy_q;   // input=>icswxr_thrd_busy_d       ,act=>tiup              ,scan=>Y ,needs_sreset=>0
    wire [0:`THREADS-1]                                          icswxr_thrd_busy_d;
-   wire [0:`THREADS-1]                                          icswxr_thrd_nbusy_q;   
+   wire [0:`THREADS-1]                                          icswxr_thrd_nbusy_q;   // input=>icswxr_thrd_nbusy_d       ,act=>tiup              ,scan=>Y ,needs_sreset=>0
    wire [0:`THREADS-1]                                          icswxr_thrd_nbusy_d;
-   wire [0:`THREADS-1]                                          any_ack_hold_q;		
+   wire [0:`THREADS-1]                                          any_ack_hold_q;		// input=>any_ack_hold_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          any_ack_hold_d;
-   wire [0:`THREADS-1]                                          any_ack_val_ok_q;		
+   wire [0:`THREADS-1]                                          any_ack_val_ok_q;		// input=>any_ack_val_ok_d          ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          any_ack_val_ok_d;
-   wire [0:`THREADS-1]                                          arb_release_itag_vld_q;		
+   wire [0:`THREADS-1]                                          arb_release_itag_vld_q;		// input=>arb_release_itag_vld             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          arb_release_itag_vld_d;
-   wire                                                        spr_xucr0_cls_q;		
+   wire                                                        spr_xucr0_cls_q;		// input=>spr_xucr0_cls_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        spr_xucr0_cls_d;
-   wire                                                        spr_iucr0_icbi_ack_q;		
+   wire                                                        spr_iucr0_icbi_ack_q;		// input=>spr_iucr0_icbi_ack_d      ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        spr_iucr0_icbi_ack_d;
-   wire                                                        spr_lsucr0_dfwd_q ;          
-   wire                                                        spr_lsucr0_dfwd_d ;          
-   wire                                                        ex5_thrd_match_restart_q;    
+   wire                                                        spr_lsucr0_dfwd_q ;          // input=>spr_lsucr0_dfwd_d      ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        spr_lsucr0_dfwd_d ;
+   wire                                                        ex5_thrd_match_restart_q;    // input=>ex5_thrd_match_restart_d   ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ex5_thrd_match_restart_d;
-   wire                                                        ex6_thrd_match_restart_q;    
+   wire                                                        ex6_thrd_match_restart_q;    // input=>ex6_thrd_match_restart_d   ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ex6_thrd_match_restart_d;
-   wire                                                        ex5_thrd_nomatch_restart_q;  
+   wire                                                        ex5_thrd_nomatch_restart_q;  // input=>ex5_thrd_nomatch_restart_d   ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ex5_thrd_nomatch_restart_d;
-   wire                                                        ex6_thrd_nomatch_restart_q;  
+   wire                                                        ex6_thrd_nomatch_restart_q;  // input=>ex6_thrd_nomatch_restart_d   ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ex6_thrd_nomatch_restart_d;
-   wire [0:`STQ_ENTRIES-1]                                      ex5_older_ldmiss_d;		
-   wire [0:`STQ_ENTRIES]                                        ex5_older_ldmiss_q;		
-   wire                                                        ex4_fxu1_illeg_lswx_q;		
+   wire [0:`STQ_ENTRIES-1]                                      ex5_older_ldmiss_d;		// input=>ex5_older_ldmiss_d        ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES]                                        ex5_older_ldmiss_q;		// input=>ex5_older_ldmiss_d        ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        ex4_fxu1_illeg_lswx_q;		// input=>ex4_fxu1_illeg_lswx_d     ,act=>ex3_fxu0_val         ,scan=>Y ,needs_sreset=>0
    wire                                                        ex4_fxu1_illeg_lswx_d;
-   wire                                                        ex4_fxu1_strg_noop_q;		
+   wire                                                        ex4_fxu1_strg_noop_q;		// input=>ex4_fxu1_strg_noop_d      ,act=>ex3_fxu0_val         ,scan=>Y ,needs_sreset=>0
    wire                                                        ex4_fxu1_strg_noop_d;
-   wire [0:`THREADS-1]                                          ex3_fxu1_val_q;		
+   wire [0:`THREADS-1]                                          ex3_fxu1_val_q;		// input=>ex3_fxu1_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ex3_fxu1_val_d;
-   wire [0:`ITAG_SIZE_ENC-1]                                    ex3_fxu1_itag_q;		
+   wire [0:`ITAG_SIZE_ENC-1]                                    ex3_fxu1_itag_q;		// input=>ex3_fxu1_itag_d           ,act=>ex2_fxu1_val         ,scan=>Y ,needs_sreset=>0
    wire [0:`ITAG_SIZE_ENC-1]                                    ex3_fxu1_itag_d;
-   wire [0:((2**`GPR_WIDTH_ENC)/8)-1]                           ex3_fxu1_dvc1_cmp_q;		
+   wire [0:((2**`GPR_WIDTH_ENC)/8)-1]                           ex3_fxu1_dvc1_cmp_q;		// input=>ex3_fxu1_dvc1_cmp_d           ,act=>ex2_fxu1_val         ,scan=>Y ,needs_sreset=>0
    wire [0:((2**`GPR_WIDTH_ENC)/8)-1]                           ex3_fxu1_dvc1_cmp_d;
-   wire [0:((2**`GPR_WIDTH_ENC)/8)-1]                           ex3_fxu1_dvc2_cmp_q;		
+   wire [0:((2**`GPR_WIDTH_ENC)/8)-1]                           ex3_fxu1_dvc2_cmp_q;		// input=>ex3_fxu1_dvc2_cmp_d           ,act=>ex2_fxu1_val         ,scan=>Y ,needs_sreset=>0
    wire [0:((2**`GPR_WIDTH_ENC)/8)-1]                           ex3_fxu1_dvc2_cmp_d;
-   wire [0:`THREADS-1]                                          ex4_fxu1_val_q;		
+   wire [0:`THREADS-1]                                          ex4_fxu1_val_q;		// input=>ex4_fxu1_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ex4_fxu1_val_d;
-   wire [0:`THREADS-1]                                          ex3_axu_val_q;		
+   wire [0:`THREADS-1]                                          ex3_axu_val_q;		// input=>ex3_axu_val_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ex3_axu_val_d;
-   wire [0:`ITAG_SIZE_ENC-1]                                    ex3_axu_itag_q;		
+   wire [0:`ITAG_SIZE_ENC-1]                                    ex3_axu_itag_q;		// input=>ex3_axu_itag_d            ,act=>ex2_axu_val          ,scan=>Y ,needs_sreset=>0
    wire [0:`ITAG_SIZE_ENC-1]                                    ex3_axu_itag_d;
-   wire [0:`THREADS-1]                                          ex4_axu_val_q;		
+   wire [0:`THREADS-1]                                          ex4_axu_val_q;		// input=>ex4_axu_val_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          ex4_axu_val_d;
-   wire [0:`STQ_ENTRIES-1]                                      ex5_qHit_set_oth_d;		
-   wire [0:`STQ_ENTRIES]                                        ex5_qHit_set_oth_q;		
-   wire [0:`STQ_ENTRIES-1]                                      ex5_qHit_set_miss_q;		
+   wire [0:`STQ_ENTRIES-1]                                      ex5_qHit_set_oth_d;		// input=>ex5_qHit_set_oth_d        ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES]                                        ex5_qHit_set_oth_q;		// input=>ex5_qHit_set_oth_d        ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire [0:`STQ_ENTRIES-1]                                      ex5_qHit_set_miss_q;		// input=>ex5_qHit_set_miss_d       ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`STQ_ENTRIES-1]                                      ex5_qHit_set_miss_d;
-   wire [0:`THREADS-1]                                          iu_icbi_ack_q;		
+   wire [0:`THREADS-1]                                          iu_icbi_ack_q;		// input=>iu_icbi_ack_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          iu_icbi_ack_d;
-   wire [0:`THREADS-1]                                          l2_icbi_ack_q;		
+   wire [0:`THREADS-1]                                          l2_icbi_ack_q;		// input=>l2_icbi_ack_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          l2_icbi_ack_d;
-   wire                                                        rv1_binv_val_q;		
+   wire                                                        rv1_binv_val_q;		// input=>rv1_binv_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        rv1_binv_val_d;
-   wire                                                        ex0_binv_val_q;		
+   wire                                                        ex0_binv_val_q;		// input=>ex0_binv_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ex0_binv_val_d;
-   wire                                                        ex1_binv_val_q;		
+   wire                                                        ex1_binv_val_q;		// input=>ex1_binv_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ex1_binv_val_d;
-   wire                                                        ex2_binv_val_q;		
+   wire                                                        ex2_binv_val_q;		// input=>ex2_binv_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ex2_binv_val_d;
-   wire                                                        ex3_binv_val_q;		
+   wire                                                        ex3_binv_val_q;		// input=>ex3_binv_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        ex3_binv_val_d;
-   wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            rv1_binv_addr_q;		
+   wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            rv1_binv_addr_q;		// input=>rv1_binv_addr_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            rv1_binv_addr_d;
-   wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            ex0_binv_addr_q;		
+   wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            ex0_binv_addr_q;		// input=>ex0_binv_addr_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            ex0_binv_addr_d;
-   wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            ex1_binv_addr_q;		
+   wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            ex1_binv_addr_q;		// input=>ex1_binv_addr_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            ex1_binv_addr_d;
-   wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            ex2_binv_addr_q;		
+   wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            ex2_binv_addr_q;		// input=>ex2_binv_addr_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            ex2_binv_addr_d;
-   wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            ex3_binv_addr_q;		
+   wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            ex3_binv_addr_q;		// input=>ex3_binv_addr_d           ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [64-(`DC_SIZE-3):63-`CL_SIZE]                            ex3_binv_addr_d;
-   wire                                                        stq2_binv_blk_cclass_q;		
+   wire                                                        stq2_binv_blk_cclass_q;		// input=>stq2_binv_blk_cclass_d    ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq2_binv_blk_cclass_d;
-   wire                                                        stq2_ici_val_q;		
+   wire                                                        stq2_ici_val_q;		// input=>stq2_ici_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq2_ici_val_d;
-   wire                                                        stq4_xucr0_cul_q;    
+   wire                                                        stq4_xucr0_cul_q;    // input=>stq4_xucr0_cul_d     ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq4_xucr0_cul_d;
-   wire                                                        stq2_reject_dci_q;   
+   wire                                                        stq2_reject_dci_q;   // input=>stq2_reject_dci_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq2_reject_dci_d;
-   wire                                                        stq3_cmmt_reject_q;  
-   wire                                                        stq3_cmmt_reject_d;  
-   wire                                                        stq2_dci_val_q;      
+   wire                                                        stq3_cmmt_reject_q;  // input=>stq3_cmmt_reject_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
+   wire                                                        stq3_cmmt_reject_d;
+   wire                                                        stq2_dci_val_q;      // input=>stq2_dci_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq2_dci_val_d;
-   wire                                                        stq3_cmmt_dci_val_q; 
+   wire                                                        stq3_cmmt_dci_val_q; // input=>stq3_cmmt_dci_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq3_cmmt_dci_val_d;
-   wire                                                        stq4_cmmt_dci_val_q; 
+   wire                                                        stq4_cmmt_dci_val_q; // input=>stq4_cmmt_dci_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq4_cmmt_dci_val_d;
-   wire                                                        stq5_cmmt_dci_val_q; 
+   wire                                                        stq5_cmmt_dci_val_q; // input=>stq5_cmmt_dci_val_d            ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire                                                        stq5_cmmt_dci_val_d;
-   wire [0:`STQ_ENTRIES-1]                                      ex3_nxt_oldest_q;		
+   wire [0:`STQ_ENTRIES-1]                                      ex3_nxt_oldest_q;		// input=>ex3_nxt_oldest_d          ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`STQ_ENTRIES-1]                                      ex3_nxt_oldest_d;
-   wire [0:`STQ_ENTRIES-1]                                      stq_tag_val_q;		
+   wire [0:`STQ_ENTRIES-1]                                      stq_tag_val_q;		// input=>stq_tag_val_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`STQ_ENTRIES-1]                                      stq_tag_val_d;
-   wire [0:`STQ_ENTRIES-1]                                      stq_tag_ptr_q[0:`STQ_ENTRIES-1];		
+   wire [0:`STQ_ENTRIES-1]                                      stq_tag_ptr_q[0:`STQ_ENTRIES-1];		// input=>stq_tag_ptr_d             ,act=>tiup                 ,scan=>Y ,needs_sreset=>1
    wire [0:`STQ_ENTRIES-1]                                      stq_tag_ptr_d[0:`STQ_ENTRIES-1];
-   wire [0:`STQ_ENTRIES_ENC-1]                                  stq4_cmmt_tag_q;		
+   wire [0:`STQ_ENTRIES_ENC-1]                                  stq4_cmmt_tag_q;		// input=>stq4_cmmt_tag_d           ,act=>stq3_cmmt_val_q      ,scan=>Y ,needs_sreset=>1
    wire [0:`STQ_ENTRIES_ENC-1]                                  stq4_cmmt_tag_d;
-   wire [0:`THREADS-1]                                          dbg_int_en_q;           
+   wire [0:`THREADS-1]                                          dbg_int_en_q;           // input=>dbg_int_en_d           ,act=>tiup      ,scan=>Y ,needs_sreset=>1
    wire [0:`THREADS-1]                                          dbg_int_en_d;
 
-      
+
    parameter                                                   rv_lq_vld_offset = 0;
    parameter                                                   rv_lq_ld_vld_offset = rv_lq_vld_offset + 1;
    parameter                                                   ex0_dir_rd_val_offset = rv_lq_ld_vld_offset + 1;
@@ -1056,8 +1120,7 @@ module lq_stq(
    parameter                                                   ex5_thrd_nomatch_restart_offset = ex6_thrd_match_restart_offset + 1;
    parameter                                                   ex6_thrd_nomatch_restart_offset = ex5_thrd_nomatch_restart_offset + 1;
    parameter                                                   ex5_older_ldmiss_offset = ex6_thrd_nomatch_restart_offset + 1;
-      
-      
+
    parameter                                                   ex4_fxu1_illeg_lswx_offset = ex5_older_ldmiss_offset + `STQ_ENTRIES;
    parameter                                                   ex4_fxu1_strg_noop_offset = ex4_fxu1_illeg_lswx_offset + 1;
    parameter                                                   ex3_fxu1_val_offset = ex4_fxu1_strg_noop_offset + 1;
@@ -1081,7 +1144,8 @@ module lq_stq(
 
    wire [0:scan_right-1]                                       siv;
    wire [0:scan_right-1]                                       sov;
-      
+
+      // Signals
    wire                                                        spr_xucr0_64cls;
    wire                                                        a2_icbi_ack_en;
    wire                                                        ex3_req_act;
@@ -1406,7 +1470,8 @@ module lq_stq(
    wire [0:2] 							  stq_tag_ptr_ctrl[0:`STQ_ENTRIES-1];
    wire [0:`STQ_ENTRIES-1] 					  stq3_cmmt_tag_entry;
    reg  [0:`STQ_ENTRIES_ENC-1] 					  stq3_cmmt_tag;
- 
+
+   // these wires are to convert the ports at the top to an array of itags
    wire [0:`ITAG_SIZE_ENC-1]         iu_lq_cp_next_itag_int[0:`THREADS-1];
    wire [0:`ITAG_SIZE_ENC-1]         iu_lq_i0_completed_itag_int[0:`THREADS-1];
    wire [0:`ITAG_SIZE_ENC-1]         iu_lq_i1_completed_itag_int[0:`THREADS-1];
@@ -1416,7 +1481,9 @@ module lq_stq(
    wire [0:7]                        ctl_lsq_spr_dbcr2_dvc2be_int[0:`THREADS-1];
 
 
+   //!! Bugspray Include: lq_stq
 
+   // This is used to convert the wide vector port inputs into an internal 2 dimesional array format
    generate
       begin : ports
          genvar tid;
@@ -1432,35 +1499,73 @@ module lq_stq(
            end
       end
    endgenerate
-      
 
+   // Allocate an entry in the Queue off IU dispatch, insert itag
+   // Do itag lookup to determine, queue entry, when data/address are available
+   // When both address & data are ready for any entry, send lsq_ctl_cpl_ready for that entry
+   //    obviously start with the oldest entry
+   // Completion will then report itag_complete
+   // IF
+   //    arb_stq_cred_avail=1
+   //    ldq_stq_rel1_blk_store=0
+   // THEN
+   //    Initiate STQ Commit
+   //       starts with asserting stq commit pipe interface
+   //       if rv issues at stq2, retry the stq interface (sink will cancel)
+   //       drive L2 at stq3
+   //       delete entry at stq7
+   //       free sq credit
 
+   // DONT CP flush stuff that have itag_complete
+
+   //<<FIX>>
    assign ex3_req_act = 1'b1;
 
+   //------------------------------------------------------------------------------
+   // XU Config Bits
+   //------------------------------------------------------------------------------
 
+   // XUCR0[CLS] 128 Byte Cacheline Enabled
+   // 1 => 128 Byte Cacheline
+   // 0 => 64 Byte Cacheline
    assign spr_xucr0_cls_d = xu_lq_spr_xucr0_cls;
    assign spr_xucr0_64cls = (~spr_xucr0_cls_q);
 
+   // IUCR0[ICBI_ACK_EN] ICBI L2 Acknoledge Enable
+   // 1 => ICBI Acknowledged by the L2
+   // 0 => ICBI Acknowledged by the A2
    assign spr_iucr0_icbi_ack_d = iu_lq_spr_iucr0_icbi_ack;
    assign a2_icbi_ack_en = (~spr_iucr0_icbi_ack_q);
 
+   // LSUCR0[DFWD] Store Data Forwarding is Disabled
+   // 1 => Store Data Forwarding is Disabled
+   // 0 => Store Data Forwarding is Enabled
    assign spr_lsucr0_dfwd_d = ctl_lsq_spr_lsucr0_dfwd;
 
+   //------------------------------------------------------------------------------
+   // Back-Invalidate In Progress
+   //------------------------------------------------------------------------------
+   // Back-Invalidate in the LQ pipeline
    assign rv1_binv_val_d = l2_back_inv_val;
    assign ex0_binv_val_d = rv1_binv_val_q;
    assign ex1_binv_val_d = ex0_binv_val_q;
    assign ex2_binv_val_d = ex1_binv_val_q;
    assign ex3_binv_val_d = ex2_binv_val_q;
-   
+
    assign rv1_binv_addr_d = l2_back_inv_addr;
    assign ex0_binv_addr_d = rv1_binv_addr_q;
    assign ex1_binv_addr_d = ex0_binv_addr_q;
    assign ex2_binv_addr_d = ex1_binv_addr_q;
    assign ex3_binv_addr_d = ex2_binv_addr_q;
-   
-   
+
+   //------------------------------------------------------------------------------
+   // STQ TAG Mapping
+   //------------------------------------------------------------------------------
+
+   // Determine Which entries are available for updating
    assign stq_tag_available = (~stq_tag_val_q);
-   
+
+   // I0 starts at the beginning of the TAG queue and works its way to the end, it looks for the first available
    assign stq_wrt_i0_ptr[0] = stq_tag_available[0];
    generate
       begin : xhdl0
@@ -1471,7 +1576,8 @@ module lq_stq(
            end
       end
    endgenerate
-   
+
+   // I1 starts at the end of the TAG queue and works its way to the beginning, it looks for the first available entry
    assign stq_wrt_i1_ptr[`STQ_ENTRIES - 1] = stq_tag_available[`STQ_ENTRIES - 1];
    generate
       begin : xhdl1
@@ -1482,8 +1588,9 @@ module lq_stq(
            end
       end
    endgenerate
-   
-    
+
+    // Generate STQ TAG Entry Encoded
+
     always @(*)
     begin: stqTag
        reg [0:`STQ_ENTRIES_ENC-1]                                   entryI0;
@@ -1503,50 +1610,65 @@ module lq_stq(
        stq_tag_i1_entry <= entryI1;
        stq3_cmmt_tag <= cmmtTag;
     end
-    
+
     generate
        begin : xhdl2
           genvar                                                      stq;
           for (stq = 0; stq <= `STQ_ENTRIES - 1; stq = stq + 1)
           begin : stqTagAlloc
+             // STQ TAG Alloc is valid
              assign stq_tag_act[stq] = stq_tag_i0_upd_val[stq] | stq_tag_i1_upd_val[stq] | stq_tag_val_q[stq];
              assign stq_tag_inval[stq] = |(stq_tag_ptr_q[stq] & stq7_entry_delete[0:`STQ_ENTRIES - 1]);
              assign stq_tag_i0_upd_val[stq] = stq_wrt_i0_ptr[stq] & |(ex1_i0_vld_q);
              assign stq_tag_i1_upd_val[stq] = stq_wrt_i1_ptr[stq] & |(ex1_i1_vld_q);
              assign stq_tag_val_d[stq] = stq_tag_i0_upd_val[stq] | stq_tag_i1_upd_val[stq] | (stq_tag_val_q[stq] & (~stq_tag_inval[stq]));
-             
-             
-             assign stq_wrt_i0_mux[stq] = (stq_alloc_sel == 1'b1) ? stq_wrt_i1_ptr[stq] : 
+
+             // wrt_i0 needs to be wrt_i1 when ex1_i1_vld and not ex1_i0_vld, since wrt_i1_ptr is being set valid and alloc_i0_wrt_ptr is valid
+
+             // STQ TAG Alloc Control
+             // I0 is updating the Store Queue
+             assign stq_wrt_i0_mux[stq] = (stq_alloc_sel == 1'b1) ? stq_wrt_i1_ptr[stq] :
                                                                     stq_wrt_i0_ptr[stq];
              assign stq_tag_i0_stq_sel[stq] = stq_wrt_i0_mux[stq] & stq_alloc_val[0];
              assign stq_tag_ptr_ctrl[stq][0] = stq_tag_i0_stq_sel[stq];
-             
+
+             // I1 is updating the Store Queue
              assign stq_tag_i1_stq_sel[stq] = stq_wrt_i1_ptr[stq] & stq_alloc_val[1];
              assign stq_tag_ptr_ctrl[stq][1] = stq_tag_i1_stq_sel[stq];
-             
+
+             // Store Queue is compressing, need to compress all pointers
              assign stq_tag_ptr_ctrl[stq][2] = stq_push_down;
-             
+
+             // Compress each pointer in the STQ TAG Alloc Array
              assign stq_tag_ptr_compr[stq] = {stq_tag_ptr_q[stq][1:`STQ_ENTRIES - 1], 1'b0};
-             
-             
-             assign stq_tag_ptr_d[stq] = (stq_tag_ptr_ctrl[stq] == 3'b100) ? stqe_alloc_i0_wrt_ptr : 
-                                         (stq_tag_ptr_ctrl[stq] == 3'b101) ? stqe_alloc_i0_wrt_ptr : 
-                                         (stq_tag_ptr_ctrl[stq] == 3'b010) ? stqe_alloc_i1_wrt_ptr : 
-                                         (stq_tag_ptr_ctrl[stq] == 3'b011) ? stqe_alloc_i1_wrt_ptr : 
-                                         (stq_tag_ptr_ctrl[stq] == 3'b001) ? stq_tag_ptr_compr[stq] : 
+
+             // TAG Points to the STQ Entry
+             // We should never see ctrl = 110 or ctrl = 111, will need bugspray
+
+             // STQ TAG will is committing, should be a 1-hot, will need bugspray
+             assign stq_tag_ptr_d[stq] = (stq_tag_ptr_ctrl[stq] == 3'b100) ? stqe_alloc_i0_wrt_ptr :
+                                         (stq_tag_ptr_ctrl[stq] == 3'b101) ? stqe_alloc_i0_wrt_ptr :
+                                         (stq_tag_ptr_ctrl[stq] == 3'b010) ? stqe_alloc_i1_wrt_ptr :
+                                         (stq_tag_ptr_ctrl[stq] == 3'b011) ? stqe_alloc_i1_wrt_ptr :
+                                         (stq_tag_ptr_ctrl[stq] == 3'b001) ? stq_tag_ptr_compr[stq] :
                                                                              stq_tag_ptr_q[stq];
              assign stq3_cmmt_tag_entry[stq] = |(stq_tag_ptr_q[stq] & stq3_cmmt_ptr_q) & stq_tag_val_q[stq];
           end
        end
    endgenerate
 
+   // Order Queue Update with STQ TAG
    assign stq_odq_i0_stTag = stq_tag_i0_entry;
    assign stq_odq_i1_stTag = stq_tag_i1_entry;
 
+   // Order Queue invalidated STQ TAG
    assign stq4_cmmt_tag_d = stq3_cmmt_tag;
    assign stq_odq_stq4_stTag_inval = stq4_cmmt_val_q;
    assign stq_odq_stq4_stTag = stq4_cmmt_tag_q;
 
+   //------------------------------------------------------------------------------
+   // STQ Entry Allocation
+   //------------------------------------------------------------------------------
    assign stq_alloc_val[0] = |(ex1_i0_vld_q) | |(ex1_i1_vld_q);
    assign stq_alloc_val[1] = |(ex1_i0_vld_q) & |(ex1_i1_vld_q);
 
@@ -1554,13 +1676,13 @@ module lq_stq(
 
    assign stq_act = stq_alloc_val[0] | |(stqe_alloc_q) | stq2_cmmt_flushed_q | stq3_cmmt_flushed_q | stq4_cmmt_flushed_q | stq5_cmmt_flushed_q | stq6_cmmt_flushed_q | stq7_cmmt_flushed_q;
 
-   assign stqe_alloc_itag0 = (stq_alloc_sel == 1'b1) ? ex1_i1_itag_q : 
+   assign stqe_alloc_itag0 = (stq_alloc_sel == 1'b1) ? ex1_i1_itag_q :
                                                        ex1_i0_itag_q;
 
-   assign stq_alloc_flushed[0] = (stq_alloc_sel == 1'b1) ? ex1_i1_flushed : 
+   assign stq_alloc_flushed[0] = (stq_alloc_sel == 1'b1) ? ex1_i1_flushed :
                                                            ex1_i0_flushed;
 
-   assign stq_alloc_thrd_id0 = (stq_alloc_sel == 1'b1) ? ex1_i1_vld_q : 
+   assign stq_alloc_thrd_id0 = (stq_alloc_sel == 1'b1) ? ex1_i1_vld_q :
                                                          ex1_i0_vld_q;
    assign stq_alloc_thrd_id1 = ex1_i1_vld_q;
    assign stqe_alloc_itag1 = ex1_i1_itag_q;
@@ -1571,25 +1693,28 @@ module lq_stq(
    assign stqe_alloc_ptr_l1 = {stqe_alloc_ptr_q[1:`STQ_ENTRIES - 1], ((~(|(stqe_alloc_ptr_q))))};
 
    assign stqe_alloc_ptr_sel = {stq_alloc_val[0:1], stq_push_down};
+   //                         stqe_alloc_ptr_q     when "011",  can't happen
+   //                         stqe_alloc_ptr_r1    when "010",  can't happen
+   // "000"
 
-   assign stqe_alloc_ptr_d = (stqe_alloc_ptr_sel == 3'b111) ? stqe_alloc_ptr_r1 : 
-                             (stqe_alloc_ptr_sel == 3'b110) ? stqe_alloc_ptr_r2 : 
-                             (stqe_alloc_ptr_sel == 3'b101) ? stqe_alloc_ptr_q : 
-                             (stqe_alloc_ptr_sel == 3'b100) ? stqe_alloc_ptr_r1 : 
-                             (stqe_alloc_ptr_sel == 3'b001) ? stqe_alloc_ptr_l1 : 
+   assign stqe_alloc_ptr_d = (stqe_alloc_ptr_sel == 3'b111) ? stqe_alloc_ptr_r1 :
+                             (stqe_alloc_ptr_sel == 3'b110) ? stqe_alloc_ptr_r2 :
+                             (stqe_alloc_ptr_sel == 3'b101) ? stqe_alloc_ptr_q :
+                             (stqe_alloc_ptr_sel == 3'b100) ? stqe_alloc_ptr_r1 :
+                             (stqe_alloc_ptr_sel == 3'b001) ? stqe_alloc_ptr_l1 :
                                                               stqe_alloc_ptr_q;
-   assign stqe_alloc_i0_wrt_ptr = (stq_push_down == 1'b0) ? stqe_alloc_ptr_q : 
+   assign stqe_alloc_i0_wrt_ptr = (stq_push_down == 1'b0) ? stqe_alloc_ptr_q :
                                                             stqe_alloc_ptr_l1;
 
-   assign stqe_alloc_i1_wrt_ptr = (stq_push_down == 1'b0) ? stqe_alloc_ptr_r1 : 
+   assign stqe_alloc_i1_wrt_ptr = (stq_push_down == 1'b0) ? stqe_alloc_ptr_r1 :
                                                             stqe_alloc_ptr_q;
 
-
+   // Thread Quiesced OR reduce
    always @(*) begin: tidQuiesce
       reg [0:`THREADS-1]                                      tidQ;
-      
+
       (* analysis_not_referenced="true" *)
-      
+
       integer                                                 stq;
       tidQ = {`THREADS{1'b0}};
       for (stq=0; stq<`STQ_ENTRIES; stq=stq+1) begin
@@ -1602,15 +1727,16 @@ module lq_stq(
 
    assign stq_chk_alloc = (~stqe_alloc_q[0:`STQ_ENTRIES - 1]) & (~stqe_alloc_ptr_q) & (stq1_cmmt_ptr_q | stqe_need_ready_ptr_q[0:`STQ_ENTRIES - 1] | ex4_fxu1_data_ptr_q);
 
-
-
+   //------------------------------------------------------------------------------
+   // STQ Completion Request Pointer
+   //------------------------------------------------------------------------------
    assign stqe_need_ready_ptr_r1 = {1'b0, stqe_need_ready_ptr_q[0:`STQ_ENTRIES - 2]};
    assign stqe_need_ready_ptr_l1 = {stqe_need_ready_ptr_q[1:`STQ_ENTRIES - 1], ((~(|(stqe_need_ready_ptr_q))))};
 
    assign stqe_need_ready_ptr_sel = {stqe_need_ready_next, stq_push_down};
 
-   assign stqe_need_ready_ptr_d = (stqe_need_ready_ptr_sel == 2'b10) ? stqe_need_ready_ptr_r1 : 
-                                  (stqe_need_ready_ptr_sel == 2'b01) ? stqe_need_ready_ptr_l1 : 
+   assign stqe_need_ready_ptr_d = (stqe_need_ready_ptr_sel == 2'b10) ? stqe_need_ready_ptr_r1 :
+                                  (stqe_need_ready_ptr_sel == 2'b01) ? stqe_need_ready_ptr_l1 :
                                                                        stqe_need_ready_ptr_q[0:`STQ_ENTRIES - 1];
    assign stqe_need_ready_blk = {`STQ_ENTRIES{ctl_lsq_stq_cpl_blk}};
    assign stqe_need_ready_rpt = stqe_addr_val_q[0:`STQ_ENTRIES - 1] &
@@ -1647,26 +1773,33 @@ module lq_stq(
    assign dacrw_det[3] = |(stqe_dacrw_det3 & stqe_need_ready_ptr_q[0:`STQ_ENTRIES - 1]);
    assign dacrw_report = |(stqe_dvc_int_det & stqe_need_ready_ptr_q[0:`STQ_ENTRIES - 1]);
 
+   // Qualified with lsq_ctl_cpl_ready in lq_ldq
    assign lsq_ctl_stq_cpl_ready = cpl_ready | |(any_ack_val);
 
-   assign cpl_ready_itag_final = (any_ack_val == {`THREADS{1'b0}}) ? cpl_ready_itag : 
+   assign cpl_ready_itag_final = (any_ack_val == {`THREADS{1'b0}}) ? cpl_ready_itag :
                                                       ext_act_queue_itag;
    assign lsq_ctl_stq_cpl_ready_itag = cpl_ready_itag_final;
 
-   assign cpl_ready_tid_final = (any_ack_val == {`THREADS{1'b0}}) ? cpl_ready_thrd_id : 
+   assign cpl_ready_tid_final = (any_ack_val == {`THREADS{1'b0}}) ? cpl_ready_thrd_id :
                                                      any_ack_val;
    assign lsq_ctl_stq_cpl_ready_tid = cpl_ready_tid_final;
 
    assign lsq_ctl_stq_exception_val = 0;
    assign lsq_ctl_stq_exception = 0;
-   assign lsq_ctl_stq_n_flush = (any_ack_val == {`THREADS{1'b0}}) ? dacrw_report : 
+   assign lsq_ctl_stq_n_flush = (any_ack_val == {`THREADS{1'b0}}) ? dacrw_report :
                                                      ext_act_queue_dacrw_rpt;
-   assign lsq_ctl_stq_dacrw = (any_ack_val == {`THREADS{1'b0}}) ? dacrw_det : 
+   assign lsq_ctl_stq_dacrw = (any_ack_val == {`THREADS{1'b0}}) ? dacrw_det :
                                                    ext_act_queue_dacrw_det;
 
+   // We may want to add syncs here for single thread, when we go to 2 `THREADS, flushing may not matter
+   //                                      DCI                     ICI
    assign lsq_ctl_stq_np1_flush = ((cpl_ttype == 6'b101111) | (cpl_ttype == 6'b101110)) & (~cpl_dreq_val);
 
-   assign hwsync_ack = an_ac_sync_ack;		
+   //------------------------------------------------------------------------------
+   // L2 Acks
+   //------------------------------------------------------------------------------
+   // (probably overkill on the latches here, but I'll leave it)
+   assign hwsync_ack = an_ac_sync_ack;		//  and or_reduce(stqe_is_sync_q(0 to `STQ_ENTRIES-1) and     stqe_l_zero and                     stqe_need_ready_ptr_q(0 to `STQ_ENTRIES-1));
 
    generate
       begin : xhdl4
@@ -1676,7 +1809,7 @@ module lq_stq(
               assign lwsync_ack[t] = stq6_cmmt_val_q & |(stqe_is_sync_q[0:`STQ_ENTRIES - 1] & (~stqe_l_zero) & stq6_cmmt_ptr_q & stqe_need_ext_ack_q[0:`STQ_ENTRIES - 1]) & stq6_tid[t];
               assign local_instr_ack[t] = stq6_cmmt_val_q & |((~stqe_dreq_val_q[0:`STQ_ENTRIES - 1]) & stq6_cmmt_ptr_q & stqe_need_ext_ack_q[0:`STQ_ENTRIES - 1]) & stq6_local_ack_val & stq6_tid[t];
               assign icswxr_ack_thrd[t] = an_ac_back_inv_addr_lo[62:63] == t;
-              
+
               assign l2_icbi_ack_d[t] = (((an_ac_icbi_ack_thread == t) & an_ac_icbi_ack) | l2_icbi_ack_q[t]) & (~icbi_ack[t]);
            end
       end
@@ -1684,7 +1817,7 @@ module lq_stq(
 
    assign icswxr_ack = an_ac_back_inv & an_ac_back_inv_target_bit3;
    assign icswxr_ack_val = icswxr_ack_thrd & {`THREADS{icswxr_ack_q}};
-   
+
    assign resv_ack_d[0] =  an_ac_stcx_complete[0] | (resv_ack_q[0] & icswxr_ack_dly1_q);
    assign resv_ack[0]   = (an_ac_stcx_complete[0] & ~icswxr_ack_q) | (resv_ack_q[0] & icswxr_ack_dly1_q);
    generate
@@ -1694,18 +1827,19 @@ module lq_stq(
            assign resv_ack[1] = (an_ac_stcx_complete[1] & (~an_ac_stcx_complete[0]) & ~icswxr_ack_q) | (resv_ack_q[1] & (resv_ack_q[0] | icswxr_ack_dly1_q));
         end
    endgenerate
-   
+
+   // Dont need thread indicator for now, may change if the store queue design
+   // changes for multiple `THREADS
    assign iu_icbi_ack_d = (iu_lq_icbi_complete_q | iu_icbi_ack_q) & (~icbi_ack);
-   
-   
+
    assign l2_icbi_ack = {`THREADS{a2_icbi_ack_en}} | l2_icbi_ack_q;
    assign icbi_ack = iu_icbi_ack_q & l2_icbi_ack & ext_ack_queue_v_q;
    assign sync_ack_all = hwsync_ack_q | lwsync_ack_q | icbi_ack_q | local_instr_ack_q;
-   
+
    assign sync_ack_save_d = &(sync_ack_all);
-   
+
    assign sync_ack[0] = sync_ack_all[0];
-   generate		
+   generate		// this logic only works for 1 or 2 `THREADS
       begin : xhdl5
          genvar                                                      t;
          for (t = 1; t <= `THREADS - 1; t = t + 1)
@@ -1714,15 +1848,17 @@ module lq_stq(
            end
       end
    endgenerate
-                        
+
    assign lsq_ctl_sync_done = |(hwsync_ack_q | lwsync_ack_q);
 
+   // These guys have to fight over cr completion bus.
+   // Do not release if ldq_stq_rel1_blk_store=1
    assign cr_block = {`THREADS{ldq_stq_rel1_blk_store}} | (~ex0_cr_hole_q);
 
    assign cr_ack_d = (icswxr_ack_val | resv_ack_q) | (cr_ack_q & (~cr_ack));
 
    assign cr_ack[0] = cr_ack_q[0] & (~cr_block[0]) & (~(|(sync_ack_all)));
-   generate		
+   generate		// this logic only works for 1 or 2 `THREADS
       begin : xhdl6
          genvar                                                      t;
          for (t = 1; t <= `THREADS - 1; t = t + 1)
@@ -1732,6 +1868,14 @@ module lq_stq(
       end
    endgenerate
 
+   // Local Ack for the following instructions
+   // These are instructions that require CP_NEXT to execute
+   // and have no dependency on another unit for an ACK
+   // 1) DCI
+   // 2) ICI
+   // 3) WCLR_ALL
+   // 4) ICSWX
+   // 5) MFTGPR
    assign stq6_dci = (stq6_ttype == 6'b101111);
    assign stq6_ici = (stq6_ttype == 6'b101110);
    assign stq6_icswxnr = (stq6_ttype == 6'b100110);
@@ -1743,7 +1887,7 @@ module lq_stq(
 
    assign any_ack_val[0] = any_ack_hold_q[0] & (~ctl_lsq_stq_cpl_blk);
 
-   generate		
+   generate		// this logic only works for 1 or 2 `THREADS
       begin : xhdl7
          genvar                                                      t;
          for (t = 1; t <= `THREADS - 1; t = t + 1)
@@ -1755,10 +1899,13 @@ module lq_stq(
 
    assign any_ack_val_ok_d = any_ack_val;
 
+   // Request a hole until the ack is released, REL1 Block could be on.
+   // Kill the request once cr_ack=1
    assign rv0_cr_hole_d = icswxr_ack_val | resv_ack_q | (rv0_cr_hole_q & (~(arb_release_itag_vld_q & {`THREADS{(~ctl_lsq_stq_cpl_blk)}})));
    assign rv1_cr_hole_d = rv0_cr_hole_q & (~(arb_release_itag_vld_q & {`THREADS{(~ctl_lsq_stq_cpl_blk)}}));
    assign ex0_cr_hole_d = rv1_cr_hole_q & (~(arb_release_itag_vld_q & {`THREADS{(~ctl_lsq_stq_cpl_blk)}}));
 
+   // RV release itag
    assign arb_release_itag_vld_d = cr_ack | (arb_release_itag_vld_q & {`THREADS{ctl_lsq_stq_cpl_blk}});
    assign stq_arb_release_itag_vld = |(arb_release_itag_vld_q) & (~ctl_lsq_stq_cpl_blk);
    assign stq_arb_release_itag = cpl_ready_itag_final;
@@ -1766,6 +1913,7 @@ module lq_stq(
 
    assign stcx_pass = an_ac_stcx_complete & an_ac_stcx_pass;
 
+   // Delay icswx back_inv comes a cycle late
    assign cr_we_d = icswxr_ack_q | |(resv_ack);
 
    assign cr_thrd = icswxr_ack_val | resv_ack;
@@ -1773,12 +1921,15 @@ module lq_stq(
    assign cr_xer_so = |(xu_lq_xer_cp_rd & cr_thrd);
    assign cr_stcx_pass = |((stcx_pass | stcx_pass_q) & cr_thrd);
 
-   assign cr_wd_d = (icswxr_ack_q == 1'b1) ? {an_ac_back_inv_addr[58:60], 1'b0} : 
+   assign cr_wd_d = (icswxr_ack_q == 1'b1) ? {an_ac_back_inv_addr[58:60], 1'b0} :
                                              {2'b00, cr_stcx_pass, cr_xer_so};
    assign lq_xu_cr_l2_we = cr_we_q;
    assign lq_xu_cr_l2_wa = cr_wa_q;
    assign lq_xu_cr_l2_wd = cr_wd_q;
 
+   //------------------------------------------------------------------------------
+   // Performance Events
+   //------------------------------------------------------------------------------
    assign icswxr_thrd_busy_d    = icswxr_ack_val & {`THREADS{ an_ac_back_inv_addr[59]}};
    assign icswxr_thrd_nbusy_d   = icswxr_ack_val & {`THREADS{~an_ac_back_inv_addr[59]}};
    assign stcx_thrd_fail_d      = resv_ack & ~icswxr_ack_val & {`THREADS{~cr_stcx_pass}};
@@ -1794,6 +1945,9 @@ module lq_stq(
    assign lsq_perv_stq_events = {perf_stq_cmmt_attmpt, perf_stq_cmmt_val,     perf_stq_need_hole,
                                  perf_stq_stcx_fail,   perf_stq_icswxr_nbusy, perf_stq_icswxr_busy};
 
+   //------------------------------------------------------------------------------
+   // STQ Commit Pipe
+   //------------------------------------------------------------------------------
    assign rv_lq_vld_d = |(rv_lq_vld);
    assign rv_lq_ld_vld_d = |(rv_lq_vld) & rv_lq_isLoad;
    assign ex0_dir_rd_val_d = ctl_lsq_rv1_dir_rd_val;
@@ -1823,30 +1977,35 @@ module lq_stq(
    assign stq2_cmmt_ptr_l1 = {stq2_cmmt_ptr_q[1:`STQ_ENTRIES - 1], ((~(|(stq2_cmmt_ptr_q))))};
 
    assign stq1_cmmt_ptr_sel = {stq2_cmmt_reject, (stq1_cmmt_val | stq1_cmmt_flushed), stq_push_down};
+   // "000"
 
-   assign stq1_cmmt_ptr_d = (stq1_cmmt_ptr_sel == 3'b100) ? stq2_cmmt_ptr_q : 
-                            (stq1_cmmt_ptr_sel == 3'b110) ? stq2_cmmt_ptr_q : 
-                            (stq1_cmmt_ptr_sel == 3'b101) ? stq2_cmmt_ptr_l1 : 
-                            (stq1_cmmt_ptr_sel == 3'b111) ? stq2_cmmt_ptr_l1 : 
-                            (stq1_cmmt_ptr_sel == 3'b001) ? stq1_cmmt_ptr_l1 : 
-                            (stq1_cmmt_ptr_sel == 3'b011) ? stq1_cmmt_ptr_q : 
-                            (stq1_cmmt_ptr_sel == 3'b010) ? stq1_cmmt_ptr_r1 : 
+   assign stq1_cmmt_ptr_d = (stq1_cmmt_ptr_sel == 3'b100) ? stq2_cmmt_ptr_q :
+                            (stq1_cmmt_ptr_sel == 3'b110) ? stq2_cmmt_ptr_q :
+                            (stq1_cmmt_ptr_sel == 3'b101) ? stq2_cmmt_ptr_l1 :
+                            (stq1_cmmt_ptr_sel == 3'b111) ? stq2_cmmt_ptr_l1 :
+                            (stq1_cmmt_ptr_sel == 3'b001) ? stq1_cmmt_ptr_l1 :
+                            (stq1_cmmt_ptr_sel == 3'b011) ? stq1_cmmt_ptr_q :
+                            (stq1_cmmt_ptr_sel == 3'b010) ? stq1_cmmt_ptr_r1 :
                                                             stq1_cmmt_ptr_q;
-   assign stq2_cmmt_ptr_d = (stq_push_down == 1'b0) ? stq1_cmmt_ptr_q : 
+   assign stq2_cmmt_ptr_d = (stq_push_down == 1'b0) ? stq1_cmmt_ptr_q :
                                                       stq1_cmmt_ptr_l1;
 
-   assign stq3_cmmt_ptr_d = (stq_push_down == 1'b0) ? stq2_cmmt_ptr_q : 
+   assign stq3_cmmt_ptr_d = (stq_push_down == 1'b0) ? stq2_cmmt_ptr_q :
                                                       {stq2_cmmt_ptr_q[1:`STQ_ENTRIES - 1], ((~(|(stq2_cmmt_ptr_q))))};
 
-   assign stq4_cmmt_ptr_d = (stq_push_down == 1'b0) ? stq3_cmmt_ptr_q : 
+   assign stq4_cmmt_ptr_d = (stq_push_down == 1'b0) ? stq3_cmmt_ptr_q :
                                                       {stq3_cmmt_ptr_q[1:`STQ_ENTRIES - 1], ((~(|(stq3_cmmt_ptr_q))))};
 
-   assign stq5_cmmt_ptr_d = (stq_push_down == 1'b0) ? stq4_cmmt_ptr_q : 
+   assign stq5_cmmt_ptr_d = (stq_push_down == 1'b0) ? stq4_cmmt_ptr_q :
                                                       {stq4_cmmt_ptr_q[1:`STQ_ENTRIES - 1], ((~(|(stq4_cmmt_ptr_q))))};
 
-   assign stq6_cmmt_ptr_d = (stq_push_down == 1'b0) ? stq5_cmmt_ptr_q : 
+   assign stq6_cmmt_ptr_d = (stq_push_down == 1'b0) ? stq5_cmmt_ptr_q :
                                                       {stq5_cmmt_ptr_q[1:`STQ_ENTRIES - 1], ((~(|(stq5_cmmt_ptr_q))))};
 
+   // Fix for mftgpr colliding with a store update form issued by RV
+   // every other store commit request should only be rejected if
+   // RV issued a load
+   // XUDBG0 command in the LQ pipeline
    assign stq2_reject_rv_coll = (rv_lq_vld_q & stq2_mftgpr_val_q) | (rv_lq_ld_vld_q) | ex0_dir_rd_val_q;
    assign stq2_reject_dci_d   = stq_reject_dci_coll;
    assign stq2_reject_val     = stq2_reject_rv_coll | stq2_binv_blk_cclass_q | stq2_reject_dci_q | ctl_lsq_stq4_perr_reject;
@@ -1864,32 +2023,32 @@ module lq_stq(
          begin : ext_ack_queue_gen
             assign ext_ack_queue_v_d[t] = (stq7_cmmt_val_q & stqe_need_ext_ack_q[0] & stqe_thrd_id_q[0][t] & (~stqe_ack_rcvd_q[0])) |
                                           (ext_ack_queue_v_q[t] & (~any_ack_val[t]));
-            
+
             assign ext_ack_queue_sync_d[t] = (stq7_cmmt_val_q & stqe_need_ext_ack_q[0] & stqe_thrd_id_q[0][t] & stqe_is_sync_q[0]) |
                                              (ext_ack_queue_sync_q[t] & (~any_ack_val[t]));
 
             assign ext_ack_queue_stcx_d[t] = (stq7_cmmt_val_q & stqe_need_ext_ack_q[0] & stqe_thrd_id_q[0][t] & stqe_is_resv_q[0]) |
                                              (ext_ack_queue_stcx_q[t] & (~any_ack_val[t]));
-            
+
             assign ext_ack_queue_icswxr_d[t] = (stq7_cmmt_val_q & stqe_need_ext_ack_q[0] & stqe_thrd_id_q[0][t] & stqe_is_icswxr_q[0] & stqe0_icswxdot_val) |
                                                (ext_ack_queue_icswxr_q[t] & (~any_ack_val[t]));
-            
-            assign ext_ack_queue_itag_d[t] = ((stq7_cmmt_val_q & stqe_need_ext_ack_q[0] & stqe_thrd_id_q[0][t]) == 1'b1) ? stqe_itag_q[0] : 
+
+            assign ext_ack_queue_itag_d[t] = ((stq7_cmmt_val_q & stqe_need_ext_ack_q[0] & stqe_thrd_id_q[0][t]) == 1'b1) ? stqe_itag_q[0] :
                                                                                                                            ext_ack_queue_itag_q[t];
-            
-            assign ext_ack_queue_cr_wa_d[t] = ((stq7_cmmt_val_q & stqe_need_ext_ack_q[0] & stqe_thrd_id_q[0][t]) == 1'b1) ? stqe_tgpr_q[0][AXU_TARGET_ENC - (`CR_POOL_ENC + `THREADS_POOL_ENC):AXU_TARGET_ENC - 1] : 
+
+            assign ext_ack_queue_cr_wa_d[t] = ((stq7_cmmt_val_q & stqe_need_ext_ack_q[0] & stqe_thrd_id_q[0][t]) == 1'b1) ? stqe_tgpr_q[0][AXU_TARGET_ENC - (`CR_POOL_ENC + `THREADS_POOL_ENC):AXU_TARGET_ENC - 1] :
                                                                                                                              ext_ack_queue_cr_wa_q[t];
-            
-            assign ext_ack_queue_dacrw_det_d[t] = ((stq7_cmmt_val_q & stqe_need_ext_ack_q[0] & stqe_thrd_id_q[0][t]) == 1'b1) ? stqe_dacrw_q[0] : 
+
+            assign ext_ack_queue_dacrw_det_d[t] = ((stq7_cmmt_val_q & stqe_need_ext_ack_q[0] & stqe_thrd_id_q[0][t]) == 1'b1) ? stqe_dacrw_q[0] :
                                                                                                                                 ext_ack_queue_dacrw_det_q[t];
-            
-            assign ext_ack_queue_dacrw_rpt_d[t] = ((stq7_cmmt_val_q & stqe_need_ext_ack_q[0] & stqe_thrd_id_q[0][t]) == 1'b1) ? stqe_dvc_int_det[0] : 
+
+            assign ext_ack_queue_dacrw_rpt_d[t] = ((stq7_cmmt_val_q & stqe_need_ext_ack_q[0] & stqe_thrd_id_q[0][t]) == 1'b1) ? stqe_dvc_int_det[0] :
                                                                                                                                 ext_ack_queue_dacrw_rpt_q[t];
          end
       end
    endgenerate
 
-      
+
    always @(*)
    begin: ext_act_queue_thrd_sel_proc
       reg [0:`ITAG_SIZE_ENC-1]                                     itag;
@@ -1901,32 +2060,33 @@ module lq_stq(
       cr_wa = 0;
       dacrw_det = 0;
       dacrw_rpt = 0;
-      
+
       for (t = 0; t <= `THREADS - 1; t = t + 1)
       begin
          itag = (ext_ack_queue_itag_q[t] & {`ITAG_SIZE_ENC{(any_ack_val[t] & ext_ack_queue_v_q[t])}})    |
                 (stq_ext_act_itag        & {`ITAG_SIZE_ENC{(any_ack_val[t] & (~ext_ack_queue_v_q[t]))}}) | itag;
-         
+
          cr_wa = (ext_ack_queue_cr_wa_q[t] & {`CR_POOL_ENC+`THREADS_POOL_ENC{(cr_thrd[t] & ext_ack_queue_v_q[t])}})    |
                  (stq_ext_act_cr_wa        & {`CR_POOL_ENC+`THREADS_POOL_ENC{(cr_thrd[t] & (~ext_ack_queue_v_q[t]))}}) | cr_wa;
-         
+
          dacrw_det = (ext_ack_queue_dacrw_det_q[t] & {4{(any_ack_val[t] & ext_ack_queue_v_q[t])}})    |
                      (stq_ext_act_dacrw_det        & {4{(any_ack_val[t] & (~ext_ack_queue_v_q[t]))}}) | dacrw_det;
-         
+
          dacrw_rpt = (ext_ack_queue_dacrw_rpt_q[t] & (any_ack_val[t] & ext_ack_queue_v_q[t]))    |
                      (stq_ext_act_dacrw_rpt        & (any_ack_val[t] & (~ext_ack_queue_v_q[t]))) | dacrw_rpt;
       end
-      
+
       ext_act_queue_itag <= itag;
       cr_wa_d <= cr_wa;
       ext_act_queue_dacrw_det <= dacrw_det;
       ext_act_queue_dacrw_rpt <= dacrw_rpt;
    end
 
+   // Count number of flushes, force a hole once the threshold is reached
    assign stq2_rtry_cnt_act = stq2_cmmt_val_q | rtry_cnt_reset;
    assign stq2_rtry_cnt_incr = stq2_rtry_cnt_q + 3'b001;
 
-   assign stq2_rtry_cnt_d = (((~(stq2_reject_rv_coll)) | rtry_cnt_reset) == 1'b1) ? 3'b110 : 
+   assign stq2_rtry_cnt_d = (((~(stq2_reject_rv_coll)) | rtry_cnt_reset) == 1'b1) ? 3'b110 :
                                                                                     stq2_rtry_cnt_incr;
    assign rtry_cnt_reset = stq2_rtry_cnt_q == 3'b111;
    assign rv_hold = (stq2_rtry_cnt_incr == 3'b111) & (stq2_cmmt_val_q & stq2_reject_rv_coll);
@@ -1939,6 +2099,7 @@ module lq_stq(
                             (thrd_held_q & {`THREADS{ |(any_ack_val_ok_q)}});
    assign stq_rv_clr_hold = clr_hold_thread;
 
+   // STQ Commit Valids
    assign lsq_ctl_stq1_val = stq1_cmmt_val & (~(stq1_cmmt_dreq_val | stq1_cmmt_dvc_val));
    assign lsq_dat_stq1_val = stq1_cmmt_val & (~(stq1_cmmt_dreq_val | stq1_cmmt_dvc_val));
    assign stq_ctl_stq1_stg_act = |(stqe_ready_ctl_act) & ~stq1_rel_blk_cclass;
@@ -1948,11 +2109,14 @@ module lq_stq(
    assign stq_arb_stq3_cmmt_val    = stq3_cmmt_val_q;
    assign stq_arb_stq3_cmmt_reject = stq3_cmmt_reject_q;
 
+   // Temp fix
    assign sq_iu_credit_free = credit_free_q;
+   // fix for requests that have DREQ_VAL and NEED_EXT_ACK set, also want to drop requests if DVC_INT_EN is set
    assign credit_free_d = (stq2_thrd_id & {`THREADS{ ((stq2_cmmt_val & |(stq2_cmmt_ptr_remove)) | stq2_cmmt_flushed_q)}}) | any_ack_val;
 
    assign lq_iu_icbi_addr = icbi_addr_q;
    assign lq_iu_icbi_val = icbi_val_q;
+   // dont want to send ICBI request to the IU if DREQ_VAL is set
    assign icbi_val_d = stq2_thrd_id & {`THREADS{ (stq2_cmmt_val & |(stq2_cmmt_ptr_q & stqe_is_icbi_q[0:`STQ_ENTRIES - 1] & (~stqe_dreq_val_q[0:`STQ_ENTRIES - 1]))) }};
 
    assign stq2_dci_val_d = stq1_cmmt_val & (stq1_ttype == 6'b101111);
@@ -1966,29 +2130,32 @@ module lq_stq(
    assign ici_val_d = stq2_cmmt_val & stq2_ici_val_q & |(stq2_cmmt_ptr_q & (~stqe_dreq_val_q[0:`STQ_ENTRIES - 1]));
    assign lq_iu_ici_val = ici_val_q;
 
+   // need to set XUCR0[CUL] for a dcblc/icblc that is being dropped
    assign stq3_dcblc_instr = (stq3_ttype == 6'b100101);
    assign stq3_icblc_instr = (stq3_ttype == 6'b100100);
    assign stq4_xucr0_cul_d = stq3_cmmt_val_q & stq3_cmmt_dreq_val & (stq3_dcblc_instr | stq3_icblc_instr);
 
+   // Kill the pointer for instructions that require an external ack
+   // Want to delete the entry if DVC_INT_EN is set
 
-
-   assign stq7_cmmt_ptr_d = (stq_push_down == 1'b0) ? stq6_cmmt_ptr_q : 
+   assign stq7_cmmt_ptr_d = (stq_push_down == 1'b0) ? stq6_cmmt_ptr_q :
                                                       {stq6_cmmt_ptr_q[1:`STQ_ENTRIES - 1], 1'b0};
 
    assign stq7_entry_delete[0:`STQ_ENTRIES - 1] = (stq2_cmmt_ptr_q & {`STQ_ENTRIES{stq2_cmmt_flushed_q}}) |
-                                                 (stq7_cmmt_ptr_q & {`STQ_ENTRIES{stq7_cmmt_val_q}});		
+                                                 (stq7_cmmt_ptr_q & {`STQ_ENTRIES{stq7_cmmt_val_q}});
 
-   assign stq_push_down = stq7_cmmt_flushed_q | (stq7_cmmt_val_q & stq7_cmmt_ptr_q[0]);		
+   assign stq_push_down = stq7_cmmt_flushed_q | (stq7_cmmt_val_q & stq7_cmmt_ptr_q[0]);
 
-   
-   assign stq_arb_stq3_cTag[2:4] = (stq3_cmmt_ptr_q[0:4] == 5'b10000) ? 3'b000 : 
-                                   (stq3_cmmt_ptr_q[0:4] == 5'b01000) ? 3'b001 : 
-                                   (stq3_cmmt_ptr_q[0:4] == 5'b00100) ? 3'b010 : 
-                                   (stq3_cmmt_ptr_q[0:4] == 5'b00010) ? 3'b011 : 
-                                   (stq3_cmmt_ptr_q[0:4] == 5'b00001) ? 3'b100 : 
+   // since the stq is pushed down in stq7, the stq3 commit pointer will never be higher than 4
+
+   assign stq_arb_stq3_cTag[2:4] = (stq3_cmmt_ptr_q[0:4] == 5'b10000) ? 3'b000 :
+                                   (stq3_cmmt_ptr_q[0:4] == 5'b01000) ? 3'b001 :
+                                   (stq3_cmmt_ptr_q[0:4] == 5'b00100) ? 3'b010 :
+                                   (stq3_cmmt_ptr_q[0:4] == 5'b00010) ? 3'b011 :
+                                   (stq3_cmmt_ptr_q[0:4] == 5'b00001) ? 3'b100 :
                                                                         3'b111;
    assign stq_arb_stq3_cTag[0:1] = 2'b00;
-   
+
    assign stq1_mftgpr_val = (stq1_ttype == 6'b111000);
    assign stq2_mftgpr_val_d = stq1_mftgpr_val;
    assign lsq_dat_stq1_mftgpr_val = stq1_mftgpr_val;
@@ -1999,8 +2166,9 @@ module lq_stq(
    assign stq_arb_stq3_ttype = stq3_ttype;
    assign stq_arb_stq3_tid = stq3_tid_enc;
    assign lsq_ctl_stq4_xucr0_cul = stq4_xucr0_cul_q;
-   
-   
+
+   // Generate Encode Thread ID
+
    always @(*)
      begin: tidMulti
         reg [0:1]                                                   stqTid;
@@ -2011,9 +2179,15 @@ module lq_stq(
 
         stq3_tid_enc <= stqTid;
      end
-   
-   
-   
+
+   //------------------------------------------------------------------------------
+   //------------------------------------------------------------------------------
+   // mtspr_trace Logic
+   //------------------------------------------------------------------------------
+   //------------------------------------------------------------------------------
+
+   // Encode Thread ID
+
    always @(*)
      begin: tidEnc
         reg [0:1]                                                   tenc;
@@ -2024,76 +2198,85 @@ module lq_stq(
 
         ex4_thrd_id_enc <= tenc;
      end
-   
+
+   // 32bit Real Address MTSPR TRACE Muxing
    generate
       if (`REAL_IFAR_WIDTH == 32)
         begin : ra32bit
            assign ex4_p_addr_ovrd[49:63] = ctl_lsq_ex4_p_addr[49:63];
-           
-           assign ex4_p_addr_ovrd[32:33] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[32:33] : 
+
+           assign ex4_p_addr_ovrd[32:33] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[32:33] :
                                                                                ex4_thrd_id_enc;
-           
-           assign ex4_p_addr_ovrd[34:43] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[34:43] : 
+
+           assign ex4_p_addr_ovrd[34:43] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[34:43] :
                                                                                ctl_lsq_ex4_p_addr[50:59];
-           
-           assign ex4_p_addr_ovrd[44] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[44] : 
+
+           assign ex4_p_addr_ovrd[44] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[44] :
                                                                             1'b0;
-           
-           assign ex4_p_addr_ovrd[45] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[45] : 
+
+           assign ex4_p_addr_ovrd[45] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[45] :
                                                                             ctl_lsq_ex4_p_addr[60];
-           
-           assign ex4_p_addr_ovrd[46] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[46] : 
+
+           assign ex4_p_addr_ovrd[46] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[46] :
                                                                             ctl_lsq_ex4_p_addr[63];
-           
-           assign ex4_p_addr_ovrd[47] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[47] : 
+
+           assign ex4_p_addr_ovrd[47] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[47] :
                                                                             ctl_lsq_ex4_p_addr[62];
-           assign ex4_p_addr_ovrd[48] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[48] : 
+           assign ex4_p_addr_ovrd[48] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[48] :
                                                                             ctl_lsq_ex4_p_addr[61];
         end
    endgenerate
-   
+
+   // greater than 32bit Real Address MTSPR TRACE Muxing
    generate
       if (`REAL_IFAR_WIDTH > 32)
         begin : raN32bit
            assign ex4_p_addr_ovrd[64 - `REAL_IFAR_WIDTH:29] = ctl_lsq_ex4_p_addr[64 - `REAL_IFAR_WIDTH:29];
            assign ex4_p_addr_ovrd[49:63] = ctl_lsq_ex4_p_addr[49:63];
-           
-           assign ex4_p_addr_ovrd[30:31] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[30:31] : 
+
+           assign ex4_p_addr_ovrd[30:31] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[30:31] :
                                                                                an_ac_coreid;
-           
-           assign ex4_p_addr_ovrd[32:33] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[32:33] : 
+
+           assign ex4_p_addr_ovrd[32:33] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[32:33] :
                                                                                ex4_thrd_id_enc;
-           
-           assign ex4_p_addr_ovrd[34:43] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[34:43] : 
+
+           assign ex4_p_addr_ovrd[34:43] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[34:43] :
                                                                                ctl_lsq_ex4_p_addr[50:59];
-           
-           assign ex4_p_addr_ovrd[44] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[44] : 
+
+           assign ex4_p_addr_ovrd[44] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[44] :
                                                                             1'b0;
-           
-           assign ex4_p_addr_ovrd[45] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[45] : 
+
+           assign ex4_p_addr_ovrd[45] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[45] :
                                                                             ctl_lsq_ex4_p_addr[60];
-           
-           assign ex4_p_addr_ovrd[46] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[46] : 
+
+           assign ex4_p_addr_ovrd[46] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[46] :
                                                                             ctl_lsq_ex4_p_addr[63];
-           
-           assign ex4_p_addr_ovrd[47] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[47] : 
+
+           assign ex4_p_addr_ovrd[47] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[47] :
                                                                             ctl_lsq_ex4_p_addr[62];
-           assign ex4_p_addr_ovrd[48] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[48] : 
+           assign ex4_p_addr_ovrd[48] = (ctl_lsq_ex4_mtspr_trace == 1'b0) ? ctl_lsq_ex4_p_addr[48] :
                                                                             ctl_lsq_ex4_p_addr[61];
         end
    endgenerate
-   
-   
-   assign ex3_opsize_1hot[0] = ctl_lsq_ex3_opsize == 3'b101;		
-   assign ex3_opsize_1hot[1] = ctl_lsq_ex3_opsize == 3'b100;		
-   assign ex3_opsize_1hot[2] = ctl_lsq_ex3_opsize == 3'b010;		
+
+   //------------------------------------------------------------------------------
+   //------------------------------------------------------------------------------
+   // STQ Address Entries
+   //------------------------------------------------------------------------------
+   //------------------------------------------------------------------------------
+
+   // the offset is determined by the size of the store operation in EX3
+   assign ex3_opsize_1hot[0] = ctl_lsq_ex3_opsize == 3'b101;		//8B
+   assign ex3_opsize_1hot[1] = ctl_lsq_ex3_opsize == 3'b100;		//4B
+   assign ex3_opsize_1hot[2] = ctl_lsq_ex3_opsize == 3'b010;		//2B
    assign ex3_rotcmp2_fld = {1'b0, (3'b100 & {3{ex3_opsize_1hot[0]}})};
    assign ex3_rotcmp3_fld = {1'b0, ((3'b110 & {3{ ex3_opsize_1hot[0]}}) | (3'b010 & {3{ex3_opsize_1hot[1]}}))};
    assign stq_rotcmp[0:3] = ctl_lsq_ex3_p_addr[60:63];
-   assign stq_rotcmp[4:7] = stq_rotcmp[0:3] + 4'b0010; 
+   assign stq_rotcmp[4:7] = stq_rotcmp[0:3] + 4'b0010; // + 2;
    assign stq_rotcmp[8:11] = stq_rotcmp[0:3] + ex3_rotcmp2_fld;
    assign stq_rotcmp[12:15] = stq_rotcmp[0:3] + ex3_rotcmp3_fld;
-   
+
+   // create dummy blank stq entry to pushdown on the top of the queue
    assign stqe_thrd_id_q[`STQ_ENTRIES] = 0;
    assign stqe_itag_q[`STQ_ENTRIES] = 0;
    assign stqe_lmqhit_q[`STQ_ENTRIES] = 0;
@@ -2170,7 +2353,7 @@ module lq_stq(
         set_stqe_odq_resolved[`STQ_ENTRIES] <= 0;
      end
 
-   
+
    always @(*)
      begin: odq_sttagMux
         reg [0:`STQ_ENTRIES-1]                                       odq_resolved_ptr;
@@ -2181,16 +2364,16 @@ module lq_stq(
 
         set_stqe_odq_resolved[0:`STQ_ENTRIES - 1] <= odq_resolved_ptr & {`STQ_ENTRIES{odq_stq_resolved}};
      end
-   
+
    generate
       begin : xhdl9
          genvar                                                      i;
          for (i = 0; i <= `STQ_ENTRIES - 1; i = i + 1)
            begin : stq_addr_entry_gen
-              
-              assign stqe_odq_resolved_d[i] = (stq_push_down == 1'b0) ? (set_stqe_odq_resolved[i]     | stqe_odq_resolved_q[i])     & (~stq7_entry_delete[i]) : 
+
+              assign stqe_odq_resolved_d[i] = (stq_push_down == 1'b0) ? (set_stqe_odq_resolved[i]     | stqe_odq_resolved_q[i])     & (~stq7_entry_delete[i]) :
                                                                         (set_stqe_odq_resolved[i + 1] | stqe_odq_resolved_q[i + 1]) & (~stq7_entry_delete[i + 1]);
-              
+
               assign stqe_state[i] = {stqe_alloc_q[i],
                                       stqe_addr_val_q[i],
                                       (stqe_data_val_q[i] | (~stqe_has_data_q[i])),
@@ -2200,9 +2383,9 @@ module lq_stq(
                                       stqe_odq_resolved_q[i],
                                       (~(|(stqe_lmqhit_q[i]))),
                                       (~(ldq_stq_rel1_blk_store | stq_dci_inprog))};
-              
+
               assign stqe_ready_state[i] = (~stqe_flushed_q[i]) & &(stqe_state[i]);
-              
+
               assign stqe_ready_ctl_act[i] = &({stqe_alloc_q[i],
                                                 stqe_addr_val_q[i],
                                                 (stqe_data_val_q[i] | (~stqe_has_data_q[i])),
@@ -2210,7 +2393,7 @@ module lq_stq(
                                                 (stqe_have_cp_next_q[i] | (~stqe_need_ext_ack_q[i])),
                                                 (~(|(stqe_lmqhit_q[i]))),
                                                 (~stqe_flushed_q[i])});
-              
+
               assign stqe_ready_dat_act[i] = &({stqe_alloc_q[i],
                                                 stqe_addr_val_q[i],
                                                 (stqe_data_val_q[i]),
@@ -2218,37 +2401,38 @@ module lq_stq(
                                                 (stqe_have_cp_next_q[i] | (~stqe_need_ext_ack_q[i])),
                                                 (~(|(stqe_lmqhit_q[i]))),
                                                 (~stqe_flushed_q[i])});
-              
+
               assign stqe_lmqhit_d[i] = (stq_push_down == 1'b0) ? ((ldq_stq_ex5_ldm_hit & {`LMQ_ENTRIES{ex5_set_stq_q[i]}}) |
                                                                      (ldq_stq_ex5_ldm_entry & {`LMQ_ENTRIES{ex5_older_ldmiss_q[i]}}) |
-                                                                     stqe_lmqhit_q[i]) & (~ldq_stq_ldm_cpl) : 
+                                                                     stqe_lmqhit_q[i]) & (~ldq_stq_ldm_cpl) :
                                                                   ((ldq_stq_ex5_ldm_hit & {`LMQ_ENTRIES{ex5_set_stq_q[i + 1]}}) |
                                                                       (ldq_stq_ex5_ldm_entry & {`LMQ_ENTRIES{ex5_older_ldmiss_q[i + 1]}}) |
                                                                       stqe_lmqhit_q[i + 1]) & (~ldq_stq_ldm_cpl);
-              
+
               assign stqe_wrt_new[i] = (stqe_alloc_i0_wrt_ptr[i] & stq_alloc_val[0]) | (stqe_alloc_i1_wrt_ptr[i] & stq_alloc_val[1]);
-              
+
               assign stqe_thrd_id_d[i] = (stq_alloc_thrd_id0 & {`THREADS{stqe_alloc_i0_wrt_ptr[i]}}) |
                                          (stq_alloc_thrd_id1 & {`THREADS{stqe_alloc_i1_wrt_ptr[i]}}) |
                                          (stqe_thrd_id_q[i + 1] & {`THREADS{(~stqe_wrt_new[i])}});
 
               assign stqe_tid_inuse[i] = stqe_thrd_id_q[i] & {`THREADS{stqe_alloc_q[i]}};
-              
+
               assign stqe_itag_act[i] = stqe_wrt_new[i] | stq_push_down;
-              
+
               assign stqe_alloc_d[i] = stqe_wrt_new[i] |
                                       (stqe_alloc_q[i + 1] & (~stq7_entry_delete[i + 1]) & stq_push_down) |
                                       (stqe_alloc_q[i] & (~stq7_entry_delete[i]) & (~stq_push_down));
-              
 
               assign stqe_itag_d[i] = (stqe_alloc_itag0   & {`ITAG_SIZE_ENC{(stqe_alloc_i0_wrt_ptr[i] & stq_alloc_val[0])}}) |
                                       (stqe_alloc_itag1   & {`ITAG_SIZE_ENC{(stqe_alloc_i1_wrt_ptr[i] & stq_alloc_val[1])}}) |
                                       (stqe_itag_q[i + 1] & {`ITAG_SIZE_ENC{(~stqe_wrt_new[i])}});
 
+              // Report back to LDQ on LSWX status
               assign ex3_data_val[i] = stqe_data_val_q[i] & (stqe_itag_q[i] == ex3_req_itag_q) & (stqe_thrd_id_q[i] == ex3_req_thrd_id_q) & (~(stqe_flushed_q[i] | stqe_compl_rcvd_q[i]));
               assign ex3_illeg_lswx[i] = stqe_data_val_q[i] & (stqe_itag_q[i] == ex3_req_itag_q) & (stqe_thrd_id_q[i] == ex3_req_thrd_id_q) & ((~stqe_compl_rcvd_q[i])) & stqe_illeg_lswx_q[i];
               assign ex3_strg_noop[i] = stqe_data_val_q[i] & (stqe_itag_q[i] == ex3_req_itag_q) & (stqe_thrd_id_q[i] == ex3_req_thrd_id_q) & ((~stqe_compl_rcvd_q[i])) & stqe_strg_noop_q[i];
 
+              // ITAG Compare for CP_NEXT
               assign stq_cp_next_val[i] = |(cp_next_val_q & stqe_thrd_id_q[i]);
 
 
@@ -2264,12 +2448,13 @@ module lq_stq(
               end
 
               assign stqe_have_cp_next_d[i] = (stq_push_down == 1'b0) ? ((stq_cp_next_val[i] & stqe_alloc_q[i] & (stqe_itag_q[i] == stq_cp_next_itag[i])) |
-                                                                           stqe_have_cp_next_q[i]) & (~(stq7_entry_delete[i] | stqe_flushed_q[i])) : 
+                                                                           stqe_have_cp_next_q[i]) & (~(stq7_entry_delete[i] | stqe_flushed_q[i])) :
                                                                         ((stq_cp_next_val[i + 1] & stqe_alloc_q[i + 1] & (stqe_itag_q[i + 1] == stq_cp_next_itag[i + 1])) |
                                                                            stqe_have_cp_next_q[i + 1]) & (~(stq7_entry_delete[i + 1] | stqe_flushed_q[i + 1]));
 
+              // Address Valid
               assign ex3_set_stq[i] = (stq_push_down == 1'b0) ? ex3_streq_valid & stqe_alloc_q[i] & (stqe_itag_q[i] == ex3_req_itag_q) &
-                                                                   (stqe_thrd_id_q[i] == ex3_req_thrd_id_q) & (~(stqe_flushed_q[i] | stqe_compl_rcvd_q[i])) : 
+                                                                   (stqe_thrd_id_q[i] == ex3_req_thrd_id_q) & (~(stqe_flushed_q[i] | stqe_compl_rcvd_q[i])) :
                                                                 ex3_streq_valid & stqe_alloc_q[i + 1] & (stqe_itag_q[i + 1] == ex3_req_itag_q) &
                                                                    (stqe_thrd_id_q[i + 1] == ex3_req_thrd_id_q) & (~(stqe_flushed_q[i + 1] | stqe_compl_rcvd_q[i + 1]));
 
@@ -2283,97 +2468,101 @@ module lq_stq(
 
               assign ex5_set_stq[i] = (ex5_set_stq_q[i] & (~stq_push_down)) | (ex5_set_stq_q[i + 1] & stq_push_down);
 
-              assign stqe_rotcmp_d[i] = (ex3_set_stq[i] == 1'b1) ? stq_rotcmp : 
+              assign stqe_rotcmp_d[i] = (ex3_set_stq[i] == 1'b1) ? stq_rotcmp :
                                                                    stqe_rotcmp_q[i + 1];
 
-              assign stqe_byte_en_d[i] = (ex3_set_stq[i] == 1'b1) ? ctl_lsq_ex3_byte_en : 
+              assign stqe_byte_en_d[i] = (ex3_set_stq[i] == 1'b1) ? ctl_lsq_ex3_byte_en :
                                                                     stqe_byte_en_q[i + 1];
 
-              assign stqe_addr_d[i] = (ex4_set_stq[i] == 1'b1) ? ex4_p_addr_ovrd : 
+              assign stqe_addr_d[i] = (ex4_set_stq[i] == 1'b1) ? ex4_p_addr_ovrd :
                                                                  stqe_addr_q[i + 1];
 
-              assign stqe_cline_chk_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_cline_chk : 
+              assign stqe_cline_chk_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_cline_chk :
                                                                       stqe_cline_chk_q[i + 1];
 
-              assign stqe_wimge_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_wimge : 
+              assign stqe_wimge_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_wimge :
                                                                   stqe_wimge_q[i + 1];
 
-              assign stqe_byte_swap_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_byte_swap : 
+              assign stqe_byte_swap_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_byte_swap :
                                                                       stqe_byte_swap_q[i + 1];
 
-              assign stqe_opsize_d[i] = (ex4_set_stq[i] == 1'b1) ? ex4_req_opsize_q : 
+              assign stqe_opsize_d[i] = (ex4_set_stq[i] == 1'b1) ? ex4_req_opsize_q :
                                                                    stqe_opsize_q[i + 1];
 
-              assign stqe_is_store_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_store : 
+              assign stqe_is_store_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_store :
                                                                      stqe_is_store_q[i + 1];
 
-              assign stqe_is_sync_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_sync : 
+              assign stqe_is_sync_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_sync :
                                                                     stqe_is_sync_q[i + 1];
 
-              assign stqe_is_resv_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_resv : 
+              assign stqe_is_resv_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_resv :
                                                                     stqe_is_resv_q[i + 1];
 
-              assign stqe_is_icswxr_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_icswxr : 
+              assign stqe_is_icswxr_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_icswxr :
                                                                       stqe_is_icswxr_q[i + 1];
 
-              assign stqe_is_icbi_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_icbi : 
+              assign stqe_is_icbi_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_icbi :
                                                                     stqe_is_icbi_q[i + 1];
 
-              assign stqe_is_inval_op_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_inval_op : 
+              assign stqe_is_inval_op_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_inval_op :
                                                                         stqe_is_inval_op_q[i + 1];
 
-              assign stqe_dreq_val_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_dreq_val : 
+              assign stqe_dreq_val_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_dreq_val :
                                                                      stqe_dreq_val_q[i + 1];
 
-              assign stqe_has_data_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_has_data : 
+              assign stqe_has_data_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_has_data :
                                                                      stqe_has_data_q[i + 1];
 
-              assign stqe_send_l2_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_send_l2 : 
+              assign stqe_send_l2_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_send_l2 :
                                                                     stqe_send_l2_q[i + 1];
 
-              assign stqe_watch_clr_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_watch_clr : 
+              assign stqe_watch_clr_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_watch_clr :
                                                                       stqe_watch_clr_q[i + 1];
 
-              assign stqe_ttype_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_ttype : 
+              assign stqe_ttype_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_ttype :
                                                                   stqe_ttype_q[i + 1];
 
-              assign stqe_axu_val_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_axu_val : 
+              assign stqe_axu_val_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_axu_val :
                                                                     stqe_axu_val_q[i + 1];
 
-              assign stqe_epid_val_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_is_epid : 
+              assign stqe_epid_val_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_is_epid :
                                                                      stqe_epid_val_q[i + 1];
 
-              assign stqe_usr_def_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_usr_def : 
+              assign stqe_usr_def_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_usr_def :
                                                                     stqe_usr_def_q[i + 1];
 
-              assign stqe_lock_clr_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_lock_clr : 
+              assign stqe_lock_clr_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_lock_clr :
                                                                      stqe_lock_clr_q[i + 1];
 
-              assign stqe_l_fld_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_l_fld : 
+              assign stqe_l_fld_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_l_fld :
                                                                   stqe_l_fld_q[i + 1];
 
-              assign stqe_tgpr_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_tgpr : 
+              assign stqe_tgpr_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_tgpr :
                                                                  stqe_tgpr_q[i + 1];
 
-              assign stqe_dvc_en_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_dvc : 
+              assign stqe_dvc_en_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_dvc :
                                                                    stqe_dvc_en_q[i + 1];
 
-              assign stqe_dacrw_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_dacrw : 
+              assign stqe_dacrw_d[i] = (ex5_set_stq[i] == 1'b1) ? ctl_lsq_ex5_dacrw :
                                                                   stqe_dacrw_q[i + 1];
 
-              assign stqe_addr_val_d[i] = (stq_push_down == 1'b0) ? ((ex5_streq_valid & ex5_set_stq_q[i])     | (stqe_addr_val_q[i]     & (~stq7_entry_delete[i])))     & (~(stqe_flushed_q[i])) : 
+              assign stqe_addr_val_d[i] = (stq_push_down == 1'b0) ? ((ex5_streq_valid & ex5_set_stq_q[i])     | (stqe_addr_val_q[i]     & (~stq7_entry_delete[i])))     & (~(stqe_flushed_q[i])) :
                                                                     ((ex5_streq_valid & ex5_set_stq_q[i + 1]) | (stqe_addr_val_q[i + 1] & (~stq7_entry_delete[i + 1]))) & (~(stqe_flushed_q[i + 1]));
 
-              assign stqe_fwd_addr_val_d[i] = (stq_push_down == 1'b0) ? ((ex4_streq_valid & ex4_set_stq_q[i])     | (stqe_fwd_addr_val_q[i]     & (~stq7_entry_delete[i])))     & (~(stqe_flushed_q[i])) : 
+              // fix for forwarding store data to load
+              assign stqe_fwd_addr_val_d[i] = (stq_push_down == 1'b0) ? ((ex4_streq_valid & ex4_set_stq_q[i])     | (stqe_fwd_addr_val_q[i]     & (~stq7_entry_delete[i])))     & (~(stqe_flushed_q[i])) :
                                                                         ((ex4_streq_valid & ex4_set_stq_q[i + 1]) | (stqe_fwd_addr_val_q[i + 1] & (~stq7_entry_delete[i + 1]))) & (~(stqe_flushed_q[i + 1]));
-              
-              assign stqe_ready_sent_d[i] = (stq_push_down == 1'b0) ? ((cpl_ready & stqe_need_ready_ptr_q[i])     | stqe_ready_sent_q[i]     | stqe_need_ready_flushed[i])     & (~stq7_entry_delete[i]) : 
+
+              // This indicates ready has been sent to cpl
+              // Can be delated unless addl checking desired???
+              assign stqe_ready_sent_d[i] = (stq_push_down == 1'b0) ? ((cpl_ready & stqe_need_ready_ptr_q[i])     | stqe_ready_sent_q[i]     | stqe_need_ready_flushed[i])     & (~stq7_entry_delete[i]) :
                                                                       ((cpl_ready & stqe_need_ready_ptr_q[i + 1]) | stqe_ready_sent_q[i + 1] | stqe_need_ready_flushed[i + 1]) & (~stq7_entry_delete[i + 1]);
-              
+
+              // Snoop Completion Busses for itags which are "complete"
               assign stq_i0_comp_val[i] = |(cp_i0_completed_q & stqe_thrd_id_q[i]);
               assign stq_i1_comp_val[i] = |(cp_i1_completed_q & stqe_thrd_id_q[i]);
-              
-              
+
+
               always @(*)
                 begin: complete_itag_p
                    reg [0:`ITAG_SIZE_ENC-1]                                     i0_itag;
@@ -2389,57 +2578,70 @@ module lq_stq(
                    stq_i0_comp_itag[i] <= i0_itag;
                    stq_i1_comp_itag[i] <= i1_itag;
                 end
-              
+
               assign cp_i0_itag_cmp[i] = stqe_alloc_q[i] & (stqe_itag_q[i] == stq_i0_comp_itag[i]) & (~stqe_compl_rcvd_q[i]);
               assign cp_i1_itag_cmp[i] = stqe_alloc_q[i] & (stqe_itag_q[i] == stq_i1_comp_itag[i]) & (~stqe_compl_rcvd_q[i]);
-              
+
               assign stqe_compl_rcvd[i] = ((stq_i0_comp_val[i] & cp_i0_itag_cmp[i] & stqe_ready_sent_q[i] & (~stqe_flushed_q[i])) |
                                           (stq_i1_comp_val[i] & cp_i1_itag_cmp[i] & stqe_ready_sent_q[i] & (~stqe_flushed_q[i]))) |
                                           (stqe_compl_rcvd_q[i] & (~stq7_entry_delete[i]));
-              
-              assign stqe_compl_rcvd_d[i] = (stq_push_down == 1'b0) ? stqe_compl_rcvd[i] : 
+
+              assign stqe_compl_rcvd_d[i] = (stq_push_down == 1'b0) ? stqe_compl_rcvd[i] :
                                                                       stqe_compl_rcvd[i + 1];
-              
+
               assign stqe_flush_cmp[i] = |(cp_flush_q & stqe_thrd_id_q[i]);
-              
+
               assign stqe_flushed[i] = stqe_alloc_q[i] & (~stqe_compl_rcvd[i]) & stqe_flush_cmp[i];
-              
+
               assign stqe_alloc_flushed[i] = (stqe_alloc_ptr_q[i] & stq_alloc_val[0] & stq_alloc_flushed[0]) | (stqe_alloc_ptr_r1[i] & stq_alloc_val[1] & stq_alloc_flushed[1]);
-              
-              assign stqe_flushed_d[i] = (stq_push_down == 1'b0) ? (stqe_flushed[i]     | stqe_alloc_flushed[i]     | stqe_flushed_q[i])     & (~stq7_entry_delete[i]) : 
+
+              assign stqe_flushed_d[i] = (stq_push_down == 1'b0) ? (stqe_flushed[i]     | stqe_alloc_flushed[i]     | stqe_flushed_q[i])     & (~stq7_entry_delete[i]) :
                                                                    (stqe_flushed[i + 1] | stqe_alloc_flushed[i + 1] | stqe_flushed_q[i + 1]) & (~stq7_entry_delete[i + 1]);
-              
+
               assign stqe_need_ext_ack_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_sync | ctl_lsq_ex4_is_icbi | ctl_lsq_ex4_is_icswxr | ctl_lsq_ex4_is_resv |
-                                                                            ctl_lsq_ex4_is_mfgpr | ctl_lsq_ex4_is_cinval | ctl_lsq_ex4_watch_clr_all : 
+                                                                            ctl_lsq_ex4_is_mfgpr | ctl_lsq_ex4_is_cinval | ctl_lsq_ex4_watch_clr_all :
                                                                          stqe_need_ext_ack_q[i + 1];
-              
-              assign stqe_blk_loads_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_sync | ctl_lsq_ex4_is_resv | ctl_lsq_ex4_is_cinval | ctl_lsq_ex4_watch_clr_all : 
+
+              assign stqe_blk_loads_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_is_sync | ctl_lsq_ex4_is_resv | ctl_lsq_ex4_is_cinval | ctl_lsq_ex4_watch_clr_all :
                                                                       stqe_blk_loads_q[i + 1];
-              
-              
+
+
               assign stqe_all_thrd_chk_d[i] = (ex4_set_stq[i] == 1'b1) ? ctl_lsq_ex4_all_thrd_chk: stqe_all_thrd_chk_q[i + 1];
-              
+
               assign stqe_l_zero[i] = stqe_l_fld_q[i][0:1] == 2'b00;
-              
+
               assign stqe_valid_sync[i] = stqe_is_sync_q[i] & stqe_alloc_q[i] & (~stqe_flushed_q[i]);
-              
+
               assign stqe_ack_rcvd_d[i] = (stq_push_down == 1'b0) ? (((any_ack_val_ok_q == stqe_thrd_id_q[i])     & stqe_need_ext_ack_q[i]     & stqe_have_cp_next_q[i]     &
-                                                                        (~stqe_is_icbi_q[i]))     | stqe_ack_rcvd_q[i]) : 
+                                                                        (~stqe_is_icbi_q[i]))     | stqe_ack_rcvd_q[i]) :
                                                                     (((any_ack_val_ok_q == stqe_thrd_id_q[i + 1]) & stqe_need_ext_ack_q[i + 1] & stqe_have_cp_next_q[i + 1] &
                                                                         (~stqe_is_icbi_q[i + 1])) | stqe_ack_rcvd_q[i + 1]);
            end
       end
    endgenerate
-   
+
+   // drop prefetches when a sync in valid in the stq
    assign lsq_ctl_sync_in_stq = |(stqe_valid_sync) | |(ext_ack_queue_sync_q);
-   
+
+   // LQ Pipe checking for illegal lswx received by SQ
    assign lsq_ctl_ex3_strg_val = |(ex3_data_val);
    assign lsq_ctl_ex3_illeg_lswx = |(ex3_illeg_lswx);
    assign lsq_ctl_ex3_strg_noop = |(ex3_strg_noop);
    assign lsq_ctl_ex3_ct_val = |(ex3_data_val);
    assign lsq_ctl_ex3_be_ct = ex3_ct_sel[0:5];
    assign lsq_ctl_ex3_le_ct = ex3_ct_sel[6:11];
-   
+
+   //------------------------------------------------------------------------------
+   // Multi-Thread Age Detection
+   //------------------------------------------------------------------------------
+   // Multi-Thread Age Detection
+   // Following Table should explain the idea behind other `THREADS Age Determination
+   // Oldest Youngest   Result
+   //  0       0        All Stores with addr_val in Store Queue are oldest
+   //  0       1        Stores are older from Youngest_Itag as upper bound, but not including Youngest_Itag, used in case Oldest_Itag is not in ODQ
+   //  1       0        Stores are older from Oldest_Itag as upper bound, including Oldest_Itag
+   //  1       1        Stores are older from Oldest_Itag as upper bound, including Oldest_Itag
+   // Need to validate the oldest entries
    generate
       begin : xhdl10
          genvar                                                      stq;
@@ -2449,8 +2651,9 @@ module lq_stq(
            end
       end
    endgenerate
-   
-   
+
+   // Muxing TAG Pointer
+
    always @(*)
      begin: sttagMux
         reg [0:`STQ_ENTRIES-1]                                       oldest;
@@ -2466,75 +2669,89 @@ module lq_stq(
         ex2_nxt_oldest_ptr <= oldest;
         ex2_nxt_youngest_ptr <= youngest;
      end
-   
+
    assign ex2_no_nxt_match = (~(odq_stq_ex2_nxt_oldest_val | odq_stq_ex2_nxt_youngest_val));
    assign ex2_no_nxt_oldest = (stqe_addr_val_q[0:`STQ_ENTRIES - 1] & (~stqe_flushed_q[0:`STQ_ENTRIES - 1])) & {`STQ_ENTRIES{ex2_no_nxt_match}};
-   
+
+   // Need to shift youngest pointer since we care of everything below this entry
    assign ex2_nxt_youngest_shft = {ex2_nxt_youngest_ptr[1:`STQ_ENTRIES - 1], 1'b0};
-   
+
+   // Oldest Pointer is the OR of oldest_itag pointer with youngest_itag_shifted pointer and with no_oldest_youngest pointer
    assign ex2_nxt_oldest = ex2_nxt_oldest_ptr | ex2_nxt_youngest_shft | ex2_no_nxt_oldest;
-   assign ex3_nxt_oldest_d = (stq_push_down == 1'b0) ? ex2_nxt_oldest : 
+   assign ex3_nxt_oldest_d = (stq_push_down == 1'b0) ? ex2_nxt_oldest :
                                                        ({ex2_nxt_oldest[1:`STQ_ENTRIES - 1], 1'b0});
-   
-   assign ex4_rot_mask = (ex4_req_opsize_q == 3'b001) ? 4'b0000 :       
-                         (ex4_req_opsize_q == 3'b010) ? 4'b1111 : 		
-                         (ex4_req_opsize_q == 3'b100) ? 4'b1110 :       
-                         (ex4_req_opsize_q == 3'b101) ? 4'b1000 :       
-                         (ex4_req_opsize_q == 3'b110) ? 4'b1000 :       
+
+   //------------------------------------------------------------------------------
+   // Data Forwarding
+   //------------------------------------------------------------------------------
+   // For some sizes, we could rotate too far and not leave enough data
+   assign ex4_rot_mask = (ex4_req_opsize_q == 3'b001) ? 4'b0000 :       // 1B       None
+                         (ex4_req_opsize_q == 3'b010) ? 4'b1111 : 		// 2B       Any
+                         (ex4_req_opsize_q == 3'b100) ? 4'b1110 :       // 4B       Sel3 will not leave 4B of data
+                         (ex4_req_opsize_q == 3'b101) ? 4'b1000 :       // 8B       Exact Match Only
+                         (ex4_req_opsize_q == 3'b110) ? 4'b1000 :       // 16B      Exact Match Only
                                                         4'b0000;
 
-   assign ex4_req_opsize_1hot[0] = ex4_req_opsize_q == 3'b110;		
-   assign ex4_req_opsize_1hot[1] = ex4_req_opsize_q == 3'b101;		
-   assign ex4_req_opsize_1hot[2] = ex4_req_opsize_q == 3'b100;		
-   assign ex4_req_opsize_1hot[3] = ex4_req_opsize_q == 3'b010;		
-   assign ex4_req_opsize_1hot[4] = ex4_req_opsize_q == 3'b001;		
+   assign ex4_req_opsize_1hot[0] = ex4_req_opsize_q == 3'b110;		// 16B
+   assign ex4_req_opsize_1hot[1] = ex4_req_opsize_q == 3'b101;		// 8B
+   assign ex4_req_opsize_1hot[2] = ex4_req_opsize_q == 3'b100;		// 4B
+   assign ex4_req_opsize_1hot[3] = ex4_req_opsize_q == 3'b010;		// 2B
+   assign ex4_req_opsize_1hot[4] = ex4_req_opsize_q == 3'b001;		// 1B
    assign ex4_req_opsize1        = ~ex4_req_opsize_q[0] & ex4_req_opsize_q[2];
-   
+
    generate begin : xhdl12
      genvar                                                      i;
      genvar                                                      b;
 
      for (i = 0; i <= `STQ_ENTRIES - 1; i = i + 1) begin : stq_fwd_gen
-       if ((58 - RI) == 36) begin : bitStack36          
+       if ((58 - RI) == 36) begin : bitStack36
+        // Address Compare for data forwarding
         tri_addrcmp stq_fwd_addrcmp(
 	   	  .enable_lsb(spr_xucr0_64cls),
 	   	  .d0(stqe_addr_q[i][RI:57]),
 	   	  .d1(ctl_lsq_ex4_p_addr[RI:57]),
 	   	  .eq(ex4_fwd_addrcmp_hi[i]));
        end
-              
+
        if ((58 - RI) != 36) begin : nobitStack
          assign ex4_fwd_addrcmp_hi[i] = (({stqe_addr_q[i][RI:56], (stqe_addr_q[i][57] & spr_xucr0_64cls)}) == ({ctl_lsq_ex4_p_addr[RI:56], (ctl_lsq_ex4_p_addr[57] & spr_xucr0_64cls)}));
        end
-       
+
        assign ex4_fwd_addrcmp_lo[i] = stqe_addr_q[i][58:59] == ex4_req_p_addr_l_q[58:59];
        assign ex4_fwd_addrcmp[i] = ex4_fwd_addrcmp_hi[i] & ex4_fwd_addrcmp_lo[i];
-       
+
+       // Check that Thread ID matches
        assign ex4_thrd_match[i] = |(ex4_req_thrd_id_q & stqe_thrd_id_q[i]) | stqe_all_thrd_chk_q[i];
-       
+
+       // Check that they are from the same thread or from different thread that has received its commit report
        assign ex4_thrd_id_ok[i] = ex4_thrd_match[i] | stqe_compl_rcvd_q[i];
-       
+
+       // Check the address for inclusivity based on the opsize
        assign ex4_byte_en_ok[i] = ~(|(ex4_req_byte_en_q & (~stqe_byte_en_q[i])));
        assign ex4_byte_en_miss[i] = ~(|(ex4_req_byte_en_q & stqe_byte_en_q[i]));
-       
-       assign ex4_1byte_chk_ok[i] = ex4_hw_addr_cmp[i][3] & stqe_opsize1[i] & ex4_req_opsize1;      
-       assign ex4_byte_chk_ok[i]  = |(ex4_hw_addr_cmp[i] & ex4_rot_mask) |                          
-                                     (ex4_1byte_chk_ok[i]);                                             
-              
-	   assign stqe_rotcmp_val[i][0] = stqe_opsize_q[i][0] & stqe_opsize_q[i][2];		
-	   assign stqe_rotcmp_val[i][1] = stqe_opsize_q[i][0] & stqe_opsize_q[i][2];		
-	   assign stqe_rotcmp_val[i][2] = stqe_opsize_q[i][0];		                        
-	   assign stqe_rotcmp_val[i][3] = |(stqe_opsize_q[i]);		                        
+
+       // If they are byte misaligned, we can't rotate.
+       // For some sizes, we could rotate too far and not leave enough data
+       // 1Byte load can forward only from a 1Byte store to the same address
+       assign ex4_1byte_chk_ok[i] = ex4_hw_addr_cmp[i][3] & stqe_opsize1[i] & ex4_req_opsize1;      //1Byte request only
+       assign ex4_byte_chk_ok[i]  = |(ex4_hw_addr_cmp[i] & ex4_rot_mask) |                          //All Byte Combination greater than 1Byte requests
+                                     (ex4_1byte_chk_ok[i]);
+
+       // need to mask off offsets that dont reflect the size of the store
+	   assign stqe_rotcmp_val[i][0] = stqe_opsize_q[i][0] & stqe_opsize_q[i][2];		// 8B requests
+	   assign stqe_rotcmp_val[i][1] = stqe_opsize_q[i][0] & stqe_opsize_q[i][2];		// 8B requests
+	   assign stqe_rotcmp_val[i][2] = stqe_opsize_q[i][0];		                        // 8B/4B requests
+	   assign stqe_rotcmp_val[i][3] = |(stqe_opsize_q[i]);		                        // 8B/4B/2B/1B requests
 	   assign stqe_opsize8[i] =  stqe_opsize_q[i][0] &  stqe_opsize_q[i][2];
 	   assign stqe_opsize4[i] =  stqe_opsize_q[i][0] & ~stqe_opsize_q[i][2];
 	   assign stqe_opsize2[i] = ~stqe_opsize_q[i][0] &  stqe_opsize_q[i][1];
 	   assign stqe_opsize1[i] = ~stqe_opsize_q[i][0] &  stqe_opsize_q[i][2];
-	   
+
 	   assign ex4_hw_addr_cmp[i][0] = (ex4_req_p_addr_l_q[60:63] == stqe_rotcmp_q[i][0:3])   & stqe_rotcmp_val[i][0];
        assign ex4_hw_addr_cmp[i][1] = (ex4_req_p_addr_l_q[60:63] == stqe_rotcmp_q[i][4:7])   & stqe_rotcmp_val[i][1];
 	   assign ex4_hw_addr_cmp[i][2] = (ex4_req_p_addr_l_q[60:63] == stqe_rotcmp_q[i][8:11])  & stqe_rotcmp_val[i][2];
 	   assign ex4_hw_addr_cmp[i][3] = (ex4_req_p_addr_l_q[60:63] == stqe_rotcmp_q[i][12:15]) & stqe_rotcmp_val[i][3];
-	   
+
        assign ex4_opsize8_be[i] = ex4_req_opsize_1hot[1] & ~stqe_byte_swap_q[i];
 	   assign ex4_opsize4_be[i] = ex4_req_opsize_1hot[2] & ~stqe_byte_swap_q[i];
 	   assign ex4_opsize2_be[i] = ex4_req_opsize_1hot[3] & ~stqe_byte_swap_q[i];
@@ -2543,13 +2760,13 @@ module lq_stq(
 	   assign ex4_opsize4_le[i] = ex4_req_opsize_1hot[2] &  stqe_byte_swap_q[i];
 	   assign ex4_opsize2_le[i] = ex4_req_opsize_1hot[3] &  stqe_byte_swap_q[i];
 	   assign ex4_opsize1_le[i] = ex4_req_opsize_1hot[4] &  stqe_byte_swap_q[i];
-	     			
-       assign ex4_rot_sel_be[i][0] = (ex4_opsize8_be[i] & ex4_hw_addr_cmp[i][0]) | (ex4_opsize4_be[i] & ex4_hw_addr_cmp[i][2]) | 
+
+       assign ex4_rot_sel_be[i][0] = (ex4_opsize8_be[i] & ex4_hw_addr_cmp[i][0]) | (ex4_opsize4_be[i] & ex4_hw_addr_cmp[i][2]) |
                                      (ex4_opsize2_be[i] & ex4_hw_addr_cmp[i][3]) | (ex4_opsize1_be[i] & ex4_hw_addr_cmp[i][3]);
        assign ex4_rot_sel_be[i][1] = (ex4_opsize4_be[i] & ex4_hw_addr_cmp[i][1]) | (ex4_opsize2_be[i] & ex4_hw_addr_cmp[i][2]);
        assign ex4_rot_sel_be[i][2] = (ex4_opsize4_be[i] & ex4_hw_addr_cmp[i][0]) | (ex4_opsize2_be[i] & ex4_hw_addr_cmp[i][1]);
        assign ex4_rot_sel_be[i][3] = (ex4_opsize2_be[i] & ex4_hw_addr_cmp[i][0]);
-	    		
+
        assign ex4_rot_sel_le[i][0] = ((stqe_opsize8[i] & (ex4_opsize8_le[i] | ex4_opsize4_le[i] | ex4_opsize2_le[i])) & ex4_hw_addr_cmp[i][0]) |
                                      ((stqe_opsize4[i] & (ex4_opsize4_le[i] | ex4_opsize2_le[i])) & ex4_hw_addr_cmp[i][2]) |
                                      (stqe_opsize2[i]  & ex4_opsize2_le[i] & ex4_hw_addr_cmp[i][3]) |
@@ -2558,10 +2775,30 @@ module lq_stq(
                                      ((stqe_opsize4[i] & (ex4_opsize2_le[i])) & ex4_hw_addr_cmp[i][3]);
 	   assign ex4_rot_sel_le[i][2] = ((stqe_opsize8[i] & (ex4_opsize4_le[i] | ex4_opsize2_le[i])) & ex4_hw_addr_cmp[i][2]);
 	   assign ex4_rot_sel_le[i][3] = ((stqe_opsize8[i] & (ex4_opsize2_le[i])) & ex4_hw_addr_cmp[i][3]);
-	   
+
 	   assign ex4_rot_sel[i] = ex4_rot_sel_le[i] | ex4_rot_sel_be[i];
-              
-       
+
+       // Little Endian Sign Extension Byte Select
+       // StoreSize8        | HW_CMP | SEXT_SEL
+       //--------------------------------------
+       // LoadSize4         | 1000   | 0010
+       // LoadSize2         | 1000   | 0001
+       // LoadSize4         | 0100   | 0100
+       // LoadSize2         | 0100   | 0010
+       // LoadSize4         | 0010   | 1000
+       // LoadSize2         | 0010   | 0100
+       // LoadSize2         | 0001   | 1000
+       //--------------------------------------
+       // StoreSize4        | HW_CMP | SEXT_SEL
+       //--------------------------------------
+       // LoadSize4         | 0010   | 0010
+       // LoadSize2         | 0010   | 0001
+       // LoadSize2         | 0001   | 0001
+       //--------------------------------------
+       // StoreSize2        | HW_CMP | SEXT_SEL
+       //--------------------------------------
+       // LoadSize2         | 0001   | 0001
+
        assign ex4_rev_rot_sel[i]       = {ex4_hw_addr_cmp[i][3], ex4_hw_addr_cmp[i][2], ex4_hw_addr_cmp[i][1], ex4_hw_addr_cmp[i][0]};
        assign ex4_shft_rot_sel[i]      = {ex4_rev_rot_sel[i][1:3], 1'b0};
        assign ex4_sext8_le_sel[i]      = (ex4_rev_rot_sel[i]  & {4{(ex4_opsize2_le[i] & stqe_opsize8[i])}}) |
@@ -2573,26 +2810,25 @@ module lq_stq(
        assign ex4_sext2_le_sel[i][3]   = stqe_opsize2[i];
        assign ex4_sext_le_sel[i]       = ex4_sext8_le_sel[i] | ex4_sext4_le_sel[i] | ex4_sext2_le_sel[i];
        assign ex4_sext_sel[i]          = ex4_sext_le_sel[i] | (ex4_hw_addr_cmp[i] & {4{(~stqe_byte_swap_q[i])}});
-       
-       
-       assign ex4_sext[i] = (ex4_sext_sel[i][0:3] == 4'b1000) ? stqe_data1_q[i][64] : 
-                            (ex4_sext_sel[i][0:3] == 4'b0100) ? stqe_data1_q[i][80] : 
-                            (ex4_sext_sel[i][0:3] == 4'b0010) ? stqe_data1_q[i][96] : 
-                            (ex4_sext_sel[i][0:3] == 4'b0001) ? stqe_data1_q[i][112] : 
+
+       assign ex4_sext[i] = (ex4_sext_sel[i][0:3] == 4'b1000) ? stqe_data1_q[i][64] :
+                            (ex4_sext_sel[i][0:3] == 4'b0100) ? stqe_data1_q[i][80] :
+                            (ex4_sext_sel[i][0:3] == 4'b0010) ? stqe_data1_q[i][96] :
+                            (ex4_sext_sel[i][0:3] == 4'b0001) ? stqe_data1_q[i][112] :
                                                                 1'b0;
        assign ex4_se[i] = ex4_req_algebraic_q & ex4_sext[i];
        assign ex4_se_b[i][0:7] = {8{(~ex4_se[i])}};
-       
+
        for (b = 0; b <= 7; b = b + 1) begin : rotate_gen
          assign stqe_data1_swzl[i][b * 8:(b * 8) + 7] = {stqe_data1_q[i][b + 64],  stqe_data1_q[i][b + 72], stqe_data1_q[i][b + 80],
                                                          stqe_data1_q[i][b + 88],  stqe_data1_q[i][b + 96], stqe_data1_q[i][b + 104],
                                                          stqe_data1_q[i][b + 112], stqe_data1_q[i][b + 120]};
-          
+
          assign ex4_fwd_data1[i][b * 8:(b * 8) + 7] = {ex4_fwd_data1_swzl[i][b + 0],  ex4_fwd_data1_swzl[i][b + 8],  ex4_fwd_data1_swzl[i][b + 16],
                                                        ex4_fwd_data1_swzl[i][b + 24], ex4_fwd_data1_swzl[i][b + 32], ex4_fwd_data1_swzl[i][b + 40],
                                                        ex4_fwd_data1_swzl[i][b + 48], ex4_fwd_data1_swzl[i][b + 56]};
-          
-          
+
+
          lq_stq_rot rotate(
            .rot_sel(ex4_rot_sel[i]),
            .mask(ex4_req_opsize_1hot[1:4]),
@@ -2602,15 +2838,24 @@ module lq_stq(
          );
        end
 
+       // OrderQ will indicate which entries are older
+       // itag age Compare for data forwarding
+       //   stq_fwd_agecmp : entity tri.tri_agecmp
+       //   generic map(size => `ITAG_SIZE_ENC)
+       //   port map (
+       //      a           => ex3_req_itag_q,            -- Incoming Load
+       //      b           => stqe_itag_q(i),            -- Store Entry
+       //      a_newer_b   => ex3_agecmp_itag(i)         -- Load newer than Store?
+       //      );
 
-
+       // If COMMIT report has been recieved, entry is always the oldest automatically
        assign ex3_fwd_agecmp[i] = ex3_agecmp[i];
 
-       assign ex4_fwd_agecmp_d[i] = (stq_push_down == 1'b0) ? ex3_agecmp[i] : 
+       assign ex4_fwd_agecmp_d[i] = (stq_push_down == 1'b0) ? ex3_agecmp[i] :
                                                               ex3_agecmp[i + 1];
-	     		
+
        assign stqe_guarded[i] = stqe_wimge_q[i][3];
-	     		
+
        assign ex4_fwd_endian_mux[i] = (~(ctl_lsq_ex4_byte_swap ^ stqe_byte_swap_q[i]));
        assign ex4_fwd_is_store_mux[i] = stqe_is_store_q[i] & (~(stqe_cline_chk_q[i] | ctl_lsq_ex4_cline_chk));
        assign ex4_fwd_is_cline_chk[i]    = stqe_fwd_addr_val_q[i] & ex4_fwd_addrcmp_hi[i] & (stqe_cline_chk_q[i] | ctl_lsq_ex4_cline_chk);
@@ -2619,15 +2864,15 @@ module lq_stq(
        assign ex4_fwd_is_blk_load_chk[i] = stqe_fwd_addr_val_q[i] & ex4_thrd_match[i] & stqe_blk_loads_q[i];
        assign ex4_fwd_is_gload_chk[i]    = stqe_fwd_addr_val_q[i] & ex4_thrd_match[i] & stqe_guarded[i] & ctl_lsq_ex4_wimge[3];
        assign ex4_fwd_rej_guarded[i]     = ctl_lsq_ex4_wimge[3];
-	     		
+
        assign stqe_rej_newer_gload[i] = stqe_fwd_addr_val_q[i] & ex4_fwd_agecmp_q[i] & ex4_ldreq_valid & ex4_fwd_is_gload_chk[i];
        assign stqe_rej_other[i]       = stqe_fwd_addr_val_q[i] & ex4_fwd_agecmp_q[i] & ex4_ldreq_valid & ex4_fwd_is_blk_load_chk[i];
        assign stqe_rej_cline_chk[i]   = stqe_fwd_addr_val_q[i] & ex4_fwd_agecmp_q[i] & ex4_ldreq_valid & ex4_fwd_is_cline_chk[i];
        assign stqe_rej_cline_miss[i]  = stqe_fwd_addr_val_q[i] & ex4_fwd_agecmp_q[i] & ex4_ldreq_valid & ex4_fwd_is_miss_chk[i];
        assign stqe_rej_wchkall[i]     = stqe_fwd_addr_val_q[i] & ex4_fwd_agecmp_q[i] & ex4_wchkall_valid;
-	     		
+
        assign stqe_rej_hit_no_fwd[i] = ex4_fwd_sel[i] & ex4_fwd_restart_entry[i] & ex4_ldreq_valid;
-						
+
 	    if (i > `STQ_FWD_ENTRIES - 1) begin : hold_nonfwd
 		   assign set_hold_early_clear[i] = ex4_nofwd_entry[i] & ex4_ldreq_valid;
 		end
@@ -2637,20 +2882,23 @@ module lq_stq(
 	   end
       end
    endgenerate
-   
+
+   // Entry Address compared down to the 16 Byte boundary
    assign ex4_fwd_sel = ex4_fwd_addrcmp & ex4_fwd_agecmp_q & stqe_fwd_addr_val_q[0:`STQ_ENTRIES - 1] & (~ex4_byte_en_miss);
-   
+
+   // itag age Compare for data forwarding
    tri_agecmp #(.SIZE(`ITAG_SIZE_ENC)) nxt_stq_fwd_agecmp(
-       .a(ex3_req_itag_q),		        
-	   .b(ex4_req_itag_q),		        
-	   .a_newer_b(ex3_ex4_agecmp));     
+       .a(ex3_req_itag_q),		        // Incoming Load
+	   .b(ex4_req_itag_q),		        // being written into next Store Entry
+	   .a_newer_b(ex3_ex4_agecmp));     // Load newer than Store?
 
    assign ex3_ex4_agecmp_sametid = ex3_ex4_agecmp & |(ex3_req_thrd_id_q & ex4_req_thrd_id_q);
    assign ex3_ex4_byte_en_hit = |(ctl_lsq_ex3_byte_en & ex4_req_byte_en_q);
-   
+
+   // compare the forwardable entries to each other to determine the forwarding priority mask
    generate begin : fwd_pri_gen_l1
      genvar                                                      i;
-     for (i = 0; i <= `STQ_FWD_ENTRIES - 1; i = i + 1) begin : fwd_pri_gen_l1	      
+     for (i = 0; i <= `STQ_FWD_ENTRIES - 1; i = i + 1) begin : fwd_pri_gen_l1
        always @(*) begin: fwd_pri_gen_l2
          reg [(i+1):`STQ_FWD_ENTRIES]   match;
          reg [(i+1):`STQ_FWD_ENTRIES]   match_addr;
@@ -2670,8 +2918,8 @@ module lq_stq(
          for (j = i + 1; j <= `STQ_FWD_ENTRIES; j = j + 1) begin
            stqe_byte_en_hit[j]    = stqe_fwd_addr_val_q[j] & |(ctl_lsq_ex3_byte_en & stqe_byte_en_q[j]);
            ex4_set_byte_en_hit[j] = ex4_set_stq_q[j] & ex3_ex4_byte_en_hit;
-           match_incom_addr[j]    = ex4_fwd_addrcmp[i] & ex4_set_stq_q[j];     
-           match_stqe_addr[j]     = (({stqe_addr_q[i][RI:56], (stqe_addr_q[i][57] & spr_xucr0_64cls)}) == 
+           match_incom_addr[j]    = ex4_fwd_addrcmp[i] & ex4_set_stq_q[j];     // incoming address matched against my entry i
+           match_stqe_addr[j]     = (({stqe_addr_q[i][RI:56], (stqe_addr_q[i][57] & spr_xucr0_64cls)}) ==
                                      ({stqe_addr_q[j][RI:56], (stqe_addr_q[j][57] & spr_xucr0_64cls)})) & (stqe_addr_q[i][58:59] == stqe_addr_q[j][58:59]);
            match_addr[j]          = match_incom_addr[j] | match_stqe_addr[j];
            match_chk_val[j]       = (stqe_fwd_addr_val_q[i] | ex4_set_stq_q[i]) & (stqe_byte_en_hit[j] | ex4_set_byte_en_hit[j]) & ex3_fwd_agecmp[j];
@@ -2679,37 +2927,47 @@ module lq_stq(
          end
          stq_mask[i] <= |(match);
 
+         // dont think the ODQ age needs to be taken into account, since the store is in ex4, if it were from the other thread,
+         // the store wont be in a commit state and the load request should be restarted
          ex4_stqe_match_addr[i] <= ex4_fwd_addrcmp[i] & stqe_fwd_addr_val_q[i] & |(ex4_set_stq_q);
          ex4_stqe_match[i]      <= (ex4_stqe_match_addr[i] & ex3_ex4_byte_en_hit & ex3_fwd_agecmp[i]);
          fwd_pri_mask[i]        <= stq_mask[i];
        end
      end
    end endgenerate
-   
-   assign stq_fwd_pri_mask_d = (stq_push_down == 1'b0) ? fwd_pri_mask[0:`STQ_FWD_ENTRIES - 2] : 
+
+   assign stq_fwd_pri_mask_d = (stq_push_down == 1'b0) ? fwd_pri_mask[0:`STQ_FWD_ENTRIES - 2] :
                                                          fwd_pri_mask[1:`STQ_FWD_ENTRIES - 1];
 
+   // Entries non-address checks passed
    assign stqe_fwd_enable = {`STQ_ENTRIES{~spr_lsucr0_dfwd_q}};
    assign ex4_fwd_entry = ex4_byte_en_ok & ex4_byte_chk_ok & ex4_thrd_id_ok & stqe_data_val_q[0:`STQ_ENTRIES - 1] & ex4_fwd_endian_mux & ex4_fwd_is_store_mux & ~ex4_fwd_rej_guarded & stqe_fwd_enable;
    assign ex4_fwd_val = |(ex4_fwd_sel[0:`STQ_FWD_ENTRIES - 1] & ex4_fwd_entry[0:`STQ_FWD_ENTRIES - 1]);
 
-
+   // Check that we wanted to forward from the Forwadable Entries
+   // but couldnt due to forward checks
    assign ex4_fwd_chk_fail = ex4_fwd_sel[0:`STQ_FWD_ENTRIES - 1] & (~ex4_fwd_entry[0:`STQ_FWD_ENTRIES - 1]);
 
+   // Check that we wanted to forward from the Non-Forwadable Entries, need to restart if
+   // we hit against those
    assign ex4_nofwd_entry = ex4_fwd_sel[`STQ_FWD_ENTRIES:`STQ_ENTRIES - 1];
 
+   // Restart scenarios
    assign ex4_fwd_restart_entry = {ex4_fwd_chk_fail, ex4_nofwd_entry};
    assign ex4_fwd_restart = |(ex4_fwd_restart_entry);
 
    assign ex4_fwd_hit = |(ex4_fwd_sel);
 
+   // ENDIAN, EX$_GUARDED, and NON-STORE rejects are included in the fwd_entry logic now
 
-   assign ex4_rej_newer_gload = |(stqe_fwd_addr_val_q[0:`STQ_ENTRIES - 1] & ex4_fwd_agecmp_q & ex4_fwd_is_gload_chk);       
-   assign ex4_rej_other       = |(stqe_fwd_addr_val_q[0:`STQ_ENTRIES - 1] & ex4_fwd_agecmp_q & ex4_fwd_is_blk_load_chk);	
-   assign ex4_rej_cline_chk   = |(stqe_fwd_addr_val_q[0:`STQ_ENTRIES - 1] & ex4_fwd_agecmp_q & ex4_fwd_is_cline_chk);		
-   assign ex4_rej_cline_miss  = |(stqe_fwd_addr_val_q[0:`STQ_ENTRIES - 1] & ex4_fwd_agecmp_q & ex4_fwd_is_miss_chk);		
+   // These special rejects occur regardless of address collision
+   assign ex4_rej_newer_gload = |(stqe_fwd_addr_val_q[0:`STQ_ENTRIES - 1] & ex4_fwd_agecmp_q & ex4_fwd_is_gload_chk);       // Store Op is guarded
+   assign ex4_rej_other       = |(stqe_fwd_addr_val_q[0:`STQ_ENTRIES - 1] & ex4_fwd_agecmp_q & ex4_fwd_is_blk_load_chk);	// Store Op is a STCX, DCI, ICI, SYNC, MBAR, WCLR ALL
+   assign ex4_rej_cline_chk   = |(stqe_fwd_addr_val_q[0:`STQ_ENTRIES - 1] & ex4_fwd_agecmp_q & ex4_fwd_is_cline_chk);		// Store Op affects entire cacheline
+   assign ex4_rej_cline_miss  = |(stqe_fwd_addr_val_q[0:`STQ_ENTRIES - 1] & ex4_fwd_agecmp_q & ex4_fwd_is_miss_chk);		// Store Op should reject a loadmiss
 
-   assign ex4_thrd_match_restart   = |(((ex4_fwd_agecmp_q & (ex4_fwd_is_cline_chk | ex4_fwd_is_miss_chk | ex4_fwd_is_gload_chk | ex4_fwd_is_blk_load_chk)) | 
+   // Determine Restart based on thread
+   assign ex4_thrd_match_restart   = |(((ex4_fwd_agecmp_q & (ex4_fwd_is_cline_chk | ex4_fwd_is_miss_chk | ex4_fwd_is_gload_chk | ex4_fwd_is_blk_load_chk)) |
                                          ex4_fwd_restart_entry) &  ex4_thrd_match) | ex4_rej_sync_pending;
    assign ex4_thrd_nomatch_restart = |(((ex4_fwd_agecmp_q & (ex4_fwd_is_cline_chk | ex4_fwd_is_miss_chk)) | ex4_fwd_restart_entry) & ~ex4_thrd_match);
    assign ex5_thrd_match_restart_d   = ex4_thrd_match_restart;
@@ -2717,26 +2975,30 @@ module lq_stq(
    assign ex5_thrd_nomatch_restart_d = ex4_thrd_nomatch_restart;
    assign ex6_thrd_nomatch_restart_d = ex5_thrd_nomatch_restart_q;
 
+   // LARX/GuardedLoad check is added for the case where a larx/guardedload went out for a thread, it got an ECC error,
+   // reported completion without a flush, a store can commit to the L1/L2 before the resend
+   // of the LARX/GuardedLoad completes
    assign ex4_older_ldmiss = (ex4_fwd_is_miss_chk | ex4_fwd_is_larx_chk | ex4_fwd_is_blk_load_chk | ex4_fwd_is_gload_chk) & (~ex4_fwd_agecmp_q);
-   assign ex5_older_ldmiss_d = (stq_push_down == 1'b0) ? ex4_older_ldmiss : 
+   assign ex5_older_ldmiss_d = (stq_push_down == 1'b0) ? ex4_older_ldmiss :
                                                         {ex4_older_ldmiss[1:`STQ_ENTRIES - 1], 1'b0};
 
-   assign ex4_rej_wchkall = |(stqe_fwd_addr_val_q[0:`STQ_ENTRIES - 1] & ex4_fwd_agecmp_q);		
+   assign ex4_rej_wchkall = |(stqe_fwd_addr_val_q[0:`STQ_ENTRIES - 1] & ex4_fwd_agecmp_q);		// WCHKALL colliding with older instructions in store queue,
+   // need to guarantee all watch effects have completed
    assign ex4_rej_sync_pending = |(ex4_req_thrd_id_q & (ext_ack_queue_sync_q | ext_ack_queue_stcx_q));
 
    assign ex5_stq_restart_d = ((ex4_ldreq_valid | ex4_pfetch_val_q) & (ex4_fwd_restart | ex4_rej_newer_gload |
                                                   ex4_rej_other | ex4_rej_cline_chk | ex4_rej_sync_pending)) |
                               (ex4_wchkall_valid & ex4_rej_wchkall);
-   assign ex5_stq_restart_miss_d = (ex4_ldreq_valid | ex4_pfetch_val_q) & ex4_rej_cline_miss & (~ex4_fwd_val);		
+   assign ex5_stq_restart_miss_d = (ex4_ldreq_valid | ex4_pfetch_val_q) & ex4_rej_cline_miss & (~ex4_fwd_val);		// cacheline compared and I am not forwarding
    assign ex5_fwd_val_d = ex4_ldreq_valid & ex4_fwd_val;
 
    assign ex4_qHit_set_oth = (stqe_rej_newer_gload | stqe_rej_other | stqe_rej_cline_chk | stqe_rej_wchkall | stqe_rej_hit_no_fwd) & (~stqe_cmmt_entry);
    assign ex4_qHit_set_miss = stqe_rej_cline_miss & (~stqe_cmmt_entry);
 
-   assign ex5_qHit_set_oth_d = (stq_push_down == 1'b0) ? ex4_qHit_set_oth : 
+   assign ex5_qHit_set_oth_d = (stq_push_down == 1'b0) ? ex4_qHit_set_oth :
                                                         {ex4_qHit_set_oth[1:`STQ_ENTRIES - 1], 1'b0};
 
-   assign ex5_qHit_set_miss_d = (stq_push_down == 1'b0) ? ex4_qHit_set_miss : 
+   assign ex5_qHit_set_miss_d = (stq_push_down == 1'b0) ? ex4_qHit_set_miss :
                                                          {ex4_qHit_set_miss[1:`STQ_ENTRIES - 1], 1'b0};
 
    assign ex5_qHit_set_miss[0:`STQ_ENTRIES - 1] = ex5_qHit_set_miss_q & {`STQ_ENTRIES{(~(ctl_lsq_ex5_load_hit | ex5_fwd_val_q))}};
@@ -2746,9 +3008,43 @@ module lq_stq(
    assign lsq_ctl_ex5_fwd_val = ex5_fwd_val_q;
    assign lsq_ctl_ex5_fwd_data = ex5_fwd_data_q;
    assign lsq_ctl_ex6_stq_events = {ex6_thrd_match_restart_q, ex6_thrd_nomatch_restart_q};
-   
-   
-                                 
+
+   //------------------------------------------------------------------------------
+   //------------------------------------------------------------------------------
+   // FXU0 SPR Mux Select
+   //------------------------------------------------------------------------------
+   //------------------------------------------------------------------------------
+   // Thread Select
+   //fxu0StTid : process (ex4_fxu0_val_q, ctl_lsq_spr_dbcr2_dvc1m, ctl_lsq_spr_dbcr2_dvc1be,
+   //                  ctl_lsq_spr_dbcr2_dvc2m, ctl_lsq_spr_dbcr2_dvc2be)
+   //  variable dvc1m        :std_ulogic_vector(0 to 1);
+   //  variable dvc2m        :std_ulogic_vector(0 to 1);
+   //  variable dvc1be       :std_ulogic_vector(8-(2**`GPR_WIDTH_ENC)/8 to 7);
+   //  variable dvc2be       :std_ulogic_vector(8-(2**`GPR_WIDTH_ENC)/8 to 7);
+   //begin
+   //  dvc1m  := (others=>'0');
+   //  dvc2m  := (others=>'0');
+   //  dvc1be := (others=>'0');
+   //  dvc2be := (others=>'0');
+   //  for tid in 0 to `THREADS-1 loop
+   //    dvc1m  := gate(ctl_lsq_spr_dbcr2_dvc1m(2*tid to 2*tid+1), ex4_fxu0_val_q(tid)) or dvc1m;
+   //    dvc2m  := gate(ctl_lsq_spr_dbcr2_dvc2m(2*tid to 2*tid+1), ex4_fxu0_val_q(tid)) or dvc2m;
+   //    dvc1be := gate(ctl_lsq_spr_dbcr2_dvc1be(tid*8+(8-fxu0_spr_dbcr2_dvc1be'length) to tid*8+7), ex4_fxu0_val_q(tid)) or dvc1be;
+   //    dvc2be := gate(ctl_lsq_spr_dbcr2_dvc2be(tid*8+(8-fxu0_spr_dbcr2_dvc2be'length) to tid*8+7), ex4_fxu0_val_q(tid)) or dvc2be;
+   //  end loop;
+   //  fxu0_spr_dbcr2_dvc1m  <= dvc1m;
+   //  fxu0_spr_dbcr2_dvc2m  <= dvc2m;
+   //  fxu0_spr_dbcr2_dvc1be <= dvc1be;
+   //  fxu0_spr_dbcr2_dvc2be <= dvc2be;
+   //end process fxu0StTid;
+
+   //------------------------------------------------------------------------------
+   //------------------------------------------------------------------------------
+   // FXU1 SPR Mux Select
+   //------------------------------------------------------------------------------
+   //------------------------------------------------------------------------------
+   // Thread Select
+
    always @(*)
    begin: fxu1StTid
       reg [0:1]                                                   dvc1m;
@@ -2771,12 +3067,8 @@ module lq_stq(
       fxu1_spr_dbcr2_dvc2m <= dvc2m;
       fxu1_spr_dbcr2_dvc1be <= dvc1be;
       fxu1_spr_dbcr2_dvc2be <= dvc2be;
-   end 
+   end
 
-
-
-   
-   
    lq_spr_dvccmp #(.REGSIZE((2 ** `GPR_WIDTH_ENC))) fxu1DVC1St(
 								   .en(tiup),
 								   .en00(tidn),
@@ -2785,8 +3077,8 @@ module lq_stq(
 								   .dvcbe(fxu1_spr_dbcr2_dvc1be),
 								   .dvc_cmpr(ex3_fxu1_dvc1r_cmpr)
 								   );
-   
-   
+
+
    lq_spr_dvccmp #(.REGSIZE((2 ** `GPR_WIDTH_ENC))) fxu1DVC2St(
 								   .en(tiup),
 								   .en00(tidn),
@@ -2797,8 +3089,14 @@ module lq_stq(
 								   );
    assign ex3_fxu1_dvcr_cmpr = {ex3_fxu1_dvc1r_cmpr, ex3_fxu1_dvc2r_cmpr};
    assign dbg_int_en_d = ctl_lsq_dbg_int_en;
-   
-   
+
+   //------------------------------------------------------------------------------
+   //------------------------------------------------------------------------------
+   // ICSWX Coprocessor CT Mux Select
+   //------------------------------------------------------------------------------
+   //------------------------------------------------------------------------------
+   // ITAG Select
+
    always @(*)
      begin: icswxCt
         reg [0:11]                                                  ctSel;
@@ -2809,10 +3107,17 @@ module lq_stq(
 
         ex3_ct_sel <= ctSel;
      end
-                                 
+
+     //------------------------------------------------------------------------------
+     //------------------------------------------------------------------------------
+     // STQ Data Entries
+     //------------------------------------------------------------------------------
+     //------------------------------------------------------------------------------
+     // FXU0 Data interfaces
      assign ex4_fxu1_illeg_lswx_d = xu1_lq_ex3_illeg_lswx;
      assign ex4_fxu1_strg_noop_d = xu1_lq_ex3_strg_noop;
 
+     // FXU1 Data interfaces
      assign ex2_fxu1_val = |(xu1_lq_ex2_stq_val);
      assign ex3_fxu1_val_d = xu1_lq_ex2_stq_val & (~cp_flush_q);
      assign ex3_fxu1_itag_d = xu1_lq_ex2_stq_itag;
@@ -2821,6 +3126,7 @@ module lq_stq(
      assign ex3_fxu1_dvc2_cmp_d = xu1_lq_ex2_stq_dvc2_cmp;
      assign ex4_fxu1_val_d = ex3_fxu1_val_q & (~cp_flush_q);
 
+     // AXU Data interfaces
      assign ex2_axu_val = |(xu_lq_axu_ex_stq_val);
      assign ex3_axu_val_d = xu_lq_axu_ex_stq_val & (~cp_flush_q);
      assign ex3_axu_itag_d = xu_lq_axu_ex_stq_itag;
@@ -2837,7 +3143,7 @@ module lq_stq(
               assign ex4_fxu1_data_ptr_d[i] = ex3_fxu1_data_ptr[i];
               assign ex4_axu_data_ptr_d[i] = (stqe_alloc_q[i]     & (ex3_axu_itag_q == stqe_itag_q[i])     & (ex3_axu_val_q == stqe_thrd_id_q[i])     & (~stqe_compl_rcvd_q[i])     & (~stq_push_down)) |
                                              (stqe_alloc_q[i + 1] & (ex3_axu_itag_q == stqe_itag_q[i + 1]) & (ex3_axu_val_q == stqe_thrd_id_q[i + 1]) & (~stqe_compl_rcvd_q[i + 1]) & stq_push_down);
-              
+
               assign ex3_stq_data_val[i] = (stqe_alloc_q[i] & (ex3_fxu1_itag_q == stqe_itag_q[i]) & ((ex3_fxu1_val_q & (~cp_flush_q)) == stqe_thrd_id_q[i])) |
                                            (stqe_alloc_q[i] & (ex3_axu_itag_q == stqe_itag_q[i])  & ((ex3_axu_val_q  & (~cp_flush_q)) == stqe_thrd_id_q[i]));
 
@@ -2860,7 +3166,8 @@ module lq_stq(
               assign stqe_strg_noop_d[i] = (((stqe_data_val[i]     & ex4_fxu1_strg_noop_q) | stqe_strg_noop_q[i])     & (~(stq7_entry_delete[i]     | stqe_flushed_q[i]))     & (~stq_push_down)) |
                                            (((stqe_data_val[i + 1] & ex4_fxu1_strg_noop_q) | stqe_strg_noop_q[i + 1]) & (~(stq7_entry_delete[i + 1] | stqe_flushed_q[i + 1])) & stq_push_down);
 
-              assign stqe_dvcr_cmpr_d[i] = (((ex3_fxu1_dvcr_cmpr & {2{stqe_fxu1_dvcr_val[i]  }}) | stqe_dvcr_cmpr_q[i])   & {2{~stq_push_down}}) | 
+              // Data Value Compare Control
+              assign stqe_dvcr_cmpr_d[i] = (((ex3_fxu1_dvcr_cmpr & {2{stqe_fxu1_dvcr_val[i]  }}) | stqe_dvcr_cmpr_q[i])   & {2{~stq_push_down}}) |
                                            (((ex3_fxu1_dvcr_cmpr & {2{stqe_fxu1_dvcr_val[i+1]}}) | stqe_dvcr_cmpr_q[i+1]) & {2{ stq_push_down}});
 
               assign stqe_dacrw_det0[i] = stqe_dacrw_q[i][0] | (stqe_dvcr_cmpr_q[i][0] & stqe_dvc_en_q[i][0]);
@@ -2868,8 +3175,11 @@ module lq_stq(
               assign stqe_dacrw_det2[i] = stqe_dacrw_q[i][2];
               assign stqe_dacrw_det3[i] = stqe_dacrw_q[i][3];
 
+              // Debug Interrupt Detected
               assign stqe_dvc_int_det[i] = (stqe_dacrw_det0[i] | stqe_dacrw_det1[i] | stqe_dacrw_det2[i] | stqe_dacrw_det3[i]) & |(stqe_thrd_id_q[i] & dbg_int_en_q);
 
+              // Logic for SET_HOLD and CLR_HOLD to the Reservation station
+              // Request was restarted due to hitting against store queue entry
               assign stq2_cmmt_entry[i] = stqe_qHit_held_clr[i];
               assign stq3_cmmt_entry[i] = stq3_cmmt_ptr_q[i] & stq3_cmmt_val_q;
               assign stq4_cmmt_entry[i] = stq4_cmmt_ptr_q[i] & stq4_cmmt_val_q;
@@ -2877,7 +3187,7 @@ module lq_stq(
               assign stq6_cmmt_entry[i] = stq6_cmmt_ptr_q[i] & stq6_cmmt_val_q;
               assign stq7_cmmt_entry[i] = stq7_cmmt_ptr_q[i] & stq7_cmmt_val_q;
               assign stqe_cmmt_entry[i] = stq2_cmmt_entry[i] | stq3_cmmt_entry[i] | stq4_cmmt_entry[i] | stq5_cmmt_entry[i] | stq6_cmmt_entry[i] | stq7_cmmt_entry[i];
-              assign stqe_qHit_held_set[i] = (ex5_qHit_set_oth_q[i] | ex5_qHit_set_miss[i]) & (~(|(ex5_qHit_set_oth_q[i + 1:`STQ_ENTRIES] | ex5_qHit_set_miss[i + 1:`STQ_ENTRIES])));		
+              assign stqe_qHit_held_set[i] = (ex5_qHit_set_oth_q[i] | ex5_qHit_set_miss[i]) & (~(|(ex5_qHit_set_oth_q[i + 1:`STQ_ENTRIES] | ex5_qHit_set_miss[i + 1:`STQ_ENTRIES])));		// only set for highest stq entry
 
               if (i < `STQ_FWD_ENTRIES)
               begin : clr_fwd_entries
@@ -2886,12 +3196,12 @@ module lq_stq(
                                                 (stqe_need_ext_ack_q[i] & (any_ack_val_ok_q == stqe_thrd_id_q[i])) |
                                                 (stqe_held_early_clr_q[i] & (stqe_data_nxt_q[i] | stqe_data_val_q[i]));
               end
-                 
+
               if (i == `STQ_FWD_ENTRIES)
               begin : clr_next_fwd_entry
                  assign stqe_qHit_held_clr[i] = (stq2_cmmt_ptr_remove[i] & stq2_cmmt_val) |
                                                 (stq2_cmmt_ptr_q[i] & stq2_cmmt_flushed_q) |
-                                                (stqe_need_ext_ack_q[i] & (any_ack_val_ok_q == stqe_thrd_id_q[i])) | 
+                                                (stqe_need_ext_ack_q[i] & (any_ack_val_ok_q == stqe_thrd_id_q[i])) |
                                                 (stqe_held_early_clr_q[i] & stqe_data_val_q[i] & stq2_cmmt_val & stq2_cmmt_ptr_remove[i-`STQ_FWD_ENTRIES]);
               end
 
@@ -2899,33 +3209,34 @@ module lq_stq(
               begin : clr_nonfwd_entries
                  assign stqe_qHit_held_clr[i] = (stq2_cmmt_ptr_remove[i] & stq2_cmmt_val) |
                                                 (stq2_cmmt_ptr_q[i] & stq2_cmmt_flushed_q) |
-                                                (stqe_need_ext_ack_q[i] & (any_ack_val_ok_q == stqe_thrd_id_q[i])) | 
+                                                (stqe_need_ext_ack_q[i] & (any_ack_val_ok_q == stqe_thrd_id_q[i])) |
                                                 (stqe_held_early_clr_q[i] & stqe_data_val_q[i] & stq2_cmmt_val & stq2_cmmt_ptr_remove[i-`STQ_FWD_ENTRIES]);
               end
 
               assign stqe_qHit_held_ctrl[i] = {stqe_qHit_held_set[i], stqe_qHit_held_clr[i]};
-                                 
-              assign stqe_qHit_held_mux[i] = (stqe_qHit_held_ctrl[i] == 2'b00) ? stqe_qHit_held_q[i] : 
-                                             (stqe_qHit_held_ctrl[i] == 2'b10) ? 1'b1 : 
+
+              assign stqe_qHit_held_mux[i] = (stqe_qHit_held_ctrl[i] == 2'b00) ? stqe_qHit_held_q[i] :
+                                             (stqe_qHit_held_ctrl[i] == 2'b10) ? 1'b1 :
                                                                                  1'b0;
-              assign stqe_qHit_held_d[i] = (stq_push_down == 1'b0) ? stqe_qHit_held_mux[i] : 
+              assign stqe_qHit_held_d[i] = (stq_push_down == 1'b0) ? stqe_qHit_held_mux[i] :
                                                                      stqe_qHit_held_mux[i + 1];
-              
-              assign stqe_held_early_clr_d[i] = (stq_push_down == 1'b0) ? set_hold_early_clear[i]     | (stqe_held_early_clr_q[i]     & (~stqe_qHit_held_clr[i])) : 
+
+              assign stqe_held_early_clr_d[i] = (stq_push_down == 1'b0) ? set_hold_early_clear[i]     | (stqe_held_early_clr_q[i]     & (~stqe_qHit_held_clr[i])) :
                                                                           set_hold_early_clear[i + 1] | (stqe_held_early_clr_q[i + 1] & (~stqe_qHit_held_clr[i + 1]));
-              
+
+              // ICSWX CT mux select fields
               assign stqe_icswx_ct_sel[i] = {stqe_data1_q[i][106:111], stqe_data1_q[i][114:119]};
-              
+
               if (`STQ_DATA_SIZE == 64)
                 begin : stqData64
                    assign stqe_fwd_data[i] = ex4_fwd_data1[i];
-                   
+
                    if ((2 ** `GPR_WIDTH_ENC) == 64)
                      begin : fxDat64
                         assign stqe_data1_mux[i] = (ctl_lsq_ex4_xu1_data  & {64{(stqe_fxu1_data_sel[i])}}) |
                                                    (ex4_fu_data_q[64:127] & {64{(stqe_axu_data_sel[i])}});
                      end
-                   
+
                    if ((2 ** `GPR_WIDTH_ENC) == 32)
                      begin : fxDat32
                         assign stqe_data1_mux[i][64:95] = ex4_fu_data_q[64:95];
@@ -2933,19 +3244,19 @@ module lq_stq(
                                                            (ex4_fu_data_q[96:127] & {32{(stqe_axu_data_sel[i])}});
                      end
 		end
-	      
+
 	      if (`STQ_DATA_SIZE == 128)
 		begin : stqData128
 		   assign stqe_fwd_data[i][0:63] = stqe_data1_q[i][0:63];
 		   assign stqe_fwd_data[i][64:127] = ex4_fwd_data1[i];
 		   assign stqe_data1_mux[i][0:63] = ex4_fu_data_q[0:63];
-		   
+
 		   if ((2 ** `GPR_WIDTH_ENC) == 64)
 		     begin : fxDat64
 			assign stqe_data1_mux[i][64:127] = (ctl_lsq_ex4_xu1_data  & {64{(stqe_fxu1_data_sel[i])}}) |
                                                            (ex4_fu_data_q[64:127] & {64{(stqe_axu_data_sel[i])}});
 		     end
-		   
+
 		   if ((2 ** `GPR_WIDTH_ENC) == 32)
 		     begin : fxDat32
 			assign stqe_data1_mux[i][64:95] = ex4_fu_data_q[64:95];
@@ -2953,14 +3264,24 @@ module lq_stq(
                                                            (ex4_fu_data_q[96:127] & {32{(stqe_axu_data_sel[i])}});
 		     end
 		end
-	      
-	      assign stqe_data1_d[i] = (stq_push_down == 1'b0)                                  ? stqe_data1_mux[i] : 
-				       ((stq_push_down == 1'b1 & stqe_data_val[i + 1] == 1'b1)) ? stqe_data1_mux[i + 1] : 
+
+	      assign stqe_data1_d[i] = (stq_push_down == 1'b0)                                  ? stqe_data1_mux[i] :
+				       ((stq_push_down == 1'b1 & stqe_data_val[i + 1] == 1'b1)) ? stqe_data1_mux[i + 1] :
 				                                                                  stqe_data1_q[i + 1];
 	   end
       end
    endgenerate
-   
+
+   //------------------------------------------------------------------------------
+   // interface staging / Flushing
+   //------------------------------------------------------------------------------
+   // stq2
+   // stq3         ex0  ----
+   // stq4         rv2
+   // stq5         rv1
+   // stq5         rv0
+   // stq6         iu6
+   // stq7         iu5
 
    assign rv1_i0_act = |(rv_lq_rv1_i0_vld);
    assign rv1_i1_act = |(rv_lq_rv1_i1_vld);
@@ -2970,16 +3291,15 @@ module lq_stq(
    assign rv1_i0_vld = rv_lq_rv1_i0_vld & {`THREADS{rv_lq_rv1_i0_rte_sq}};
    assign rv1_i1_vld = rv_lq_rv1_i1_vld & {`THREADS{rv_lq_rv1_i1_rte_sq}};
 
+   // Need to return credits right away for ucode preissued stores, except for preissued ucode indexed load/store string ops
    assign rv1_i0_drop_req = rv_lq_rv1_i0_rte_sq & rv_lq_rv1_i0_ucode_preissue & (~(rv_lq_rv1_i0_s3_t == 3'b100));
    assign rv1_i1_drop_req = rv_lq_rv1_i1_rte_sq & rv_lq_rv1_i1_ucode_preissue & (~(rv_lq_rv1_i1_s3_t == 3'b100));
-
 
    assign rv0_cp_flush_d = cp_flush_q;
    assign rv1_cp_flush_d = rv0_cp_flush_q;
 
    assign rv1_i0_flushed = |(rv1_i0_vld & (cp_flush_q | rv0_cp_flush_q | rv1_cp_flush_q | {`THREADS{rv1_i0_drop_req}}));
    assign rv1_i1_flushed = |(rv1_i1_vld & (cp_flush_q | rv0_cp_flush_q | rv1_cp_flush_q | {`THREADS{rv1_i1_drop_req}}));
-
 
    assign ex0_i0_flushed = ex0_i0_flushed_q | |(ex0_i0_vld_q & cp_flush_q);
    assign ex0_i1_flushed = ex0_i1_flushed_q | |(ex0_i1_vld_q & cp_flush_q);
@@ -3000,13 +3320,16 @@ module lq_stq(
 
    assign ex4_ldreq_valid = |(ex4_ldreq_val);
    assign ex3_streq_valid = |(ex3_streq_val_q);
-   assign ex4_streq_valid = |(ex4_streq_val);		
+   assign ex4_streq_valid = |(ex4_streq_val);
    assign ex5_streq_valid = |(ex5_streq_val);
 
    assign ex3_wchkall_val = ctl_lsq_ex3_wchkall_val & (~cp_flush_q);
    assign ex4_wchkall_val = ex4_wchkall_val_q & (~cp_flush_q);
    assign ex4_wchkall_valid = |(ex4_wchkall_val);
 
+   //------------------------------------------------------------------------------
+   // Generate Muxing  Zzzzzzzzzzzz
+   //------------------------------------------------------------------------------
 
    always @(*)
      begin: cpl_ready_mux_proc
@@ -3019,7 +3342,7 @@ module lq_stq(
         cpl_ttype <= 0;
         cpl_dreq_val <= 1'b0;
         stq_ext_act_dacrw_rpt <= 1'b0;
-        
+
         for (i = 0; i <= `STQ_ENTRIES - 1; i = i + 1)
           begin
              if (stqe_need_ready_ptr_q[i] == 1'b1)
@@ -3039,8 +3362,8 @@ module lq_stq(
                stq_ext_act_cr_wa <= stqe_tgpr_q[i][AXU_TARGET_ENC - (`CR_POOL_ENC + `THREADS_POOL_ENC):AXU_TARGET_ENC - 1];
           end
      end
-         
-         
+
+
     always @(*)
     begin: stq1_mux_proc
        integer                                                     i;
@@ -3062,7 +3385,7 @@ module lq_stq(
        stq_arb_stq1_store_data <= 0;
        stq1_ttype <= 0;
        stq1_wclr_all <= 0;
-       
+
        for (i = 0; i <= `STQ_ENTRIES - 1; i = i + 1)
           if (stq1_cmmt_ptr_q[i] == 1'b1)
           begin
@@ -3093,10 +3416,10 @@ module lq_stq(
        always @(*)
        begin: stq2_mux_proc
           integer                                                     i;
-          
+
           stq2_thrd_id <= 0;
           icbi_addr_d <= 0;
-          
+
           for (i = 0; i <= `STQ_ENTRIES - 1; i = i + 1)
              if (stq2_cmmt_ptr_q[i] == 1'b1)
              begin
@@ -3104,12 +3427,12 @@ module lq_stq(
                 icbi_addr_d <= stqe_addr_q[i][RI:57];
              end
        end
-         
-         
+
+
        always @(*)
          begin: stq3_mux_proc
             integer                                                     i;
-            
+
             stq_arb_stq3_wimge <= 0;
             stq_arb_stq3_p_addr <= 0;
             stq_arb_stq3_opSize <= 0;
@@ -3117,7 +3440,7 @@ module lq_stq(
             stq_arb_stq3_byteEn <= 0;
             stq3_ttype <= 0;
             stq3_tid <= 0;
-            
+
             for (i = 0; i <= `STQ_ENTRIES - 1; i = i + 1)
 	      if (stq3_cmmt_ptr_q[i] == 1'b1)
 		  begin
@@ -3130,15 +3453,15 @@ module lq_stq(
                      stq3_tid <= stqe_thrd_id_q[i];
 		  end
             end
-   
-   
+
+
    always @(*)
      begin: stq5_mux_proc
         integer                                                     i;
-        
+
         lsq_ctl_stq5_itag <= 0;
         lsq_ctl_stq5_tgpr <= 0;
-        
+
         for (i = 0; i <= `STQ_ENTRIES - 1; i = i + 1)
           if (stq5_cmmt_ptr_q[i] == 1'b1)
             begin
@@ -3146,16 +3469,16 @@ module lq_stq(
                lsq_ctl_stq5_tgpr <= stqe_tgpr_q[i];
             end
      end
-         
-         
+
+
      always @(*)
      begin: stq6_mux_proc
         integer                                                     i;
-        
+
         stq6_ttype <= 0;
         stq6_tid <= 0;
         stq6_wclr_all_val <= 0;
-        
+
         for (i = 0; i <= `STQ_ENTRIES - 1; i = i + 1)
            if (stq6_cmmt_ptr_q[i] == 1'b1)
            begin
@@ -3164,20 +3487,23 @@ module lq_stq(
               stq6_tid <= stqe_thrd_id_q[i];
            end
      end
-   
+
    assign stq_fwd_pri_mask_q[`STQ_FWD_ENTRIES - 1] = 1'b0;
-   
-   
+
+
    always @(*)
      begin: stq_data_mux_proc
         integer                                                     i;
         ex5_fwd_data_d <= 0;
-        
+
         for (i = 0; i <= `STQ_FWD_ENTRIES - 1; i = i + 1)
           if ((ex4_fwd_sel[i] & (~stq_fwd_pri_mask_q[i])) == 1'b1)
             ex5_fwd_data_d <= stqe_fwd_data[i];
      end
-         
+
+//------------------------------------------------------------------------------
+// Latch Instances
+//------------------------------------------------------------------------------
 
 tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) rv_lq_vld_latch(
    .nclk(nclk),
@@ -3268,8 +3594,6 @@ tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0), .NEEDS_SRESET(1)) rv1_cp_flush_latch(
    .din(rv1_cp_flush_d),
    .dout(rv1_cp_flush_q)
 );
-
-
 
 tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0), .NEEDS_SRESET(1)) ex0_i0_vld_latch(
    .nclk(nclk),
@@ -3761,7 +4085,7 @@ generate
       genvar                                                      i;
       for (i = 0; i <= `STQ_ENTRIES - 1; i = i + 1)
       begin : stqe_lmqhit_latch_gen
-         
+
          tri_rlmreg_p #(.WIDTH(`LMQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) stqe_lmqhit_latch(
             .nclk(nclk),
             .vd(vdd),
@@ -3787,7 +4111,7 @@ generate
       genvar                                                      i;
       for (i = 0; i <= `STQ_ENTRIES - 1; i = i + 1)
       begin : stqe_need_ext_ack_latch_gen
-         
+
          tri_rlmreg_p #(.WIDTH(1), .INIT(0), .NEEDS_SRESET(1)) stqe_need_ext_ack_latch(
             .nclk(nclk),
             .vd(vdd),
@@ -3813,7 +4137,7 @@ generate
    begin : stqe_blk_loads_latch_gen
       genvar                                                      i;
       for (i = 0; i <= `STQ_ENTRIES - 1; i = i + 1) begin : stqe_blk_loads_latch_gen
-         
+
          tri_rlmreg_p #(.WIDTH(1), .INIT(0), .NEEDS_SRESET(1)) stqe_blk_loads_latch(
             .nclk(nclk),
             .vd(vdd),
@@ -3840,7 +4164,7 @@ generate
       genvar                                                      i;
       for (i = 0; i <= `STQ_ENTRIES - 1; i = i + 1)
       begin : stqe_all_thrd_chk_latch_gen
-         
+
          tri_rlmreg_p #(.WIDTH(1), .INIT(0), .NEEDS_SRESET(1)) stqe_all_thrd_chk_latch(
             .nclk(nclk),
             .vd(vdd),
@@ -5186,7 +5510,7 @@ generate
                             .din(stq2_ici_val_d),
                             .dout(stq2_ici_val_q)
                             );
-     
+
      tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1))   stq4_xucr0_cul_latch(
                             .nclk(nclk),
                             .vd(vdd),
@@ -5222,7 +5546,7 @@ generate
                             .din(stq2_reject_dci_d),
                             .dout(stq2_reject_dci_q)
                             );
-     
+
      tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1))   stq3_cmmt_reject_latch(
                             .nclk(nclk),
                             .vd(vdd),
@@ -6632,7 +6956,7 @@ generate
                      .din(cr_wd_d),
                      .dout(cr_wd_q)
                      );
-                     
+
      tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0), .NEEDS_SRESET(1))   stcx_thrd_fail_latch(
                      .nclk(nclk),
                      .vd(vdd),
@@ -6686,7 +7010,7 @@ generate
                      .din(icswxr_thrd_nbusy_d),
                      .dout(icswxr_thrd_nbusy_q)
                      );
-                     
+
      tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1))   stq3_cmmt_attmpt_latch(
                      .nclk(nclk),
                      .vd(vdd),
@@ -7239,4 +7563,3 @@ generate
      assign scan_out = sov[0];
 
 endmodule
-

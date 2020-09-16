@@ -7,21 +7,22 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
-
-
+//********************************************************************
+//* TITLE: Memory Management Unit Top Level
+//*********************************************************************
 
 `timescale 1 ns / 1 ns
 
 `include "tri_a2o.vh"
 `include "mmu_a2o.vh"
-`define            ERAT_STATE_WIDTH             4    
+`define            ERAT_STATE_WIDTH             4    // this is erat->tlb state width
 
 (* recursive_synthesis="0" *)
 module mmq(
 
     (* pin_data = "PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)
    input [0:`NCLK_WIDTH-1]                 nclk,
-   
+
    input                                 tc_ac_ccflush_dc,
    input                                 tc_ac_scan_dis_dc_b,
    input                                 tc_ac_scan_diag_dc,
@@ -41,22 +42,26 @@ module mmq(
    input                                 pc_mm_ary_slp_nsl_thold_3,
    input [0:1]                           pc_mm_sg_3,
    input                                 pc_mm_fce_3,
-   
+
    input [0:`DEBUG_TRACE_WIDTH-1]        debug_bus_in,
    output [0:`DEBUG_TRACE_WIDTH-1]       debug_bus_out,
-   
-   input  [0:3]                          coretrace_ctrls_in,                      
-   output [0:3]                          coretrace_ctrls_out,               
-         
+
+   // Instruction Trace (HTM) Control Signals:
+   //  0    - ac_an_coretrace_first_valid
+   //  1    - ac_an_coretrace_valid
+   //  2:3  - ac_an_coretrace_type[0:1]
+   input  [0:3]                          coretrace_ctrls_in,
+   output [0:3]                          coretrace_ctrls_out,
+
    input [0:10]                          pc_mm_debug_mux1_ctrls,
    input                                 pc_mm_trace_bus_enable,
-   
+
    input [0:2]                           pc_mm_event_count_mode,
    input                                 rp_mm_event_bus_enable_q,
 
    input  [0:`PERF_EVENT_WIDTH*`THREADS-1]       mm_event_bus_in,
    output [0:`PERF_EVENT_WIDTH*`THREADS-1]       mm_event_bus_out,
-   
+
    input [0:3]                           pc_mm_abist_dcomp_g6t_2r,
    input [0:3]                           pc_mm_abist_di_0,
    input [0:3]                           pc_mm_abist_di_g6t_2r,
@@ -94,13 +99,13 @@ module mmq(
    output [0:25]                         mm_iu_ierat_snoop_attr,
    output [52-`EPN_WIDTH:51]             mm_iu_ierat_snoop_vpn,
    input                                 iu_mm_ierat_snoop_ack,
-   
+
    output [0:`PID_WIDTH-1]               mm_iu_t0_ierat_pid,
    output [0:`MMUCR0_WIDTH-1]            mm_iu_t0_ierat_mmucr0,
 `ifdef MM_THREADS2
    output [0:`PID_WIDTH-1]               mm_iu_t1_ierat_pid,
    output [0:`MMUCR0_WIDTH-1]            mm_iu_t1_ierat_mmucr0,
-`endif   
+`endif
 
    input [0:17]                          iu_mm_ierat_mmucr0,
    input [0:`THREADS-1]                  iu_mm_ierat_mmucr0_we,
@@ -108,7 +113,7 @@ module mmq(
    output                                mm_iu_tlbwe_binv,
    input [0:3]                           iu_mm_ierat_mmucr1,
    input [0:`THREADS-1]                  iu_mm_ierat_mmucr1_we,
-   
+
    input                                 xu_mm_derat_req,
    input [64-`RS_DATA_WIDTH:51]          xu_mm_derat_epn,
    input [0:`THREADS-1]                  xu_mm_derat_thdid,
@@ -128,19 +133,19 @@ module mmq(
    output [0:25]                         mm_xu_derat_snoop_attr,
    output [52-`EPN_WIDTH:51]             mm_xu_derat_snoop_vpn,
    input                                 xu_mm_derat_snoop_ack,
-   
+
    output [0:`PID_WIDTH-1]               mm_xu_t0_derat_pid,
    output [0:`MMUCR0_WIDTH-1]            mm_xu_t0_derat_mmucr0,
 `ifdef MM_THREADS2
    output [0:`PID_WIDTH-1]               mm_xu_t1_derat_pid,
    output [0:`MMUCR0_WIDTH-1]            mm_xu_t1_derat_mmucr0,
-`endif   
+`endif
    input [0:17]                          xu_mm_derat_mmucr0,
    input [0:`THREADS-1]                  xu_mm_derat_mmucr0_we,
    output [0:9]                          mm_xu_derat_mmucr1,
    input [0:4]                           xu_mm_derat_mmucr1,
    input [0:`THREADS-1]                  xu_mm_derat_mmucr1_we,
-   
+
    input [0:`THREADS-1]                  xu_mm_rf1_val,
    input                                 xu_mm_rf1_is_tlbre,
    input                                 xu_mm_rf1_is_tlbwe,
@@ -179,7 +184,7 @@ module mmq(
    input [0:`THREADS-1]                  xu_mm_ierat_flush,
    input [0:`THREADS-1]                  lq_mm_perf_dtlb,
    input [0:`THREADS-1]                  iu_mm_perf_itlb,
-   
+
    output [0:`THREADS-1]                 mm_xu_eratmiss_done,
    output [0:`THREADS-1]                 mm_xu_cr0_eq,
    output [0:`THREADS-1]                 mm_xu_cr0_eq_valid,
@@ -197,11 +202,11 @@ module mmq(
    output [0:`THREADS-1]                 mm_xu_tlb_par_err,
    output [0:`THREADS-1]                 mm_xu_lru_par_err,
    output [0:`THREADS-1]                 mm_xu_local_snoop_reject,
-   
+
    output                                mm_xu_ord_tlb_multihit,
    output                                mm_xu_ord_tlb_par_err,
    output                                mm_xu_ord_lru_par_err,
-   
+
    output                                mm_xu_tlb_miss_ored,
    output                                mm_xu_lrat_miss_ored,
    output                                mm_xu_tlb_inelig_ored,
@@ -214,7 +219,7 @@ module mmq(
    output                                mm_pc_tlb_par_err_ored,
    output                                mm_pc_lru_par_err_ored,
    output                                mm_pc_local_snoop_reject_ored,
-   
+
    input [0:`ITAG_SIZE_ENC-1]            xu_mm_rf1_itag,
    output [0:`THREADS-1]                 mm_xu_ord_n_flush_req,
    output [0:`THREADS-1]                 mm_xu_ord_np1_flush_req,
@@ -225,7 +230,7 @@ module mmq(
    output                                mm_xu_ord_read_done_ored,
    output                                mm_xu_ord_write_done_ored,
    output [0:`ITAG_SIZE_ENC-1]           mm_xu_itag,
-   
+
    input [0:`THREADS-1]                  iu_mm_hold_ack,
    output [0:`THREADS-1]                 mm_iu_hold_req,
    output [0:`THREADS-1]                 mm_iu_hold_done,
@@ -240,12 +245,18 @@ module mmq(
    output [0:`THREADS-1]                 mm_pc_tlb_ctl_quiesce,
    output [0:`THREADS-1]                 mm_pc_htw_quiesce,
    output [0:`THREADS-1]                 mm_pc_inval_quiesce,
-   
+
 `ifdef WAIT_UPDATES
    input  [0:5]               cp_mm_except_taken_t0,
 `ifndef THREADS1
    input  [0:5]               cp_mm_except_taken_t1,
 `endif
+   // 0   - val
+   // 1   - I=0/D=1
+   // 2   - TLB miss
+   // 3   - Storage int (TLBI/PTfault)
+   // 4   - LRAT miss
+   // 5   - Mcheck
 `endif
 
    output [0:`THREADS-1]                 mm_xu_lsu_req,
@@ -259,7 +270,7 @@ module mmq(
    output                                mm_xu_lsu_ind,
    output                                mm_xu_lsu_lbit,
    input                                 xu_mm_lsu_token,
-   
+
    input                                 slowspr_val_in,
    input                                 slowspr_rw_in,
    input [0:1]                           slowspr_etid_in,
@@ -272,7 +283,7 @@ module mmq(
    output [0:9]                          slowspr_addr_out,
    output [64-`SPR_DATA_WIDTH:63]        slowspr_data_out,
    output                                slowspr_done_out,
-   
+
 (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)
    input                                 gptr_scan_in,
 (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)
@@ -305,7 +316,7 @@ module mmq(
    output                                ccfg_scan_out,
 (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
    output                                dcfg_scan_out,
-   
+
    input                                 ac_an_power_managed_imm,
    input                                 an_ac_lbist_ary_wrt_thru_dc,
    input                                 an_ac_back_inv,
@@ -329,23 +340,33 @@ module mmq(
 
 );
 
-   parameter                            BCFG_MMUCR1_VALUE = 201326592;  
-   parameter                            BCFG_MMUCR2_VALUE = 685361;     
-   parameter                            BCFG_MMUCR3_VALUE = 15;         
-   parameter                            BCFG_MMUCFG_VALUE = 3;          
-   parameter                            BCFG_TLB0CFG_VALUE = 7;         
-   parameter                            MMQ_SPR_CSWITCH_0TO3 = 8;       
+   parameter                            BCFG_MMUCR1_VALUE = 201326592;  // mmucr1 32-bits boot value, 201326592 -> bits 4:5 csinv="11"
+   parameter                            BCFG_MMUCR2_VALUE = 685361;     // mmucr2 32-bits boot value, 0xa7531
+   parameter                            BCFG_MMUCR3_VALUE = 15;         // mmucr2 15-bits boot value, 0x000f
+   parameter                            BCFG_MMUCFG_VALUE = 3;          // mmucfg lrat|twc bits boot value
+   parameter                            BCFG_TLB0CFG_VALUE = 7;         // tlb0cfg pt|ind|gtwe bits boot value
+   parameter                            MMQ_SPR_CSWITCH_0TO3 = 8;       // chicken switch values: 8=disable mmucr1 read clear, 4=disable mmucr1.tlbwe_binv
    parameter                            MMQ_INVAL_CSWITCH_0TO3 = 0;
    parameter                            MMQ_TLB_CMP_CSWITCH_0TO7 = 0;
-   
+
    parameter                            LRAT_NUM_ENTRY_LOG2 = 3;
 
       parameter                             MMU_Mode_Value = 1'b0;
       parameter [0:1]                       TlbSel_Tlb = 2'b00;
       parameter [0:1]                       TlbSel_IErat = 2'b10;
       parameter [0:1]                       TlbSel_DErat = 2'b11;
-      
-      
+
+      // func scan bit 0 is mmq_inval (701), mmq_spr(0) non-mas (439)  ~1140
+      // func scan bit 1 is mmq_spr(1) mas regs (1017)  ~1017
+      // func scan bit 2 is tlb_req  ~1196
+      // func scan bit 3 is tlb_ctl ~1101
+      // func scan bit 4 is tlb_cmp(0) ~1134
+      // func scan bit 5 is tlb_cmp(1) ~1134
+      // func scan bit 6 is tlb_lrat ~1059
+      // func scan bit 7 is tlb_htw(0)  ~802
+      // func scan bit 8 is tlb_htw(1)  ~663
+      // func scan bit 9 is tlb_cmp(2), perf (60), debug daisy chain (134) ~636
+
       parameter                             mmq_inval_offset = 0;
       parameter                             mmq_spr_offset_0 = mmq_inval_offset + 1;
       parameter                             scan_right_0 = mmq_spr_offset_0;
@@ -356,24 +377,27 @@ module mmq(
       parameter                             mmq_spr_bcfg_offset = 0;
       parameter                             boot_scan_right = mmq_spr_bcfg_offset + 1 - 1;
 
+      // genvar statements
       genvar                                tid;
-   
+
+      // Power signals
       wire 			            vdd;
       wire 			            gnd;
       assign vdd = 1'b1;
       assign gnd = 1'b0;
-   
+
+      // local spr signals
       wire [0:`MM_THREADS-1]                 cp_flush_p1;
       wire [0:`PID_WIDTH-1]                  pid0_sig;
       wire [0:`MMUCR0_WIDTH-1]               mmucr0_0_sig;
       wire [64-`MMUCR3_WIDTH:63]             mmucr3_0_sig;
       wire [1:3]                             tstmode4k_0_sig;
-`ifdef MM_THREADS2      
+`ifdef MM_THREADS2
       wire [0:`PID_WIDTH-1]                  pid1_sig;
       wire [0:`MMUCR0_WIDTH-1]               mmucr0_1_sig;
       wire [64-`MMUCR3_WIDTH:63]             mmucr3_1_sig;
       wire [1:3]                             tstmode4k_1_sig;
-`endif      
+`endif
       wire [0:`MMUCR1_WIDTH-1]              mmucr1_sig;
       wire [0:`MMUCR2_WIDTH-1]              mmucr2_sig;
       wire [0:`LPID_WIDTH-1]                lpidr_sig;
@@ -418,6 +442,7 @@ module mmq(
       wire [0:`MM_THREADS-1]                mm_xu_cr0_eq_sig;
       wire [0:`MM_THREADS-1]                mm_xu_cr0_eq_valid_sig;
       wire [0:`MM_THREADS-1]                mm_xu_local_snoop_reject_sig;
+      //signal mm_pc_err_local_snoop_reject_sig     : std_ulogic_vector(0 to  (`MM_THREADS-1));
       wire [0:`THDID_WIDTH-1]               tlb_req_quiesce_sig;
       wire [0:`MM_THREADS-1]                tlb_ctl_quiesce_sig;
       wire [0:`THDID_WIDTH-1]               htw_quiesce_sig;
@@ -435,6 +460,7 @@ module mmq(
       wire                                  mm_pc_tlb_par_err_ored_sig;
       wire                                  mm_pc_lru_par_err_ored_sig;
       wire                                  mm_pc_local_snoop_reject_ored_sig;
+      // Internal signals
       wire [0:`LRU_WIDTH-1]                  lru_write;
       wire [0:`TLB_ADDR_WIDTH-1]             lru_wr_addr;
       wire [0:`TLB_ADDR_WIDTH-1]             lru_rd_addr;
@@ -442,8 +468,9 @@ module mmq(
       wire [0:`LRU_WIDTH-1]                  lru_dataout;
       wire [0:`TLB_TAG_WIDTH-1]              tlb_tag2_sig;
       wire [0:`TLB_ADDR_WIDTH-1]             tlb_addr2_sig;
-      wire [0:`TLB_ADDR_WIDTH-1]             tlb_addr4;   
+      wire [0:`TLB_ADDR_WIDTH-1]             tlb_addr4;
       wire [0:`TLB_WAYS-1]                   tlb_write;
+      //signal tlb_way                 : std_ulogic_vector(0 to `TLB_WAYS-1);
       wire [0:`TLB_ADDR_WIDTH-1]             tlb_addr;
       wire [0:`TLB_WAY_WIDTH-1]              tlb_dataina;
       wire [0:`TLB_WAY_WIDTH-1]              tlb_datainb;
@@ -462,14 +489,14 @@ module mmq(
       wire                                  tlb_tag4_ptereload;
       wire                                  tlb_tag4_endflag;
       wire                                  tlb_tag4_parerr;
-      wire [0:`TLB_WAYS-1]                  tlb_tag4_parerr_write;   
-      wire                                  tlb_tag5_parerr_zeroize; 
+      wire [0:`TLB_WAYS-1]                  tlb_tag4_parerr_write;
+      wire                                  tlb_tag5_parerr_zeroize;
       wire [0:`MM_THREADS-1]                tlb_tag5_except;
       wire [0:`ITAG_SIZE_ENC-1]             tlb_tag4_itag_sig;
       wire [0:`ITAG_SIZE_ENC-1]             tlb_tag5_itag_sig;
       wire [0:`EMQ_ENTRIES-1]               tlb_tag5_emq_sig;
       wire [0:`PTE_WIDTH-1]                 ptereload_req_pte_lat;
-      wire [0:1]                            ex6_illeg_instr;        
+      wire [0:1]                            ex6_illeg_instr;        // bad op tlbre/we indication from tlb_ctl
       wire [0:`MM_THREADS-1]                tlb_ctl_tag2_flush_sig;
       wire [0:`MM_THREADS-1]                tlb_ctl_tag3_flush_sig;
       wire [0:`MM_THREADS-1]                tlb_ctl_tag4_flush_sig;
@@ -510,6 +537,7 @@ module mmq(
       wire                                  htw_lsu_req_valid;
       wire [0:`THDID_WIDTH-1]                htw_lsu_thdid;
       wire [0:1]                            htw_dbg_lsu_thdid;
+      // 0=tlbivax_op, 1=tlbi_complete, 2=mmu read with core_tag=01100, 3=mmu read with core_tag=01101
       wire [0:1]                            htw_lsu_ttype;
       wire [0:4]                            htw_lsu_wimge;
       wire [0:3]                            htw_lsu_u;
@@ -533,6 +561,7 @@ module mmq(
       wire [0:3]                            mm_xu_lsu_u_sig;
       wire [64-`REAL_ADDR_WIDTH:63]         mm_xu_lsu_addr_sig;
       wire [0:7]                            mm_xu_lsu_lpid_sig;
+      //signal mm_xu_lsu_lpidr_sig            :   std_ulogic_vector(0 to 7); -- lpidr spr to lsu
       wire                                  mm_xu_lsu_gs_sig;
       wire                                  mm_xu_lsu_ind_sig;
       wire                                  mm_xu_lsu_lbit_sig;
@@ -546,6 +575,7 @@ module mmq(
       wire [0:34]                           tlbwe_back_inv_attr_sig;
       wire                                  tlbwe_back_inv_pending_sig;
       wire                                  tlb_tag5_write;
+      //  these are needed regardless of tlb existence
       wire                                  tlb_snoop_coming;
       wire                                  tlb_snoop_val;
       wire [0:34]                           tlb_snoop_attr;
@@ -576,7 +606,7 @@ module mmq(
       wire                                  mas8_0_tgs;
       wire                                  mas8_0_vf;
       wire [0:7]                            mas8_0_tlpid;
-`ifdef MM_THREADS2      
+`ifdef MM_THREADS2
       wire                                  mas0_1_atsel;
       wire [0:2]                            mas0_1_esel;
       wire                                  mas0_1_hes;
@@ -602,7 +632,7 @@ module mmq(
       wire                                  mas8_1_tgs;
       wire                                  mas8_1_vf;
       wire [0:7]                            mas8_1_tlpid;
-`endif      
+`endif
       wire                                  mmucfg_lrat;
       wire                                  mmucfg_twc;
       wire                                  mmucsr0_tlb0fi;
@@ -779,7 +809,8 @@ module mmq(
 `ifdef WAIT_UPDATES
       wire [0:`MM_THREADS+5-1]              cp_mm_perf_except_taken_q;
 `endif
-      
+
+      //--------- debug signals
       wire                                  spr_dbg_match_64b;
       wire                                  spr_dbg_match_any_mmu;
       wire                                  spr_dbg_match_any_mas;
@@ -1058,14 +1089,16 @@ module mmq(
       wire                                  htw_dbg_pte1_score_ibit_q;
       wire                                  htw_dbg_pte1_score_dataval_q;
       wire                                  htw_dbg_pte1_reld_for_me_tm1;
+      // power clock gating sigs
       wire [9:33]                           tlb_delayed_act;
-      
-      (* analysis_not_referenced="true" *)  
+
+      (* analysis_not_referenced="true" *)
       wire [0:71+`MM_THREADS-`THREADS]            unused_dc;
 
-      (* analysis_not_referenced="true" *)  
+      (* analysis_not_referenced="true" *)
       wire [0:0]                            unused_dc_array_scan;
 
+      // Pervasive
       wire                                  lcb_clkoff_dc_b;
       wire                                  lcb_act_dis_dc;
       wire                                  lcb_d_mode_dc;
@@ -1139,6 +1172,7 @@ module mmq(
       wire [0:boot_scan_right]              bsov;
       wire                                  tidn;
       wire                                  tiup;
+      // threading generic conversion sigs
       wire [0:`THDID_WIDTH-1]               iu_mm_ierat_thdid_sig;
       wire [0:`THDID_WIDTH-1]               iu_mm_ierat_flush_sig;
       wire [0:`MM_THREADS-1]                iu_mm_ierat_mmucr0_we_sig;
@@ -1182,21 +1216,24 @@ module mmq(
       wire [0:`THDID_WIDTH-1]                iu_mm_perf_itlb_sig;
       wire [0:`THDID_WIDTH-1]                xu_mm_msr_gs_perf;
       wire [0:`THDID_WIDTH-1]                xu_mm_msr_pr_perf;
-      
+
       wire [0:`PID_WIDTH-1]                 mm_iu_ierat_pid_sig     [0:`MM_THREADS-1];
       wire [0:`PID_WIDTH-1]                 mm_xu_derat_pid_sig     [0:`MM_THREADS-1];
-      
+
       wire [0:`MMUCR0_WIDTH-1]              mm_iu_ierat_mmucr0_sig  [0:`MM_THREADS-1];
       wire [0:`MMUCR0_WIDTH-1]              mm_xu_derat_mmucr0_sig  [0:`MM_THREADS-1];
-      
+
 `ifdef WAIT_UPDATES
       wire [0:5]                          cp_mm_except_taken_t0_sig;
       wire [0:5]                          cp_mm_except_taken_t1_sig;
 `endif
-      
+
+      //---------------------------------------------------------------------
+      // common stuff for tlb and erat-only modes
+      //---------------------------------------------------------------------
       assign tidn = 1'b0;
       assign tiup = 1'b1;
-      
+
       assign ac_an_lpar_id = ac_an_lpar_id_sig;
       assign mm_xu_lsu_lpidr = lpidr_sig;
 
@@ -1208,10 +1245,12 @@ module mmq(
    assign cp_mm_except_taken_t1_sig = 6'b0;
 `endif
 `endif
-   
-      
+
+
+      // input port  threadwise widening  `THREADS(n) -> `MM_THREADS(m)
       generate
          begin : xhdl0
+//            genvar                                tid;
             for (tid = 0; tid <= `MM_THREADS-1; tid = tid + 1)
             begin : mmThreads
                if (tid < `THREADS)
@@ -1261,9 +1300,10 @@ module mmq(
       end
    end
    endgenerate
-   
+
    generate
       begin : xhdl1
+//         genvar                                tid;
          for (tid = 0; tid <= `THDID_WIDTH - 1; tid = tid + 1)
          begin : mmDbgThreads
             if (tid < `MM_THREADS)
@@ -1282,6 +1322,7 @@ endgenerate
 
 generate
    begin : xhdl2
+//      genvar                                tid;
       for (tid = 0; tid <= `THDID_WIDTH - 1; tid = tid + 1)
       begin : mmperfThreads
          if (tid < `THREADS)
@@ -1318,6 +1359,9 @@ end
 end
 endgenerate
 
+//---------------------------------------------------------------------
+// Invalidate Component Instantiation
+//---------------------------------------------------------------------
 
 mmq_inval #(.MMQ_INVAL_CSWITCH_0TO3(MMQ_INVAL_CSWITCH_0TO3)) mmq_inval(
   .vdd(vdd),
@@ -1516,9 +1560,13 @@ mmq_inval #(.MMQ_INVAL_CSWITCH_0TO3(MMQ_INVAL_CSWITCH_0TO3)) mmq_inval(
   .inval_dbg_snoop_vpn_q(inval_dbg_snoop_vpn_q),
   .inval_dbg_lsu_tokens_q(inval_dbg_lsu_tokens_q)
 );
+// End of mmq_inval component instantiation
 
+//---------------------------------------------------------------------
+// Special Purpose Register Component Instantiation
+//---------------------------------------------------------------------
 
-mmq_spr #(.BCFG_MMUCR1_VALUE(BCFG_MMUCR1_VALUE), .BCFG_MMUCR2_VALUE(BCFG_MMUCR2_VALUE), .BCFG_MMUCR3_VALUE(BCFG_MMUCR3_VALUE), 
+mmq_spr #(.BCFG_MMUCR1_VALUE(BCFG_MMUCR1_VALUE), .BCFG_MMUCR2_VALUE(BCFG_MMUCR2_VALUE), .BCFG_MMUCR3_VALUE(BCFG_MMUCR3_VALUE),
           .BCFG_MMUCFG_VALUE(BCFG_MMUCFG_VALUE), .BCFG_TLB0CFG_VALUE(BCFG_TLB0CFG_VALUE), .MMQ_SPR_CSWITCH_0TO3(MMQ_SPR_CSWITCH_0TO3)) mmq_spr(
   .vdd(vdd),
   .gnd(gnd),
@@ -1773,11 +1821,16 @@ mmq_spr #(.BCFG_MMUCR1_VALUE(BCFG_MMUCR1_VALUE), .BCFG_MMUCR2_VALUE(BCFG_MMUCR2_
   .mm_iu_slowspr_data(slowspr_data_out),
 
   .mm_iu_slowspr_done(slowspr_done_out)
-  
+
 );
+// End of mmq_spr component instantiation
 
 
+//---------------------------------------------------------------------
+// Debug Trace component instantiation
+//---------------------------------------------------------------------
 
+//work.mmq_dbg #(.`THREADS(`THREADS), .`THDID_WIDTH(`THDID_WIDTH), .`TLB_TAG_WIDTH(`TLB_TAG_WIDTH), .`EXPAND_TYPE(`EXPAND_TYPE)) mmq_dbg(
 mmq_dbg  mmq_dbg(
    .vdd(vdd),
    .gnd(gnd),
@@ -1803,9 +1856,13 @@ mmq_dbg  mmq_dbg(
    .debug_bus_in(debug_bus_in),
    .debug_bus_out(debug_bus_out),
 
-   .coretrace_ctrls_in(coretrace_ctrls_in),           
-   .coretrace_ctrls_out(coretrace_ctrls_out),         
-         
+// Instruction Trace (HTM) Control Signals:
+//  0    - ac_an_coretrace_first_valid
+//  1    - ac_an_coretrace_valid
+//  2:3  - ac_an_coretrace_type[0:1]
+   .coretrace_ctrls_in(coretrace_ctrls_in),           // input  [0:3]
+   .coretrace_ctrls_out(coretrace_ctrls_out),         // output [0:3]
+
    .spr_dbg_match_64b(spr_dbg_match_64b),
    .spr_dbg_match_any_mmu(spr_dbg_match_any_mmu),
    .spr_dbg_match_any_mas(spr_dbg_match_any_mas),
@@ -2139,9 +2196,14 @@ mmq_dbg  mmq_dbg(
    .ptereload_req_taken(ptereload_req_taken),
    .ptereload_req_pte(ptereload_req_pte)
 );
+// End of mmq_dbg component instantiation
 
- 
 
+//---------------------------------------------------------------------
+// Performance Event component instantiation
+//---------------------------------------------------------------------
+
+//work.mmq_perf #(.`THREADS(`THREADS), .`THDID_WIDTH(`THDID_WIDTH), .`EXPAND_TYPE(`EXPAND_TYPE)) mmq_perf(
 mmq_perf  mmq_perf(
    .vdd(vdd),
    .gnd(gnd),
@@ -2165,6 +2227,7 @@ mmq_perf  mmq_perf(
    .xu_mm_msr_pr(xu_mm_msr_pr_perf),
    .xu_mm_ccr2_notlb_b(xu_mm_ccr2_notlb_b[2]),
 
+// count event inputs
    .iu_mm_perf_itlb(iu_mm_perf_itlb_sig),
    .lq_mm_perf_dtlb(lq_mm_perf_dtlb_sig),
    .iu_mm_ierat_req_nonspec(iu_mm_ierat_req_nonspec),
@@ -2241,15 +2304,21 @@ mmq_perf  mmq_perf(
    .tlb_ctl_perf_tlbwec_resv(tlb_ctl_perf_tlbwec_resv),
    .tlb_ctl_perf_tlbwec_noresv(tlb_ctl_perf_tlbwec_noresv),
 
+// control inputs
    .mmq_spr_event_mux_ctrls(mmq_spr_event_mux_ctrls_sig[0:`MESR1_WIDTH*`THREADS-1]),
    .pc_mm_event_count_mode(pc_mm_event_count_mode[0:2]),
    .rp_mm_event_bus_enable_q(rp_mm_event_bus_enable_q),
    .mm_event_bus_in(mm_event_bus_in),
    .mm_event_bus_out(mm_event_bus_out)
 );
+// End of mmq_perf component instantiation
 
 
+//---------------------------------------------------------------------
+// Pervasive and LCB Control Component Instantiation
+//---------------------------------------------------------------------
 
+//work.mmq_perv #(.`EXPAND_TYPE(`EXPAND_TYPE)) mmq_perv(
 mmq_perv  mmq_perv(
    .vdd(vdd),
    .gnd(gnd),
@@ -2381,8 +2450,14 @@ mmq_perv  mmq_perv(
    .dcfg_scan_out_int(dcfg_scan_out_int),
    .dcfg_scan_out(dcfg_scan_out)
 );
+// End of mmq_perv component instantiation
 
 
+//---------------------------------------------------------------------
+// output assignments
+//---------------------------------------------------------------------
+// tie off undriven ports when tlb components are not present
+//  keep this here for people that like to control TLB existence with generics
 generate
 if (`EXPAND_TLB_TYPE == 0)
 begin : eratonly_tieoffs_gen
@@ -2406,6 +2481,7 @@ begin : eratonly_tieoffs_gen
    assign tlb_req_quiesce_sig = {`THDID_WIDTH{1'b1}};
    assign tlb_ctl_quiesce_sig = {`MM_THREADS{1'b1}};
    assign htw_quiesce_sig = {`THDID_WIDTH{1'b1}};
+   // missing perf count signals
    assign tlb_cmp_perf_event_t0 = {10{1'b0}};
    assign tlb_cmp_perf_event_t1 = {10{1'b0}};
    assign tlb_cmp_perf_state = {0{1'b0}};
@@ -2464,6 +2540,7 @@ begin : eratonly_tieoffs_gen
    assign tlb_cmp_perf_pt_inelig = 1'b0;
    assign tlb_ctl_perf_tlbwec_resv = 1'b0;
    assign tlb_ctl_perf_tlbwec_noresv = 1'b0;
+   // missing debug signals
    assign tlb_cmp_dbg_tag4 = {`TLB_TAG_WIDTH{1'b0}};
    assign tlb_cmp_dbg_tag4_wayhit = {`TLB_WAYS+1{1'b0}};
    assign tlb_cmp_dbg_addr4 = {`TLB_ADDR_WIDTH{1'b0}};
@@ -2534,16 +2611,16 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
    assign mm_pc_tlb_ctl_quiesce = mm_pc_tlb_ctl_quiesce_sig[0:`THREADS - 1];
    assign mm_pc_htw_quiesce = mm_pc_htw_quiesce_sig[0:`THREADS - 1];
    assign mm_pc_inval_quiesce = mm_pc_inval_quiesce_sig[0:`THREADS - 1];
-   
+
    assign mm_xu_local_snoop_reject = mm_xu_local_snoop_reject_sig[0:`THREADS - 1];
    assign mm_xu_tlb_multihit_err = mm_xu_tlb_multihit_err_sig[0:`THREADS - 1];
    assign mm_xu_tlb_par_err = mm_xu_tlb_par_err_sig[0:`THREADS - 1];
    assign mm_xu_lru_par_err = mm_xu_lru_par_err_sig[0:`THREADS - 1];
-   
+
    assign mm_xu_ord_tlb_multihit = mm_xu_ord_tlb_multihit_sig;
    assign mm_xu_ord_tlb_par_err = mm_xu_ord_tlb_par_err_sig;
    assign mm_xu_ord_lru_par_err = mm_xu_ord_lru_par_err_sig;
-   
+
    assign mm_xu_tlb_miss_ored = mm_xu_tlb_miss_ored_sig;
    assign mm_xu_lrat_miss_ored = mm_xu_lrat_miss_ored_sig;
    assign mm_xu_tlb_inelig_ored = mm_xu_tlb_inelig_ored_sig;
@@ -2565,9 +2642,8 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
    assign mm_xu_lsu_gs = mm_xu_lsu_gs_sig;
    assign mm_xu_lsu_ind = mm_xu_lsu_ind_sig;
    assign mm_xu_lsu_lbit = mm_xu_lsu_lbit_sig;
-   
 
-
+// using ifdef's now for t0/t1 assignment to iu,lq in top level
       assign mm_iu_t0_ierat_pid = mm_iu_ierat_pid_sig[0];
       assign mm_xu_t0_derat_pid = mm_xu_derat_pid_sig[0];
       assign mm_iu_t0_ierat_mmucr0 = mm_iu_ierat_mmucr0_sig[0];
@@ -2577,16 +2653,24 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
       assign mm_xu_t1_derat_pid = mm_xu_derat_pid_sig[1];
       assign mm_iu_t1_ierat_mmucr0 = mm_iu_ierat_mmucr0_sig[1];
       assign mm_xu_t1_derat_mmucr0 = mm_xu_derat_mmucr0_sig[1];
-`endif      
+`endif
 
-   
 
-   
-   
+
+   //------------------ end of common stuff for both erat-only and tlb -------------
+
+
+   //---------------------------------------------------------------------
+   // Start of TLB logic
+   //---------------------------------------------------------------------
    generate
       if (`EXPAND_TLB_TYPE > 0)
       begin : tlb_gen_logic
-         
+
+   //---------------------------------------------------------------------
+   // TLB Request Queue Component Instantiation
+   //---------------------------------------------------------------------
+         //work.mmq_tlb_req #(.`THREADS(`THREADS), .`THDID_WIDTH(`THDID_WIDTH), .`PID_WIDTH(`PID_WIDTH), .`PID_WIDTH_erat(`PID_WIDTH_erat), .`LPID_WIDTH(`LPID_WIDTH), .`EPN_WIDTH(`EPN_WIDTH), .`RS_DATA_WIDTH(`RS_DATA_WIDTH), .`EXPAND_TYPE(`EXPAND_TYPE)) mmq_tlb_req(
          mmq_tlb_req  mmq_tlb_req(
             .vdd(vdd),
             .gnd(gnd),
@@ -2595,17 +2679,17 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tc_scan_dis_dc_b(tc_ac_scan_dis_dc_b),
             .tc_scan_diag_dc(tc_ac_scan_diag_dc),
             .tc_lbist_en_dc(tc_ac_lbist_en_dc),
-            
+
             .lcb_d_mode_dc(lcb_d_mode_dc),
             .lcb_clkoff_dc_b(lcb_clkoff_dc_b),
             .lcb_act_dis_dc(lcb_act_dis_dc),
             .lcb_mpw1_dc_b(lcb_mpw1_dc_b),
             .lcb_mpw2_dc_b(lcb_mpw2_dc_b),
             .lcb_delay_lclkr_dc(lcb_delay_lclkr_dc),
-            
+
             .ac_func_scan_in(func_scan_in_int[2]),
             .ac_func_scan_out(func_scan_out_int[2]),
-            
+
             .pc_sg_2(pc_sg_2[1]),
             .pc_func_sl_thold_2(pc_func_sl_thold_2[1]),
             .pc_func_slp_sl_thold_2(pc_func_slp_sl_thold_2[1]),
@@ -2623,7 +2707,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .iu_mm_ierat_tid(iu_mm_ierat_tid),
             .iu_mm_ierat_req_nonspec(iu_mm_ierat_req_nonspec),
             .iu_mm_ierat_flush(iu_mm_ierat_flush_sig),
-            
+
             .xu_mm_derat_req(xu_mm_derat_req),
             .xu_mm_derat_epn(xu_mm_derat_epn),
             .xu_mm_derat_thdid(xu_mm_derat_thdid_sig),
@@ -2634,7 +2718,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .lq_mm_derat_req_nonspec(lq_mm_derat_req_nonspec),
             .lq_mm_derat_req_itag(lq_mm_derat_req_itag),
             .lq_mm_derat_req_emq(lq_mm_derat_req_emq),
-            
+
             .ierat_req0_pid(ierat_req0_pid_sig),
             .ierat_req0_as(ierat_req0_as_sig),
             .ierat_req0_gs(ierat_req0_gs_sig),
@@ -2669,7 +2753,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .ierat_iu4_epn(ierat_iu4_epn_sig),
             .ierat_iu4_thdid(ierat_iu4_thdid_sig),
             .ierat_iu4_valid(ierat_iu4_valid_sig),
-            
+
             .derat_req0_lpid(derat_req0_lpid_sig),
             .derat_req0_pid(derat_req0_pid_sig),
             .derat_req0_as(derat_req0_as_sig),
@@ -2713,16 +2797,16 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .derat_ex5_epn(derat_ex5_epn_sig),
             .derat_ex5_thdid(derat_ex5_thdid_sig),
             .derat_ex5_valid(derat_ex5_valid_sig),
-            
+
             .xu_ex3_flush(xu_ex3_flush_sig),
             .xu_mm_ex4_flush(xu_mm_ex4_flush_sig),
             .xu_mm_ex5_flush(xu_mm_ex5_flush_sig),
             .xu_mm_ierat_flush(xu_mm_ierat_flush_sig),
             .xu_mm_ierat_miss(xu_mm_ierat_miss_sig),
-            
+
             .tlb_cmp_ierat_dup_val(tlb_cmp_ierat_dup_val_sig),
             .tlb_cmp_derat_dup_val(tlb_cmp_derat_dup_val_sig),
-            
+
             .tlb_seq_ierat_req(tlb_seq_ierat_req),
             .tlb_seq_derat_req(tlb_seq_derat_req),
             .tlb_seq_ierat_done(tlb_seq_ierat_done),
@@ -2745,9 +2829,9 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .derat_req_itag(derat_req_itag),
             .derat_req_emq(derat_req_emq),
             .derat_req_nonspec(derat_req_nonspec),
-            
+
             .tlb_req_quiesce(tlb_req_quiesce_sig),
-            
+
             .tlb_req_dbg_ierat_iu5_valid_q(tlb_req_dbg_ierat_iu5_valid_q),
             .tlb_req_dbg_ierat_iu5_thdid(tlb_req_dbg_ierat_iu5_thdid),
             .tlb_req_dbg_ierat_iu5_state_q(tlb_req_dbg_ierat_iu5_state_q),
@@ -2767,9 +2851,14 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tlb_req_dbg_derat_req_ttype_q(tlb_req_dbg_derat_req_ttype_q),
             .tlb_req_dbg_derat_req_dup_q(tlb_req_dbg_derat_req_dup_q)
          );
-         
-         
-         
+         // End of mmq_tlb_req component instantiation
+
+
+         //---------------------------------------------------------------------
+         // TLB Control Logic Component Instantiation
+         //---------------------------------------------------------------------
+
+         //work.mmq_tlb_ctl #(.`THREADS(`THREADS), .`THDID_WIDTH(`THDID_WIDTH), .`EPN_WIDTH(`EPN_WIDTH), .`PID_WIDTH(`PID_WIDTH), .`REAL_ADDR_WIDTH(`REAL_ADDR_WIDTH), .`RS_DATA_WIDTH(`RS_DATA_WIDTH), .`DATA_OUT_WIDTH(`DATA_OUT_WIDTH), .`TLB_TAG_WIDTH(`TLB_TAG_WIDTH), .`EXPAND_TYPE(`EXPAND_TYPE)) mmq_tlb_ctl(
          mmq_tlb_ctl  mmq_tlb_ctl(
             .vdd(vdd),
             .gnd(gnd),
@@ -2778,17 +2867,17 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tc_scan_dis_dc_b(tc_ac_scan_dis_dc_b),
             .tc_scan_diag_dc(tc_ac_scan_diag_dc),
             .tc_lbist_en_dc(tc_ac_lbist_en_dc),
-            
+
             .lcb_d_mode_dc(lcb_d_mode_dc),
             .lcb_clkoff_dc_b(lcb_clkoff_dc_b),
             .lcb_act_dis_dc(lcb_act_dis_dc),
             .lcb_mpw1_dc_b(lcb_mpw1_dc_b),
             .lcb_mpw2_dc_b(lcb_mpw2_dc_b),
             .lcb_delay_lclkr_dc(lcb_delay_lclkr_dc),
-            
+
             .ac_func_scan_in(func_scan_in_int[3]),
             .ac_func_scan_out(func_scan_out_int[3]),
-            
+
             .pc_sg_2(pc_sg_2[1]),
             .pc_func_sl_thold_2(pc_func_sl_thold_2[1]),
             .pc_func_slp_sl_thold_2(pc_func_slp_sl_thold_2[1]),
@@ -2802,13 +2891,13 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .xu_mm_rf1_is_tlbsrx(xu_mm_rf1_is_tlbsrx),
             .xu_mm_ex2_epn(xu_mm_ex2_eff_addr_sig[64 - `RS_DATA_WIDTH:51]),
             .xu_mm_rf1_itag(xu_mm_rf1_itag),
-            
+
             .xu_mm_msr_gs(xu_mm_msr_gs_sig),
             .xu_mm_msr_pr(xu_mm_msr_pr_sig),
             .xu_mm_msr_is(xu_mm_msr_is_sig),
             .xu_mm_msr_ds(xu_mm_msr_ds_sig),
             .xu_mm_msr_cm(xu_mm_msr_cm_sig),
-            
+
             .xu_mm_ccr2_notlb_b(xu_mm_ccr2_notlb_b[4]),
             .xu_mm_epcr_dgtmi(xu_mm_epcr_dgtmi_sig),
             .xu_mm_xucr4_mmu_mchk(xu_mm_xucr4_mmu_mchk),
@@ -2819,11 +2908,11 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .xu_ex3_flush(xu_ex3_flush_sig[0:`MM_THREADS-1]),
             .xu_ex4_flush(xu_ex4_flush_sig),
             .xu_ex5_flush(xu_ex5_flush_sig),
-            
+
             .tlb_ctl_ex3_valid(tlb_ctl_ex3_valid_sig),
             .tlb_ctl_ex3_ttype(tlb_ctl_ex3_ttype_sig),
             .tlb_ctl_ex3_hv_state(tlb_ctl_ex3_hv_state_sig),
-            
+
             .tlb_ctl_tag2_flush(tlb_ctl_tag2_flush_sig),
             .tlb_ctl_tag3_flush(tlb_ctl_tag3_flush_sig),
             .tlb_ctl_tag4_flush(tlb_ctl_tag4_flush_sig),
@@ -2836,23 +2925,23 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tlb_ctl_ex2_illeg_instr(tlb_ctl_ex2_illeg_instr_sig),
             .tlb_ctl_quiesce(tlb_ctl_quiesce_sig),
             .ex6_illeg_instr(ex6_illeg_instr),
-            
+
             .mm_xu_eratmiss_done(mm_xu_eratmiss_done_sig),
             .mm_xu_tlb_miss(mm_xu_tlb_miss_sig),
             .mm_xu_tlb_inelig(mm_xu_tlb_inelig_sig),
-            
+
             .tlbwe_back_inv_pending(tlbwe_back_inv_pending_sig),
             .pid0(pid0_sig),
 `ifdef MM_THREADS2
             .pid1(pid1_sig),
-`endif            
+`endif
             .mmucr1_tlbi_msb(mmucr1_sig[18]),
             .mmucr1_tlbwe_binv(mmucr1_sig[17]),
             .mmucr2(mmucr2_sig),
             .mmucr3_0(mmucr3_0_sig),
 `ifdef MM_THREADS2
             .mmucr3_1(mmucr3_1_sig),
-`endif            
+`endif
             .lpidr(lpidr_sig),
             .mmucfg_lrat(mmucfg_lrat),
             .mmucfg_twc(mmucfg_twc),
@@ -2860,7 +2949,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tlb0cfg_pt(tlb0cfg_pt),
             .tlb0cfg_ind(tlb0cfg_ind),
             .tlb0cfg_gtwe(tlb0cfg_gtwe),
-            
+
             .mas0_0_atsel(mas0_0_atsel),
             .mas0_0_esel(mas0_0_esel),
             .mas0_0_hes(mas0_0_hes),
@@ -2902,8 +2991,8 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .mas6_1_sas(mas6_1_sas),
             .mas8_1_tgs(mas8_1_tgs),
             .mas8_1_tlpid(mas8_1_tlpid),
-`endif            
-            
+`endif
+
             .tlb_seq_ierat_req(tlb_seq_ierat_req),
             .tlb_seq_derat_req(tlb_seq_derat_req),
             .tlb_seq_ierat_done(tlb_seq_ierat_done),
@@ -2931,16 +3020,16 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .ptereload_req_tag(ptereload_req_tag),
             .ptereload_req_pte(ptereload_req_pte),
             .ptereload_req_taken(ptereload_req_taken),
-            
+
             .tlb_snoop_coming(tlb_snoop_coming),
             .tlb_snoop_val(tlb_snoop_val),
             .tlb_snoop_attr(tlb_snoop_attr),
             .tlb_snoop_vpn(tlb_snoop_vpn),
             .tlb_snoop_ack(tlb_snoop_ack),
-            
+
             .lru_rd_addr(lru_rd_addr),
             .lru_tag4_dataout(lru_tag4_dataout),
-            .tlb_addr4(tlb_addr4),            
+            .tlb_addr4(tlb_addr4),
             .tlb_tag4_esel(tlb_tag4_esel),
             .tlb_tag4_wq(tlb_tag4_wq),
             .tlb_tag4_is(tlb_tag4_is),
@@ -2954,11 +3043,11 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tlb_tag4_ptereload(tlb_tag4_ptereload),
             .tlb_tag4_endflag(tlb_tag4_endflag),
             .tlb_tag4_parerr(tlb_tag4_parerr),
-            .tlb_tag4_parerr_write(tlb_tag4_parerr_write),      
-            .tlb_tag5_parerr_zeroize(tlb_tag5_parerr_zeroize), 
+            .tlb_tag4_parerr_write(tlb_tag4_parerr_write),
+            .tlb_tag5_parerr_zeroize(tlb_tag5_parerr_zeroize),
             .tlb_tag5_except(tlb_tag5_except),
             .tlb_cmp_erat_dup_wait(tlb_cmp_erat_dup_wait_sig),
-            
+
             .tlb_tag0_epn(tlb_tag0_epn),
             .tlb_tag0_thdid(tlb_tag0_thdid),
             .tlb_tag0_type(tlb_tag0_type),
@@ -2967,28 +3056,28 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tlb_tag0_size(tlb_tag0_size),
             .tlb_tag0_addr_cap(tlb_tag0_addr_cap),
             .tlb_tag0_nonspec(tlb_tag0_nonspec),
-            
+
             .tlb_tag2(tlb_tag2_sig),
             .tlb_addr2(tlb_addr2_sig),
-            
+
             .tlb_ctl_perf_tlbwec_resv(tlb_ctl_perf_tlbwec_resv),
             .tlb_ctl_perf_tlbwec_noresv(tlb_ctl_perf_tlbwec_noresv),
-            
+
             .lrat_tag4_hit_status(lrat_tag4_hit_status),
-            
+
             .tlb_lper_lpn(tlb_lper_lpn),
             .tlb_lper_lps(tlb_lper_lps),
             .tlb_lper_we(tlb_lper_we),
-            
+
             .ptereload_req_pte_lat(ptereload_req_pte_lat),
             .pte_tag0_lpn(pte_tag0_lpn[64 - `REAL_ADDR_WIDTH:51]),
             .pte_tag0_lpid(pte_tag0_lpid),
-            
+
             .tlb_write(tlb_write),
             .tlb_addr(tlb_addr),
             .tlb_tag5_write(tlb_tag5_write),
             .tlb_delayed_act(tlb_delayed_act),
-            
+
             .tlb_ctl_dbg_seq_q(tlb_ctl_dbg_seq_q),
             .tlb_ctl_dbg_seq_idle(tlb_ctl_dbg_seq_idle),
             .tlb_ctl_dbg_seq_any_done_sig(tlb_ctl_dbg_seq_any_done_sig),
@@ -3050,9 +3139,13 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tlb_ctl_dbg_clr_resv_q(tlb_ctl_dbg_clr_resv_q),
             .tlb_ctl_dbg_clr_resv_terms(tlb_ctl_dbg_clr_resv_terms)
          );
-         
-         
-         
+         // End of mmq_tlb_ctl component instantiation
+
+
+         //---------------------------------------------------------------------
+         // TLB Compare Logic Component Instantiation
+         //---------------------------------------------------------------------
+
          mmq_tlb_cmp #(.MMQ_TLB_CMP_CSWITCH_0TO7(MMQ_TLB_CMP_CSWITCH_0TO7)) mmq_tlb_cmp(
             .vdd(vdd),
             .gnd(gnd),
@@ -3061,17 +3154,17 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tc_scan_dis_dc_b(tc_ac_scan_dis_dc_b),
             .tc_scan_diag_dc(tc_ac_scan_diag_dc),
             .tc_lbist_en_dc(tc_ac_lbist_en_dc),
-            
+
             .lcb_d_mode_dc(lcb_d_mode_dc),
             .lcb_clkoff_dc_b(lcb_clkoff_dc_b),
             .lcb_act_dis_dc(lcb_act_dis_dc),
             .lcb_mpw1_dc_b(lcb_mpw1_dc_b),
             .lcb_mpw2_dc_b(lcb_mpw2_dc_b),
             .lcb_delay_lclkr_dc(lcb_delay_lclkr_dc),
-            
+
             .ac_func_scan_in( {func_scan_in_int[4], func_scan_in_int[5], siv_1[tlb_cmp2_offset]} ),
             .ac_func_scan_out( {func_scan_out_int[4], func_scan_out_int[5], sov_1[tlb_cmp2_offset]} ),
-            
+
             .pc_sg_2(pc_sg_2[1]),
             .pc_func_sl_thold_2(pc_func_sl_thold_2[1]),
             .pc_func_slp_sl_thold_2(pc_func_slp_sl_thold_2[1]),
@@ -3087,13 +3180,13 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .mmucr1(mmucr1_sig[10:18]),
             .mmucr3_0(mmucr3_0_sig),
             .tstmode4k_0(tstmode4k_0_sig),
-`ifdef MM_THREADS2            
+`ifdef MM_THREADS2
             .mmucr3_1(mmucr3_1_sig),
             .tstmode4k_1(tstmode4k_1_sig),
-`endif            
+`endif
             .mm_iu_ierat_rel_val(mm_iu_ierat_rel_val_sig),
             .mm_iu_ierat_rel_data(mm_iu_ierat_rel_data_sig),
-            
+
             .mm_xu_derat_rel_val(mm_xu_derat_rel_val_sig),
             .mm_xu_derat_rel_data(mm_xu_derat_rel_data_sig),
             .tlb_cmp_ierat_dup_val(tlb_cmp_ierat_dup_val_sig),
@@ -3133,7 +3226,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .ierat_iu4_epn(ierat_iu4_epn_sig),
             .ierat_iu4_thdid(ierat_iu4_thdid_sig),
             .ierat_iu4_valid(ierat_iu4_valid_sig),
-            
+
             .derat_req0_lpid(derat_req0_lpid_sig),
             .derat_req0_pid(derat_req0_pid_sig),
             .derat_req0_as(derat_req0_as_sig),
@@ -3173,16 +3266,16 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .derat_ex5_epn(derat_ex5_epn_sig),
             .derat_ex5_thdid(derat_ex5_thdid_sig),
             .derat_ex5_valid(derat_ex5_valid_sig),
-            
+
             .tlb_tag2(tlb_tag2_sig),
             .tlb_addr2(tlb_addr2_sig),
             .ex6_illeg_instr(ex6_illeg_instr),
-            
+
             .ierat_req_taken(ierat_req_taken),
             .derat_req_taken(derat_req_taken),
             .ptereload_req_taken(ptereload_req_taken),
             .tlb_tag0_type(tlb_tag0_type[0:1]),
-            
+
             .lru_dataout(lru_dataout[0:15]),
             .tlb_dataout(tlb_dataout),
             .tlb_dataina(tlb_dataina),
@@ -3191,7 +3284,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .lru_wr_addr(lru_wr_addr),
             .lru_datain(lru_datain[0:15]),
             .lru_tag4_dataout(lru_tag4_dataout),
-            .tlb_addr4(tlb_addr4),    
+            .tlb_addr4(tlb_addr4),
             .tlb_tag4_esel(tlb_tag4_esel),
             .tlb_tag4_wq(tlb_tag4_wq),
             .tlb_tag4_is(tlb_tag4_is),
@@ -3205,34 +3298,34 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tlb_tag4_ptereload(tlb_tag4_ptereload),
             .tlb_tag4_endflag(tlb_tag4_endflag),
             .tlb_tag4_parerr(tlb_tag4_parerr),
-            .tlb_tag4_parerr_write(tlb_tag4_parerr_write),      
-            .tlb_tag5_parerr_zeroize(tlb_tag5_parerr_zeroize), 
+            .tlb_tag4_parerr_write(tlb_tag4_parerr_write),
+            .tlb_tag5_parerr_zeroize(tlb_tag5_parerr_zeroize),
             .tlb_tag4_nonspec(tlb_tag4_nonspec),
             .tlb_tag5_except(tlb_tag5_except),
             .tlb_tag4_itag(tlb_tag4_itag_sig),
             .tlb_tag5_itag(tlb_tag5_itag_sig),
             .tlb_tag5_emq(tlb_tag5_emq_sig),
-            
+
             .mmucfg_twc(mmucfg_twc),
             .mmucfg_lrat(mmucfg_lrat),
             .tlb0cfg_pt(tlb0cfg_pt),
             .tlb0cfg_gtwe(tlb0cfg_gtwe),
             .tlb0cfg_ind(tlb0cfg_ind),
-            
+
             .mas2_0_wimge(mas2_0_wimge),
             .mas3_0_rpnl(mas3_0_rpnl),
             .mas3_0_ubits(mas3_0_ubits),
             .mas3_0_usxwr(mas3_0_usxwr),
             .mas7_0_rpnu(mas7_0_rpnu),
             .mas8_0_vf(mas8_0_vf),
-`ifdef MM_THREADS2            
+`ifdef MM_THREADS2
             .mas2_1_wimge(mas2_1_wimge),
             .mas3_1_rpnl(mas3_1_rpnl),
             .mas3_1_ubits(mas3_1_ubits),
             .mas3_1_usxwr(mas3_1_usxwr),
             .mas7_1_rpnu(mas7_1_rpnu),
             .mas8_1_vf(mas8_1_vf),
-`endif            
+`endif
             .tlb_mas0_esel(tlb_mas0_esel),
             .tlb_mas1_v(tlb_mas1_v),
             .tlb_mas1_iprot(tlb_mas1_iprot),
@@ -3252,7 +3345,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tlb_mas8_tgs(tlb_mas8_tgs),
             .tlb_mas8_vf(tlb_mas8_vf),
             .tlb_mas8_tlpid(tlb_mas8_tlpid),
-            
+
             .tlb_mmucr1_een(tlb_mmucr1_een),
             .tlb_mmucr1_we(tlb_mmucr1_we),
             .tlb_mmucr3_thdid(tlb_mmucr3_thdid),
@@ -3276,39 +3369,39 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .lrat_tag4_rpn(lrat_tag4_rpn),
             .lrat_tag4_hit_status(lrat_tag4_hit_status),
             .lrat_tag4_hit_entry(lrat_tag4_hit_entry),
-            
+
             .tlb_htw_req_valid(tlb_htw_req_valid),
             .tlb_htw_req_tag(tlb_htw_req_tag),
             .tlb_htw_req_way(tlb_htw_req_way),
-            
+
             .tlbwe_back_inv_valid(tlbwe_back_inv_valid_sig),
             .tlbwe_back_inv_thdid(tlbwe_back_inv_thdid_sig),
             .tlbwe_back_inv_addr(tlbwe_back_inv_addr_sig),
             .tlbwe_back_inv_attr(tlbwe_back_inv_attr_sig),
-            
+
             .ptereload_req_pte_lat(ptereload_req_pte_lat),
-            
+
             .tlb_ctl_tag2_flush(tlb_ctl_tag2_flush_sig),
             .tlb_ctl_tag3_flush(tlb_ctl_tag3_flush_sig),
             .tlb_ctl_tag4_flush(tlb_ctl_tag4_flush_sig),
             .tlb_resv_match_vec(tlb_resv_match_vec_sig),
-            
+
             .mm_xu_eratmiss_done(mm_xu_eratmiss_done_sig),
             .mm_xu_tlb_miss(mm_xu_tlb_miss_sig),
             .mm_xu_tlb_inelig(mm_xu_tlb_inelig_sig),
-            
+
             .mm_xu_lrat_miss(mm_xu_lrat_miss_sig),
             .mm_xu_pt_fault(mm_xu_pt_fault_sig),
             .mm_xu_hv_priv(mm_xu_hv_priv_sig),
-            
+
             .mm_xu_esr_pt(mm_xu_esr_pt_sig),
             .mm_xu_esr_data(mm_xu_esr_data_sig),
             .mm_xu_esr_epid(mm_xu_esr_epid_sig),
             .mm_xu_esr_st(mm_xu_esr_st_sig),
-            
+
             .mm_xu_cr0_eq(mm_xu_cr0_eq_sig),
             .mm_xu_cr0_eq_valid(mm_xu_cr0_eq_valid_sig),
-            
+
             .mm_xu_tlb_multihit_err(mm_xu_tlb_multihit_err_sig),
             .mm_xu_tlb_par_err(mm_xu_tlb_par_err_sig),
             .mm_xu_lru_par_err(mm_xu_lru_par_err_sig),
@@ -3324,17 +3417,17 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .mm_xu_hv_priv_ored(mm_xu_hv_priv_ored_sig),
             .mm_xu_cr0_eq_ored(mm_xu_cr0_eq_ored_sig),
             .mm_xu_cr0_eq_valid_ored(mm_xu_cr0_eq_valid_ored_sig),
-            
+
             .mm_pc_tlb_multihit_err_ored(mm_pc_tlb_multihit_err_ored_sig),
             .mm_pc_tlb_par_err_ored(mm_pc_tlb_par_err_ored_sig),
             .mm_pc_lru_par_err_ored(mm_pc_lru_par_err_ored_sig),
-            
+
             .tlb_delayed_act(tlb_delayed_act[9:16]),
-            
+
             .tlb_cmp_perf_event_t0(tlb_cmp_perf_event_t0),
             .tlb_cmp_perf_event_t1(tlb_cmp_perf_event_t1),
             .tlb_cmp_perf_state(tlb_cmp_perf_state),
-            
+
             .tlb_cmp_perf_miss_direct(tlb_cmp_perf_miss_direct),
             .tlb_cmp_perf_hit_direct(tlb_cmp_perf_hit_direct),
             .tlb_cmp_perf_hit_indirect(tlb_cmp_perf_hit_indirect),
@@ -3345,7 +3438,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tlb_cmp_perf_lrat_miss(tlb_cmp_perf_lrat_miss),
             .tlb_cmp_perf_pt_fault(tlb_cmp_perf_pt_fault),
             .tlb_cmp_perf_pt_inelig(tlb_cmp_perf_pt_inelig),
-            
+
             .tlb_cmp_dbg_tag4(tlb_cmp_dbg_tag4),
             .tlb_cmp_dbg_tag4_wayhit(tlb_cmp_dbg_tag4_wayhit),
             .tlb_cmp_dbg_addr4(tlb_cmp_dbg_addr4),
@@ -3414,12 +3507,17 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tlb_cmp_dbg_way3_pid_match(tlb_cmp_dbg_way3_pid_match),
             .tlb_cmp_dbg_way3_lpid_match(tlb_cmp_dbg_way3_lpid_match),
             .tlb_cmp_dbg_way3_ind_match(tlb_cmp_dbg_way3_ind_match),
-            
+
             .tlb_cmp_dbg_way3_iprot_match(tlb_cmp_dbg_way3_iprot_match)
          );
-         
+         // End of mmq_tlb_cmp component instantiation
 
-         
+
+         //---------------------------------------------------------------------
+         // TLB Logical to Real Address Translation Logic Component Instantiation
+         //---------------------------------------------------------------------
+
+         //work.mmq_tlb_lrat #(.`THREADS(`THREADS), .`THDID_WIDTH(`THDID_WIDTH), .`EPN_WIDTH(`EPN_WIDTH), .`SPR_DATA_WIDTH(`SPR_DATA_WIDTH), .`REAL_ADDR_WIDTH(`REAL_ADDR_WIDTH), .`RPN_WIDTH(`RPN_WIDTH), .`LPID_WIDTH(`LPID_WIDTH), .`EXPAND_TYPE(`EXPAND_TYPE)) mmq_tlb_lrat(
          mmq_tlb_lrat  mmq_tlb_lrat(
             .vdd(vdd),
             .gnd(gnd),
@@ -3428,25 +3526,25 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tc_scan_dis_dc_b(tc_ac_scan_dis_dc_b),
             .tc_scan_diag_dc(tc_ac_scan_diag_dc),
             .tc_lbist_en_dc(tc_ac_lbist_en_dc),
-            
+
             .lcb_d_mode_dc(lcb_d_mode_dc),
             .lcb_clkoff_dc_b(lcb_clkoff_dc_b),
             .lcb_act_dis_dc(lcb_act_dis_dc),
             .lcb_mpw1_dc_b(lcb_mpw1_dc_b),
             .lcb_mpw2_dc_b(lcb_mpw2_dc_b),
             .lcb_delay_lclkr_dc(lcb_delay_lclkr_dc),
-            
+
             .ac_func_scan_in(func_scan_in_int[6]),
             .ac_func_scan_out(func_scan_out_int[6]),
-            
+
             .pc_sg_2(pc_sg_2[1]),
             .pc_func_sl_thold_2(pc_func_sl_thold_2[1]),
             .pc_func_slp_sl_thold_2(pc_func_slp_sl_thold_2[1]),
-            
+
             .xu_mm_ccr2_notlb_b(xu_mm_ccr2_notlb_b[6]),
             .tlb_delayed_act(tlb_delayed_act[20:23]),
             .mmucr2_act_override(mmucr2_sig[3]),
-            
+
             .tlb_ctl_ex3_valid(tlb_ctl_ex3_valid_sig),
             .tlb_ctl_ex3_ttype(tlb_ctl_ex3_ttype_sig),
             .tlb_ctl_ex3_hv_state(tlb_ctl_ex3_hv_state_sig),
@@ -3461,7 +3559,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tlb_tag0_size(tlb_tag0_size),
             .tlb_tag0_addr_cap(tlb_tag0_addr_cap),
             .ex6_illeg_instr(ex6_illeg_instr),
-            
+
             .pte_tag0_lpn(pte_tag0_lpn[64 - `REAL_ADDR_WIDTH:51]),
             .pte_tag0_lpid(pte_tag0_lpid),
             .mas0_0_atsel(mas0_0_atsel),
@@ -3475,7 +3573,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .mas3_0_rpnl(mas3_0_rpnl[32:51]),
             .mas8_0_tlpid(mas8_0_tlpid),
             .mmucr3_0_x(mmucr3_0_sig[49]),
-`ifdef MM_THREADS2            
+`ifdef MM_THREADS2
             .mas0_1_atsel(mas0_1_atsel),
             .mas0_1_esel(mas0_1_esel),
             .mas0_1_hes(mas0_1_hes),
@@ -3487,7 +3585,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .mas3_1_rpnl(mas3_1_rpnl[32:51]),
             .mas8_1_tlpid(mas8_1_tlpid),
             .mmucr3_1_x(mmucr3_1_sig[49]),
-`endif            
+`endif
             .lrat_mmucr3_x(lrat_mmucr3_x),
             .lrat_mas0_esel(lrat_mas0_esel),
             .lrat_mas1_v(lrat_mas1_v),
@@ -3500,7 +3598,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .lrat_mas_tlbsx_hit(lrat_mas_tlbsx_hit),
             .lrat_mas_tlbsx_miss(lrat_mas_tlbsx_miss),
             .lrat_mas_thdid(lrat_mas_thdid),
-            
+
             .lrat_tag3_lpn(lrat_tag3_lpn),
             .lrat_tag3_rpn(lrat_tag3_rpn),
             .lrat_tag3_hit_status(lrat_tag3_hit_status),
@@ -3509,7 +3607,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .lrat_tag4_rpn(lrat_tag4_rpn),
             .lrat_tag4_hit_status(lrat_tag4_hit_status),
             .lrat_tag4_hit_entry(lrat_tag4_hit_entry),
-            
+
             .lrat_dbg_tag1_addr_enable(lrat_dbg_tag1_addr_enable),
             .lrat_dbg_tag2_matchline_q(lrat_dbg_tag2_matchline_q),
             .lrat_dbg_entry0_addr_match(lrat_dbg_entry0_addr_match),
@@ -3553,9 +3651,14 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .lrat_dbg_entry7_entry_x(lrat_dbg_entry7_entry_x),
             .lrat_dbg_entry7_size(lrat_dbg_entry7_size)
          );
+         // End of mmq_tlb_lrat component instantiation
 
-         
-         
+
+         //---------------------------------------------------------------------
+         // Hardware Table Walker Logic Component Instantiation
+         //---------------------------------------------------------------------
+
+         //work.mmq_htw #(.`THREADS(`THREADS), .`THDID_WIDTH(`THDID_WIDTH), .`PID_WIDTH(`PID_WIDTH), .`LPID_WIDTH(`LPID_WIDTH), .`EPN_WIDTH(`EPN_WIDTH), .`REAL_ADDR_WIDTH(`REAL_ADDR_WIDTH), .`RPN_WIDTH(`RPN_WIDTH), .`TLB_WAY_WIDTH(`TLB_WAY_WIDTH), .`TLB_WORD_WIDTH(`TLB_WORD_WIDTH), .`TLB_TAG_WIDTH(`TLB_TAG_WIDTH), .`PTE_WIDTH(`PTE_WIDTH), .`EXPAND_TYPE(`EXPAND_TYPE)) mmq_htw(
          mmq_htw  mmq_htw(
             .vdd(vdd),
             .gnd(gnd),
@@ -3564,33 +3667,33 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tc_scan_dis_dc_b(tc_ac_scan_dis_dc_b),
             .tc_scan_diag_dc(tc_ac_scan_diag_dc),
             .tc_lbist_en_dc(tc_ac_lbist_en_dc),
-            
+
             .lcb_d_mode_dc(lcb_d_mode_dc),
             .lcb_clkoff_dc_b(lcb_clkoff_dc_b),
             .lcb_act_dis_dc(lcb_act_dis_dc),
             .lcb_mpw1_dc_b(lcb_mpw1_dc_b),
             .lcb_mpw2_dc_b(lcb_mpw2_dc_b),
             .lcb_delay_lclkr_dc(lcb_delay_lclkr_dc),
-            
+
             .ac_func_scan_in( func_scan_in_int[7:8] ),
             .ac_func_scan_out( func_scan_out_int[7:8] ),
-            
+
             .pc_sg_2(pc_sg_2[1]),
             .pc_func_sl_thold_2(pc_func_sl_thold_2[1]),
             .pc_func_slp_sl_thold_2(pc_func_slp_sl_thold_2[1]),
-            
+
             .xu_mm_ccr2_notlb_b(xu_mm_ccr2_notlb_b[7]),
-            
+
             .tlb_delayed_act(tlb_delayed_act[24:28]),
             .mmucr2_act_override(mmucr2_sig[4]),
-            
+
             .tlb_ctl_tag2_flush(tlb_ctl_tag2_flush_sig),
             .tlb_ctl_tag3_flush(tlb_ctl_tag3_flush_sig),
             .tlb_ctl_tag4_flush(tlb_ctl_tag4_flush_sig),
-            
+
             .tlb_tag2(tlb_tag2_sig),
             .tlb_tag5_except(tlb_tag5_except),
-            
+
             .tlb_htw_req_valid(tlb_htw_req_valid),
             .tlb_htw_req_tag(tlb_htw_req_tag),
             .tlb_htw_req_way(tlb_htw_req_way),
@@ -3603,7 +3706,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .htw_lsu_addr(htw_lsu_addr),
             .htw_lsu_req_taken(htw_lsu_req_taken),
             .htw_quiesce(htw_quiesce_sig),
-            
+
             .htw_req0_valid(htw_req0_valid),
             .htw_req0_thdid(htw_req0_thdid),
             .htw_req0_type(htw_req0_type),
@@ -3628,7 +3731,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .an_ac_reld_qw(an_ac_reld_qw[58:59]),
             .an_ac_reld_ditc(an_ac_reld_ditc),
             .an_ac_reld_crit_qw(an_ac_reld_crit_qw),
-            
+
             .htw_dbg_seq_idle(htw_dbg_seq_idle),
             .htw_dbg_pte0_seq_idle(htw_dbg_pte0_seq_idle),
             .htw_dbg_pte1_seq_idle(htw_dbg_pte1_seq_idle),
@@ -3657,12 +3760,13 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .htw_dbg_pte1_score_pending_q(htw_dbg_pte1_score_pending_q),
             .htw_dbg_pte1_score_ibit_q(htw_dbg_pte1_score_ibit_q),
             .htw_dbg_pte1_score_dataval_q(htw_dbg_pte1_score_dataval_q),
-            
+
             .htw_dbg_pte1_reld_for_me_tm1(htw_dbg_pte1_reld_for_me_tm1)
          );
       end
    endgenerate
-   
+   // End of mmq_htw component instantiation
+
    generate
       if (`EXPAND_TLB_TYPE == 1)
       begin : tlb_gen_noarrays
@@ -3676,11 +3780,15 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
          assign abst_scan_int[1:6] = {6{1'b0}};
       end
    endgenerate
-   
+
+   //---------------------------------------------------------------------
+   // TLB Instantiation
+   //---------------------------------------------------------------------
    generate
       if (`EXPAND_TLB_TYPE == 2)
       begin : tlb_gen_instance
-         
+
+         //tri.tri_128x168_1w_0 #(.`EXPAND_TYPE(`EXPAND_TYPE)) tlb_array0(
          tri_128x168_1w_0  tlb_array0(
             .gnd(gnd),
             .vdd(vdd),
@@ -3702,13 +3810,13 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .lcb_mpw1_dc_b(g6t_gptr_lcb_mpw1_dc_b),
             .lcb_mpw2_dc_b(g6t_gptr_lcb_mpw2_dc_b),
             .lcb_delay_lclkr_dc(g6t_gptr_lcb_delay_lclkr_dc),
-            
+
             .tri_lcb_mpw1_dc_b(lcb_mpw1_dc_b[0]),
             .tri_lcb_mpw2_dc_b(lcb_mpw2_dc_b),
             .tri_lcb_delay_lclkr_dc(lcb_delay_lclkr_dc[0]),
             .tri_lcb_clkoff_dc_b(lcb_clkoff_dc_b),
             .tri_lcb_act_dis_dc(lcb_act_dis_dc),
-            
+
             .lcb_sg_1(pc_sg_1[0]),
             .lcb_time_sg_0(pc_sg_0[0]),
             .lcb_repr_sg_0(pc_sg_0[0]),
@@ -3733,20 +3841,21 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .pc_bo_select(pc_mm_bo_select[0]),
             .bo_pc_failout(mm_pc_bo_fail[0]),
             .bo_pc_diagloop(mm_pc_bo_diagout[0]),
-            
+
             .write_enable(tlb_write[0]),
             .addr(tlb_addr),
             .data_in(tlb_dataina),
             .data_out(tlb_dataout[0:`TLB_WAY_WIDTH - 1])
          );
-         
+
+         //tri.tri_128x168_1w_0 #(.`EXPAND_TYPE(`EXPAND_TYPE)) tlb_array1(
          tri_128x168_1w_0  tlb_array1(
             .gnd(gnd),
             .vdd(vdd),
             .vcs(vdd),
             .nclk(nclk),
             .act(tlb_delayed_act[17]),
-            
+
             .ccflush_dc(tc_ac_ccflush_dc),
             .scan_dis_dc_b(tc_ac_scan_dis_dc_b),
             .scan_diag_dc(tc_ac_scan_diag_dc),
@@ -3762,13 +3871,13 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .lcb_mpw1_dc_b(g6t_gptr_lcb_mpw1_dc_b),
             .lcb_mpw2_dc_b(g6t_gptr_lcb_mpw2_dc_b),
             .lcb_delay_lclkr_dc(g6t_gptr_lcb_delay_lclkr_dc),
-            
+
             .tri_lcb_mpw1_dc_b(lcb_mpw1_dc_b[0]),
             .tri_lcb_mpw2_dc_b(lcb_mpw2_dc_b),
             .tri_lcb_delay_lclkr_dc(lcb_delay_lclkr_dc[0]),
             .tri_lcb_clkoff_dc_b(lcb_clkoff_dc_b),
             .tri_lcb_act_dis_dc(lcb_act_dis_dc),
-            
+
             .lcb_sg_1(pc_sg_1[0]),
             .lcb_time_sg_0(pc_sg_0[0]),
             .lcb_repr_sg_0(pc_sg_0[0]),
@@ -3793,13 +3902,14 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .pc_bo_select(pc_mm_bo_select[1]),
             .bo_pc_failout(mm_pc_bo_fail[1]),
             .bo_pc_diagloop(mm_pc_bo_diagout[1]),
-            
+
             .write_enable(tlb_write[1]),
             .addr(tlb_addr),
             .data_in(tlb_dataina),
             .data_out(tlb_dataout[`TLB_WAY_WIDTH:2 * `TLB_WAY_WIDTH - 1])
          );
-         
+
+         //tri.tri_128x168_1w_0 #(.`EXPAND_TYPE(`EXPAND_TYPE)) tlb_array2(
          tri_128x168_1w_0  tlb_array2(
             .gnd(gnd),
             .vdd(vdd),
@@ -3821,13 +3931,13 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .lcb_mpw1_dc_b(g6t_gptr_lcb_mpw1_dc_b),
             .lcb_mpw2_dc_b(g6t_gptr_lcb_mpw2_dc_b),
             .lcb_delay_lclkr_dc(g6t_gptr_lcb_delay_lclkr_dc),
-            
+
             .tri_lcb_mpw1_dc_b(lcb_mpw1_dc_b[0]),
             .tri_lcb_mpw2_dc_b(lcb_mpw2_dc_b),
             .tri_lcb_delay_lclkr_dc(lcb_delay_lclkr_dc[0]),
             .tri_lcb_clkoff_dc_b(lcb_clkoff_dc_b),
             .tri_lcb_act_dis_dc(lcb_act_dis_dc),
-            
+
             .lcb_sg_1(pc_sg_1[1]),
             .lcb_time_sg_0(pc_sg_0[1]),
             .lcb_repr_sg_0(pc_sg_0[1]),
@@ -3852,20 +3962,21 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .pc_bo_select(pc_mm_bo_select[2]),
             .bo_pc_failout(mm_pc_bo_fail[2]),
             .bo_pc_diagloop(mm_pc_bo_diagout[2]),
-            
+
             .write_enable(tlb_write[2]),
             .addr(tlb_addr),
             .data_in(tlb_datainb),
             .data_out(tlb_dataout[2 * `TLB_WAY_WIDTH:3 * `TLB_WAY_WIDTH - 1])
          );
-         
+
+         //tri.tri_128x168_1w_0 #(.`EXPAND_TYPE(`EXPAND_TYPE)) tlb_array3(
          tri_128x168_1w_0  tlb_array3(
             .gnd(gnd),
             .vdd(vdd),
             .vcs(vdd),
             .nclk(nclk),
             .act(tlb_delayed_act[18]),
-            
+
             .ccflush_dc(tc_ac_ccflush_dc),
             .scan_dis_dc_b(tc_ac_scan_dis_dc_b),
             .scan_diag_dc(tc_ac_scan_diag_dc),
@@ -3881,13 +3992,13 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .lcb_mpw1_dc_b(g6t_gptr_lcb_mpw1_dc_b),
             .lcb_mpw2_dc_b(g6t_gptr_lcb_mpw2_dc_b),
             .lcb_delay_lclkr_dc(g6t_gptr_lcb_delay_lclkr_dc),
-            
+
             .tri_lcb_mpw1_dc_b(lcb_mpw1_dc_b[0]),
             .tri_lcb_mpw2_dc_b(lcb_mpw2_dc_b),
             .tri_lcb_delay_lclkr_dc(lcb_delay_lclkr_dc[0]),
             .tri_lcb_clkoff_dc_b(lcb_clkoff_dc_b),
             .tri_lcb_act_dis_dc(lcb_act_dis_dc),
-            
+
             .lcb_sg_1(pc_sg_1[1]),
             .lcb_time_sg_0(pc_sg_0[1]),
             .lcb_repr_sg_0(pc_sg_0[1]),
@@ -3912,22 +4023,26 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .pc_bo_select(pc_mm_bo_select[3]),
             .bo_pc_failout(mm_pc_bo_fail[3]),
             .bo_pc_diagloop(mm_pc_bo_diagout[3]),
-            
+
             .write_enable(tlb_write[3]),
             .addr(tlb_addr),
             .data_in(tlb_datainb),
             .data_out(tlb_dataout[3 * `TLB_WAY_WIDTH:4 * `TLB_WAY_WIDTH - 1])
          );
-         
-         
+
+         //---------------------------------------------------------------------
+         // LRU Instantiation
+         //---------------------------------------------------------------------
+
+         //tri.tri_128x16_1r1w_1 #(.`EXPAND_TYPE(`EXPAND_TYPE)) lru_array0(
          tri_128x16_1r1w_1  lru_array0(
             .gnd(gnd),
             .vdd(vdd),
             .vcs(vdd),
             .nclk(nclk),
-            .rd_act(tlb_delayed_act[19]),   
-            .wr_act(tlb_delayed_act[33]),   
-            
+            .rd_act(tlb_delayed_act[19]),
+            .wr_act(tlb_delayed_act[33]),
+
             .lcb_d_mode_dc(g8t_gptr_lcb_d_mode_dc),
             .lcb_clkoff_dc_b(g8t_gptr_lcb_clkoff_dc_b),
             .lcb_mpw1_dc_b(g8t_gptr_lcb_mpw1_dc_b),
@@ -3938,28 +4053,28 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .tri_lcb_delay_lclkr_dc(lcb_delay_lclkr_dc[0]),
             .tri_lcb_clkoff_dc_b(lcb_clkoff_dc_b),
             .tri_lcb_act_dis_dc(lcb_act_dis_dc),
-            
+
             .ccflush_dc(tc_ac_ccflush_dc),
             .scan_dis_dc_b(tc_ac_scan_dis_dc_b),
             .scan_diag_dc(tc_ac_scan_diag_dc),
             .func_scan_in(tidn),
             .func_scan_out(unused_dc_array_scan[0]),
-            
+
             .lcb_sg_0(pc_sg_0[1]),
             .lcb_sl_thold_0_b(pc_func_slp_sl_thold_0_b[1]),
-            
+
             .lcb_time_sl_thold_0(pc_time_sl_thold_0),
-            .lcb_abst_sl_thold_0(pc_abst_slp_sl_thold_0),  
+            .lcb_abst_sl_thold_0(pc_abst_slp_sl_thold_0),
             .lcb_repr_sl_thold_0(pc_repr_sl_thold_0),
             .lcb_ary_nsl_thold_0(pc_ary_slp_nsl_thold_0),
-            
+
             .time_scan_in(time_scan_int[4]),
             .time_scan_out(time_scan_int[5]),
             .repr_scan_in(repr_scan_int[4]),
             .repr_scan_out(repr_scan_int[5]),
             .abst_scan_in(abst_scan_int[5]),
             .abst_scan_out(abst_scan_int[6]),
-            
+
             .abist_di(pc_mm_abist_di_0_q),
             .abist_bw_odd(pc_mm_abist_g8t_bw_1_q),
             .abist_bw_even(pc_mm_abist_g8t_bw_0_q),
@@ -3972,7 +4087,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .abist_g8t_rd0_comp_ena(pc_mm_abist_wl128_comp_ena_q),
             .abist_raw_dc_b(pc_mm_abist_raw_dc_b),
             .obs0_abist_cmp(pc_mm_abist_g8t_dcomp_q),
-            
+
             .lcb_bolt_sl_thold_0(pc_mm_bolt_sl_thold_0),
             .pc_bo_enable_2(pc_mm_bo_enable_2),
             .pc_bo_reset(pc_mm_bo_reset),
@@ -3982,7 +4097,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
             .pc_bo_select(pc_mm_bo_select[4]),
             .bo_pc_failout(mm_pc_bo_fail[4]),
             .bo_pc_diagloop(mm_pc_bo_diagout[4]),
-            
+
             .bw(lru_write[0:`LRU_WIDTH - 1]),
             .wr_adr(lru_wr_addr),
             .rd_adr(lru_rd_addr),
@@ -3991,9 +4106,15 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
          );
       end
    endgenerate
-   
+
    assign xu_mm_ex2_eff_addr_sig = xu_mm_ex2_eff_addr;
-   
+   //---------------------------------------------------------------------
+   // end of TLB logic
+   //---------------------------------------------------------------------
+
+   //---------------------------------------------------------------------
+   // Scan
+   //---------------------------------------------------------------------
    assign siv_0[0:scan_right_0] = {sov_0[1:scan_right_0], func_scan_in_int[0]};
    assign func_scan_out_int[0] = sov_0[0];
    assign siv_1[0:scan_right_1] = {sov_1[1:scan_right_1], func_scan_in_int[9]};
@@ -4019,12 +4140,12 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
    assign unused_dc[9:11] = pc_mm_abist_raddr_0_q[0:2];
    assign unused_dc[12:14] = pc_mm_abist_waddr_0_q[0:2];
    assign unused_dc[15] = pc_func_slp_sl_thold_0_b[0];
-`ifdef MM_THREADS2   
+`ifdef MM_THREADS2
    assign unused_dc[16] = |(mmucr0_0_sig[0:1]) | |(mmucr0_1_sig[0:1]);
 `else
    assign unused_dc[16] = |(mmucr0_0_sig[0:1]);
 `endif
-   
+
    generate
       if (`MM_THREADS - `THREADS == 1)
       begin : mmUnusedDCThreads1
@@ -4032,7 +4153,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
          assign unused_dc[18:19] = {2{1'b0}};
       end
    endgenerate
-   
+
    generate
       if (`MM_THREADS - `THREADS == 2)
       begin : mmUnusedDCThreads2
@@ -4041,7 +4162,7 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
          assign unused_dc[19] = 1'b0;
       end
    endgenerate
-   
+
    generate
       if (`MM_THREADS - `THREADS == 3)
       begin : mmUnusedDCThreads3
@@ -4050,14 +4171,14 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
          assign unused_dc[19] = |(mm_iu_ierat_pid_sig[`MM_THREADS-1]) | |(mm_iu_ierat_mmucr0_sig[`MM_THREADS-1]) | |(mm_xu_derat_pid_sig[`MM_THREADS-1]) | |(mm_xu_derat_mmucr0_sig[`MM_THREADS-1]);
       end
    endgenerate
-   
+
    generate
       if (`THREADS == `MM_THREADS)
       begin : mmUnusedDCThreadsEQ
          assign unused_dc[17:19] = {3{1'b0}};
       end
    endgenerate
-   
+
    generate
       if (`MM_THREADS < 4)
       begin : mmUnusedACT
@@ -4067,14 +4188,14 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
          assign unused_dc[23] = |(htw_lsu_thdid[`MM_THREADS:3]);
       end
    endgenerate
-   
+
    generate
       if (`MM_THREADS == 4)
       begin : mmUsedACT
          assign unused_dc[20:23] = {4{1'b0}};
       end
    endgenerate
-   
+
    assign unused_dc[24:27] = mmucr1_sig[0:3];
    assign unused_dc[28:31] = mmucr1_sig[6:9];
    assign unused_dc[32:43] = mmucr1_sig[20:31];
@@ -4086,28 +4207,26 @@ assign mm_xu_ord_write_done = mm_xu_ord_write_done_sig[0:`THREADS - 1];
 `else
    assign unused_dc[71] = 1'b0;
 `endif
-   
+
    generate
       if (`THREADS < `MM_THREADS)
       begin : mmUnusedDCThreads
-         assign unused_dc[72:72 + `MM_THREADS-`THREADS-1] = mm_xu_ord_n_flush_req_sig[`THREADS:`MM_THREADS-1] | mm_xu_ord_np1_flush_req_sig[`THREADS:`MM_THREADS-1] | 
-            mm_xu_ord_read_done_sig[`THREADS:`MM_THREADS-1] | mm_xu_ord_write_done_sig[`THREADS:`MM_THREADS-1] | mm_xu_lrat_miss_sig[`THREADS:`MM_THREADS-1] | 
-            mm_xu_pt_fault_sig[`THREADS:`MM_THREADS-1] | mm_xu_hv_priv_sig[`THREADS:`MM_THREADS-1] | mm_xu_esr_pt_sig[`THREADS:`MM_THREADS-1] | 
-            mm_xu_esr_data_sig[`THREADS:`MM_THREADS-1] | mm_xu_esr_epid_sig[`THREADS:`MM_THREADS-1] | mm_xu_esr_st_sig[`THREADS:`MM_THREADS-1] | 
-            mm_xu_quiesce_sig[`THREADS:`MM_THREADS-1] | mm_pc_tlb_req_quiesce_sig[`THREADS:`MM_THREADS-1] | mm_pc_tlb_ctl_quiesce_sig[`THREADS:`MM_THREADS-1] | 
+         assign unused_dc[72:72 + `MM_THREADS-`THREADS-1] = mm_xu_ord_n_flush_req_sig[`THREADS:`MM_THREADS-1] | mm_xu_ord_np1_flush_req_sig[`THREADS:`MM_THREADS-1] |
+            mm_xu_ord_read_done_sig[`THREADS:`MM_THREADS-1] | mm_xu_ord_write_done_sig[`THREADS:`MM_THREADS-1] | mm_xu_lrat_miss_sig[`THREADS:`MM_THREADS-1] |
+            mm_xu_pt_fault_sig[`THREADS:`MM_THREADS-1] | mm_xu_hv_priv_sig[`THREADS:`MM_THREADS-1] | mm_xu_esr_pt_sig[`THREADS:`MM_THREADS-1] |
+            mm_xu_esr_data_sig[`THREADS:`MM_THREADS-1] | mm_xu_esr_epid_sig[`THREADS:`MM_THREADS-1] | mm_xu_esr_st_sig[`THREADS:`MM_THREADS-1] |
+            mm_xu_quiesce_sig[`THREADS:`MM_THREADS-1] | mm_pc_tlb_req_quiesce_sig[`THREADS:`MM_THREADS-1] | mm_pc_tlb_ctl_quiesce_sig[`THREADS:`MM_THREADS-1] |
             mm_pc_htw_quiesce_sig[`THREADS:`MM_THREADS-1] | mm_pc_inval_quiesce_sig[`THREADS:`MM_THREADS-1] |
-            mm_xu_local_snoop_reject_sig[`THREADS:`MM_THREADS-1] | 
-            mm_xu_tlb_multihit_err_sig[`THREADS:`MM_THREADS-1] | mm_xu_tlb_par_err_sig[`THREADS:`MM_THREADS-1] | mm_xu_lru_par_err_sig[`THREADS:`MM_THREADS-1] | 
-            mm_xu_ex3_flush_req_sig[`THREADS:`MM_THREADS-1] | mm_iu_hold_req_sig[`THREADS:`MM_THREADS-1] | 
-            mm_iu_hold_done_sig[`THREADS:`MM_THREADS-1] | mm_iu_bus_snoop_hold_req_sig[`THREADS:`MM_THREADS-1] | mm_iu_bus_snoop_hold_done_sig[`THREADS:`MM_THREADS-1] | 
-            mm_iu_flush_req_sig[`THREADS:`MM_THREADS-1] | mm_iu_tlbi_complete_sig[`THREADS:`MM_THREADS-1] | mm_xu_illeg_instr_sig[`THREADS:`MM_THREADS-1] | 
+            mm_xu_local_snoop_reject_sig[`THREADS:`MM_THREADS-1] |
+            mm_xu_tlb_multihit_err_sig[`THREADS:`MM_THREADS-1] | mm_xu_tlb_par_err_sig[`THREADS:`MM_THREADS-1] | mm_xu_lru_par_err_sig[`THREADS:`MM_THREADS-1] |
+            mm_xu_ex3_flush_req_sig[`THREADS:`MM_THREADS-1] | mm_iu_hold_req_sig[`THREADS:`MM_THREADS-1] |
+            mm_iu_hold_done_sig[`THREADS:`MM_THREADS-1] | mm_iu_bus_snoop_hold_req_sig[`THREADS:`MM_THREADS-1] | mm_iu_bus_snoop_hold_done_sig[`THREADS:`MM_THREADS-1] |
+            mm_iu_flush_req_sig[`THREADS:`MM_THREADS-1] | mm_iu_tlbi_complete_sig[`THREADS:`MM_THREADS-1] | mm_xu_illeg_instr_sig[`THREADS:`MM_THREADS-1] |
             mm_xu_cr0_eq_sig[`THREADS:`MM_THREADS-1] | mm_xu_cr0_eq_valid_sig[`THREADS:`MM_THREADS-1] | mm_xu_lsu_req_sig[`THREADS:`MM_THREADS-1];
       end
    endgenerate
-   
+
    assign mm_xu_derat_rel_itag = tlb_tag5_itag_sig;
    assign mm_xu_derat_rel_emq = tlb_tag5_emq_sig;
-   
+
 endmodule
-   
-   

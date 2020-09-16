@@ -9,11 +9,8 @@
 
 `timescale 1 ns / 1 ns
 
-
-
-
    `include "tri_a2o.vh"
-   
+
 
 module fu_nrm_sh(
    f_lza_ex5_sh_rgt_en,
@@ -30,30 +27,32 @@ module fu_nrm_sh(
    ex5_sh5_x_b,
    ex5_sh5_y_b
 );
+   //--------- SHIFT CONTROLS -----------------
    input          f_lza_ex5_sh_rgt_en;
    input [2:7]    f_lza_ex5_lza_amt_cp1;
    input [0:2]    f_lza_ex5_lza_dcd64_cp1;
    input [0:1]    f_lza_ex5_lza_dcd64_cp2;
    input [0:0]    f_lza_ex5_lza_dcd64_cp3;
-   
+
+   //--------- SHIFT DATA -----------------
    input [0:162]  f_add_ex5_res;
-   
+
+   //-------- SHIFT OUTPUT ---------------
    output [26:72] ex5_sh2_o;
    output         ex5_sh4_25;
    output         ex5_sh4_54;
    output         ex5_shift_extra_cp1;
    output         ex5_shift_extra_cp2;
 
-   output [0:53]  ex5_sh5_x_b;		
+   output [0:53]  ex5_sh5_x_b;
+   output [0:53]  ex5_sh5_y_b;
 
-   output [0:53]  ex5_sh5_y_b;		
-   
-   
-   
-   
+   // ENTITY
+
+
    parameter      tiup = 1'b1;
    parameter      tidn = 1'b0;
-   
+
    wire [0:120]   ex5_sh1_x_b;
    wire [0:99]    ex5_sh1_y_b;
    wire [0:35]    ex5_sh1_u_b;
@@ -66,9 +65,9 @@ module fu_nrm_sh(
    wire [0:54]    ex5_sh4_y_b;
    wire           ex5_sh4_x_00_b;
    wire           ex5_sh4_y_00_b;
-   
+
    wire           ex5_shift_extra_cp1_b;
-   
+
    wire           ex5_shift_extra_cp2_b;
    wire           ex5_shift_extra_cp3_b;
    wire           ex5_shift_extra_cp4_b;
@@ -96,36 +95,90 @@ module fu_nrm_sh(
    wire           ex5_shift_extra_31_cp4;
    wire           ex5_shift_extra_00_cp3_b;
    wire           ex5_shift_extra_00_cp4_b;
-   
 
-   
+
+   ////##############################################
+   //# EX5 logic: shift decode
+   ////##############################################
+
    assign ex5_shctl_64[0:2] = f_lza_ex5_lza_dcd64_cp1[0:2];
    assign ex5_shctl_64_cp2[0:1] = f_lza_ex5_lza_dcd64_cp2[0:1];
    assign ex5_shctl_64_cp3[0] = f_lza_ex5_lza_dcd64_cp3[0];
-   
-   assign ex5_shctl_16[0] = (~f_lza_ex5_lza_amt_cp1[2]) & (~f_lza_ex5_lza_amt_cp1[3]);		
-   assign ex5_shctl_16[1] = (~f_lza_ex5_lza_amt_cp1[2]) & f_lza_ex5_lza_amt_cp1[3];		
-   assign ex5_shctl_16[2] = f_lza_ex5_lza_amt_cp1[2] & (~f_lza_ex5_lza_amt_cp1[3]);		
-   assign ex5_shctl_16[3] = f_lza_ex5_lza_amt_cp1[2] & f_lza_ex5_lza_amt_cp1[3];		
-   
-   assign ex5_shctl_04[0] = (~f_lza_ex5_lza_amt_cp1[4]) & (~f_lza_ex5_lza_amt_cp1[5]);		
-   assign ex5_shctl_04[1] = (~f_lza_ex5_lza_amt_cp1[4]) & f_lza_ex5_lza_amt_cp1[5];		
-   assign ex5_shctl_04[2] = f_lza_ex5_lza_amt_cp1[4] & (~f_lza_ex5_lza_amt_cp1[5]);		
-   assign ex5_shctl_04[3] = f_lza_ex5_lza_amt_cp1[4] & f_lza_ex5_lza_amt_cp1[5];		
-   
-   assign ex5_shctl_01[0] = (~f_lza_ex5_lza_amt_cp1[6]) & (~f_lza_ex5_lza_amt_cp1[7]);		
-   assign ex5_shctl_01[1] = (~f_lza_ex5_lza_amt_cp1[6]) & f_lza_ex5_lza_amt_cp1[7];		
-   assign ex5_shctl_01[2] = f_lza_ex5_lza_amt_cp1[6] & (~f_lza_ex5_lza_amt_cp1[7]);		
-   assign ex5_shctl_01[3] = f_lza_ex5_lza_amt_cp1[6] & f_lza_ex5_lza_amt_cp1[7];		
-   
-   
-   assign ex5_sh2_o[26:72] = ex5_sh2[26:72];		
-   
-   
-   assign ex5_sh4_25 = ex5_sh4[25];		
-   assign ex5_sh4_54 = ex5_sh4[54];		
-   
-   
+
+   assign ex5_shctl_16[0] = (~f_lza_ex5_lza_amt_cp1[2]) & (~f_lza_ex5_lza_amt_cp1[3]);		//SH000
+   assign ex5_shctl_16[1] = (~f_lza_ex5_lza_amt_cp1[2]) & f_lza_ex5_lza_amt_cp1[3];		//SH016
+   assign ex5_shctl_16[2] = f_lza_ex5_lza_amt_cp1[2] & (~f_lza_ex5_lza_amt_cp1[3]);		//SH032
+   assign ex5_shctl_16[3] = f_lza_ex5_lza_amt_cp1[2] & f_lza_ex5_lza_amt_cp1[3];		//SH048
+
+   assign ex5_shctl_04[0] = (~f_lza_ex5_lza_amt_cp1[4]) & (~f_lza_ex5_lza_amt_cp1[5]);		//SH000
+   assign ex5_shctl_04[1] = (~f_lza_ex5_lza_amt_cp1[4]) & f_lza_ex5_lza_amt_cp1[5];		//SH004
+   assign ex5_shctl_04[2] = f_lza_ex5_lza_amt_cp1[4] & (~f_lza_ex5_lza_amt_cp1[5]);		//SH008
+   assign ex5_shctl_04[3] = f_lza_ex5_lza_amt_cp1[4] & f_lza_ex5_lza_amt_cp1[5];		//SH012
+
+   assign ex5_shctl_01[0] = (~f_lza_ex5_lza_amt_cp1[6]) & (~f_lza_ex5_lza_amt_cp1[7]);		//SH000
+   assign ex5_shctl_01[1] = (~f_lza_ex5_lza_amt_cp1[6]) & f_lza_ex5_lza_amt_cp1[7];		//SH001
+   assign ex5_shctl_01[2] = f_lza_ex5_lza_amt_cp1[6] & (~f_lza_ex5_lza_amt_cp1[7]);		//SH002
+   assign ex5_shctl_01[3] = f_lza_ex5_lza_amt_cp1[6] & f_lza_ex5_lza_amt_cp1[7];		//SH003
+
+   ////##############################################
+   //# EX5 logic: shifting
+   ////##############################################
+   ////## big shifts first (come sooner from LZA,
+   ////## when shift amount is [0] we need to start out with a "dummy" leading bit to sacrifice for shift_extra
+   ////   ex5_sh1(0 to 54)   <=
+   ////          ( ( tidn & f_add_ex5_res(  0 to 53)                       )  and (0 to 54 => ex5_shctl_64(0))  ) or --SH000
+   ////          ( (        f_add_ex5_res( 63 to 117)                      )  and (0 to 54 => ex5_shctl_64(1))  ) or --SH064
+   ////          ( (        f_add_ex5_res(127 to 162) & (36 to 54 => tidn) )  and (0 to 54 => ex5_shctl_64(2))  ) ;  --SH128
+   ////
+   ////   ex5_sh1(55 to 64) <=
+   ////          ( (  f_add_ex5_res( 54 to 63 )                            )  and (55 to 64 => ex5_shctl_64_cp2(0))   ) or --SH000
+   ////          ( (  f_add_ex5_res(118 to 127)                            )  and (55 to 64 => ex5_shctl_64_cp2(1))   ) ;  --SH064
+   ////
+   ////   ex5_sh1(65 to 108) <=
+   ////          ( (  f_add_ex5_res( 64 to 107)                            )  and (65 to 108 => ex5_shctl_64_cp2(0))  ) or --SH000
+   ////          ( (  f_add_ex5_res(128 to 162) & (100 to 108=> tidn)      )  and (65 to 108 => ex5_shctl_64_cp2(1))  ) or --SH064
+   ////          ( (  f_add_ex5_res(0 to 43)                               )  and (65 to 108 => f_lza_ex5_sh_rgt_en)  ) ;  --SHR64
+   ////
+   ////   ex5_sh1(109 to 118) <=
+   ////            ( (        f_add_ex5_res(108 to 117)                    )  and (109 to 118 => ex5_shctl_64_cp3(0))  ) or --SH000
+   ////            ( (        f_add_ex5_res(44 to 53)                      )  and (109 to 118 => f_lza_ex5_sh_rgt_en)  ) ;  --SHR64
+   ////
+   ////   ex5_sh1(119 to 120) <=
+   ////            ( (        f_add_ex5_res(118 to 119)                    )  and (119 to 120 => ex5_shctl_64_cp3(0))  );   --SH000
+   ////
+   ////          -- sh2 ony needs to be 0:69 , however since sp & dp group16s would be off by 2
+   ////          --                            it saves logic in sticky calc to keep 2 more bits
+   ////          --                            and use the same sticky or group 16s for sp/dp.
+   ////          --                            70:71 are always part of dp sticky
+   ////
+   ////   ex5_sh2(0 to 72) <= -- (0 to 69) -- shift by multiples of 16
+   ////          ( ex5_sh1( 0 to  72) and  (0 to 72 => ex5_shctl_16(0) ) ) or --SH00
+   ////          ( ex5_sh1(16 to  88) and  (0 to 72 => ex5_shctl_16(1) ) ) or --SH16
+   ////          ( ex5_sh1(32 to 104) and  (0 to 72 => ex5_shctl_16(2) ) ) or --SH32
+   ////          ( ex5_sh1(48 to 120) and  (0 to 72 => ex5_shctl_16(3) ) ) ;  --SH48
+
+   assign ex5_sh2_o[26:72] = ex5_sh2[26:72];		// for sticky bit
+
+   ////   ex5_sh3(0 to 57) <= -- shift by multiples of 4
+   ////          ( ex5_sh2( 0 to 57) and  (0 to 57 => ex5_shctl_04(0) ) ) or --SH00
+   ////          ( ex5_sh2( 4 to 61) and  (0 to 57 => ex5_shctl_04(1) ) ) or --SH04
+   ////          ( ex5_sh2( 8 to 65) and  (0 to 57 => ex5_shctl_04(2) ) ) or --SH08
+   ////          ( ex5_sh2(12 to 69) and  (0 to 57 => ex5_shctl_04(3) ) ) ;  --SH12
+   ////
+   ////   ex5_sh4(0 to 54) <= -- shift by multiples of 1
+   ////          ( ex5_sh3(0 to 54) and  (0 to 54 => ex5_shctl_01(0) ) ) or --SH00
+   ////          ( ex5_sh3(1 to 55) and  (0 to 54 => ex5_shctl_01(1) ) ) or --SH01
+   ////          ( ex5_sh3(2 to 56) and  (0 to 54 => ex5_shctl_01(2) ) ) or --SH02
+   ////          ( ex5_sh3(3 to 57) and  (0 to 54 => ex5_shctl_01(3) ) ) ;  --SH03
+
+   assign ex5_sh4_25 = ex5_sh4[25];		// for sticky bit
+   assign ex5_sh4_54 = ex5_sh4[54];		// for sticky bit
+
+   ////   ex5_nrm_res(0 to 53) <= -- [53] is for the DP guard bit
+   ////          (  ex5_sh4(0 to 53) and (0 to 53 => not ex5_shift_extra) ) or
+   ////          (  ex5_sh4(1 to 54) and (0 to 53 =>     ex5_shift_extra) ) ;
+
+   //-------------------------------------------------------
    assign ex5_sh1_x_b[0] = (~(tidn & ex5_shctl_64[0]));
    assign ex5_sh1_x_b[1] = (~(f_add_ex5_res[0] & ex5_shctl_64[0]));
    assign ex5_sh1_x_b[2] = (~(f_add_ex5_res[1] & ex5_shctl_64[0]));
@@ -166,7 +219,7 @@ module fu_nrm_sh(
    assign ex5_sh1_x_b[37] = (~(f_add_ex5_res[36] & ex5_shctl_64[0]));
    assign ex5_sh1_x_b[38] = (~(f_add_ex5_res[37] & ex5_shctl_64[0]));
    assign ex5_sh1_x_b[39] = (~(f_add_ex5_res[38] & ex5_shctl_64[0]));
-   assign ex5_sh1_x_b[40] = (~(f_add_ex5_res[39] & ex5_shctl_64_cp2[0]));		
+   assign ex5_sh1_x_b[40] = (~(f_add_ex5_res[39] & ex5_shctl_64_cp2[0]));		//--------
    assign ex5_sh1_x_b[41] = (~(f_add_ex5_res[40] & ex5_shctl_64_cp2[0]));
    assign ex5_sh1_x_b[42] = (~(f_add_ex5_res[41] & ex5_shctl_64_cp2[0]));
    assign ex5_sh1_x_b[43] = (~(f_add_ex5_res[42] & ex5_shctl_64_cp2[0]));
@@ -207,7 +260,7 @@ module fu_nrm_sh(
    assign ex5_sh1_x_b[78] = (~(f_add_ex5_res[77] & ex5_shctl_64_cp2[0]));
    assign ex5_sh1_x_b[79] = (~(f_add_ex5_res[78] & ex5_shctl_64_cp2[0]));
    assign ex5_sh1_x_b[80] = (~(f_add_ex5_res[79] & ex5_shctl_64_cp2[0]));
-   assign ex5_sh1_x_b[81] = (~(f_add_ex5_res[80] & ex5_shctl_64_cp3[0]));		
+   assign ex5_sh1_x_b[81] = (~(f_add_ex5_res[80] & ex5_shctl_64_cp3[0]));		//----
    assign ex5_sh1_x_b[82] = (~(f_add_ex5_res[81] & ex5_shctl_64_cp3[0]));
    assign ex5_sh1_x_b[83] = (~(f_add_ex5_res[82] & ex5_shctl_64_cp3[0]));
    assign ex5_sh1_x_b[84] = (~(f_add_ex5_res[83] & ex5_shctl_64_cp3[0]));
@@ -247,7 +300,7 @@ module fu_nrm_sh(
    assign ex5_sh1_x_b[118] = (~(f_add_ex5_res[117] & ex5_shctl_64_cp3[0]));
    assign ex5_sh1_x_b[119] = (~(f_add_ex5_res[118] & ex5_shctl_64_cp3[0]));
    assign ex5_sh1_x_b[120] = (~(f_add_ex5_res[119] & ex5_shctl_64_cp3[0]));
-   
+
    assign ex5_sh1_y_b[0] = (~(f_add_ex5_res[63] & ex5_shctl_64[1]));
    assign ex5_sh1_y_b[1] = (~(f_add_ex5_res[64] & ex5_shctl_64[1]));
    assign ex5_sh1_y_b[2] = (~(f_add_ex5_res[65] & ex5_shctl_64[1]));
@@ -348,7 +401,7 @@ module fu_nrm_sh(
    assign ex5_sh1_y_b[97] = (~(f_add_ex5_res[160] & ex5_shctl_64_cp2[1]));
    assign ex5_sh1_y_b[98] = (~(f_add_ex5_res[161] & ex5_shctl_64_cp2[1]));
    assign ex5_sh1_y_b[99] = (~(f_add_ex5_res[162] & ex5_shctl_64_cp2[1]));
-   
+
    assign ex5_sh1_u_b[0] = (~(f_add_ex5_res[127] & ex5_shctl_64[2]));
    assign ex5_sh1_u_b[1] = (~(f_add_ex5_res[128] & ex5_shctl_64[2]));
    assign ex5_sh1_u_b[2] = (~(f_add_ex5_res[129] & ex5_shctl_64[2]));
@@ -385,7 +438,7 @@ module fu_nrm_sh(
    assign ex5_sh1_u_b[33] = (~(f_add_ex5_res[160] & ex5_shctl_64[2]));
    assign ex5_sh1_u_b[34] = (~(f_add_ex5_res[161] & ex5_shctl_64[2]));
    assign ex5_sh1_u_b[35] = (~(f_add_ex5_res[162] & ex5_shctl_64[2]));
-   
+
    assign ex5_sh1_z_b[65] = (~(f_add_ex5_res[0] & f_lza_ex5_sh_rgt_en));
    assign ex5_sh1_z_b[66] = (~(f_add_ex5_res[1] & f_lza_ex5_sh_rgt_en));
    assign ex5_sh1_z_b[67] = (~(f_add_ex5_res[2] & f_lza_ex5_sh_rgt_en));
@@ -440,7 +493,7 @@ module fu_nrm_sh(
    assign ex5_sh1_z_b[116] = (~(f_add_ex5_res[51] & f_lza_ex5_sh_rgt_en));
    assign ex5_sh1_z_b[117] = (~(f_add_ex5_res[52] & f_lza_ex5_sh_rgt_en));
    assign ex5_sh1_z_b[118] = (~(f_add_ex5_res[53] & f_lza_ex5_sh_rgt_en));
-   
+
    assign ex5_sh1[0] = (~(ex5_sh1_x_b[0] & ex5_sh1_y_b[0] & ex5_sh1_u_b[0]));
    assign ex5_sh1[1] = (~(ex5_sh1_x_b[1] & ex5_sh1_y_b[1] & ex5_sh1_u_b[1]));
    assign ex5_sh1[2] = (~(ex5_sh1_x_b[2] & ex5_sh1_y_b[2] & ex5_sh1_u_b[2]));
@@ -562,8 +615,9 @@ module fu_nrm_sh(
    assign ex5_sh1[118] = (~(ex5_sh1_x_b[118] & ex5_sh1_z_b[118]));
    assign ex5_sh1[119] = (~(ex5_sh1_x_b[119]));
    assign ex5_sh1[120] = (~(ex5_sh1_x_b[120]));
-   
-   
+
+   //----------------------------------------------------------------------------------
+
    assign ex5_sh2_x_b[0] = (~((ex5_sh1[0] & ex5_shctl_16[0]) | (ex5_sh1[16] & ex5_shctl_16[1])));
    assign ex5_sh2_x_b[1] = (~((ex5_sh1[1] & ex5_shctl_16[0]) | (ex5_sh1[17] & ex5_shctl_16[1])));
    assign ex5_sh2_x_b[2] = (~((ex5_sh1[2] & ex5_shctl_16[0]) | (ex5_sh1[18] & ex5_shctl_16[1])));
@@ -637,7 +691,7 @@ module fu_nrm_sh(
    assign ex5_sh2_x_b[70] = (~((ex5_sh1[70] & ex5_shctl_16[0]) | (ex5_sh1[86] & ex5_shctl_16[1])));
    assign ex5_sh2_x_b[71] = (~((ex5_sh1[71] & ex5_shctl_16[0]) | (ex5_sh1[87] & ex5_shctl_16[1])));
    assign ex5_sh2_x_b[72] = (~((ex5_sh1[72] & ex5_shctl_16[0]) | (ex5_sh1[88] & ex5_shctl_16[1])));
-   
+
    assign ex5_sh2_y_b[0] = (~((ex5_sh1[32] & ex5_shctl_16[2]) | (ex5_sh1[48] & ex5_shctl_16[3])));
    assign ex5_sh2_y_b[1] = (~((ex5_sh1[33] & ex5_shctl_16[2]) | (ex5_sh1[49] & ex5_shctl_16[3])));
    assign ex5_sh2_y_b[2] = (~((ex5_sh1[34] & ex5_shctl_16[2]) | (ex5_sh1[50] & ex5_shctl_16[3])));
@@ -711,7 +765,7 @@ module fu_nrm_sh(
    assign ex5_sh2_y_b[70] = (~((ex5_sh1[102] & ex5_shctl_16[2]) | (ex5_sh1[118] & ex5_shctl_16[3])));
    assign ex5_sh2_y_b[71] = (~((ex5_sh1[103] & ex5_shctl_16[2]) | (ex5_sh1[119] & ex5_shctl_16[3])));
    assign ex5_sh2_y_b[72] = (~((ex5_sh1[104] & ex5_shctl_16[2]) | (ex5_sh1[120] & ex5_shctl_16[3])));
-   
+
    assign ex5_sh2[0] = (~(ex5_sh2_x_b[0] & ex5_sh2_y_b[0]));
    assign ex5_sh2[1] = (~(ex5_sh2_x_b[1] & ex5_sh2_y_b[1]));
    assign ex5_sh2[2] = (~(ex5_sh2_x_b[2] & ex5_sh2_y_b[2]));
@@ -785,8 +839,9 @@ module fu_nrm_sh(
    assign ex5_sh2[70] = (~(ex5_sh2_x_b[70] & ex5_sh2_y_b[70]));
    assign ex5_sh2[71] = (~(ex5_sh2_x_b[71] & ex5_sh2_y_b[71]));
    assign ex5_sh2[72] = (~(ex5_sh2_x_b[72] & ex5_sh2_y_b[72]));
-   
-   
+
+   //---------------------------------------------
+
    assign ex5_sh3_x_b[0] = (~((ex5_sh2[0] & ex5_shctl_04[0]) | (ex5_sh2[4] & ex5_shctl_04[1])));
    assign ex5_sh3_x_b[1] = (~((ex5_sh2[1] & ex5_shctl_04[0]) | (ex5_sh2[5] & ex5_shctl_04[1])));
    assign ex5_sh3_x_b[2] = (~((ex5_sh2[2] & ex5_shctl_04[0]) | (ex5_sh2[6] & ex5_shctl_04[1])));
@@ -845,7 +900,7 @@ module fu_nrm_sh(
    assign ex5_sh3_x_b[55] = (~((ex5_sh2[55] & ex5_shctl_04[0]) | (ex5_sh2[59] & ex5_shctl_04[1])));
    assign ex5_sh3_x_b[56] = (~((ex5_sh2[56] & ex5_shctl_04[0]) | (ex5_sh2[60] & ex5_shctl_04[1])));
    assign ex5_sh3_x_b[57] = (~((ex5_sh2[57] & ex5_shctl_04[0]) | (ex5_sh2[61] & ex5_shctl_04[1])));
-   
+
    assign ex5_sh3_y_b[0] = (~((ex5_sh2[8] & ex5_shctl_04[2]) | (ex5_sh2[12] & ex5_shctl_04[3])));
    assign ex5_sh3_y_b[1] = (~((ex5_sh2[9] & ex5_shctl_04[2]) | (ex5_sh2[13] & ex5_shctl_04[3])));
    assign ex5_sh3_y_b[2] = (~((ex5_sh2[10] & ex5_shctl_04[2]) | (ex5_sh2[14] & ex5_shctl_04[3])));
@@ -904,7 +959,7 @@ module fu_nrm_sh(
    assign ex5_sh3_y_b[55] = (~((ex5_sh2[63] & ex5_shctl_04[2]) | (ex5_sh2[67] & ex5_shctl_04[3])));
    assign ex5_sh3_y_b[56] = (~((ex5_sh2[64] & ex5_shctl_04[2]) | (ex5_sh2[68] & ex5_shctl_04[3])));
    assign ex5_sh3_y_b[57] = (~((ex5_sh2[65] & ex5_shctl_04[2]) | (ex5_sh2[69] & ex5_shctl_04[3])));
-   
+
    assign ex5_sh3[0] = (~(ex5_sh3_x_b[0] & ex5_sh3_y_b[0]));
    assign ex5_sh3[1] = (~(ex5_sh3_x_b[1] & ex5_sh3_y_b[1]));
    assign ex5_sh3[2] = (~(ex5_sh3_x_b[2] & ex5_sh3_y_b[2]));
@@ -963,8 +1018,9 @@ module fu_nrm_sh(
    assign ex5_sh3[55] = (~(ex5_sh3_x_b[55] & ex5_sh3_y_b[55]));
    assign ex5_sh3[56] = (~(ex5_sh3_x_b[56] & ex5_sh3_y_b[56]));
    assign ex5_sh3[57] = (~(ex5_sh3_x_b[57] & ex5_sh3_y_b[57]));
-   
-   
+
+   //---------------------------------------------
+
    assign ex5_sh4_x_00_b = (~((ex5_sh3[0] & ex5_shctl_01[0]) | (ex5_sh3[1] & ex5_shctl_01[1])));
    assign ex5_sh4_x_b[0] = (~((ex5_sh3[0] & ex5_shctl_01[0]) | (ex5_sh3[1] & ex5_shctl_01[1])));
    assign ex5_sh4_x_b[1] = (~((ex5_sh3[1] & ex5_shctl_01[0]) | (ex5_sh3[2] & ex5_shctl_01[1])));
@@ -1021,7 +1077,7 @@ module fu_nrm_sh(
    assign ex5_sh4_x_b[52] = (~((ex5_sh3[52] & ex5_shctl_01[0]) | (ex5_sh3[53] & ex5_shctl_01[1])));
    assign ex5_sh4_x_b[53] = (~((ex5_sh3[53] & ex5_shctl_01[0]) | (ex5_sh3[54] & ex5_shctl_01[1])));
    assign ex5_sh4_x_b[54] = (~((ex5_sh3[54] & ex5_shctl_01[0]) | (ex5_sh3[55] & ex5_shctl_01[1])));
-   
+
    assign ex5_sh4_y_00_b = (~((ex5_sh3[2] & ex5_shctl_01[2]) | (ex5_sh3[3] & ex5_shctl_01[3])));
    assign ex5_sh4_y_b[0] = (~((ex5_sh3[2] & ex5_shctl_01[2]) | (ex5_sh3[3] & ex5_shctl_01[3])));
    assign ex5_sh4_y_b[1] = (~((ex5_sh3[3] & ex5_shctl_01[2]) | (ex5_sh3[4] & ex5_shctl_01[3])));
@@ -1078,33 +1134,33 @@ module fu_nrm_sh(
    assign ex5_sh4_y_b[52] = (~((ex5_sh3[54] & ex5_shctl_01[2]) | (ex5_sh3[55] & ex5_shctl_01[3])));
    assign ex5_sh4_y_b[53] = (~((ex5_sh3[55] & ex5_shctl_01[2]) | (ex5_sh3[56] & ex5_shctl_01[3])));
    assign ex5_sh4_y_b[54] = (~((ex5_sh3[56] & ex5_shctl_01[2]) | (ex5_sh3[57] & ex5_shctl_01[3])));
-   
-   assign ex5_shift_extra_cp1_b = (~(ex5_sh4_x_00_b & ex5_sh4_y_00_b));		
-   assign ex5_shift_extra_cp2_b = (~(ex5_sh4_x_00_b & ex5_sh4_y_00_b));		
-   assign ex5_shift_extra_00_cp3_b = (~(ex5_sh4_x_b[0] & ex5_sh4_y_b[0]));		
-   assign ex5_shift_extra_00_cp4_b = (~(ex5_sh4_x_b[0] & ex5_sh4_y_b[0]));		
-   
-   assign ex5_shift_extra_cp1 = (~ex5_shift_extra_cp1_b);		
-   assign ex5_shift_extra_cp2 = (~ex5_shift_extra_cp2_b);		
-   
-   assign ex5_shift_extra_10_cp3 = (~ex5_shift_extra_00_cp3_b);		
-   assign ex5_shift_extra_20_cp3_b = (~ex5_shift_extra_10_cp3);		
-   assign ex5_shift_extra_cp3 = (~ex5_shift_extra_20_cp3_b);		
-   
-   assign ex5_shift_extra_11_cp3 = (~ex5_shift_extra_00_cp3_b);		
-   assign ex5_shift_extra_21_cp3_b = (~ex5_shift_extra_11_cp3);		
-   assign ex5_shift_extra_31_cp3 = (~ex5_shift_extra_21_cp3_b);		
-   assign ex5_shift_extra_cp3_b = (~ex5_shift_extra_31_cp3);		
-   
-   assign ex5_shift_extra_10_cp4 = (~ex5_shift_extra_00_cp4_b);		
-   assign ex5_shift_extra_20_cp4_b = (~ex5_shift_extra_10_cp4);		
-   assign ex5_shift_extra_cp4 = (~ex5_shift_extra_20_cp4_b);		
-   
-   assign ex5_shift_extra_11_cp4 = (~ex5_shift_extra_00_cp4_b);		
-   assign ex5_shift_extra_21_cp4_b = (~ex5_shift_extra_11_cp4);		
-   assign ex5_shift_extra_31_cp4 = (~ex5_shift_extra_21_cp4_b);		
-   assign ex5_shift_extra_cp4_b = (~ex5_shift_extra_31_cp4);		
-   
+
+   assign ex5_shift_extra_cp1_b = (~(ex5_sh4_x_00_b & ex5_sh4_y_00_b));		// shift extra when implicit bit is not 1
+   assign ex5_shift_extra_cp2_b = (~(ex5_sh4_x_00_b & ex5_sh4_y_00_b));		// shift extra when implicit bit is not 1
+   assign ex5_shift_extra_00_cp3_b = (~(ex5_sh4_x_b[0] & ex5_sh4_y_b[0]));		// shift extra when implicit bit is not 1
+   assign ex5_shift_extra_00_cp4_b = (~(ex5_sh4_x_b[0] & ex5_sh4_y_b[0]));		// shift extra when implicit bit is not 1
+
+   assign ex5_shift_extra_cp1 = (~ex5_shift_extra_cp1_b);		//output--
+   assign ex5_shift_extra_cp2 = (~ex5_shift_extra_cp2_b);		//output--
+
+   assign ex5_shift_extra_10_cp3 = (~ex5_shift_extra_00_cp3_b);		// x4
+   assign ex5_shift_extra_20_cp3_b = (~ex5_shift_extra_10_cp3);		// x6
+   assign ex5_shift_extra_cp3 = (~ex5_shift_extra_20_cp3_b);		// x9
+
+   assign ex5_shift_extra_11_cp3 = (~ex5_shift_extra_00_cp3_b);		// x2
+   assign ex5_shift_extra_21_cp3_b = (~ex5_shift_extra_11_cp3);		// x4
+   assign ex5_shift_extra_31_cp3 = (~ex5_shift_extra_21_cp3_b);		// x6
+   assign ex5_shift_extra_cp3_b = (~ex5_shift_extra_31_cp3);		// x9
+
+   assign ex5_shift_extra_10_cp4 = (~ex5_shift_extra_00_cp4_b);		// x4
+   assign ex5_shift_extra_20_cp4_b = (~ex5_shift_extra_10_cp4);		// x6
+   assign ex5_shift_extra_cp4 = (~ex5_shift_extra_20_cp4_b);		// x9
+
+   assign ex5_shift_extra_11_cp4 = (~ex5_shift_extra_00_cp4_b);		// x2
+   assign ex5_shift_extra_21_cp4_b = (~ex5_shift_extra_11_cp4);		// x4
+   assign ex5_shift_extra_31_cp4 = (~ex5_shift_extra_21_cp4_b);		// x6
+   assign ex5_shift_extra_cp4_b = (~ex5_shift_extra_31_cp4);		// x9
+
    assign ex5_sh4[0] = (~(ex5_sh4_x_b[0] & ex5_sh4_y_b[0]));
    assign ex5_sh4[1] = (~(ex5_sh4_x_b[1] & ex5_sh4_y_b[1]));
    assign ex5_sh4[2] = (~(ex5_sh4_x_b[2] & ex5_sh4_y_b[2]));
@@ -1160,8 +1216,9 @@ module fu_nrm_sh(
    assign ex5_sh4[52] = (~(ex5_sh4_x_b[52] & ex5_sh4_y_b[52]));
    assign ex5_sh4[53] = (~(ex5_sh4_x_b[53] & ex5_sh4_y_b[53]));
    assign ex5_sh4[54] = (~(ex5_sh4_x_b[54] & ex5_sh4_y_b[54]));
-   
-   
+
+   //---------------------------------------------
+
    assign ex5_sh5_x_b[0] = (~(ex5_sh4[0] & ex5_shift_extra_cp3_b));
    assign ex5_sh5_x_b[1] = (~(ex5_sh4[1] & ex5_shift_extra_cp3_b));
    assign ex5_sh5_x_b[2] = (~(ex5_sh4[2] & ex5_shift_extra_cp3_b));
@@ -1216,7 +1273,7 @@ module fu_nrm_sh(
    assign ex5_sh5_x_b[51] = (~(ex5_sh4[51] & ex5_shift_extra_cp4_b));
    assign ex5_sh5_x_b[52] = (~(ex5_sh4[52] & ex5_shift_extra_cp4_b));
    assign ex5_sh5_x_b[53] = (~(ex5_sh4[53] & ex5_shift_extra_cp4_b));
-   
+
    assign ex5_sh5_y_b[0] = (~(ex5_sh4[1] & ex5_shift_extra_cp3));
    assign ex5_sh5_y_b[1] = (~(ex5_sh4[2] & ex5_shift_extra_cp3));
    assign ex5_sh5_y_b[2] = (~(ex5_sh4[3] & ex5_shift_extra_cp3));
@@ -1271,5 +1328,5 @@ module fu_nrm_sh(
    assign ex5_sh5_y_b[51] = (~(ex5_sh4[52] & ex5_shift_extra_cp4));
    assign ex5_sh5_y_b[52] = (~(ex5_sh4[53] & ex5_shift_extra_cp4));
    assign ex5_sh5_y_b[53] = (~(ex5_sh4[54] & ex5_shift_extra_cp4));
-   
+
 endmodule

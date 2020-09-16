@@ -9,20 +9,32 @@
 
 `timescale 1 ns / 1 ns
 
+//*****************************************************************************
+//*
+//*  TITLE: c_fu_pc
+//*
+//*  DESC:  Top level interface for a combined fu and pcq RLM
+//*
+//*****************************************************************************
 
 (* recursive_synthesis=0 *)
-   
+
 
 module c_fu_pc(
  `include "tri_a2o.vh"
-   (* PIN_DATA="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) 	
+// ----------------------------------------------------------------------
+// Common I/O Ports
+// ----------------------------------------------------------------------
+   // inout                     		vdd,
+   // inout                     		gnd,
+   (* PIN_DATA="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) 	// nclk
    input  [0:`NCLK_WIDTH-1]   			nclk,
 
    input  [0:31]                         	fu_debug_bus_in,
    output [0:31]                        	fu_debug_bus_out,
    input  [0:3]                          	fu_coretrace_ctrls_in,
    output [0:3]                         	fu_coretrace_ctrls_out,
-   input  [0:4*`THREADS-1] 			fu_event_bus_in,   
+   input  [0:4*`THREADS-1] 			fu_event_bus_in,
    output [0:4*`THREADS-1] 			fu_event_bus_out,
 
    input  [0:31]             			pc_debug_bus_in,
@@ -30,58 +42,58 @@ module c_fu_pc(
    input  [0:3]		    			pc_coretrace_ctrls_in,
    output [0:3]		    			pc_coretrace_ctrls_out,
 
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input                                	fu_gptr_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input                                	fu_time_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input                                	fu_repr_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input                                	fu_bcfg_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input                                	fu_ccfg_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input                                	fu_dcfg_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input  [0:3]                         	fu_func_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input                                	fu_abst_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output                               	fu_gptr_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output                               	fu_time_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output                               	fu_repr_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output                               	fu_bcfg_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output                               	fu_ccfg_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output                               	fu_dcfg_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output [0:3]                         	fu_func_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output                               	fu_abst_scan_out,
 
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input                     			pc_gptr_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input                     			pc_ccfg_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input                     			pc_bcfg_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input                     			pc_dcfg_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  	// scan_in
    input  [0:1]              			pc_func_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output                    			pc_gptr_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output                    			pc_ccfg_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output                    			pc_bcfg_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output                    			pc_dcfg_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 	// scan_out
    output [0:1]              			pc_func_scan_out,
 
    input  [0:`THREADS-1]                 	cp_flush,
@@ -112,7 +124,10 @@ module c_fu_pc(
    output                    			pc_slowspr_val_out,
 
 
-   input  [0:6]                      		cp_t0_next_itag,	
+// ----------------------------------------------------------------------
+// FU Interface
+// ----------------------------------------------------------------------
+   input  [0:6]                      		cp_t0_next_itag,
    input  [0:6]                      		cp_t1_next_itag,
    input  [0:`THREADS-1] 			cp_axu_i0_t1_v,
    input  [0:2] 	       			cp_axu_i0_t0_t1_t,
@@ -124,7 +139,7 @@ module c_fu_pc(
    input  [0:5] 	       			cp_axu_i1_t0_t1_p,
    input  [0:2] 	       			cp_axu_i1_t1_t1_t,
    input  [0:5] 	       			cp_axu_i1_t1_t1_p,
-      
+
    input  [0:6]                     		iu_xx_t0_zap_itag,
    input  [0:6]                      		iu_xx_t1_zap_itag,
    output [0:`THREADS-1]                        axu0_iu_async_fex,
@@ -147,17 +162,17 @@ module c_fu_pc(
    output [0:`ITAG_SIZE_ENC-1]          	axu1_iu_itag,
    output                               	axu1_iu_n_flush,
    output                               	axu1_iu_np1_flush,
-     
+
    input  [59:63]                        	lq_fu_ex4_eff_addr,
    input                                	lq_fu_ex5_load_le,
    input  [192:255]                      	lq_fu_ex5_load_data,
-   input  [0:7+`THREADS]                 	lq_fu_ex5_load_tag,	    
+   input  [0:7+`THREADS]                 	lq_fu_ex5_load_tag,
    input                                	lq_fu_ex5_load_val,
-   input                                	lq_fu_ex5_abort, 
+   input                                	lq_fu_ex5_abort,
    input                                	lq_gpr_rel_we,
    input                                	lq_gpr_rel_le,
    input  [0:7+`THREADS]                 	lq_gpr_rel_wa,
-   input  [64:127]                       	lq_gpr_rel_wd,   
+   input  [64:127]                       	lq_gpr_rel_wd,
    input  [0:`ITAG_SIZE_ENC-1]           	lq_rv_itag0,
    input                                	lq_rv_itag0_vld,
    input                                	lq_rv_itag0_spec,
@@ -170,7 +185,7 @@ module c_fu_pc(
 
    input  [0:`THREADS-1]                 	rv_axu0_vld,
    input  [0:31]                         	rv_axu0_ex0_instr,
-   input  [0:`ITAG_SIZE_ENC-1] 			rv_axu0_ex0_itag,   
+   input  [0:`ITAG_SIZE_ENC-1] 			rv_axu0_ex0_itag,
    input  [0:2]                          	rv_axu0_ex0_ucode,
    input                                	rv_axu0_ex0_t1_v,
    input  [0:`FPR_POOL_ENC-1]            	rv_axu0_ex0_t1_p,
@@ -197,7 +212,7 @@ module c_fu_pc(
    output [0:`THREADS-1]                	axu1_rv_itag_vld,
    output 					axu1_rv_itag_abort,
    output                               	axu1_rv_hold_all,
- 
+
    input  [0:3]                         	pc_fu_abist_di_0,
    input  [0:3]                          	pc_fu_abist_di_1,
    input                                	pc_fu_abist_ena_dc,
@@ -221,11 +236,16 @@ module c_fu_pc(
    output [0:`CR_POOL_ENC+`THREAD_POOL_ENC-1] 	axu0_cr_w4a,
    output [0:3]                         	axu0_cr_w4d,
 
+// ----------------------------------------------------------------------
+// PC Interface
+// ----------------------------------------------------------------------
+   //SCOM Satellite
    input  [0:3]              			an_ac_scom_sat_id,
    input                     			an_ac_scom_dch,
    input                     			an_ac_scom_cch,
    output                    			ac_an_scom_dch,
    output                    			ac_an_scom_cch,
+   // FIR and Error Signals
    output [0:`THREADS-1]     			ac_an_special_attn,
    output [0:2]              			ac_an_checkstop,
    output [0:2]              			ac_an_local_checkstop,
@@ -287,6 +307,7 @@ module c_fu_pc(
    output [0:`THREADS-1]     			pc_xu_inj_sprg_ecc,
    output [0:`THREADS-1]     			pc_xu_inj_llbust_attempt,
    output [0:`THREADS-1]     			pc_xu_inj_llbust_failed,
+   //  Unit quiesce and credit status bits
    input  [0:`THREADS-1]        		iu_pc_quiesce,
    input  [0:`THREADS-1]        		iu_pc_icache_quiesce,
    input  [0:`THREADS-1]        		lq_pc_ldq_quiesce,
@@ -302,6 +323,7 @@ module c_fu_pc(
    input  [0:`THREADS-1]        		iu_pc_axu1_credit_ok,
    input  [0:`THREADS-1]        		iu_pc_lq_credit_ok,
    input  [0:`THREADS-1]        		iu_pc_sq_credit_ok,
+   // RAM Command/Data
    output [0:31]             			pc_iu_ram_instr,
    output [0:3]              			pc_iu_ram_instr_ext,
    output [0:`THREADS-1]     			pc_iu_ram_active,
@@ -321,6 +343,7 @@ module c_fu_pc(
    output                    			pc_xu_msrovride_de,
    output                    			pc_iu_ram_force_cmplt,
    output [0:`THREADS-1]     			pc_iu_ram_flush_thread,
+   // THRCTL + PCCR0 Registers
    input                     			an_ac_debug_stop,
    input  [0:`THREADS-1]     			xu_pc_running,
    input  [0:`THREADS-1]     			iu_pc_stop_dbg_event,
@@ -334,6 +357,7 @@ module c_fu_pc(
    output [0:3*`THREADS-1]   			pc_iu_dbg_action,
    output [0:`THREADS-1]     			pc_iu_spr_dbcr0_edm,
    output [0:`THREADS-1]     			pc_xu_spr_dbcr0_edm,
+   //Debug Bus Controls
    output                    			pc_iu_trace_bus_enable,
    output                    			pc_rv_trace_bus_enable,
    output                    			pc_mm_trace_bus_enable,
@@ -346,6 +370,7 @@ module c_fu_pc(
    output [0:10]             			pc_xu_debug_mux_ctrls,
    output [0:10]             			pc_lq_debug_mux1_ctrls,
    output [0:10]             			pc_lq_debug_mux2_ctrls,
+   // Event Bus Controls
    output [0:39]             			pc_rv_event_mux_ctrls,
    output                    			pc_iu_event_bus_enable,
    output                    			pc_rv_event_bus_enable,
@@ -367,8 +392,10 @@ module c_fu_pc(
    output [0:`THREADS-1]     			pc_xu_spr_cesr1_pmae,
    output                    			pc_lq_event_bus_seldbghi,
    output                    			pc_lq_event_bus_seldbglo,
+   // Reset related
    output                    			pc_lq_init_reset,
    output                    			pc_iu_init_reset,
+   // Power Management
    output [0:`THREADS-1]     			ac_an_pm_thread_running,
    input  [0:`THREADS-1]     			an_ac_pm_thread_stop,
    input  [0:`THREADS-1]     			an_ac_pm_fetch_halt,
@@ -378,6 +405,7 @@ module c_fu_pc(
    output                    			pc_xu_pm_hold_thread,
    input  [0:1]              			xu_pc_spr_ccr0_pme,
    input  [0:`THREADS-1]     			xu_pc_spr_ccr0_we,
+   // Clock, Test, and LCB Controls
    input                     			an_ac_gsd_test_enable_dc,
    input                     			an_ac_gsd_test_acmode_dc,
    input                     			an_ac_ccflush_dc,
@@ -394,6 +422,7 @@ module c_fu_pc(
    input                     			an_ac_sg_7,
    input                     			an_ac_fce_7,
    input  [0:8]              			an_ac_scan_type_dc,
+   //Thold outputs to clock staging
    output                    			pc_rp_ccflush_out_dc,
    output                    			pc_rp_gptr_sl_thold_4,
    output                    			pc_rp_time_sl_thold_4,
@@ -416,23 +445,26 @@ module c_fu_pc(
 
 );
 
-   
+
+   // ###################### CONSTANTS ###################### --
    parameter                                    float_type = 1;
-  
 
 
+
+   // ####################### SIGNALS ####################### --
+   // Internal Connections Between PC + FU
    wire   [0:`THREADS-1]                 	pc_fu_ram_active;
    wire   [0:63]                        	fu_pc_ram_data;
    wire                                 	fu_pc_ram_data_val;
-   
+
    wire                                 	pc_fu_trace_bus_enable;
    wire   [0:10]                         	pc_fu_debug_mux_ctrls;
    wire                                 	pc_fu_instr_trace_mode;
-   wire   [0:1]                          	pc_fu_instr_trace_tid; 
-     
+   wire   [0:1]                          	pc_fu_instr_trace_tid;
+
    wire                                 	pc_fu_event_bus_enable;
    wire   [0:2]                          	pc_fu_event_count_mode;
-   
+
    wire   [0:`THREADS-1]                       	pc_fu_inj_regfile_parity;
    wire   [0:`THREADS-1]                	fu_pc_err_regfile_parity;
    wire   [0:`THREADS-1]                	fu_pc_err_regfile_ue;
@@ -453,21 +485,26 @@ module c_fu_pc(
    wire                                 	pc_fu_ary_slp_nsl_thold_3;
    wire   [0:1]                          	pc_fu_sg_3;
    wire                                 	pc_fu_fce_3;
-   
+
 
 
    assign pc_fu_instr_trace_mode 	= 1'b0;
    assign pc_fu_instr_trace_tid[0:1] 	= 2'b00;
 
 
-   pcq 
-        pc0( 
+   // ####################### START ######################### --
+   pcq
+        pc0(
+		// .vdd(vdd),
+		// .gnd(gnd),
 		.nclk(nclk),
+		//SCOM Satellite
 		.an_ac_scom_sat_id(an_ac_scom_sat_id),
 		.an_ac_scom_dch(an_ac_scom_dch),
 		.an_ac_scom_cch(an_ac_scom_cch),
 		.ac_an_scom_dch(ac_an_scom_dch),
 		.ac_an_scom_cch(ac_an_scom_cch),
+		//Slow SPR
 		.cp_flush(cp_flush),
 		.slowspr_addr_in(pc_slowspr_addr_in),
 		.slowspr_data_in(pc_slowspr_data_in),
@@ -481,6 +518,7 @@ module c_fu_pc(
 		.slowspr_etid_out(pc_slowspr_etid_out),
 		.slowspr_rw_out(pc_slowspr_rw_out),
 		.slowspr_val_out(pc_slowspr_val_out),
+		// FIR and Error Signals
 		.ac_an_special_attn(ac_an_special_attn),
 		.ac_an_checkstop(ac_an_checkstop),
 		.ac_an_local_checkstop(ac_an_local_checkstop),
@@ -545,6 +583,7 @@ module c_fu_pc(
 		.pc_xu_inj_sprg_ecc(pc_xu_inj_sprg_ecc),
 		.pc_xu_inj_llbust_attempt(pc_xu_inj_llbust_attempt),
 		.pc_xu_inj_llbust_failed(pc_xu_inj_llbust_failed),
+      		//  Unit quiesce and credit status bits
       		.iu_pc_quiesce(iu_pc_quiesce),
      		.iu_pc_icache_quiesce(iu_pc_icache_quiesce),
       		.lq_pc_ldq_quiesce(lq_pc_ldq_quiesce),
@@ -560,6 +599,7 @@ module c_fu_pc(
       		.iu_pc_axu1_credit_ok(iu_pc_axu1_credit_ok),
       		.iu_pc_lq_credit_ok(iu_pc_lq_credit_ok),
       		.iu_pc_sq_credit_ok(iu_pc_sq_credit_ok),
+		// RAM Command/Data
 		.pc_iu_ram_instr(pc_iu_ram_instr),
 		.pc_iu_ram_instr_ext(pc_iu_ram_instr_ext),
 		.pc_iu_ram_active(pc_iu_ram_active),
@@ -582,6 +622,7 @@ module c_fu_pc(
 		.pc_xu_msrovride_de(pc_xu_msrovride_de),
 		.pc_iu_ram_force_cmplt(pc_iu_ram_force_cmplt),
 		.pc_iu_ram_flush_thread(pc_iu_ram_flush_thread),
+		// THRCTL + PCCR0 Registers
 		.xu_pc_running(xu_pc_running),
 		.iu_pc_stop_dbg_event(iu_pc_stop_dbg_event),
 		.xu_pc_stop_dnh_instr(xu_pc_stop_dnh_instr),
@@ -595,11 +636,13 @@ module c_fu_pc(
 		.pc_iu_dbg_action(pc_iu_dbg_action),
 		.pc_iu_spr_dbcr0_edm(pc_iu_spr_dbcr0_edm),
 		.pc_xu_spr_dbcr0_edm(pc_xu_spr_dbcr0_edm),
-      
+
+		// Trace/Debug Bus
 		.debug_bus_in(pc_debug_bus_in),
  		.debug_bus_out(pc_debug_bus_out),
       		.coretrace_ctrls_in(pc_coretrace_ctrls_in),
       		.coretrace_ctrls_out(pc_coretrace_ctrls_out),
+		//Debug Select Register outputs to units for debug grouping
 		.pc_fu_trace_bus_enable(pc_fu_trace_bus_enable),
 		.pc_iu_trace_bus_enable(pc_iu_trace_bus_enable),
 		.pc_rv_trace_bus_enable(pc_rv_trace_bus_enable),
@@ -614,7 +657,8 @@ module c_fu_pc(
 		.pc_xu_debug_mux_ctrls(pc_xu_debug_mux_ctrls),
 		.pc_lq_debug_mux1_ctrls(pc_lq_debug_mux1_ctrls),
 		.pc_lq_debug_mux2_ctrls(pc_lq_debug_mux2_ctrls),
-      
+
+		// Performance Bus and Event Mux Controls
 		.pc_rv_event_mux_ctrls(pc_rv_event_mux_ctrls),
 		.pc_iu_event_bus_enable(pc_iu_event_bus_enable),
 		.pc_fu_event_bus_enable(pc_fu_event_bus_enable),
@@ -638,9 +682,11 @@ module c_fu_pc(
 		.pc_xu_instr_trace_tid(pc_xu_instr_trace_tid),
 		.xu_pc_perfmon_alert(xu_pc_perfmon_alert),
 		.pc_xu_spr_cesr1_pmae(pc_xu_spr_cesr1_pmae),
+		// Reset related
 		.pc_lq_init_reset(pc_lq_init_reset),
 		.pc_iu_init_reset(pc_iu_init_reset),
-      
+
+		// Power Management
 		.ac_an_pm_thread_running(ac_an_pm_thread_running),
 		.an_ac_pm_thread_stop(an_ac_pm_thread_stop),
 		.an_ac_pm_fetch_halt(an_ac_pm_fetch_halt),
@@ -650,7 +696,8 @@ module c_fu_pc(
 		.pc_xu_pm_hold_thread(pc_xu_pm_hold_thread),
 		.xu_pc_spr_ccr0_pme(xu_pc_spr_ccr0_pme),
 		.xu_pc_spr_ccr0_we(xu_pc_spr_ccr0_we),
-      
+
+		// Clock, Test, and LCB Controls
 		.an_ac_gsd_test_enable_dc(an_ac_gsd_test_enable_dc),
 		.an_ac_gsd_test_acmode_dc(an_ac_gsd_test_acmode_dc),
 		.an_ac_ccflush_dc(an_ac_ccflush_dc),
@@ -660,6 +707,7 @@ module c_fu_pc(
 		.an_ac_lbist_ac_mode_dc(an_ac_lbist_ac_mode_dc),
 		.an_ac_scan_diag_dc(an_ac_scan_diag_dc),
 		.an_ac_scan_dis_dc_b(an_ac_scan_dis_dc_b),
+		//Thold input to clock control macro
 		.an_ac_rtim_sl_thold_7(an_ac_rtim_sl_thold_7),
 		.an_ac_func_sl_thold_7(an_ac_func_sl_thold_7),
 		.an_ac_func_nsl_thold_7(an_ac_func_nsl_thold_7),
@@ -667,6 +715,7 @@ module c_fu_pc(
 		.an_ac_sg_7(an_ac_sg_7),
 		.an_ac_fce_7(an_ac_fce_7),
 		.an_ac_scan_type_dc(an_ac_scan_type_dc),
+		//Clock control outputs to clock staging logic
 		.pc_rp_ccflush_out_dc(pc_rp_ccflush_out_dc),
 		.pc_rp_gptr_sl_thold_4(pc_rp_gptr_sl_thold_4),
 		.pc_rp_time_sl_thold_4(pc_rp_time_sl_thold_4),
@@ -702,7 +751,8 @@ module c_fu_pc(
      		.pc_fu_ary_slp_nsl_thold_3(pc_fu_ary_slp_nsl_thold_3),
      		.pc_fu_sg_3(pc_fu_sg_3),
      		.pc_fu_fce_3(pc_fu_fce_3),
-      
+
+		// Scanning
 		.gptr_scan_in(pc_gptr_scan_in),
 		.ccfg_scan_in(pc_ccfg_scan_in),
 		.bcfg_scan_in(pc_bcfg_scan_in),
@@ -714,22 +764,26 @@ module c_fu_pc(
 		.dcfg_scan_out(pc_dcfg_scan_out),
 		.func_scan_out(pc_func_scan_out)
 	   );
-   
 
 
+
+   // DP Float
    generate
       if (float_type == 1)
 	begin : dp
-                fu  
+                fu
 	   a_fuq(
+		 //.gnd(gnd),
+		 //.vcs(vcs),
+		 //.vdd(vdd),
 		 .nclk(nclk),
 
 		 .debug_bus_in(fu_debug_bus_in),
  		 .debug_bus_out(fu_debug_bus_out),
       		 .coretrace_ctrls_in(fu_coretrace_ctrls_in),
-      		 .coretrace_ctrls_out(fu_coretrace_ctrls_out),  
+      		 .coretrace_ctrls_out(fu_coretrace_ctrls_out),
    	         .event_bus_in(fu_event_bus_in),
-   	         .event_bus_out(fu_event_bus_out),		 
+   	         .event_bus_out(fu_event_bus_out),
 
 		 .gptr_scan_in(fu_gptr_scan_in),
 		 .time_scan_in(fu_time_scan_in),
@@ -749,7 +803,7 @@ module c_fu_pc(
 		 .abst_scan_out(fu_abst_scan_out),
 		 .tc_ac_scan_dis_dc_b(an_ac_scan_dis_dc_b),
 		 .tc_ac_scan_diag_dc(an_ac_scan_diag_dc),
-		 
+
 		 .cp_flush(cp_flush),
 		 .slowspr_addr_in(fu_slowspr_addr_in),
 		 .slowspr_data_in(fu_slowspr_data_in),
@@ -808,8 +862,8 @@ module c_fu_pc(
      	         .lq_fu_ex5_abort(lq_fu_ex5_abort),
 		 .lq_gpr_rel_we(lq_gpr_rel_we),
 		 .lq_gpr_rel_le(lq_gpr_rel_le),
-		 .lq_gpr_rel_wa(lq_gpr_rel_wa),      
-		 .lq_gpr_rel_wd(lq_gpr_rel_wd), 
+		 .lq_gpr_rel_wa(lq_gpr_rel_wa),
+		 .lq_gpr_rel_wd(lq_gpr_rel_wd),
 		 .lq_rv_itag0(lq_rv_itag0),
 		 .lq_rv_itag0_vld(lq_rv_itag0_vld),
 		 .lq_rv_itag0_spec(lq_rv_itag0_spec),
@@ -817,12 +871,12 @@ module c_fu_pc(
 		 .fu_lq_ex2_store_data_val(fu_lq_ex2_store_data_val),
 		 .fu_lq_ex2_store_itag(fu_lq_ex2_store_itag),
 		 .fu_lq_ex3_store_data(fu_lq_ex3_store_data),
-		 .fu_lq_ex3_sto_parity_err(fu_lq_ex3_sto_parity_err),		 
+		 .fu_lq_ex3_sto_parity_err(fu_lq_ex3_sto_parity_err),
       	         .fu_lq_ex3_abort(fu_lq_ex3_abort),
-		 
+
 		 .rv_axu0_vld(rv_axu0_vld),
 		 .rv_axu0_ex0_instr(rv_axu0_ex0_instr),
-       	         .rv_axu0_ex0_itag(rv_axu0_ex0_itag),		 
+       	         .rv_axu0_ex0_itag(rv_axu0_ex0_itag),
 		 .rv_axu0_ex0_ucode(rv_axu0_ex0_ucode),
 		 .rv_axu0_ex0_t1_v(rv_axu0_ex0_t1_v),
 		 .rv_axu0_ex0_t1_p(rv_axu0_ex0_t1_p),
@@ -848,7 +902,7 @@ module c_fu_pc(
 		 .axu1_rv_itag(axu1_rv_itag),
 		 .axu1_rv_itag_vld(axu1_rv_itag_vld),
 		 .axu1_rv_itag_abort(axu1_rv_itag_abort),
-	         .axu1_rv_hold_all(axu1_rv_hold_all),  
+	         .axu1_rv_hold_all(axu1_rv_hold_all),
 
 		 .pc_fu_ram_active(pc_fu_ram_active),
 		 .fu_pc_ram_data(fu_pc_ram_data),
@@ -856,7 +910,7 @@ module c_fu_pc(
 		 .pc_fu_trace_bus_enable(pc_fu_trace_bus_enable),
 		 .pc_fu_debug_mux_ctrls(pc_fu_debug_mux_ctrls),
 		 .pc_fu_instr_trace_mode(pc_fu_instr_trace_mode),
-		 .pc_fu_instr_trace_tid(pc_fu_instr_trace_tid),		 
+		 .pc_fu_instr_trace_tid(pc_fu_instr_trace_tid),
 		 .pc_fu_event_bus_enable(pc_fu_event_bus_enable),
 		 .pc_fu_event_count_mode(pc_fu_event_count_mode),
 		 .pc_fu_inj_regfile_parity(pc_fu_inj_regfile_parity),
@@ -906,7 +960,9 @@ module c_fu_pc(
 	 );
 	end
    endgenerate
-   
+   // end component a_fuq
+
+   // No Float!
    generate
       if (float_type == 0)
 	begin : nf
@@ -920,7 +976,7 @@ module c_fu_pc(
            assign axu0_iu_flush2ucode_type  = 1'b0;
            assign axu0_iu_async_fex         = {`THREADS{1'b0}};
            assign axu0_iu_perf_events       = {4{1'b0}};
-		  
+
            assign axu1_iu_execute_vld       = {`THREADS{1'b0}};
            assign axu1_iu_itag              = {`ITAG_SIZE_ENC{1'b0}};
            assign axu1_iu_n_flush           = 1'b0;
@@ -929,38 +985,33 @@ module c_fu_pc(
            assign axu1_iu_exception_val     = 1'b0;
            assign axu1_iu_flush2ucode       = 1'b0;
            assign axu1_iu_flush2ucode_type  = 1'b0;
-           assign axu1_iu_perf_events       = {4{1'b0}}; 
-           
+           assign axu1_iu_perf_events       = {4{1'b0}};
+
            assign axu0_rv_itag_vld          = {`THREADS{1'b0}};
            assign axu1_rv_itag_vld          = {`THREADS{1'b0}};
-           
+
            assign fu_slowspr_val_out  	    = fu_slowspr_val_in;
            assign fu_slowspr_rw_out   	    = fu_slowspr_rw_in;
            assign fu_slowspr_etid_out 	    = fu_slowspr_etid_in;
            assign fu_slowspr_addr_out 	    = fu_slowspr_addr_in;
            assign fu_slowspr_data_out 	    = fu_slowspr_data_in;
            assign fu_slowspr_done_out 	    = fu_slowspr_done_in;
-   
-           assign fu_debug_bus_out 	    = fu_debug_bus_in;	  
+
+           assign fu_debug_bus_out 	    = fu_debug_bus_in;
            assign fu_coretrace_ctrls_out    = fu_coretrace_ctrls_in;
 
 	   assign fu_event_bus_out          = fu_event_bus_in;
-		  
+
            assign fu_pc_err_regfile_parity  = {`THREADS{1'b0}};
            assign fu_pc_err_regfile_ue      = {`THREADS{1'b0}};
-	   
+
            assign fu_lq_ex3_abort           = 1'b0;
            assign axu0_rv_ex2_s1_abort      = 1'b0;
            assign axu0_rv_ex2_s2_abort      = 1'b0;
            assign axu0_rv_ex2_s3_abort      = 1'b0;
-	   
+
            assign fu_pc_ram_data_val        = 1'b0;
 	end
    endgenerate
-   
-
-
-
 
 endmodule
-

@@ -9,31 +9,37 @@
 
 `timescale 1 ns / 1 ns
 
-
-
-
+////############################################################################
+////#####  NQ Quotient digit selection logic                              #########
+////############################################################################
 
 module fu_divsqrt_nq_table(
-   x,  
+   x,
    nq
 );
 `include "tri_a2o.vh"
-   
+
    input [0:3]  x;
    output  nq;
-   
+
    wire    not1111;
    wire    nq_b;
 
+//// Implements this table:
+//   assign exx_nq_bit0        = (exx_sum4 == 4'b1000) ? 1'b1 :
+//                               (exx_sum4 == 4'b1001) ? 1'b1 :
+//                               (exx_sum4 == 4'b1010) ? 1'b1 :
+//                               (exx_sum4 == 4'b1011) ? 1'b1 :
+//                               (exx_sum4 == 4'b1100) ? 1'b1 :
+//                               (exx_sum4 == 4'b1101) ? 1'b1 :
+//                               (exx_sum4 == 4'b1110) ? 1'b1 :
+//                               1'b0;
 
- 
+
    tri_nand4 #(.WIDTH(1), .BTR("NAND4_X4M_A9TH")) DIVSQRT_NQ_TABLE_NAND4_00(not1111, x[0], x[1], x[2], x[3]);
 
    tri_nand2 #(.WIDTH(1), .BTR("NAND2_X6A_A9TH")) DIVSQRT_NQ_TABLE_NAND2_00(nq_b, x[0], not1111);
-   
+
    tri_inv   #(.WIDTH(1), .BTR("INV_X11M_A9TH")) DIVSQRT_NQ_TABLE_INV_00(nq, nq_b);
 
 endmodule
-
- 
-  

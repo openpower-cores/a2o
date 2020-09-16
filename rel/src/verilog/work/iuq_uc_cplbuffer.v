@@ -7,11 +7,15 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
-
+//********************************************************************
+//*
+//* TITLE: Microcode Completion Buffer
+//*
+//* NAME: iuq_uc_cplbuffer.v
+//*
+//*********************************************************************
 
 `include "tri_a2o.vh"
-
-
 
 
 module iuq_uc_cplbuffer(
@@ -43,11 +47,11 @@ module iuq_uc_cplbuffer(
    oldest_xer
 );
 
-    
+
    inout                       vdd;
-    
+
    inout                       gnd;
-    
+
     (* pin_data="PIN_FUNCTION=/G_CLK/" *)
    input [0:`NCLK_WIDTH-1]     nclk;
    input                       pc_iu_func_sl_thold_0_b;
@@ -57,10 +61,10 @@ module iuq_uc_cplbuffer(
    input                       delay_lclkr;
    input                       mpw1_b;
    input                       mpw2_b;
-    
+
     (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)
    input                       scan_in;
-    
+
     (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
    output                      scan_out;
 
@@ -80,12 +84,13 @@ module iuq_uc_cplbuffer(
    output reg [0:31]           oldest_instr;
    output reg [57:63]          oldest_xer;
 
+   // iuq_uc_cplbuffer
 
    localparam [0:31]           value_1 = 32'h00000001;
    localparam [0:31]           value_2 = 32'h00000002;
 
    parameter                   buffer_width = 32;
-   parameter                   buffer_depth = 8;		
+   parameter                   buffer_depth = 8;		// NOTE: If this changes, change cplbuffer_full logic
    parameter                   buffer_depth_log = 3;
    parameter                   xer_width = 7;
 
@@ -118,15 +123,15 @@ module iuq_uc_cplbuffer(
 
    wire                        tiup;
 
+   // scan
    wire [0:scan_right]         siv;
    wire [0:scan_right]         sov;
-
 
    assign tiup = 1'b1;
    assign new_command_d = new_command & (~(flush_next));
 
    assign buffer_count_d = (flush_into_uc == 1'b1) ? value_1[31-buffer_depth_log:31] :
-                           (flush == 1'b1) ? {(buffer_depth_log+1){1'b0}} :		
+                           (flush == 1'b1) ? {(buffer_depth_log+1){1'b0}} :		//cp_flush
                            (new_command_l2 == 1'b0 & (flush_current & valid_l2) == 1'b1 & cp_uc_credit_free == 1'b1) ? buffer_count_l2 - value_2[31-buffer_depth_log:31] :
                            (new_command_l2 == 1'b0 & (flush_current & valid_l2) == 1'b1 & cp_uc_credit_free == 1'b0) ? buffer_count_l2 - value_1[31-buffer_depth_log:31] :
                            (new_command_l2 == 1'b0 & (flush_current & valid_l2) == 1'b0 & cp_uc_credit_free == 1'b1) ? buffer_count_l2 - value_1[31-buffer_depth_log:31] :
@@ -163,9 +168,9 @@ module iuq_uc_cplbuffer(
 
    always @ (*)
    begin : read_mux
-      
+
       (* analysis_not_referenced="true" *)
-      
+
      integer  i;
      oldest_instr <= 32'b0;
      oldest_xer   <= 7'b0;
@@ -179,8 +184,8 @@ module iuq_uc_cplbuffer(
      end
    end
 
-   assign xer_write_ptr = (wait_for_xer_l2 == 1'b1) ? write_ptr_l2 - value_1[32-buffer_depth_log:31] : 	
-                                                      write_ptr_l2;                                     
+   assign xer_write_ptr = (wait_for_xer_l2 == 1'b1) ? write_ptr_l2 - value_1[32-buffer_depth_log:31] : 	// when xer comes after new_command
+                                                      write_ptr_l2;                                     // when xer valid with new_command
 
    assign cplbuffer_full_int = (buffer_count_l2[1:2] == 2'b11);
    assign cplbuffer_full = cplbuffer_full_int;
@@ -190,6 +195,9 @@ module iuq_uc_cplbuffer(
 
    assign ptr_act = flush_into_uc | flush | new_command_l2 | cp_uc_credit_free | flush_current;
 
+   //---------------------------------------------------------------------
+   // Latches
+   //---------------------------------------------------------------------
 
    tri_rlmreg_p #(.WIDTH(buffer_depth_log+1), .INIT(0)) buffer_count_latch(
       .vd(vdd),
@@ -218,7 +226,7 @@ module iuq_uc_cplbuffer(
           .vd(vdd),
           .gd(gnd),
           .nclk(nclk),
-          .act(buffer_act[i/(buffer_depth/2)]),		
+          .act(buffer_act[i/(buffer_depth/2)]),		// only clock half of buffers at a time
           .thold_b(pc_iu_func_sl_thold_0_b),
           .sg(pc_iu_sg_0),
           .force_t(force_t),
@@ -307,8 +315,10 @@ module iuq_uc_cplbuffer(
       .dout(new_command_l2)
    );
 
+   //---------------------------------------------------------------------
+   // Scan
+   //---------------------------------------------------------------------
    assign siv[0:scan_right] = {sov[1:scan_right], scan_in};
    assign scan_out = sov[0];
 
 endmodule
-

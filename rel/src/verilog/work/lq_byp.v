@@ -9,6 +9,9 @@
 
 `timescale 1 ns / 1 ns
 
+//  Description:  LQ SFX Bypass Unit
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
 
@@ -98,18 +101,39 @@ module lq_byp(
    lq_rv_ex2_s2_abort
 );
 
+//-------------------------------------------------------------------
+// Generics
+//-------------------------------------------------------------------
+//parameter                                                   EXPAND_TYPE = 2;
+//parameter                                                   THREADS = 2;
+//parameter                                                   `GPR_WIDTH_ENC = 6;
+//parameter                                                   `STQ_DATA_SIZE = 64;		// 64 or 128 Bit store data sizes supported
+//parameter                                                   `LQ_LOAD_PIPE_START = 4;
+//parameter                                                   `LQ_LOAD_PIPE_END = 8;
+//parameter                                                   `LQ_REL_PIPE_START = 2;
+//parameter                                                   `LQ_REL_PIPE_END = 4;
+//parameter                                                   XU0_PIPE_START = 2;
+//parameter                                                   XU0_PIPE_END   = 12;
+//parameter                                                   XU1_PIPE_START = 2;
+//parameter                                                   XU1_PIPE_END   = 7;
+
+//-------------------------------------------------------------------
+// Clocks & Power
+//-------------------------------------------------------------------
 
 
-                       
 inout                                                       vdd;
-                                  
-                                   
+
+
 inout                                                       gnd;
-                                  
-(* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)     
-                                   
+
+(* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)
+
 input [0:`NCLK_WIDTH-1]                                     nclk;
 
+//-------------------------------------------------------------------
+// Pervasive
+//-------------------------------------------------------------------
 input                                                       d_mode_dc;
 input                                                       delay_lclkr_dc;
 input                                                       mpw1_dc_b;
@@ -128,6 +152,9 @@ input                                                       scan_in;
 
 output                                                      scan_out;
 
+//-------------------------------------------------------------------
+// Interface with XU
+//-------------------------------------------------------------------
 input                                                       xu0_lq_ex3_act;
 input                                                       xu0_lq_ex3_abort;
 input [64-(2**`GPR_WIDTH_ENC):63]                           xu0_lq_ex3_rt;
@@ -139,6 +166,9 @@ input                                                       xu1_lq_ex3_abort;
 input [64-(2**`GPR_WIDTH_ENC):63]                           xu1_lq_ex3_rt;
 output [(128-`STQ_DATA_SIZE):127]                           lq_xu_ex5_rt;
 
+//-------------------------------------------------------------------
+// Interface with DEC
+//-------------------------------------------------------------------
 input                                                       dec_byp_ex0_stg_act;
 input                                                       dec_byp_ex1_stg_act;
 input                                                       dec_byp_ex5_stg_act;
@@ -153,6 +183,10 @@ output                                                      byp_ex2_req_aborted;
 output                                                      byp_dec_ex1_s1_abort;
 output                                                      byp_dec_ex1_s2_abort;
 
+//-------------------------------------------------------------------
+// Interface with LQ Pipe
+//-------------------------------------------------------------------
+// Load Pipe
 output [64-(2**`GPR_WIDTH_ENC):63]                          ctl_lsq_ex4_xu1_data;
 output [0:3]                                                ctl_lsq_ex6_ldh_dacrw;
 input                                                       lsq_ctl_ex5_fwd_val;
@@ -177,6 +211,9 @@ input                                                       dcc_byp_ram_sel;
 output [64-(2**`GPR_WIDTH_ENC):63]                          byp_dir_ex2_rs1;
 output [64-(2**`GPR_WIDTH_ENC):63]                          byp_dir_ex2_rs2;
 
+//-------------------------------------------------------------------
+// Interface with SPR's
+//-------------------------------------------------------------------
 input [64-(2**`GPR_WIDTH_ENC):63]                           spr_byp_spr_dvc1_dbg;
 input [64-(2**`GPR_WIDTH_ENC):63]                           spr_byp_spr_dvc2_dbg;
 input [0:(`THREADS*2)-1]					                spr_byp_spr_dbcr2_dvc1m;
@@ -184,6 +221,9 @@ input [0:(`THREADS*8)-1]					                spr_byp_spr_dbcr2_dvc1be;
 input [0:(`THREADS*2)-1]					                spr_byp_spr_dbcr2_dvc2m;
 input [0:(`THREADS*8)-1]					                spr_byp_spr_dbcr2_dvc2be;
 
+//-------------------------------------------------------------------
+// Interface with Bypass Controller
+//-------------------------------------------------------------------
 input [2:12]                                                rv_lq_ex0_s1_xu0_sel;
 input [2:12]                                                rv_lq_ex0_s2_xu0_sel;
 input [2:7]                                                 rv_lq_ex0_s1_xu1_sel;
@@ -193,17 +233,29 @@ input [4:8]                                                 rv_lq_ex0_s2_lq_sel;
 input [2:3]                                                 rv_lq_ex0_s1_rel_sel;
 input [2:3]                                                 rv_lq_ex0_s2_rel_sel;
 
+//-------------------------------------------------------------------
+// Interface with PERVASIVE
+//-------------------------------------------------------------------
 output [64-(2**`GPR_WIDTH_ENC):63]                          lq_pc_ram_data;
 
+//-------------------------------------------------------------------
+// Interface with GPR
+//-------------------------------------------------------------------
 input [64-(2**`GPR_WIDTH_ENC):63]                           rv_lq_gpr_ex1_r0d;
 input [64-(2**`GPR_WIDTH_ENC):63]                           rv_lq_gpr_ex1_r1d;
 output [64-(2**`GPR_WIDTH_ENC):64+(((2**`GPR_WIDTH_ENC)-1)/8)] lq_rv_gpr_ex6_wd;
 output [64-(2**`GPR_WIDTH_ENC):64+(((2**`GPR_WIDTH_ENC)-1)/8)] lq_rv_gpr_rel_wd;
 output [(128-`STQ_DATA_SIZE):128+((`STQ_DATA_SIZE-1)/8)]    lq_xu_gpr_rel_wd;
 
+//-------------------------------------------------------------------
+// Interface with RV
+//-------------------------------------------------------------------
 output                                                      lq_rv_ex2_s1_abort;
 output                                                      lq_rv_ex2_s2_abort;
 
+//-------------------------------------------------------------------
+// Signals
+//-------------------------------------------------------------------
 wire								                        tiup;
 wire								                        tidn;
 wire [0:4]                                                  ex1_rs1_byp_sel;
@@ -278,6 +330,9 @@ wire                                                        ex1_s1_xu1_abort;
 wire                                                        ex1_s2_xu1_abort;
 wire                                                        ex2_req_aborted;
 
+//-------------------------------------------------------------------
+// Latches
+//-------------------------------------------------------------------
 wire [64-(2**`GPR_WIDTH_ENC):63]                            ex2_rs1_d;
 wire [64-(2**`GPR_WIDTH_ENC):63]                            ex2_rs1_q;
 wire [64-(2**`GPR_WIDTH_ENC):63]                            ex2_rs2_d;
@@ -377,6 +432,9 @@ wire [(128-`STQ_DATA_SIZE):127]                             ex5_mv_rel_data_q;
 wire [64-(2**`GPR_WIDTH_ENC):63]                            lq_pc_ram_data_d;
 wire [64-(2**`GPR_WIDTH_ENC):63]                            lq_pc_ram_data_q;
 
+//-------------------------------------------------------------------
+// Scanchain
+//-------------------------------------------------------------------
 parameter                                                   ex2_rs1_offset = 0;
 parameter                                                   ex2_rs2_offset = ex2_rs1_offset + 2**`GPR_WIDTH_ENC;
 parameter                                                   ex2_s1_abort_offset = ex2_rs2_offset + 2**`GPR_WIDTH_ENC;
@@ -441,9 +499,11 @@ wire [0:scan_right-1]                                       sov;
 
 wire                                                        unused;
 
-
-assign tiup = 1'b1; 
-assign tidn = 1'b0; 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Misc Assignments
+//----------------------------------------------------------------------------------------------------------------------------------------
+assign tiup = 1'b1;
+assign tidn = 1'b0;
 assign ex3_xu0_rt   = xu0_lq_ex3_rt;
 assign ex4_xu0_rt   = xu0_lq_ex4_rt;
 assign ex5_xu0_rt   = ex5_xu0_rt_q;
@@ -487,6 +547,12 @@ assign ex7_xu0_stg_act_d = ex6_xu0_stg_act;
 assign ex3_xu1_stg_act   = xu1_lq_ex3_act;
 assign ex4_xu1_stg_act_d = ex3_xu1_stg_act;
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Load Data Muxing Update
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Move Data contains mffgpr,mftgpr,ditc and store_updates_forms
+// dcc_byp_ex4_moveOp_val is valid for the following instructions coming down the LQ Pipeline mffgpr or store_update_forms
+// dcc_byp_stq6_moveOp_val is valid for the following instructions coming down the COMMIT Pipeline mftgpr, mfdpf, or mfdpa
 generate
   if (`STQ_DATA_SIZE == 128) begin : stqDat128
     assign ex5_mv_rel_data_d[(128-`STQ_DATA_SIZE):127-(2**`GPR_WIDTH_ENC)] = dat_ctl_stq6_axu_data[(128-`STQ_DATA_SIZE):127-(2**`GPR_WIDTH_ENC)];
@@ -502,7 +568,7 @@ generate
           assign ex5_mv_rel_data_d[128 - (2 ** `GPR_WIDTH_ENC):127] = (dat_ctl_stq6_axu_data[128-(2**`GPR_WIDTH_ENC):127] & {(2**`GPR_WIDTH_ENC){dcc_byp_stq6_moveOp_val}}) |
                                                                       (                             dcc_byp_ex4_move_data & {(2**`GPR_WIDTH_ENC){dcc_byp_ex4_moveOp_val}});
       end
-    
+
       if ((2 ** `GPR_WIDTH_ENC) == 32) begin : gpr32
           assign ex5_mv_rel_data_d[(128-`STQ_DATA_SIZE):127-(2**`GPR_WIDTH_ENC)] = dat_ctl_stq6_axu_data[(128-`STQ_DATA_SIZE):127-(2**`GPR_WIDTH_ENC)];
           assign ex5_mv_rel_data_d[128-(2**`GPR_WIDTH_ENC):127] = (dat_ctl_stq6_axu_data[128-(2**`GPR_WIDTH_ENC):127] & {(2**`GPR_WIDTH_ENC){dcc_byp_stq6_moveOp_val}}) |
@@ -515,11 +581,17 @@ endgenerate
 assign ex4_move_data_sel = dcc_byp_ex4_moveOp_val | dcc_byp_stq6_moveOp_val;
 assign ex5_move_data_sel_d = ex4_move_data_sel;
 
+// FX Load Hit Data
+// Mux Between load hit and Move Data
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Mux Between move data and load hit
 assign ex5_load_move_data = (ex5_mv_rel_data_q     & {(`STQ_DATA_SIZE){ ex5_move_data_sel_q}}) |
                             (dat_ctl_ex5_load_data & {(`STQ_DATA_SIZE){~ex5_move_data_sel_q}});
+// Mux Between load hit/Move Data and Data Forward
 assign ex5_load_data = (lsq_ctl_ex5_fwd_data & {(`STQ_DATA_SIZE){ lsq_ctl_ex5_fwd_val}}) |
                        (ex5_load_move_data   & {(`STQ_DATA_SIZE){~lsq_ctl_ex5_fwd_val}});
 
+// Fixed Point Data For bypass
 assign lq_xu_ex5_rt       = ex5_load_data;
 assign ex5_fx_ld_data     = ex5_load_data[128 - (2 ** `GPR_WIDTH_ENC):127];
 assign ex6_fx_ld_data_d   = ex5_fx_ld_data;
@@ -545,6 +617,10 @@ endgenerate
 
 assign ex6_gpr_wd0_d = {ex5_fx_ld_data, ex5_fx_ld_data_par};
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Internal Load LQ Muxing
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Source 1 Bypass Control
 assign ex1_s1_load_byp_val = |(ex1_s1_lq_sel_q[4:7]);
 
 assign ex1_s1_load_data = (ex5_fx_ld_data   & {(2**`GPR_WIDTH_ENC){ex1_s1_lq_sel_q[4]}}) |
@@ -560,6 +636,7 @@ assign ex1_s1_load_abort = (ex5_lq_req_abort   & ex1_s1_lq_sel_q[4]) |
                            (ex8_lq_req_abort_q & ex1_s1_lq_sel_q[7]) |
                            (ex9_lq_req_abort_q & ex1_s1_lq_sel_q[8]);
 
+// Source 2 Bypass Control
 assign ex1_s2_load_byp_val = |(ex1_s2_lq_sel_q[4:7]);
 
 assign ex1_s2_load_data = (ex5_fx_ld_data   & {(2**`GPR_WIDTH_ENC){ex1_s2_lq_sel_q[4]}}) |
@@ -575,16 +652,25 @@ assign ex1_s2_load_abort = (ex5_lq_req_abort   & ex1_s2_lq_sel_q[4]) |
                            (ex8_lq_req_abort_q & ex1_s2_lq_sel_q[7]) |
                            (ex9_lq_req_abort_q & ex1_s2_lq_sel_q[8]);
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Internal Reload LQ Muxing
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Source 1 Bypass Control
 assign ex1_s1_reload_byp_val = |(ex1_s1_rel_sel_q);
 
 assign ex1_s1_reload_data = (rel3_rel_rt_q & {(2**`GPR_WIDTH_ENC){ex1_s1_rel_sel_q[2]}}) |
                             (rel4_rel_rt_q & {(2**`GPR_WIDTH_ENC){ex1_s1_rel_sel_q[3]}});
 
+// Source 2 Bypass Control
 assign ex1_s2_reload_byp_val = |(ex1_s2_rel_sel_q);
 
 assign ex1_s2_reload_data = (rel3_rel_rt_q & {(2**`GPR_WIDTH_ENC){ex1_s2_rel_sel_q[2]}}) |
                             (rel4_rel_rt_q & {(2**`GPR_WIDTH_ENC){ex1_s2_rel_sel_q[3]}});
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// xu0 Muxing
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Source 1 Bypass Control
 assign ex1_s1_xu0_byp_val = |(ex1_s1_xu0_sel_q[2:7]);
 
 assign ex1_s1_xu0_data = (ex3_xu0_rt & {(2**`GPR_WIDTH_ENC){ex1_s1_xu0_sel_q[2]}}) |
@@ -608,6 +694,7 @@ assign ex1_s1_xu0_abort = (ex3_xu0_req_abort    & ex1_s1_xu0_sel_q[2])  |
                           (ex12_xu0_req_abort_q & ex1_s1_xu0_sel_q[11]) |
                           (ex13_xu0_req_abort_q & ex1_s1_xu0_sel_q[12]);
 
+// Source 2 Bypass Control
 assign ex1_s2_xu0_byp_val = |(ex1_s2_xu0_sel_q[2:7]);
 
 assign ex1_s2_xu0_data = (ex3_xu0_rt & {(2**`GPR_WIDTH_ENC){ex1_s2_xu0_sel_q[2]}}) |
@@ -631,6 +718,10 @@ assign ex1_s2_xu0_abort = (ex3_xu0_req_abort    & ex1_s2_xu0_sel_q[2])  |
                           (ex12_xu0_req_abort_q & ex1_s2_xu0_sel_q[11]) |
                           (ex13_xu0_req_abort_q & ex1_s2_xu0_sel_q[12]);
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// xu1 Muxing
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Source 1 Bypass Control
 assign ex1_s1_xu1_byp_val = |(ex1_s1_xu1_sel_q[2:4]);
 
 assign ex1_s1_xu1_data = (ex3_xu1_rt & {(2**`GPR_WIDTH_ENC){ex1_s1_xu1_sel_q[2]}}) |
@@ -646,6 +737,7 @@ assign ex1_s1_xu1_abort = (ex3_xu1_req_abort   & ex1_s1_xu1_sel_q[2]) |
                           (ex7_xu1_req_abort_q & ex1_s1_xu1_sel_q[6]) |
                           (ex8_xu1_req_abort_q & ex1_s1_xu1_sel_q[7]);
 
+// Source 2 Bypass Control
 assign ex1_s2_xu1_byp_val = |(ex1_s2_xu1_sel_q[2:4]);
 
 assign ex1_s2_xu1_data = (ex3_xu1_rt & {(2**`GPR_WIDTH_ENC){ex1_s2_xu1_sel_q[2]}}) |
@@ -661,11 +753,15 @@ assign ex1_s2_xu1_abort = (ex3_xu1_req_abort   & ex1_s2_xu1_sel_q[2]) |
                           (ex7_xu1_req_abort_q & ex1_s2_xu1_sel_q[6]) |
                           (ex8_xu1_req_abort_q & ex1_s2_xu1_sel_q[7]);
 
-assign ex1_rs1_byp_sel[0] = (~(|{ex1_s1_xu0_byp_val, ex1_s1_xu1_byp_val, ex1_s1_load_byp_val, ex1_s1_reload_byp_val})) & (~dec_byp_ex1_rs1_zero);		
-assign ex1_rs1_byp_sel[1] = ex1_s1_xu0_byp_val    & (~dec_byp_ex1_rs1_zero);		
-assign ex1_rs1_byp_sel[2] = ex1_s1_xu1_byp_val    & (~dec_byp_ex1_rs1_zero);		
-assign ex1_rs1_byp_sel[3] = ex1_s1_load_byp_val   & (~dec_byp_ex1_rs1_zero);		
-assign ex1_rs1_byp_sel[4] = ex1_s1_reload_byp_val & (~dec_byp_ex1_rs1_zero);		
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Source 1 Mux Selects
+//----------------------------------------------------------------------------------------------------------------------------------------
+// GPR Source 1
+assign ex1_rs1_byp_sel[0] = (~(|{ex1_s1_xu0_byp_val, ex1_s1_xu1_byp_val, ex1_s1_load_byp_val, ex1_s1_reload_byp_val})) & (~dec_byp_ex1_rs1_zero);		// Use Array or use ZERO
+assign ex1_rs1_byp_sel[1] = ex1_s1_xu0_byp_val    & (~dec_byp_ex1_rs1_zero);		// Use xu0 or use ZERO
+assign ex1_rs1_byp_sel[2] = ex1_s1_xu1_byp_val    & (~dec_byp_ex1_rs1_zero);		// Use xu1 or use ZERO
+assign ex1_rs1_byp_sel[3] = ex1_s1_load_byp_val   & (~dec_byp_ex1_rs1_zero);		// Use LQ LOAD or use ZERO
+assign ex1_rs1_byp_sel[4] = ex1_s1_reload_byp_val & (~dec_byp_ex1_rs1_zero);		// Use LQ RELOAD or use ZERO
 
 assign ex2_rs1_d = (rv_lq_gpr_ex1_r0d  & {(2**`GPR_WIDTH_ENC){ex1_rs1_byp_sel[0]}}) |
                    (ex1_s1_xu0_data    & {(2**`GPR_WIDTH_ENC){ex1_rs1_byp_sel[1]}}) |
@@ -673,9 +769,10 @@ assign ex2_rs1_d = (rv_lq_gpr_ex1_r0d  & {(2**`GPR_WIDTH_ENC){ex1_rs1_byp_sel[0]
                    (ex1_s1_load_data   & {(2**`GPR_WIDTH_ENC){ex1_rs1_byp_sel[3]}}) |
                    (ex1_s1_reload_data & {(2**`GPR_WIDTH_ENC){ex1_rs1_byp_sel[4]}});
 
-assign ex1_rs1_abort_byp_sel[1] = ex1_s1_xu0_abort_byp_val  & (~dec_byp_ex1_rs1_zero);	    
-assign ex1_rs1_abort_byp_sel[2] = ex1_s1_xu1_abort_byp_val  & (~dec_byp_ex1_rs1_zero);		
-assign ex1_rs1_abort_byp_sel[3] = ex1_s1_load_abort_byp_val & (~dec_byp_ex1_rs1_zero);		
+// Abort Bypass for Source 1
+assign ex1_rs1_abort_byp_sel[1] = ex1_s1_xu0_abort_byp_val  & (~dec_byp_ex1_rs1_zero);	    // Use xu0 or use ZERO
+assign ex1_rs1_abort_byp_sel[2] = ex1_s1_xu1_abort_byp_val  & (~dec_byp_ex1_rs1_zero);		// Use xu1 or use ZERO
+assign ex1_rs1_abort_byp_sel[3] = ex1_s1_load_abort_byp_val & (~dec_byp_ex1_rs1_zero);		// Use LQ LOAD or use ZERO
 
 assign ex1_s1_abort = ((ex1_s1_xu0_abort  & ex1_rs1_abort_byp_sel[1]) |
                        (ex1_s1_xu1_abort  & ex1_rs1_abort_byp_sel[2]) |
@@ -683,11 +780,15 @@ assign ex1_s1_abort = ((ex1_s1_xu0_abort  & ex1_rs1_abort_byp_sel[1]) |
 
 assign ex2_s1_abort_d = ex1_s1_abort;
 
-assign ex1_rs2_byp_sel[0] = (~(|{ex1_s2_xu0_byp_val, ex1_s2_xu1_byp_val, ex1_s2_load_byp_val, ex1_s2_reload_byp_val})) & (~dec_byp_ex1_use_imm);		
-assign ex1_rs2_byp_sel[1] = ex1_s2_xu0_byp_val    & (~dec_byp_ex1_use_imm);		
-assign ex1_rs2_byp_sel[2] = ex1_s2_xu1_byp_val    & (~dec_byp_ex1_use_imm);		
-assign ex1_rs2_byp_sel[3] = ex1_s2_load_byp_val   & (~dec_byp_ex1_use_imm);		
-assign ex1_rs2_byp_sel[4] = ex1_s2_reload_byp_val & (~dec_byp_ex1_use_imm);		
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Source 2 Mux Selects
+//----------------------------------------------------------------------------------------------------------------------------------------
+// GPR Source 2
+assign ex1_rs2_byp_sel[0] = (~(|{ex1_s2_xu0_byp_val, ex1_s2_xu1_byp_val, ex1_s2_load_byp_val, ex1_s2_reload_byp_val})) & (~dec_byp_ex1_use_imm);		// Use Array or use IMMEDIATE
+assign ex1_rs2_byp_sel[1] = ex1_s2_xu0_byp_val    & (~dec_byp_ex1_use_imm);		// Use xu0 or use IMMEDIATE
+assign ex1_rs2_byp_sel[2] = ex1_s2_xu1_byp_val    & (~dec_byp_ex1_use_imm);		// Use xu1 or use IMMEDIATE
+assign ex1_rs2_byp_sel[3] = ex1_s2_load_byp_val   & (~dec_byp_ex1_use_imm);		// Use LQ LOAD or use IMMEDIATE
+assign ex1_rs2_byp_sel[4] = ex1_s2_reload_byp_val & (~dec_byp_ex1_use_imm);		// Use LQ RELOAD or use IMMEDIATE
 
 assign ex2_rs2_d = (rv_lq_gpr_ex1_r1d  & {(2**`GPR_WIDTH_ENC){ex1_rs2_byp_sel[0]}}) |
                    (ex1_s2_xu0_data    & {(2**`GPR_WIDTH_ENC){ex1_rs2_byp_sel[1]}}) |
@@ -696,9 +797,10 @@ assign ex2_rs2_d = (rv_lq_gpr_ex1_r1d  & {(2**`GPR_WIDTH_ENC){ex1_rs2_byp_sel[0]
                    (ex1_s2_reload_data & {(2**`GPR_WIDTH_ENC){ex1_rs2_byp_sel[4]}}) |
                    (dec_byp_ex1_imm    & {(2**`GPR_WIDTH_ENC){dec_byp_ex1_use_imm}});
 
-assign ex1_rs2_abort_byp_sel[1] = ex1_s2_xu0_abort_byp_val  & (~dec_byp_ex1_use_imm);		
-assign ex1_rs2_abort_byp_sel[2] = ex1_s2_xu1_abort_byp_val  & (~dec_byp_ex1_use_imm);		
-assign ex1_rs2_abort_byp_sel[3] = ex1_s2_load_abort_byp_val & (~dec_byp_ex1_use_imm);		
+// Abort Bypass for Source 2
+assign ex1_rs2_abort_byp_sel[1] = ex1_s2_xu0_abort_byp_val  & (~dec_byp_ex1_use_imm);		// Use xu0 or use IMMEDIATE
+assign ex1_rs2_abort_byp_sel[2] = ex1_s2_xu1_abort_byp_val  & (~dec_byp_ex1_use_imm);		// Use xu1 or use IMMEDIATE
+assign ex1_rs2_abort_byp_sel[3] = ex1_s2_load_abort_byp_val & (~dec_byp_ex1_use_imm);		// Use LQ LOAD or use IMMEDIATE
 
 assign ex1_s2_abort = ((ex1_s2_xu0_abort  & ex1_rs2_abort_byp_sel[1]) |
                        (ex1_s2_xu1_abort  & ex1_rs2_abort_byp_sel[2]) |
@@ -706,7 +808,11 @@ assign ex1_s2_abort = ((ex1_s2_xu0_abort  & ex1_rs2_abort_byp_sel[1]) |
 
 assign ex2_s2_abort_d = ex1_s2_abort;
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Load Hit Debug Data Compare
+//----------------------------------------------------------------------------------------------------------------------------------------
 
+// Load Hit Data Compare
 generate begin : dvcCmpLH
   genvar t;
   for (t = 0; t <= ((2 ** `GPR_WIDTH_ENC)/8) - 1; t = t + 1) begin : dvcCmpLH
@@ -718,6 +824,7 @@ generate begin : dvcCmpLH
 end
 endgenerate
 
+// Thread Select
 generate begin : sprTid
   genvar tid;
   for (tid=0; tid<`THREADS; tid=tid+1) begin : sprTid
@@ -734,9 +841,9 @@ always @(*) begin: ldhTid
     reg [0:1]                                                    dvc2m;
     reg [8-(2**`GPR_WIDTH_ENC)/8:7]                              dvc1be;
     reg [8-(2**`GPR_WIDTH_ENC)/8:7]                              dvc2be;
-    
+
     (* analysis_not_referenced="true" *)
-     
+
     integer                                                      tid;
     dvc1m = {2{1'b0}};
     dvc2m = {2{1'b0}};
@@ -752,8 +859,8 @@ always @(*) begin: ldhTid
     spr_dbcr2_dvc2m  <= dvc2m;
     spr_dbcr2_dvc1be <= dvc1be;
     spr_dbcr2_dvc2be <= dvc2be;
-end      
-   
+end
+
 lq_spr_dvccmp #(.REGSIZE(2**`GPR_WIDTH_ENC)) dvc1Ldh(
   .en(dcc_byp_ex6_dvc1_en),
   .en00(dcc_byp_ex6_dacr_cmpr[0]),
@@ -772,10 +879,17 @@ lq_spr_dvccmp #(.REGSIZE(2**`GPR_WIDTH_ENC)) dvc2Ldh(
 
 assign ex6_dacrw = {ex6_dvc1r_cmpr, ex6_dvc2r_cmpr, dcc_byp_ex6_dacr_cmpr[2:3]};
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// RAM Data Muxing
+//----------------------------------------------------------------------------------------------------------------------------------------
+// RAM Data Update
 
 assign lq_pc_ram_data_d = dcc_byp_ram_sel ? lsq_ctl_rel2_data[128-(2**`GPR_WIDTH_ENC):127] : ex6_gpr_wd0_q[64-(2**`GPR_WIDTH_ENC):63];
 assign lq_pc_ram_data = lq_pc_ram_data_q;
-   
+
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Reload Data Parity Generation
+//----------------------------------------------------------------------------------------------------------------------------------------
 generate begin : relParGen
   genvar byte;
   for (byte = 0; byte <= (`STQ_DATA_SIZE- 1)/8; byte=byte+1) begin : relParGen
@@ -788,6 +902,9 @@ assign rel2_rv_rel_data = {lsq_ctl_rel2_data[128-(2**`GPR_WIDTH_ENC):127],
                            rel2_data_par[((`STQ_DATA_SIZE-1)/8)-(((2**`GPR_WIDTH_ENC)-1)/8):(`STQ_DATA_SIZE-1)/8]};
 assign rel2_xu_rel_data = {lsq_ctl_rel2_data[(128-`STQ_DATA_SIZE):127], rel2_data_par};
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Assign targets
+//----------------------------------------------------------------------------------------------------------------------------------------
 assign byp_dir_ex2_rs1 = ex2_rs1_q;
 assign byp_dir_ex2_rs2 = ex2_rs2_q;
 assign byp_ex2_req_aborted = ex2_req_aborted;
@@ -800,7 +917,10 @@ assign lq_rv_ex2_s1_abort = ex2_s1_abort_q;
 assign lq_rv_ex2_s2_abort = ex2_s2_abort_q;
 assign byp_dec_ex1_s1_abort = ex1_s1_abort;
 assign byp_dec_ex1_s2_abort = ex1_s2_abort;
-      
+
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Latches
+//----------------------------------------------------------------------------------------------------------------------------------------
 
 tri_rlmreg_p #(.WIDTH(2**`GPR_WIDTH_ENC), .INIT(0), .NEEDS_SRESET(1)) ex2_rs1_latch(
   .nclk(nclk),
@@ -818,7 +938,7 @@ tri_rlmreg_p #(.WIDTH(2**`GPR_WIDTH_ENC), .INIT(0), .NEEDS_SRESET(1)) ex2_rs1_la
   .scout(sov[ex2_rs1_offset:ex2_rs1_offset + 2**`GPR_WIDTH_ENC - 1]),
   .din(ex2_rs1_d),
   .dout(ex2_rs1_q));
-      
+
 tri_rlmreg_p #(.WIDTH(2**`GPR_WIDTH_ENC), .INIT(0), .NEEDS_SRESET(1)) ex2_rs2_latch(
    .nclk(nclk),
    .vd(vdd),
@@ -920,7 +1040,7 @@ tri_rlmreg_p #(.WIDTH(6), .INIT(0), .NEEDS_SRESET(1)) ex1_s1_xu1_sel_latch(
    .scout(sov[ex1_s1_xu1_sel_offset:ex1_s1_xu1_sel_offset + (6) - 1]),
    .din(rv_lq_ex0_s1_xu1_sel),
    .dout(ex1_s1_xu1_sel_q));
-    
+
 tri_rlmreg_p #(.WIDTH(6), .INIT(0), .NEEDS_SRESET(1)) ex1_s2_xu1_sel_latch(
    .nclk(nclk),
    .vd(vdd),
@@ -1413,7 +1533,7 @@ tri_rlmreg_p #(.WIDTH(2**`GPR_WIDTH_ENC), .INIT(0), .NEEDS_SRESET(1)) ex6_fx_ld_
    .scout(sov[ex6_fx_ld_data_offset:ex6_fx_ld_data_offset + 2**`GPR_WIDTH_ENC - 1]),
    .din(ex6_fx_ld_data_d),
    .dout(ex6_fx_ld_data_q));
-    
+
 tri_rlmreg_p #(.WIDTH(2**`GPR_WIDTH_ENC), .INIT(0), .NEEDS_SRESET(1)) ex7_fx_ld_data_latch(
    .nclk(nclk),
    .vd(vdd),
@@ -1447,7 +1567,7 @@ tri_rlmreg_p #(.WIDTH(2**`GPR_WIDTH_ENC), .INIT(0), .NEEDS_SRESET(1)) ex8_fx_ld_
    .scout(sov[ex8_fx_ld_data_offset:ex8_fx_ld_data_offset + 2**`GPR_WIDTH_ENC - 1]),
    .din(ex8_fx_ld_data_d),
    .dout(ex8_fx_ld_data_q));
-   
+
 tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ex3_req_aborted_latch(
    .nclk(nclk),
    .vd(vdd),
@@ -1498,7 +1618,7 @@ tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ex5_req_aborted_latch(
    .scout(sov[ex5_req_aborted_offset]),
    .din(ex5_req_aborted_d),
    .dout(ex5_req_aborted_q));
-   
+
 tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ex6_lq_req_abort_latch(
    .nclk(nclk),
    .vd(vdd),
@@ -1669,6 +1789,9 @@ tri_rlmreg_p #(.WIDTH(2**`GPR_WIDTH_ENC), .INIT(0), .NEEDS_SRESET(1)) lq_pc_ram_
    .din(lq_pc_ram_data_d),
    .dout(lq_pc_ram_data_q));
 
+//------------------------------------
+//              ACTs
+//------------------------------------
 
 tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ex4_xu0_stg_act_latch(
    .nclk(nclk),
@@ -1759,4 +1882,3 @@ assign siv[0:scan_right-1] = {sov[1:scan_right-1], scan_in};
 assign scan_out = sov[0];
 
 endmodule
-

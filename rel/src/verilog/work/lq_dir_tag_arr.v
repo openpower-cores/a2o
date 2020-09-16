@@ -7,11 +7,18 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//
+//  Description:  XU LSU L1 Data Directory Tag Array
+//
+//*****************************************************************************
 
+// ##########################################################################################
+// Tag Compare
+// 1) Contains an Array of Tags
+// 2) Updates Tag on Reload
+// ##########################################################################################
 
 `include "tri_a2o.vh"
-
-
 
 module lq_dir_tag_arr(
    wdata,
@@ -62,20 +69,32 @@ module lq_dir_tag_arr(
    p1_par_err_det_h
 );
 
-parameter                                                    WAYDATASIZE = 34;	    
-parameter                                                    PARBITS = 4;		       
+//-------------------------------------------------------------------
+// Generics
+//-------------------------------------------------------------------
+//parameter                                                    EXPAND_TYPE = 2;	     // 0 = ibm (Umbra), 1 = non-ibm, 2 = ibm (MPG)
+//parameter                                                   `DC_SIZE = 15;		     // 2^14 = 16384, 2^15 = 32768 Bytes L1 D$
+//parameter                                                   `CL_SIZE = 6;		     // 2^6 = 64 Bytes CacheLines
+//parameter                                                   `REAL_IFAR_WIDTH = 42;  // 42 bit real address
+parameter                                                    WAYDATASIZE = 34;	    // TagSize + Parity Bits
+parameter                                                    PARBITS = 4;		       // Parity Bits
 
 
+// Write Path
 input [64-`REAL_IFAR_WIDTH:63-(`DC_SIZE-3)]                 wdata;
 
+// Directory Array Read Data
 input [0:(8*WAYDATASIZE)-1]                                 dir_arr_rd_data0;
 input [0:(8*WAYDATASIZE)-1]                                 dir_arr_rd_data1;
 
+// Parity Error Injection
 input                                                       inj_ddir_p0_parity;
 input                                                       inj_ddir_p1_parity;
 
+// Directory Array Write Controls
 output [64-`REAL_IFAR_WIDTH:64-`REAL_IFAR_WIDTH+WAYDATASIZE-1] dir_arr_wr_data;
 
+// Way Tag Data
 output [64-`REAL_IFAR_WIDTH:63-(`DC_SIZE-3)]                 p0_way_tag_a;
 output [64-`REAL_IFAR_WIDTH:63-(`DC_SIZE-3)]                 p0_way_tag_b;
 output [64-`REAL_IFAR_WIDTH:63-(`DC_SIZE-3)]                 p0_way_tag_c;
@@ -93,6 +112,7 @@ output [64-`REAL_IFAR_WIDTH:63-(`DC_SIZE-3)]                 p1_way_tag_f;
 output [64-`REAL_IFAR_WIDTH:63-(`DC_SIZE-3)]                 p1_way_tag_g;
 output [64-`REAL_IFAR_WIDTH:63-(`DC_SIZE-3)]                 p1_way_tag_h;
 
+// Way Tag Parity
 output [0:PARBITS-1]                                         p0_way_par_a;
 output [0:PARBITS-1]                                         p0_way_par_b;
 output [0:PARBITS-1]                                         p0_way_par_c;
@@ -101,7 +121,8 @@ output [0:PARBITS-1]                                         p0_way_par_e;
 output [0:PARBITS-1]                                         p0_way_par_f;
 output [0:PARBITS-1]                                         p0_way_par_g;
 output [0:PARBITS-1]                                         p0_way_par_h;
-                                                            
+
+// Parity Error Detected
 output                                                       p0_par_err_det_a;
 output                                                       p0_par_err_det_b;
 output                                                       p0_par_err_det_c;
@@ -119,12 +140,21 @@ output                                                       p1_par_err_det_f;
 output                                                       p1_par_err_det_g;
 output                                                       p1_par_err_det_h;
 
+//--------------------------
+// components
+//--------------------------
 
+//--------------------------
+// constants
+//--------------------------
 parameter                                                    uprTagBit = 64 - `REAL_IFAR_WIDTH;
 parameter                                                    lwrTagBit = 63 - (`DC_SIZE - 3);
 parameter                                                    tagSize = lwrTagBit - uprTagBit + 1;
 parameter                                                    numWays = 8;
 
+//--------------------------
+// signals
+//--------------------------
 wire [uprTagBit:lwrTagBit]                                   wr_data;
 wire [uprTagBit:lwrTagBit]                                   p0_rd_way[0:numWays-1];
 wire [uprTagBit:lwrTagBit]                                   p1_rd_way[0:numWays-1];
@@ -178,11 +208,17 @@ wire [0:PARBITS-1]                                           p1_parity_gen_1b[0:
 (* NO_MODIFICATION="TRUE" *)
 wire [0:PARBITS-1]                                           p1_parity_gen_2b[0:numWays-1];
 
+// ####################################################
+// Inputs
+// ####################################################
 
 assign arr_rd_data0 = dir_arr_rd_data0;
 assign arr_rd_data1 = dir_arr_rd_data1;
 assign wr_data = wdata;
 
+// ####################################################
+// Array Parity Generation
+// ####################################################
 
 generate begin : extra_byte
       genvar                                                       t;
@@ -213,6 +249,9 @@ endgenerate
 
 assign arr_wr_data = {wr_data, arr_parity};
 
+// ####################################################
+// Tag Array Read
+// ####################################################
 
 generate begin : tagRead
      genvar                                                       way;
@@ -233,6 +272,9 @@ generate begin : tagRead
    end
 endgenerate
 
+// ####################################################
+// Tag Parity Generation
+// ####################################################
 
 generate begin : rdExtraByte
       genvar way;
@@ -256,40 +298,55 @@ generate begin : rdParGen
       genvar way;
       for (way=0; way<numWays; way=way+1) begin : rdParGen
          genvar                                                       i;
-         for (i = 0; i <= (tagSize/8) - 1; i = i + 1) begin : rdParGen            
+         for (i = 0; i <= (tagSize/8) - 1; i = i + 1) begin : rdParGen
+            // Port 0
+            //assign p0_par_gen_1stlvla[way][i] = (~(p0_rd_way[way][8 * i + uprTagBit + 0] ^ p0_rd_way[way][8 * i + uprTagBit + 1]));
             tri_xnor2 p0_par_gen_1stlvla_0 (.y(p0_par_gen_1stlvla[way][i]), .a(p0_rd_way[way][8*i + uprTagBit+0]), .b(p0_rd_way[way][8*i + uprTagBit+1]));
 
+            //assign p0_par_gen_1stlvlb[way][i] = (~(p0_rd_way[way][8 * i + uprTagBit + 2] ^ p0_rd_way[way][8 * i + uprTagBit + 3]));
             tri_xnor2 p0_par_gen_1stlvlb_0 (.y(p0_par_gen_1stlvlb[way][i]), .a(p0_rd_way[way][8*i + uprTagBit+2]), .b(p0_rd_way[way][8*i + uprTagBit+3]));
 
+            //assign p0_par_gen_1stlvlc[way][i] = (~(p0_rd_way[way][8 * i + uprTagBit + 4] ^ p0_rd_way[way][8 * i + uprTagBit + 5]));
             tri_xnor2 p0_par_gen_1stlvlc_0 (.y(p0_par_gen_1stlvlc[way][i]), .a(p0_rd_way[way][8*i + uprTagBit+4]), .b(p0_rd_way[way][8*i + uprTagBit+5]));
 
+            //assign p0_par_gen_1stlvld[way][i] = (~(p0_rd_way[way][8 * i + uprTagBit + 6] ^ p0_rd_way[way][8 * i + uprTagBit + 7]));
             tri_xnor2 p0_par_gen_1stlvld_0 (.y(p0_par_gen_1stlvld[way][i]), .a(p0_rd_way[way][8*i + uprTagBit+6]), .b(p0_rd_way[way][8*i + uprTagBit+7]));
 
+            //assign p0_parity_gen_1b[way][i]   = (~(p0_par_gen_1stlvla[way][i] ^ p0_par_gen_1stlvlb[way][i]));
             tri_xnor2 p0_parity_gen_1b_0 (.y(p0_parity_gen_1b[way][i]), .a(p0_par_gen_1stlvla[way][i]), .b(p0_par_gen_1stlvlb[way][i]));
 
+            //assign p0_parity_gen_2b[way][i]   = (~(p0_par_gen_1stlvlc[way][i] ^ p0_par_gen_1stlvld[way][i]));
             tri_xnor2 p0_parity_gen_2b_0 (.y(p0_parity_gen_2b[way][i]), .a(p0_par_gen_1stlvlc[way][i]), .b(p0_par_gen_1stlvld[way][i]));
 
+            // Port 1
+            //assign p1_par_gen_1stlvla[way][i] = (~(p1_rd_way[way][8 * i + uprTagBit + 0] ^ p1_rd_way[way][8 * i + uprTagBit + 1]));
             tri_xnor2 p1_par_gen_1stlvla_0 (.y(p1_par_gen_1stlvla[way][i]), .a(p1_rd_way[way][8*i + uprTagBit+0]), .b(p1_rd_way[way][8*i + uprTagBit+1]));
 
+            //assign p1_par_gen_1stlvlb[way][i] = (~(p1_rd_way[way][8 * i + uprTagBit + 2] ^ p1_rd_way[way][8 * i + uprTagBit + 3]));
             tri_xnor2 p1_par_gen_1stlvlb_0 (.y(p1_par_gen_1stlvlb[way][i]), .a(p1_rd_way[way][8*i + uprTagBit+2]), .b(p1_rd_way[way][8*i + uprTagBit+3]));
 
+            //assign p1_par_gen_1stlvlc[way][i] = (~(p1_rd_way[way][8 * i + uprTagBit + 4] ^ p1_rd_way[way][8 * i + uprTagBit + 5]));
             tri_xnor2 p1_par_gen_1stlvlc_0 (.y(p1_par_gen_1stlvlc[way][i]), .a(p1_rd_way[way][8*i + uprTagBit+4]), .b(p1_rd_way[way][8*i + uprTagBit+5]));
 
+            //assign p1_par_gen_1stlvld[way][i] = (~(p1_rd_way[way][8 * i + uprTagBit + 6] ^ p1_rd_way[way][8 * i + uprTagBit + 7]));
             tri_xnor2 p1_par_gen_1stlvld_0 (.y(p1_par_gen_1stlvld[way][i]), .a(p1_rd_way[way][8*i + uprTagBit+6]), .b(p1_rd_way[way][8*i + uprTagBit+7]));
 
+            //assign p1_parity_gen_1b[way][i]   = (~(p1_par_gen_1stlvla[way][i] ^ p1_par_gen_1stlvlb[way][i]));
             tri_xnor2 p1_parity_gen_1b_0 (.y(p1_parity_gen_1b[way][i]), .a(p1_par_gen_1stlvla[way][i]), .b(p1_par_gen_1stlvlb[way][i]));
 
-            tri_xnor2 p1_parity_gen_2b_0 (.y(p1_parity_gen_2b[way][i]), .a(p1_par_gen_1stlvlc[way][i]), .b(p1_par_gen_1stlvld[way][i]));           
+            //assign p1_parity_gen_2b[way][i]   = (~(p1_par_gen_1stlvlc[way][i] ^ p1_par_gen_1stlvld[way][i]));
+            tri_xnor2 p1_parity_gen_2b_0 (.y(p1_parity_gen_2b[way][i]), .a(p1_par_gen_1stlvlc[way][i]), .b(p1_par_gen_1stlvld[way][i]));
          end
       end
    end
 endgenerate
 
-generate 
+generate
    if ((tagSize % 8) != 0) begin : rdParGenx
       genvar            way;
       for (way=0; way<numWays; way=way+1) begin : rdParGenx
 
+         // Port 0
          assign p0_par_gen_1stlvla[way][PARBITS - 1] = (~(p0_extra_tag_par[way][0] ^ p0_extra_tag_par[way][1]));
          assign p0_par_gen_1stlvlb[way][PARBITS - 1] = (~(p0_extra_tag_par[way][2] ^ p0_extra_tag_par[way][3]));
          assign p0_par_gen_1stlvlc[way][PARBITS - 1] = (~(p0_extra_tag_par[way][4] ^ p0_extra_tag_par[way][5]));
@@ -297,6 +354,7 @@ generate
          assign p0_parity_gen_1b[way][PARBITS - 1]   = (~(p0_par_gen_1stlvla[way][PARBITS - 1] ^ p0_par_gen_1stlvlb[way][PARBITS - 1]));
          assign p0_parity_gen_2b[way][PARBITS - 1]   = (~(p0_par_gen_1stlvlc[way][PARBITS - 1] ^ p0_par_gen_1stlvld[way][PARBITS - 1]));
 
+         // Port 1
          assign p1_par_gen_1stlvla[way][PARBITS - 1] = (~(p1_extra_tag_par[way][0] ^ p1_extra_tag_par[way][1]));
          assign p1_par_gen_1stlvlb[way][PARBITS - 1] = (~(p1_extra_tag_par[way][2] ^ p1_extra_tag_par[way][3]));
          assign p1_par_gen_1stlvlc[way][PARBITS - 1] = (~(p1_extra_tag_par[way][4] ^ p1_extra_tag_par[way][5]));
@@ -307,6 +365,9 @@ generate
    end
 endgenerate
 
+// ####################################################
+// Parity Error Detect
+// ####################################################
 
 generate begin : parDet
      genvar                                                       way;
@@ -317,9 +378,14 @@ generate begin : parDet
    end
 endgenerate
 
+// ####################################################
+// Outputs
+// ####################################################
 
+// Directory Array Write Data
 assign dir_arr_wr_data = arr_wr_data;
 
+// Directory Array Read Tags
 assign p0_way_tag_a = p0_rd_way[0];
 assign p0_way_tag_b = p0_rd_way[1];
 assign p0_way_tag_c = p0_rd_way[2];
@@ -337,6 +403,7 @@ assign p1_way_tag_f = p1_rd_way[5];
 assign p1_way_tag_g = p1_rd_way[6];
 assign p1_way_tag_h = p1_rd_way[7];
 
+// Directory Array Read Parity
 assign p0_way_par_a = p0_rd_par[0];
 assign p0_way_par_b = p0_rd_par[1];
 assign p0_way_par_c = p0_rd_par[2];
@@ -345,7 +412,8 @@ assign p0_way_par_e = p0_rd_par[4];
 assign p0_way_par_f = p0_rd_par[5];
 assign p0_way_par_g = p0_rd_par[6];
 assign p0_way_par_h = p0_rd_par[7];
-   
+
+// Directory Parity Error Detected
 assign p0_par_err_det_a = |(p0_par_err_det[0]);
 assign p0_par_err_det_b = |(p0_par_err_det[1]);
 assign p0_par_err_det_c = |(p0_par_err_det[2]);
@@ -362,6 +430,5 @@ assign p1_par_err_det_e = |(p1_par_err_det[4]);
 assign p1_par_err_det_f = |(p1_par_err_det[5]);
 assign p1_par_err_det_g = |(p1_par_err_det[6]);
 assign p1_par_err_det_h = |(p1_par_err_det[7]);
-   
-endmodule
 
+endmodule

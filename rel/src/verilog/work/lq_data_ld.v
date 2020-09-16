@@ -7,14 +7,26 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU LSU Load Data Rotator Wrapper
+//
+//*****************************************************************************
 
+// ##########################################################################################
+// VHDL Contents
+// 1) 8 16 Byte Unaligned Rotator
+// 2) Little Endian Support for 2,4,8,16 Byte Operations
+// 3) Contains Algebraic Sign Extension
+// 4) Contains 8 Way Select
+// 5) Contains Fixed Point Unit (FXU) 8 Byte Load Path
+// 6) Contains Auxilary Unit (AXU) 16 Byte Load Path
+// ##########################################################################################
 
 `include "tri_a2o.vh"
 
 
 
 
-module lq_data_ld(   
+module lq_data_ld(
    ex3_stg_act,
    ex4_stg_act,
    ctl_dat_ex3_opsize,
@@ -60,10 +72,16 @@ module lq_data_ld(
    scan_out
 );
 
+//-------------------------------------------------------------------
+// Generics
+//-------------------------------------------------------------------
+//parameter                        EXPAND_TYPE = 2;		// 0 = ibm (Umbra), 1 = non-ibm, 2 = ibm (MPG)
 
+// ACT
 input                            ex3_stg_act;
 input                            ex4_stg_act;
 
+// Execution Pipe Load Data Rotator Controls
 input [0:4]                      ctl_dat_ex3_opsize;
 input [0:3]                      ctl_dat_ex3_le_ld_rotsel;
 input [0:3]                      ctl_dat_ex3_be_ld_rotsel;
@@ -71,8 +89,10 @@ input                            ctl_dat_ex3_algebraic;
 input [0:3]                      ctl_dat_ex3_le_alg_rotsel;
 input                            ctl_dat_ex3_le_mode;
 
+// D$ Array Read Data
 input [0:1151]                   dcarr_rd_data;
 
+// EX4 Load Bypass Data for Read/Write Collision detected in EX2
 input [0:3]                      stq7_byp_val_wabcd;
 input [0:3]                      stq7_byp_val_wefgh;
 input [0:143]                    stq7_byp_data_wabcd;
@@ -82,14 +102,19 @@ input [0:143]                    stq8_byp_data_wefgh;
 input [0:3]                      stq_byp_val_wabcd;
 input [0:3]                      stq_byp_val_wefgh;
 
+// Load Control
 input [0:7]                      ctl_dat_ex4_way_hit;
 
+// Parity Error Inject
 input                            inj_dcache_parity;
 
+// Data Cache Array Parity Error Detected
 output [0:7]                     dcarr_data_perr_way;
 
+// Rotated Data
 output [(128-`STQ_DATA_SIZE):127] ex5_ld_hit_data;
 
+// Read-Modify-Write Path Read data
 output [0:143]                   stq6_rd_data_wa;
 output [0:143]                   stq6_rd_data_wb;
 output [0:143]                   stq6_rd_data_wc;
@@ -99,6 +124,7 @@ output [0:143]                   stq6_rd_data_wf;
 output [0:143]                   stq6_rd_data_wg;
 output [0:143]                   stq6_rd_data_wh;
 
+// Pervasive
 inout                            vdd;
 inout                            gnd;
 (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)
@@ -117,9 +143,15 @@ input [0:4]                      scan_in;
 (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
 output [0:4]                     scan_out;
 
+//--------------------------
+// constants
+//--------------------------
 parameter                        ex5_ld_hit_data_reg_offset = 0;
 parameter                        scan_right = ex5_ld_hit_data_reg_offset + `STQ_DATA_SIZE - 1;
 
+//--------------------------
+// signals
+//--------------------------
 wire                             inj_dcache_parity_b;
 wire                             arr_rd_data32_b;
 wire                             stickbit32;
@@ -226,12 +258,24 @@ assign unused = (|(ex4_ld_data_wa[0:128-`STQ_DATA_SIZE])) | (|(ex4_ld_data_wb[0:
                 (|(ex4_ld_data_wc[0:128-`STQ_DATA_SIZE])) | (|(ex4_ld_data_wd[0:128-`STQ_DATA_SIZE])) |
                 (|(ex4_ld_data_we[0:128-`STQ_DATA_SIZE])) | (|(ex4_ld_data_wf[0:128-`STQ_DATA_SIZE])) |
                 (|(ex4_ld_data_wg[0:128-`STQ_DATA_SIZE])) | (|(ex4_ld_data_wh[0:128-`STQ_DATA_SIZE]));
+// #############################################################################################
 
+// #############################################################################################
+// Inject Data Cache Error
+// #############################################################################################
 
+// Sticking bit32 of the array when Data Cache Parity Error Inject is on
+// Bit32 will be stuck to 1
+// Bit32 refers to bit2 of byte0 of WayA
 assign inj_dcache_parity_b = (~inj_dcache_parity);
 assign arr_rd_data32_b = (~dcarr_rd_data[32]);
 assign stickbit32 = (~(arr_rd_data32_b & inj_dcache_parity_b));
+// #############################################################################################
 
+// #############################################################################################
+// Separate Data
+// #############################################################################################
+// Data Bits
 assign dcarr_rd_data_wa = {dcarr_rd_data[0:31], stickbit32, dcarr_rd_data[33:127]};
 assign dcarr_rd_data_wb = dcarr_rd_data[144:271];
 assign dcarr_rd_data_wc = dcarr_rd_data[288:415];
@@ -241,6 +285,7 @@ assign dcarr_rd_data_wf = dcarr_rd_data[720:847];
 assign dcarr_rd_data_wg = dcarr_rd_data[864:991];
 assign dcarr_rd_data_wh = dcarr_rd_data[1008:1135];
 
+// Parity Bits
 assign dcarr_rd_parity_wa = dcarr_rd_data[128:143];
 assign dcarr_rd_parity_wb = dcarr_rd_data[272:287];
 assign dcarr_rd_parity_wc = dcarr_rd_data[416:431];
@@ -249,7 +294,11 @@ assign dcarr_rd_parity_we = dcarr_rd_data[704:719];
 assign dcarr_rd_parity_wf = dcarr_rd_data[848:863];
 assign dcarr_rd_parity_wg = dcarr_rd_data[992:1007];
 assign dcarr_rd_parity_wh = dcarr_rd_data[1136:1151];
+// #############################################################################################
 
+// #############################################################################################
+// Way A 16 Byte Rotator
+// #############################################################################################
 generate begin : l1dcrotrWA
    genvar bit;
    for (bit = 0; bit <= 7; bit = bit + 1) begin : l1dcrotrWA
@@ -262,7 +311,7 @@ generate begin : l1dcrotrWA
             .algebraic(ctl_dat_ex3_algebraic),
             .le_algebraic_sel(ctl_dat_ex3_le_alg_rotsel),
             .be_algebraic_sel(ctl_dat_ex3_le_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wa[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wabcd[0]),
             .stq_byp_val(stq_byp_val_wabcd[0]),
@@ -271,7 +320,7 @@ generate begin : l1dcrotrWA
             .data_latched(dcarr_buf_data_wa[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wa[bit * 16:(bit * 16) + 15]),
             .algebraic_bit(ex4_ld_alg_bit_wa),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -292,7 +341,7 @@ generate begin : l1dcrotrWA
             .le(ctl_dat_ex3_le_mode),
             .le_rotate_sel(ctl_dat_ex3_le_ld_rotsel),
             .be_rotate_sel(ctl_dat_ex3_be_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wa[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wabcd[0]),
             .stq_byp_val(stq_byp_val_wabcd[0]),
@@ -300,7 +349,7 @@ generate begin : l1dcrotrWA
             .stq8_rmw_data(stq8_byp_data_wabcd[bit * 16:(bit * 16) + 15]),
             .data_latched(dcarr_buf_data_wa[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wa[bit * 16:(bit * 16) + 15]),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -318,7 +367,11 @@ generate begin : l1dcrotrWA
    end
 end
 endgenerate
+// #############################################################################################
 
+// #############################################################################################
+// Way B 16 Byte Rotator
+// #############################################################################################
 generate begin : l1dcrotrWB
    genvar bit;
    for (bit = 0; bit <= 7; bit = bit + 1) begin : l1dcrotrWB
@@ -331,7 +384,7 @@ generate begin : l1dcrotrWB
             .algebraic(ctl_dat_ex3_algebraic),
             .le_algebraic_sel(ctl_dat_ex3_le_alg_rotsel),
             .be_algebraic_sel(ctl_dat_ex3_le_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wb[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wabcd[1]),
             .stq_byp_val(stq_byp_val_wabcd[1]),
@@ -340,7 +393,7 @@ generate begin : l1dcrotrWB
             .data_latched(dcarr_buf_data_wb[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wb[bit * 16:(bit * 16) + 15]),
             .algebraic_bit(ex4_ld_alg_bit_wb),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -361,7 +414,7 @@ generate begin : l1dcrotrWB
             .le(ctl_dat_ex3_le_mode),
             .le_rotate_sel(ctl_dat_ex3_le_ld_rotsel),
             .be_rotate_sel(ctl_dat_ex3_be_ld_rotsel),
-             
+
             .arr_data(dcarr_rd_data_wb[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wabcd[1]),
             .stq_byp_val(stq_byp_val_wabcd[1]),
@@ -369,7 +422,7 @@ generate begin : l1dcrotrWB
             .stq8_rmw_data(stq8_byp_data_wabcd[bit * 16:(bit * 16) + 15]),
             .data_latched(dcarr_buf_data_wb[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wb[bit * 16:(bit * 16) + 15]),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -387,7 +440,11 @@ generate begin : l1dcrotrWB
    end
 end
 endgenerate
+// #############################################################################################
 
+// #############################################################################################
+// Way C 16 Byte Rotator
+// #############################################################################################
 generate begin : l1dcrotrWC
    genvar bit;
    for (bit = 0; bit <= 7; bit = bit + 1) begin : l1dcrotrWC
@@ -400,7 +457,7 @@ generate begin : l1dcrotrWC
             .algebraic(ctl_dat_ex3_algebraic),
             .le_algebraic_sel(ctl_dat_ex3_le_alg_rotsel),
             .be_algebraic_sel(ctl_dat_ex3_le_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wc[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wabcd[2]),
             .stq_byp_val(stq_byp_val_wabcd[2]),
@@ -409,7 +466,7 @@ generate begin : l1dcrotrWC
             .data_latched(dcarr_buf_data_wc[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wc[bit * 16:(bit * 16) + 15]),
             .algebraic_bit(ex4_ld_alg_bit_wc),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -430,7 +487,7 @@ generate begin : l1dcrotrWC
             .le(ctl_dat_ex3_le_mode),
             .le_rotate_sel(ctl_dat_ex3_le_ld_rotsel),
             .be_rotate_sel(ctl_dat_ex3_be_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wc[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wabcd[2]),
             .stq_byp_val(stq_byp_val_wabcd[2]),
@@ -438,7 +495,7 @@ generate begin : l1dcrotrWC
             .stq8_rmw_data(stq8_byp_data_wabcd[bit * 16:(bit * 16) + 15]),
             .data_latched(dcarr_buf_data_wc[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wc[bit * 16:(bit * 16) + 15]),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -456,7 +513,11 @@ generate begin : l1dcrotrWC
    end
 end
 endgenerate
+// #############################################################################################
 
+// #############################################################################################
+// Way D 16 Byte Rotator
+// #############################################################################################
 generate begin : l1dcrotrWD
    genvar bit;
    for (bit = 0; bit <= 7; bit = bit + 1) begin : l1dcrotrWD
@@ -469,7 +530,7 @@ generate begin : l1dcrotrWD
             .algebraic(ctl_dat_ex3_algebraic),
             .le_algebraic_sel(ctl_dat_ex3_le_alg_rotsel),
             .be_algebraic_sel(ctl_dat_ex3_le_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wd[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wabcd[3]),
             .stq_byp_val(stq_byp_val_wabcd[3]),
@@ -478,7 +539,7 @@ generate begin : l1dcrotrWD
             .data_latched(dcarr_buf_data_wd[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wd[bit * 16:(bit * 16) + 15]),
             .algebraic_bit(ex4_ld_alg_bit_wd),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -499,7 +560,7 @@ generate begin : l1dcrotrWD
             .le(ctl_dat_ex3_le_mode),
             .le_rotate_sel(ctl_dat_ex3_le_ld_rotsel),
             .be_rotate_sel(ctl_dat_ex3_be_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wd[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wabcd[3]),
             .stq_byp_val(stq_byp_val_wabcd[3]),
@@ -507,7 +568,7 @@ generate begin : l1dcrotrWD
             .stq8_rmw_data(stq8_byp_data_wabcd[bit * 16:(bit * 16) + 15]),
             .data_latched(dcarr_buf_data_wd[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wd[bit * 16:(bit * 16) + 15]),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -525,7 +586,11 @@ generate begin : l1dcrotrWD
    end
 end
 endgenerate
+// #############################################################################################
 
+// #############################################################################################
+// Way E 16 Byte Rotator
+// #############################################################################################
 generate begin : l1dcrotrWE
    genvar bit;
    for (bit = 0; bit <= 7; bit = bit + 1) begin : l1dcrotrWE
@@ -538,7 +603,7 @@ generate begin : l1dcrotrWE
             .algebraic(ctl_dat_ex3_algebraic),
             .le_algebraic_sel(ctl_dat_ex3_le_alg_rotsel),
             .be_algebraic_sel(ctl_dat_ex3_le_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_we[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wefgh[0]),
             .stq_byp_val(stq_byp_val_wefgh[0]),
@@ -547,7 +612,7 @@ generate begin : l1dcrotrWE
             .data_latched(dcarr_buf_data_we[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_we[bit * 16:(bit * 16) + 15]),
             .algebraic_bit(ex4_ld_alg_bit_we),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -568,7 +633,7 @@ generate begin : l1dcrotrWE
             .le(ctl_dat_ex3_le_mode),
             .le_rotate_sel(ctl_dat_ex3_le_ld_rotsel),
             .be_rotate_sel(ctl_dat_ex3_be_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_we[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wefgh[0]),
             .stq_byp_val(stq_byp_val_wefgh[0]),
@@ -576,7 +641,7 @@ generate begin : l1dcrotrWE
             .stq8_rmw_data(stq8_byp_data_wefgh[bit * 16:(bit * 16) + 15]),
             .data_latched(dcarr_buf_data_we[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_we[bit * 16:(bit * 16) + 15]),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -594,7 +659,11 @@ generate begin : l1dcrotrWE
    end
 end
 endgenerate
+// #############################################################################################
 
+// #############################################################################################
+// Way F 16 Byte Rotator
+// #############################################################################################
 generate begin : l1dcrotrWF
    genvar bit;
    for (bit = 0; bit <= 7; bit = bit + 1) begin : l1dcrotrWF
@@ -607,7 +676,7 @@ generate begin : l1dcrotrWF
             .algebraic(ctl_dat_ex3_algebraic),
             .le_algebraic_sel(ctl_dat_ex3_le_alg_rotsel),
             .be_algebraic_sel(ctl_dat_ex3_le_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wf[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wefgh[1]),
             .stq_byp_val(stq_byp_val_wefgh[1]),
@@ -616,7 +685,7 @@ generate begin : l1dcrotrWF
             .data_latched(dcarr_buf_data_wf[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wf[bit * 16:(bit * 16) + 15]),
             .algebraic_bit(ex4_ld_alg_bit_wf),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -637,7 +706,7 @@ generate begin : l1dcrotrWF
             .le(ctl_dat_ex3_le_mode),
             .le_rotate_sel(ctl_dat_ex3_le_ld_rotsel),
             .be_rotate_sel(ctl_dat_ex3_be_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wf[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wefgh[1]),
             .stq_byp_val(stq_byp_val_wefgh[1]),
@@ -645,7 +714,7 @@ generate begin : l1dcrotrWF
             .stq8_rmw_data(stq8_byp_data_wefgh[bit * 16:(bit * 16) + 15]),
             .data_latched(dcarr_buf_data_wf[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wf[bit * 16:(bit * 16) + 15]),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -663,7 +732,11 @@ generate begin : l1dcrotrWF
    end
 end
 endgenerate
+// #############################################################################################
 
+// #############################################################################################
+// Way G 16 Byte Rotator
+// #############################################################################################
 generate begin : l1dcrotrWG
    genvar bit;
    for (bit = 0; bit <= 7; bit = bit + 1) begin : l1dcrotrWG
@@ -676,7 +749,7 @@ generate begin : l1dcrotrWG
             .algebraic(ctl_dat_ex3_algebraic),
             .le_algebraic_sel(ctl_dat_ex3_le_alg_rotsel),
             .be_algebraic_sel(ctl_dat_ex3_le_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wg[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wefgh[2]),
             .stq_byp_val(stq_byp_val_wefgh[2]),
@@ -685,7 +758,7 @@ generate begin : l1dcrotrWG
             .data_latched(dcarr_buf_data_wg[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wg[bit * 16:(bit * 16) + 15]),
             .algebraic_bit(ex4_ld_alg_bit_wg),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -706,7 +779,7 @@ generate begin : l1dcrotrWG
             .le(ctl_dat_ex3_le_mode),
             .le_rotate_sel(ctl_dat_ex3_le_ld_rotsel),
             .be_rotate_sel(ctl_dat_ex3_be_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wg[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wefgh[2]),
             .stq_byp_val(stq_byp_val_wefgh[2]),
@@ -714,7 +787,7 @@ generate begin : l1dcrotrWG
             .stq8_rmw_data(stq8_byp_data_wefgh[bit * 16:(bit * 16) + 15]),
             .data_latched(dcarr_buf_data_wg[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wg[bit * 16:(bit * 16) + 15]),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -732,7 +805,11 @@ generate begin : l1dcrotrWG
    end
 end
 endgenerate
+// #############################################################################################
 
+// #############################################################################################
+// Way H 16 Byte Rotator
+// #############################################################################################
 generate begin : l1dcrotrWH
    genvar bit;
    for (bit = 0; bit <= 7; bit = bit + 1) begin : l1dcrotrWH
@@ -745,7 +822,7 @@ generate begin : l1dcrotrWH
             .algebraic(ctl_dat_ex3_algebraic),
             .le_algebraic_sel(ctl_dat_ex3_le_alg_rotsel),
             .be_algebraic_sel(ctl_dat_ex3_le_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wh[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wefgh[3]),
             .stq_byp_val(stq_byp_val_wefgh[3]),
@@ -754,7 +831,7 @@ generate begin : l1dcrotrWH
             .data_latched(dcarr_buf_data_wh[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wh[bit * 16:(bit * 16) + 15]),
             .algebraic_bit(ex4_ld_alg_bit_wh),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -775,7 +852,7 @@ generate begin : l1dcrotrWH
             .le(ctl_dat_ex3_le_mode),
             .le_rotate_sel(ctl_dat_ex3_le_ld_rotsel),
             .be_rotate_sel(ctl_dat_ex3_be_ld_rotsel),
-            
+
             .arr_data(dcarr_rd_data_wh[bit * 16:(bit * 16) + 15]),
             .stq7_byp_val(stq7_byp_val_wefgh[3]),
             .stq_byp_val(stq_byp_val_wefgh[3]),
@@ -783,7 +860,7 @@ generate begin : l1dcrotrWH
             .stq8_rmw_data(stq8_byp_data_wefgh[bit * 16:(bit * 16) + 15]),
             .data_latched(dcarr_buf_data_wh[bit * 16:(bit * 16) + 15]),
             .data_rot(ex4_ld_data_rot_wh[bit * 16:(bit * 16) + 15]),
-            
+
             .vdd(vdd),
             .gnd(gnd),
             .nclk(nclk),
@@ -801,7 +878,11 @@ generate begin : l1dcrotrWH
    end
 end
 endgenerate
+// #############################################################################################
 
+// #############################################################################################
+// Parity Check
+// #############################################################################################
 generate begin : parBdet
    genvar bit;
    for (bit = 0; bit <= 15; bit = bit + 1) begin : parBdet
@@ -811,51 +892,52 @@ generate begin : parBdet
                                        dcarr_buf_data_wa[bit + 96] ^ dcarr_buf_data_wa[bit + 112] ^
                                        dcarr_rd_parity_wa[bit];
 
-      assign dcarr_perr_byte_wb[bit] = dcarr_buf_data_wb[bit + 0]  ^ dcarr_buf_data_wb[bit + 16] ^ 
-                                       dcarr_buf_data_wb[bit + 32] ^ dcarr_buf_data_wb[bit + 48] ^ 
-                                       dcarr_buf_data_wb[bit + 64] ^ dcarr_buf_data_wb[bit + 80] ^ 
-                                       dcarr_buf_data_wb[bit + 96] ^ dcarr_buf_data_wb[bit + 112] ^ 
+      assign dcarr_perr_byte_wb[bit] = dcarr_buf_data_wb[bit + 0]  ^ dcarr_buf_data_wb[bit + 16] ^
+                                       dcarr_buf_data_wb[bit + 32] ^ dcarr_buf_data_wb[bit + 48] ^
+                                       dcarr_buf_data_wb[bit + 64] ^ dcarr_buf_data_wb[bit + 80] ^
+                                       dcarr_buf_data_wb[bit + 96] ^ dcarr_buf_data_wb[bit + 112] ^
                                        dcarr_rd_parity_wb[bit];
 
-      assign dcarr_perr_byte_wc[bit] = dcarr_buf_data_wc[bit + 0]  ^ dcarr_buf_data_wc[bit + 16] ^ 
-                                       dcarr_buf_data_wc[bit + 32] ^ dcarr_buf_data_wc[bit + 48] ^ 
-                                       dcarr_buf_data_wc[bit + 64] ^ dcarr_buf_data_wc[bit + 80] ^ 
-                                       dcarr_buf_data_wc[bit + 96] ^ dcarr_buf_data_wc[bit + 112] ^ 
+      assign dcarr_perr_byte_wc[bit] = dcarr_buf_data_wc[bit + 0]  ^ dcarr_buf_data_wc[bit + 16] ^
+                                       dcarr_buf_data_wc[bit + 32] ^ dcarr_buf_data_wc[bit + 48] ^
+                                       dcarr_buf_data_wc[bit + 64] ^ dcarr_buf_data_wc[bit + 80] ^
+                                       dcarr_buf_data_wc[bit + 96] ^ dcarr_buf_data_wc[bit + 112] ^
                                        dcarr_rd_parity_wc[bit];
 
-      assign dcarr_perr_byte_wd[bit] = dcarr_buf_data_wd[bit + 0]  ^ dcarr_buf_data_wd[bit + 16] ^ 
-                                       dcarr_buf_data_wd[bit + 32] ^ dcarr_buf_data_wd[bit + 48] ^ 
-                                       dcarr_buf_data_wd[bit + 64] ^ dcarr_buf_data_wd[bit + 80] ^ 
-                                       dcarr_buf_data_wd[bit + 96] ^ dcarr_buf_data_wd[bit + 112] ^ 
+      assign dcarr_perr_byte_wd[bit] = dcarr_buf_data_wd[bit + 0]  ^ dcarr_buf_data_wd[bit + 16] ^
+                                       dcarr_buf_data_wd[bit + 32] ^ dcarr_buf_data_wd[bit + 48] ^
+                                       dcarr_buf_data_wd[bit + 64] ^ dcarr_buf_data_wd[bit + 80] ^
+                                       dcarr_buf_data_wd[bit + 96] ^ dcarr_buf_data_wd[bit + 112] ^
                                        dcarr_rd_parity_wd[bit];
 
-      assign dcarr_perr_byte_we[bit] = dcarr_buf_data_we[bit + 0]  ^ dcarr_buf_data_we[bit + 16] ^ 
-                                       dcarr_buf_data_we[bit + 32] ^ dcarr_buf_data_we[bit + 48] ^ 
-                                       dcarr_buf_data_we[bit + 64] ^ dcarr_buf_data_we[bit + 80] ^ 
-                                       dcarr_buf_data_we[bit + 96] ^ dcarr_buf_data_we[bit + 112] ^ 
+      assign dcarr_perr_byte_we[bit] = dcarr_buf_data_we[bit + 0]  ^ dcarr_buf_data_we[bit + 16] ^
+                                       dcarr_buf_data_we[bit + 32] ^ dcarr_buf_data_we[bit + 48] ^
+                                       dcarr_buf_data_we[bit + 64] ^ dcarr_buf_data_we[bit + 80] ^
+                                       dcarr_buf_data_we[bit + 96] ^ dcarr_buf_data_we[bit + 112] ^
                                        dcarr_rd_parity_we[bit];
 
-      assign dcarr_perr_byte_wf[bit] = dcarr_buf_data_wf[bit + 0]  ^ dcarr_buf_data_wf[bit + 16] ^ 
-                                       dcarr_buf_data_wf[bit + 32] ^ dcarr_buf_data_wf[bit + 48] ^ 
-                                       dcarr_buf_data_wf[bit + 64] ^ dcarr_buf_data_wf[bit + 80] ^ 
-                                       dcarr_buf_data_wf[bit + 96] ^ dcarr_buf_data_wf[bit + 112] ^ 
+      assign dcarr_perr_byte_wf[bit] = dcarr_buf_data_wf[bit + 0]  ^ dcarr_buf_data_wf[bit + 16] ^
+                                       dcarr_buf_data_wf[bit + 32] ^ dcarr_buf_data_wf[bit + 48] ^
+                                       dcarr_buf_data_wf[bit + 64] ^ dcarr_buf_data_wf[bit + 80] ^
+                                       dcarr_buf_data_wf[bit + 96] ^ dcarr_buf_data_wf[bit + 112] ^
                                        dcarr_rd_parity_wf[bit];
 
-      assign dcarr_perr_byte_wg[bit] = dcarr_buf_data_wg[bit + 0]  ^ dcarr_buf_data_wg[bit + 16] ^ 
-                                       dcarr_buf_data_wg[bit + 32] ^ dcarr_buf_data_wg[bit + 48] ^ 
-                                       dcarr_buf_data_wg[bit + 64] ^ dcarr_buf_data_wg[bit + 80] ^ 
-                                       dcarr_buf_data_wg[bit + 96] ^ dcarr_buf_data_wg[bit + 112] ^ 
+      assign dcarr_perr_byte_wg[bit] = dcarr_buf_data_wg[bit + 0]  ^ dcarr_buf_data_wg[bit + 16] ^
+                                       dcarr_buf_data_wg[bit + 32] ^ dcarr_buf_data_wg[bit + 48] ^
+                                       dcarr_buf_data_wg[bit + 64] ^ dcarr_buf_data_wg[bit + 80] ^
+                                       dcarr_buf_data_wg[bit + 96] ^ dcarr_buf_data_wg[bit + 112] ^
                                        dcarr_rd_parity_wg[bit];
 
-      assign dcarr_perr_byte_wh[bit] = dcarr_buf_data_wh[bit + 0]  ^ dcarr_buf_data_wh[bit + 16] ^ 
-                                       dcarr_buf_data_wh[bit + 32] ^ dcarr_buf_data_wh[bit + 48] ^ 
-                                       dcarr_buf_data_wh[bit + 64] ^ dcarr_buf_data_wh[bit + 80] ^ 
-                                       dcarr_buf_data_wh[bit + 96] ^ dcarr_buf_data_wh[bit + 112] ^ 
+      assign dcarr_perr_byte_wh[bit] = dcarr_buf_data_wh[bit + 0]  ^ dcarr_buf_data_wh[bit + 16] ^
+                                       dcarr_buf_data_wh[bit + 32] ^ dcarr_buf_data_wh[bit + 48] ^
+                                       dcarr_buf_data_wh[bit + 64] ^ dcarr_buf_data_wh[bit + 80] ^
+                                       dcarr_buf_data_wh[bit + 96] ^ dcarr_buf_data_wh[bit + 112] ^
                                        dcarr_rd_parity_wh[bit];
    end
 end
 endgenerate
 
+// Report a Parity error if the data is not being bypassed due to a store to the same address
 assign dcarr_perr_det_wa = |(dcarr_perr_byte_wa) & ~stq_byp_val_wabcd[0];
 assign dcarr_perr_det_wb = |(dcarr_perr_byte_wb) & ~stq_byp_val_wabcd[1];
 assign dcarr_perr_det_wc = |(dcarr_perr_byte_wc) & ~stq_byp_val_wabcd[2];
@@ -865,11 +947,17 @@ assign dcarr_perr_det_wf = |(dcarr_perr_byte_wf) & ~stq_byp_val_wefgh[1];
 assign dcarr_perr_det_wg = |(dcarr_perr_byte_wg) & ~stq_byp_val_wefgh[2];
 assign dcarr_perr_det_wh = |(dcarr_perr_byte_wh) & ~stq_byp_val_wefgh[3];
 
+// EX4/STQ6 Data Cache Array Parity Error Detected
 assign dcarr_data_perr_way = {dcarr_perr_det_wa, dcarr_perr_det_wb, dcarr_perr_det_wc, dcarr_perr_det_wd,
                               dcarr_perr_det_we, dcarr_perr_det_wf, dcarr_perr_det_wg, dcarr_perr_det_wh};
 
+// #############################################################################################
 
+// #############################################################################################
+// Algebraic Sign Extension
+// #############################################################################################
 
+// Data Fixup
 generate begin : ldData
    genvar byte;
    for (byte = 0; byte <= 15; byte = byte + 1) begin : ldData
@@ -948,6 +1036,7 @@ generate begin : ldData
 end
 endgenerate
 
+// Non-Sign Extension
 assign ex4_ld_data_wa[0:64] = {1'b0, ex4_ld_data_swzl_wa[0:63]};
 assign ex4_ld_data_wb[0:64] = {1'b0, ex4_ld_data_swzl_wb[0:63]};
 assign ex4_ld_data_wc[0:64] = {1'b0, ex4_ld_data_swzl_wc[0:63]};
@@ -965,6 +1054,7 @@ assign ex4_ld_data_wf[113:128] = ex4_ld_data_swzl_wf[112:127];
 assign ex4_ld_data_wg[113:128] = ex4_ld_data_swzl_wg[112:127];
 assign ex4_ld_data_wh[113:128] = ex4_ld_data_swzl_wh[112:127];
 
+// Sign Extension
 generate begin : algExt
    genvar bit;
    for (bit = 0; bit <= 47; bit = bit + 1) begin : algExt
@@ -979,18 +1069,27 @@ generate begin : algExt
    end
 end
 endgenerate
+// #############################################################################################
 
+// #############################################################################################
+// 8 Way Mux Select
+// #############################################################################################
 assign ex5_ld_hit_data_d = (ex4_ld_data_wa[(129 - `STQ_DATA_SIZE):128] & {`STQ_DATA_SIZE{ctl_dat_ex4_way_hit[0]}}) |
                            (ex4_ld_data_wb[(129 - `STQ_DATA_SIZE):128] & {`STQ_DATA_SIZE{ctl_dat_ex4_way_hit[1]}}) |
                            (ex4_ld_data_wc[(129 - `STQ_DATA_SIZE):128] & {`STQ_DATA_SIZE{ctl_dat_ex4_way_hit[2]}}) |
                            (ex4_ld_data_wd[(129 - `STQ_DATA_SIZE):128] & {`STQ_DATA_SIZE{ctl_dat_ex4_way_hit[3]}}) |
-                           (ex4_ld_data_we[(129 - `STQ_DATA_SIZE):128] & {`STQ_DATA_SIZE{ctl_dat_ex4_way_hit[4]}}) | 
+                           (ex4_ld_data_we[(129 - `STQ_DATA_SIZE):128] & {`STQ_DATA_SIZE{ctl_dat_ex4_way_hit[4]}}) |
                            (ex4_ld_data_wf[(129 - `STQ_DATA_SIZE):128] & {`STQ_DATA_SIZE{ctl_dat_ex4_way_hit[5]}}) |
                            (ex4_ld_data_wg[(129 - `STQ_DATA_SIZE):128] & {`STQ_DATA_SIZE{ctl_dat_ex4_way_hit[6]}}) |
                            (ex4_ld_data_wh[(129 - `STQ_DATA_SIZE):128] & {`STQ_DATA_SIZE{ctl_dat_ex4_way_hit[7]}});
+// #############################################################################################
 
+// #############################################################################################
+// Outputs
+// #############################################################################################
 assign ex5_ld_hit_data = ex5_ld_hit_data_q;
 
+// Read-Modify-Write Path
 assign stq6_rd_data_wa = {dcarr_rd_data_wa, dcarr_rd_parity_wa};
 assign stq6_rd_data_wb = {dcarr_rd_data_wb, dcarr_rd_parity_wb};
 assign stq6_rd_data_wc = {dcarr_rd_data_wc, dcarr_rd_parity_wc};
@@ -1000,8 +1099,12 @@ assign stq6_rd_data_wf = {dcarr_rd_data_wf, dcarr_rd_parity_wf};
 assign stq6_rd_data_wg = {dcarr_rd_data_wg, dcarr_rd_parity_wg};
 assign stq6_rd_data_wh = {dcarr_rd_data_wh, dcarr_rd_parity_wh};
 
+// #############################################################################################
 
- 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Registers
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
 tri_regk #(.WIDTH(`STQ_DATA_SIZE), .INIT(0), .NEEDS_SRESET(1)) ex5_ld_hit_data_reg(
    .vd(vdd),
    .gd(gnd),
@@ -1040,5 +1143,3 @@ assign rot_wh_scan_in[0:7] = {rot_wh_scan_out[1:7], rot_wg_scan_out[0]};
 assign scan_out[4] = rot_wh_scan_out[0];
 
 endmodule
-
-

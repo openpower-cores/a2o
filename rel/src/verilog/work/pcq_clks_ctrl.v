@@ -7,10 +7,13 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//
+//  Description: Pervasive Core LCB Control Component
+//
+//*****************************************************************************
 
-
-
-module pcq_clks_ctrl( 
+module pcq_clks_ctrl(
+// Include model build parameters
 `include "tri_a2o.vh"
 
    inout			vdd,
@@ -32,6 +35,7 @@ module pcq_clks_ctrl(
    input			ct_ck_pm_ccflush_disable,
    input			ct_ck_pm_raise_tholds,
    input  [0:8]			scan_type_dc,
+   //  --Thold + control outputs to the units
    output			ccflush_out_dc,
    output			gptr_sl_thold_5,
    output			time_sl_thold_5,
@@ -53,10 +57,14 @@ module pcq_clks_ctrl(
    output			fce_5
 );
 
-   
 
-   parameter   			SCANTYPE_SIZE = 9;	
-	
+//=====================================================================
+// Signal Declarations
+//=====================================================================
+
+   // Scan ring select decodes for scan_type_dc vector
+   parameter   			SCANTYPE_SIZE = 9;	// Use bits 0:8 of scan_type vector
+
    parameter   			SCANTYPE_FUNC = 0;
    parameter   			SCANTYPE_MODE = 1;
    parameter   			SCANTYPE_CCFG = 2;
@@ -69,7 +77,7 @@ module pcq_clks_ctrl(
    parameter   			SCANTYPE_TIME = 7;
    parameter   			SCANTYPE_BNDY = 8;
    parameter   			SCANTYPE_FARY = 9;
-   
+
    wire				fast_xstop_gated_staged;
    wire				fce_in;
    wire				sg_in;
@@ -97,69 +105,88 @@ module pcq_clks_ctrl(
    wire				ccflush_out_dc_int;
    wire				testdc;
    wire				thold_overide_ctrl;
-   wire [0:SCANTYPE_SIZE-1] 	scan_type_b; 
-      
+   wire [0:SCANTYPE_SIZE-1] 	scan_type_b;
 
-(* analysis_not_referenced="true" *)  
+
+// Get rid of sinkless net messages
+// synopsys translate_off
+(* analysis_not_referenced="true" *)
+// synopsys translate_on
    wire   unused_signals;
    assign unused_signals = (scan_type_b[2] | scan_type_b[4] | (|scan_type_b[6:8]) | lbist_ip_dc);
 
 
-   
-   
+//!! Bugspray Include: pcq_clks_ctrl;
+
+
+//=====================================================================
+// Clock Control Logic
+//=====================================================================
+   // detect test dc mode
    assign testdc = gsd_test_enable_dc & (~gsd_test_acmode_dc);
-   
+
+   // enable sg/fce before latching
    assign sg_in  = sg_6  & ccenable_dc;
    assign fce_in = fce_6 & ccenable_dc;
-   
+
+   // scan chain type
    assign scan_type_b = ({SCANTYPE_SIZE {sg_in}} & (~scan_type_dc));
-   
+
+   // setup for xx_thold_6 inputs
    assign thold_overide_ctrl = fast_xstop_gated_staged & (~sg_in) & (~lbist_en_dc) & (~gsd_test_enable_dc);
-   
+
    assign rtim_sl_thold  = rtim_sl_thold_6;
    assign func_sl_thold  = func_sl_thold_6  | thold_overide_ctrl;
    assign func_nsl_thold = func_nsl_thold_6 | thold_overide_ctrl;
    assign ary_nsl_thold  = ary_nsl_thold_6  | thold_overide_ctrl;
-   
+
+   // setup for plat flush control signals
+   // Active when power_management enabled (PM_Sleep_enable or PM_RVW_enable active)
+   // If plats were in flush mode, forces plats to be clocked again for power-savings.
    assign pm_ccflush_disable_dc = ct_ck_pm_ccflush_disable;
-   
+
    assign ccflush_out_dc_int = ccflush_dc & ((~pm_ccflush_disable_dc) | lbist_en_dc | testdc);
    assign ccflush_out_dc     = ccflush_out_dc_int;
 
-  
-   assign gptr_sl_thold_in = func_sl_thold | (~scan_type_dc[SCANTYPE_GPTR]) | (~ccenable_dc);
-   
-   assign time_sl_thold_in = func_sl_thold | (~scan_type_dc[SCANTYPE_TIME]) | (~ccenable_dc);
-   
-   assign repr_sl_thold_in = func_sl_thold | (~scan_type_dc[SCANTYPE_REPR]) | (~ccenable_dc);
-   
-   assign cfg_run_sl_thold_in  = func_sl_thold | scan_type_b[SCANTYPE_MODE] | (ct_ck_pm_raise_tholds & (~sg_in) & (~lbist_en_dc) & (~gsd_test_enable_dc));
-   
-   assign cfg_slp_sl_thold_in  = func_sl_thold | scan_type_b[SCANTYPE_MODE];
-      
-   assign abst_run_sl_thold_in = func_sl_thold | scan_type_b[SCANTYPE_ABST] | (ct_ck_pm_raise_tholds & (~sg_in) & (~lbist_en_dc) & (~gsd_test_enable_dc));
-   
-   assign abst_slp_sl_thold_in = func_sl_thold | scan_type_b[SCANTYPE_ABST];
-   
-   assign regf_run_sl_thold_in = func_sl_thold | scan_type_b[SCANTYPE_REGF] | (ct_ck_pm_raise_tholds & (~sg_in) & (~lbist_en_dc) & (~gsd_test_enable_dc));
-   
-   assign regf_slp_sl_thold_in = func_sl_thold | scan_type_b[SCANTYPE_REGF];
-   
-   assign func_run_sl_thold_in = func_sl_thold | scan_type_b[SCANTYPE_FUNC] | (ct_ck_pm_raise_tholds & (~sg_in) & (~lbist_en_dc) & (~gsd_test_enable_dc));
-   
-   assign func_slp_sl_thold_in = func_sl_thold | scan_type_b[SCANTYPE_FUNC];
-   
-   assign func_run_nsl_thold_in = func_nsl_thold | (ct_ck_pm_raise_tholds & (~fce_in) & (~lbist_en_dc) & (~gsd_test_enable_dc));
-   
-   assign func_slp_nsl_thold_in = func_nsl_thold;
-   
-   assign ary_run_nsl_thold_in = ary_nsl_thold | (ct_ck_pm_raise_tholds & (~fce_in) & (~lbist_en_dc) & (~gsd_test_enable_dc));
-   
-   assign ary_slp_nsl_thold_in = ary_nsl_thold;
-   
-   assign rtim_sl_thold_in = rtim_sl_thold;
-   
 
+   // OR and MUX of thold signals
+   // scan only: stop if not scanning, not part of LBIST, hence no sg_in here
+   assign gptr_sl_thold_in = func_sl_thold | (~scan_type_dc[SCANTYPE_GPTR]) | (~ccenable_dc);
+
+   // scan only: stop if not scanning, not part of LBIST, hence no sg_in here
+   assign time_sl_thold_in = func_sl_thold | (~scan_type_dc[SCANTYPE_TIME]) | (~ccenable_dc);
+
+   // scan only: stop if not scanning, not part of LBIST, hence no sg_in here
+   assign repr_sl_thold_in = func_sl_thold | (~scan_type_dc[SCANTYPE_REPR]) | (~ccenable_dc);
+
+   assign cfg_run_sl_thold_in  = func_sl_thold | scan_type_b[SCANTYPE_MODE] | (ct_ck_pm_raise_tholds & (~sg_in) & (~lbist_en_dc) & (~gsd_test_enable_dc));
+
+   assign cfg_slp_sl_thold_in  = func_sl_thold | scan_type_b[SCANTYPE_MODE];
+
+   assign abst_run_sl_thold_in = func_sl_thold | scan_type_b[SCANTYPE_ABST] | (ct_ck_pm_raise_tholds & (~sg_in) & (~lbist_en_dc) & (~gsd_test_enable_dc));
+
+   assign abst_slp_sl_thold_in = func_sl_thold | scan_type_b[SCANTYPE_ABST];
+
+   assign regf_run_sl_thold_in = func_sl_thold | scan_type_b[SCANTYPE_REGF] | (ct_ck_pm_raise_tholds & (~sg_in) & (~lbist_en_dc) & (~gsd_test_enable_dc));
+
+   assign regf_slp_sl_thold_in = func_sl_thold | scan_type_b[SCANTYPE_REGF];
+
+   assign func_run_sl_thold_in = func_sl_thold | scan_type_b[SCANTYPE_FUNC] | (ct_ck_pm_raise_tholds & (~sg_in) & (~lbist_en_dc) & (~gsd_test_enable_dc));
+
+   assign func_slp_sl_thold_in = func_sl_thold | scan_type_b[SCANTYPE_FUNC];
+
+   assign func_run_nsl_thold_in = func_nsl_thold | (ct_ck_pm_raise_tholds & (~fce_in) & (~lbist_en_dc) & (~gsd_test_enable_dc));
+
+   assign func_slp_nsl_thold_in = func_nsl_thold;
+
+   assign ary_run_nsl_thold_in = ary_nsl_thold | (ct_ck_pm_raise_tholds & (~fce_in) & (~lbist_en_dc) & (~gsd_test_enable_dc));
+
+   assign ary_slp_nsl_thold_in = ary_nsl_thold;
+
+   assign rtim_sl_thold_in = rtim_sl_thold;
+
+
+   // PLAT staging/redrive
    tri_plat #(.WIDTH(1)) fast_stop_staging(
       .vd(vdd),
       .gd(gnd),
@@ -168,7 +195,7 @@ module pcq_clks_ctrl(
       .din(rg_ck_fast_xstop),
       .q(fast_xstop_gated_staged)
    );
-   
+
    tri_plat #(.WIDTH(2)) sg_fce_plat(
       .vd(vdd),
       .gd(gnd),
@@ -177,7 +204,7 @@ module pcq_clks_ctrl(
       .din({sg_in, fce_in}),
       .q  ({sg_5,  fce_5 })
    );
-      
+
    tri_plat #(.WIDTH(16)) thold_plat(
       .vd(vdd),
       .gd(gnd),
@@ -196,5 +223,4 @@ module pcq_clks_ctrl(
    );
 
 
-endmodule      
-
+endmodule

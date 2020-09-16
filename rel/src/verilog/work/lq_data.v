@@ -7,7 +7,18 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU LSU Data Rotator
+//
+//*****************************************************************************
 
+// ##########################################################################################
+// VHDL Contents
+// 1) 16 Byte Reload Rotator
+// 2) 16 Byte Unaligned Rotator
+// 3) Little Endian Support for 2,4,8,16 Byte Operations
+// 4) Execution Pipe Store data rotation
+// 5) Byte Enable Generation
+// ##########################################################################################
 
 `include "tri_a2o.vh"
 
@@ -101,7 +112,14 @@ module lq_data(
    func_scan_out
 );
 
+//-------------------------------------------------------------------
+// Generics
+//-------------------------------------------------------------------
+//parameter                        EXPAND_TYPE = 2;		// 0 = ibm (Umbra), 1 = non-ibm, 2 = ibm (MPG)
+//parameter                        GPR_WIDTH_ENC = 6;		// Register Mode 5 = 32bit, 6 = 64bit
+//parameter                        DC_SIZE = 15;		   // 2^15 = 32768 Bytes L1 D$
 
+// Execution Pipe
 input                            ctl_dat_ex1_data_act;
 input [52:59]                    ctl_dat_ex2_eff_addr;
 input [0:4]                      ctl_dat_ex3_opsize;
@@ -110,10 +128,12 @@ input [0:3]                      ctl_dat_ex3_be_ld_rotsel;
 input                            ctl_dat_ex3_algebraic;
 input [0:3]                      ctl_dat_ex3_le_alg_rotsel;
 input                            ctl_dat_ex3_le_mode;
-input [0:7]                      ctl_dat_ex4_way_hit;		
+input [0:7]                      ctl_dat_ex4_way_hit;		// Way Hit
 
+// Config Bits
 input                            xu_lq_spr_xucr0_dcdis;
 
+// RELOAD/STORE PIPE
 input                            lsq_dat_stq1_stg_act;
 input                            lsq_dat_stq1_val;
 input                            lsq_dat_stq1_mftgpr_val;
@@ -127,23 +147,29 @@ input [0:143]                    lsq_dat_stq2_store_data;
 input                            lsq_dat_rel1_data_val;
 input [57:59]                    lsq_dat_rel1_qw;
 
+// L1 D$ update Enable
 input                            stq4_dcarr_wren;
 input [0:7]                      stq4_dcarr_way_en;
 input [0:7]                      ctl_dat_stq5_way_perr_inval;
 
-output [0:7]                     dat_ctl_dcarr_perr_way;		
+// Execution/Store Commit Pipe Outputs
+output [0:7]                     dat_ctl_dcarr_perr_way;		// Load Data Way Parity Error
 
+//Rotated Data
 output [(128-`STQ_DATA_SIZE):127] dat_ctl_ex5_load_data;
 output [(128-`STQ_DATA_SIZE):127] dat_ctl_stq6_axu_data;
 
+// Debug Data Compare
 output [0:127]                   dat_lsq_stq4_128data;
 
+// Error Inject
 input                            pc_lq_inj_dcache_parity;
 
+//pervasive
 inout                            vcs;
 inout                            vdd;
 inout                            gnd;
-(* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)                                
+(* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)
 input [0:`NCLK_WIDTH-1]          nclk;
 input                            pc_lq_ccflush_dc;
 input                            sg_2;
@@ -179,6 +205,7 @@ input [0:3]                      pc_lq_bo_select;
 output [0:3]                     lq_pc_bo_fail;
 output [0:3]                     lq_pc_bo_diagout;
 
+// G8T ABIST Control
 input                            pc_lq_abist_wl256_comp_ena;
 input                            pc_lq_abist_g8t_wenb;
 input                            pc_lq_abist_g8t1p_renb_0;
@@ -188,7 +215,8 @@ input                            pc_lq_abist_g8t_bw_0;
 input [0:3]                      pc_lq_abist_di_0;
 input [2:9]                      pc_lq_abist_waddr_0;
 input [1:8]                      pc_lq_abist_raddr_0;
-   
+
+// SCAN Ports
 (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)
 input [0:3]                      abst_scan_in;
 (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)
@@ -206,6 +234,9 @@ output                           repr_scan_out;
 (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
 output [0:6]                     func_scan_out;
 
+//--------------------------
+// constants
+//--------------------------
 parameter                        inj_dcache_parity_offset = 0;
 parameter                        spr_xucr0_dcdis_offset = inj_dcache_parity_offset + 1;
 parameter                        stq6_rot_data_offset = spr_xucr0_dcdis_offset + 1;
@@ -219,6 +250,9 @@ parameter                        stq5_stg_act_offset = stq4_stg_act_offset + 1;
 parameter                        stq5_rot_data_reg_offset = stq5_stg_act_offset + 1;
 parameter                        scan_right = stq5_rot_data_reg_offset + `STQ_DATA_SIZE - 1;
 
+//--------------------------
+// signals
+//--------------------------
 wire [(128-`STQ_DATA_SIZE):127]  ex5_ld_hit_data;
 wire                             spr_xucr0_dcdis_d;
 wire                             spr_xucr0_dcdis_q;
@@ -347,12 +381,14 @@ wire [1:4]                       dat_scan_out_int;
 (* analysis_not_referenced="true" *)
 wire                             unused;
 
-
 assign tiup = 1'b1;
 assign tidn = 1'b0;
-assign unused = |abst_scan_q | |abst_scan_q_b | |time_scan_q | |time_scan_q_b | 
+assign unused = |abst_scan_q | |abst_scan_q_b | |time_scan_q | |time_scan_q_b |
                 |repr_scan_q | |repr_scan_q_b | |func_scan_q | |func_scan_q_b;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// ACT's
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign ex2_stg_act_d = ctl_dat_ex1_data_act;
 assign ex3_stg_act_d = ex2_stg_act_q;
 assign ex4_stg_act_d = ex3_stg_act_q;
@@ -363,17 +399,26 @@ assign stq3_stg_act_d = stq2_stg_act_q & ~lsq_dat_stq2_blk_req;
 assign stq4_stg_act_d = stq3_stg_act_q;
 assign stq5_stg_act_d = stq4_stg_act_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Inputs
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 assign spr_xucr0_dcdis_d = xu_lq_spr_xucr0_dcdis;
 assign inj_dcache_parity_d = pc_lq_inj_dcache_parity;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Reload/Store Data Rotator
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 lq_data_st  l1dcst(
-   
+
+   // Load Address
    .ex2_stg_act(ex2_stg_act_q),
    .ctl_dat_ex2_eff_addr(ctl_dat_ex2_eff_addr),
 
+   // SPR
    .spr_xucr0_dcdis(spr_xucr0_dcdis_q),
-   
+
+   //Store/Reload path
    .lsq_dat_stq1_stg_act(lsq_dat_stq1_stg_act),
    .lsq_dat_stq1_val(lsq_dat_stq1_val),
    .lsq_dat_stq1_mftgpr_val(lsq_dat_stq1_mftgpr_val),
@@ -387,6 +432,7 @@ lq_data_st  l1dcst(
    .lsq_dat_rel1_qw(lsq_dat_rel1_qw),
    .lsq_dat_stq2_store_data(lsq_dat_stq2_store_data),
 
+   // Read-Modify-Write Path Read data
    .stq6_rd_data_wa(stq6_rd_data_wa),
    .stq6_rd_data_wb(stq6_rd_data_wb),
    .stq6_rd_data_wc(stq6_rd_data_wc),
@@ -395,11 +441,14 @@ lq_data_st  l1dcst(
    .stq6_rd_data_wf(stq6_rd_data_wf),
    .stq6_rd_data_wg(stq6_rd_data_wg),
    .stq6_rd_data_wh(stq6_rd_data_wh),
-   
+
+   // Rotated Data
    .stq4_rot_data(stq4_rot_data),
-   
+
+   // L2 Store Data
    .dat_lsq_stq4_128data(dat_lsq_stq4_128data),
 
+   // EX4 Load Bypass Data for Read/Write Collision detected in EX2
    .stq7_byp_val_wabcd(stq7_byp_val_wabcd),
    .stq7_byp_val_wefgh(stq7_byp_val_wefgh),
    .stq7_byp_data_wabcd(stq7_byp_data_wabcd),
@@ -408,11 +457,13 @@ lq_data_st  l1dcst(
    .stq8_byp_data_wefgh(stq8_byp_data_wefgh),
    .stq_byp_val_wabcd(stq_byp_val_wabcd),
    .stq_byp_val_wefgh(stq_byp_val_wefgh),
-   
+
+   // D$ Array Write Control
    .stq4_dcarr_wren(stq4_dcarr_wren),
    .stq4_dcarr_way_en(stq4_dcarr_way_en),
    .ctl_dat_stq5_way_perr_inval(ctl_dat_stq5_way_perr_inval),
 
+   // D$ Array
    .dcarr_rd_stg_act(dcarr_rd_stg_act),
    .dcarr_rd_addr(dcarr_rd_addr),
    .dcarr_wr_stg_act(dcarr_wr_stg_act),
@@ -420,7 +471,8 @@ lq_data_st  l1dcst(
    .dcarr_wr_addr(dcarr_wr_addr),
    .dcarr_wr_data_wabcd(dcarr_wr_data_wabcd),
    .dcarr_wr_data_wefgh(dcarr_wr_data_wefgh),
-   
+
+   // Pervasive
    .vdd(vdd),
    .gnd(gnd),
    .nclk(nclk),
@@ -440,13 +492,23 @@ lq_data_st  l1dcst(
 assign stq5_rot_data_d = stq4_rot_data;
 assign stq6_rot_data_d = stq5_rot_data_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// L1 D-Cache Array
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 generate if ((2 ** `DC_SIZE) == 32768) begin : dc32K
+   // number of addressable register in this array
+   // width of the bus to address all ports (2^addressbus_width >= addressable_ports)
+   // bitwidth of ports (per way)
+   // gives the number of bits that shares one write-enable; must divide evenly into array
+   // number of ways
    tri_256x144_8w_1r1w #(.addressable_ports(256), .addressbus_width(8), .port_bitwidth(144), .bit_write_type(9), .ways(8)) tridcarr(
+      // POWER PINS
       .vcs(vcs),
       .vdd(vdd),
       .gnd(gnd),
 
+      // CLOCK AND CLOCKCONTROL PORTS
       .nclk(nclk),
       .wr_act(dcarr_wr_stg_act),
       .rd_act(dcarr_rd_stg_act),
@@ -470,6 +532,7 @@ generate if ((2 ** `DC_SIZE) == 32768) begin : dc32K
       .mpw2_dc_b(mpw2_dc_b),
       .delay_lclkr_dc(delay_lclkr_dc),
 
+      // ABIST
       .wr_abst_act(pc_lq_abist_g8t_wenb_q),
       .rd0_abst_act(pc_lq_abist_g8t1p_renb_0_q),
       .abist_di(pc_lq_abist_di_0_q),
@@ -483,6 +546,7 @@ generate if ((2 ** `DC_SIZE) == 32768) begin : dc32K
       .abist_raw_dc_b(pc_lq_abist_raw_dc_b),
       .obs0_abist_cmp(pc_lq_abist_g8t_dcomp_q),
 
+      // SCAN PORTS
       .abst_scan_in({abist_siv[0], abst_scan_in_q[1], abst_scan_in_q[2], abst_scan_in_q[3]}),
       .time_scan_in(time_scan_in_q),
       .repr_scan_in(repr_scan_in_q),
@@ -492,6 +556,7 @@ generate if ((2 ** `DC_SIZE) == 32768) begin : dc32K
       .repr_scan_out(repr_scan_out_int),
       .func_scan_out(dat_scan_out_int[1:4]),
 
+      // BOLT-ON
       .lcb_bolt_sl_thold_0(bolt_sl_thold_0),
       .pc_bo_enable_2(bo_enable_2),
       .pc_bo_reset(pc_lq_bo_reset),
@@ -507,6 +572,7 @@ generate if ((2 ** `DC_SIZE) == 32768) begin : dc32K
       .tri_lcb_clkoff_dc_b(clkoff_dc_b),
       .tri_lcb_act_dis_dc(tidn),
 
+      // FUNCTIONAL PORTS
       .wr_way(dcarr_wr_way),
       .wr_addr(dcarr_wr_addr),
       .data_in0(dcarr_wr_data_wabcd),
@@ -517,20 +583,27 @@ generate if ((2 ** `DC_SIZE) == 32768) begin : dc32K
 end
 endgenerate
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Load Rotator
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 lq_data_ld  l1dcld(
-   
+
+   // ACT
    .ex3_stg_act(ex3_stg_act_q),
    .ex4_stg_act(ex4_stg_act_q),
-   
+
+   // Execution Pipe Load Data Rotator Controls
    .ctl_dat_ex3_opsize(ctl_dat_ex3_opsize),
    .ctl_dat_ex3_le_ld_rotsel(ctl_dat_ex3_le_ld_rotsel),
    .ctl_dat_ex3_be_ld_rotsel(ctl_dat_ex3_be_ld_rotsel),
    .ctl_dat_ex3_algebraic(ctl_dat_ex3_algebraic),
    .ctl_dat_ex3_le_alg_rotsel(ctl_dat_ex3_le_alg_rotsel),
    .ctl_dat_ex3_le_mode(ctl_dat_ex3_le_mode),
-   
+
+   // D$ Array Read Data
    .dcarr_rd_data(dcarr_rd_data),
 
+   // EX4 Load Bypass Data for Read/Write Collision detected in EX2
    .stq7_byp_val_wabcd(stq7_byp_val_wabcd),
    .stq7_byp_val_wefgh(stq7_byp_val_wefgh),
    .stq7_byp_data_wabcd(stq7_byp_data_wabcd),
@@ -539,15 +612,20 @@ lq_data_ld  l1dcld(
    .stq8_byp_data_wefgh(stq8_byp_data_wefgh),
    .stq_byp_val_wabcd(stq_byp_val_wabcd),
    .stq_byp_val_wefgh(stq_byp_val_wefgh),
-   
+
+   // Load Control
    .ctl_dat_ex4_way_hit(ctl_dat_ex4_way_hit),
-   
+
+   // Parity Error Inject
    .inj_dcache_parity(inj_dcache_parity_q),
-   
+
+   // Data Cache Array Parity Error Detected
    .dcarr_data_perr_way(dcarr_data_perr_way),
-   
+
+   // Rotated Data
    .ex5_ld_hit_data(ex5_ld_hit_data),
 
+   // Read-Modify-Write Path Read data
    .stq6_rd_data_wa(stq6_rd_data_wa),
    .stq6_rd_data_wb(stq6_rd_data_wb),
    .stq6_rd_data_wc(stq6_rd_data_wc),
@@ -556,7 +634,8 @@ lq_data_ld  l1dcld(
    .stq6_rd_data_wf(stq6_rd_data_wf),
    .stq6_rd_data_wg(stq6_rd_data_wg),
    .stq6_rd_data_wh(stq6_rd_data_wh),
-   
+
+   // Pervasive
    .vdd(vdd),
    .gnd(gnd),
    .nclk(nclk),
@@ -573,18 +652,28 @@ lq_data_ld  l1dcld(
    .scan_out(func_scan_out_int[0:4])
 );
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Outputs
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// D$ Parity Error Detected
 assign dat_ctl_dcarr_perr_way = dcarr_data_perr_way;
 
+// XU data
 assign dat_ctl_ex5_load_data = ex5_ld_hit_data;
 
+// AXU Reload data
 assign dat_ctl_stq6_axu_data = stq6_rot_data_q;
 
+// SCAN OUT Gate
 assign abst_scan_out = abst_scan_out_q & {4{an_ac_scan_dis_dc_b}};
 assign time_scan_out = time_scan_out_q & an_ac_scan_dis_dc_b;
 assign repr_scan_out = repr_scan_out_q & an_ac_scan_dis_dc_b;
 assign func_scan_out = func_scan_out_q & {7{an_ac_scan_dis_dc_b}};
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Registers
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 
 tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) inj_dcache_parity_reg(
@@ -661,6 +750,9 @@ tri_rlmreg_p #(.WIDTH(`STQ_DATA_SIZE), .INIT(0), .NEEDS_SRESET(1)) stq6_rot_data
    .dout(stq6_rot_data_q)
 );
 
+//---------------------------------------------------------------------
+// ACT's
+//---------------------------------------------------------------------
 
 tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ex2_stg_act_reg(
    .vd(vdd),
@@ -794,6 +886,9 @@ tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) stq5_stg_act_reg(
    .dout(stq5_stg_act_q)
 );
 
+//---------------------------------------------------------------------
+// abist latches
+//---------------------------------------------------------------------
 tri_rlmreg_p #(.INIT(0), .WIDTH(29), .NEEDS_SRESET(1)) abist0_reg(
    .vd(vdd),
    .gd(gnd),
@@ -828,6 +923,9 @@ tri_rlmreg_p #(.INIT(0), .WIDTH(29), .NEEDS_SRESET(1)) abist0_reg(
           pc_lq_abist_g8t1p_renb_0_q})
 );
 
+//-----------------------------------------------
+// Pervasive
+//-----------------------------------------------
 
 tri_plat #(.WIDTH(9)) perv_2to1_reg(
    .vd(vdd),
@@ -910,6 +1008,7 @@ tri_lcbor  perv_lcbor_abst_sl(
    .thold_b(abst_sl_thold_0_b)
 );
 
+// LCBs for scan only staging latches
 assign slat_force = sg_0;
 assign abst_slat_thold_b = (~abst_sl_thold_0);
 assign time_slat_thold_b = (~time_sl_thold_0);
@@ -1045,4 +1144,3 @@ assign abist_siv = {abist_sov[1:29], abst_scan_in_q[0]};
 assign abst_scan_out_int[0] = abist_sov[0];
 
 endmodule
-

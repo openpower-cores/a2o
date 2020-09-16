@@ -10,7 +10,6 @@
 
 `include "tri_a2o.vh"
 
-
 module lq_spr_tspr
 #(
    parameter              hvmode = 1,
@@ -33,6 +32,7 @@ module lq_spr_tspr
    (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
    output                 scan_out,
 
+   // SlowSPR Interface
    input                  slowspr_val_in,
    input                  slowspr_rw_in,
    input [0:9]            slowspr_addr_in,
@@ -41,6 +41,7 @@ module lq_spr_tspr
    output                 tspr_done,
    output [64-`GPR_WIDTH:63] tspr_rt,
 
+   // SPRs
    input                  cspr_tspr_msr_pr,
    input                  cspr_tspr_msr_gs,
    output [0:1]           tspr_cspr_dbcr2_dac1us,
@@ -77,23 +78,27 @@ module lq_spr_tspr
 	output [0:13]                       spr_epsc_epid,
 	output [0:31]                       spr_hacop_ct,
 
+   // Power
    inout                  vdd,
    inout                  gnd
 );
 
 
+// Types
 wire                   eplc_we_d;
 wire                   eplc_we_q;
 wire                   epsc_we_d;
 wire                   epsc_we_q;
 
-	wire [32:63]                  acop_d,                   acop_q;                  
-	wire [35:63]                  dbcr2_d,                  dbcr2_q;                 
-	wire [54:63]                  dbcr3_d,                  dbcr3_q;                 
-	wire [58:63]                  dscr_d,                   dscr_q;                  
-	wire [39:63]                  eplc_d,                   eplc_q;                  
-	wire [39:63]                  epsc_d,                   epsc_q;                  
-	wire [32:63]                  hacop_d,                  hacop_q;                 
+// SPR Registers
+	wire [32:63]                  acop_d,                   acop_q;
+	wire [35:63]                  dbcr2_d,                  dbcr2_q;
+	wire [54:63]                  dbcr3_d,                  dbcr3_q;
+	wire [58:63]                  dscr_d,                   dscr_q;
+	wire [39:63]                  eplc_d,                   eplc_q;
+	wire [39:63]                  epsc_d,                   epsc_q;
+	wire [32:63]                  hacop_d,                  hacop_q;
+// FUNC Scanchain
 	localparam acop_offset                    = 0;
 	localparam dbcr2_offset                   = acop_offset                    + 32*a2mode;
 	localparam dbcr3_offset                   = dbcr2_offset                   + 29*a2mode;
@@ -107,6 +112,7 @@ parameter              epsc_we_offset = eplc_we_offset + 1;
 parameter              scan_right = epsc_we_offset + 1;
 wire [0:scan_right-1]  siv;
 wire [0:scan_right-1]  sov;
+// Signals
 wire                   tiup;
 wire [00:63]           tidn;
 wire                   sspr_spr_we;
@@ -114,6 +120,7 @@ wire [11:20]           sspr_instr;
 wire                   sspr_is_mtspr;
 wire [64-`GPR_WIDTH:63]   sspr_spr_wd;
 wire                   hyp_state;
+// Data
 	wire [0:1]                       spr_dbcr2_dac1us;
 	wire [0:1]                       spr_dbcr2_dac1er;
 	wire [0:1]                       spr_dbcr2_dac2us;
@@ -128,32 +135,34 @@ wire                   hyp_state;
 	wire [0:1]                       spr_dbcr3_dac4us;
 	wire [0:1]                       spr_dbcr3_dac4er;
 	wire                             spr_dbcr3_dac34m;
-	wire [32:63]                     sspr_acop_di;            
-	wire [35:63]                     sspr_dbcr2_di;           
-	wire [54:63]                     sspr_dbcr3_di;           
-	wire [58:63]                     sspr_dscr_di;            
-	wire [39:63]                     sspr_eplc_di;            
-	wire [39:63]                     sspr_epsc_di;            
-	wire [32:63]                     sspr_hacop_di;           
-	wire 
-		sspr_acop_rdec , sspr_dbcr2_rdec, sspr_dbcr3_rdec, sspr_dscr_rdec 
+	wire [32:63]                     sspr_acop_di;
+	wire [35:63]                     sspr_dbcr2_di;
+	wire [54:63]                     sspr_dbcr3_di;
+	wire [58:63]                     sspr_dscr_di;
+	wire [39:63]                     sspr_eplc_di;
+	wire [39:63]                     sspr_epsc_di;
+	wire [32:63]                     sspr_hacop_di;
+	wire
+		sspr_acop_rdec , sspr_dbcr2_rdec, sspr_dbcr3_rdec, sspr_dscr_rdec
 		, sspr_eplc_rdec , sspr_epsc_rdec , sspr_hacop_rdec;
-	wire 
-		sspr_acop_re   , sspr_dbcr2_re  , sspr_dbcr3_re  , sspr_dscr_re   
+	wire
+		sspr_acop_re   , sspr_dbcr2_re  , sspr_dbcr3_re  , sspr_dscr_re
 		, sspr_eplc_re   , sspr_epsc_re   , sspr_hacop_re  ;
-	wire 
-		sspr_acop_wdec , sspr_dbcr2_wdec, sspr_dbcr3_wdec, sspr_dscr_wdec 
+	wire
+		sspr_acop_wdec , sspr_dbcr2_wdec, sspr_dbcr3_wdec, sspr_dscr_wdec
 		, sspr_eplc_wdec , sspr_epsc_wdec , sspr_hacop_wdec;
-	wire 
-		sspr_acop_we   , sspr_dbcr2_we  , sspr_dbcr3_we  , sspr_dscr_we   
+	wire
+		sspr_acop_we   , sspr_dbcr2_we  , sspr_dbcr3_we  , sspr_dscr_we
 		, sspr_eplc_we   , sspr_epsc_we   , sspr_hacop_we  ;
-	wire 
-		acop_act       , dbcr2_act      , dbcr3_act      , dscr_act       
+	wire
+		acop_act       , dbcr2_act      , dbcr3_act      , dscr_act
 		, eplc_act       , epsc_act       , hacop_act      ;
 	wire [0:64]
-		acop_do        , dbcr2_do       , dbcr3_do       , dscr_do        
+		acop_do        , dbcr2_do       , dbcr3_do       , dscr_do
 		, eplc_do        , epsc_do        , hacop_do       ;
 
+//!! Bugspray Include: lq_spr_tspr;
+//## figtree_source: lq_spr_tspr.fig;
 
 assign tiup = 1'b1;
 assign tidn = {64{1'b0}};
@@ -165,35 +174,43 @@ assign sspr_spr_wd = slowspr_data_in;
 
 assign hyp_state = ~(cspr_tspr_msr_pr | cspr_tspr_msr_gs);
 
+// SPR Input Control
+// ACOP
 assign acop_act = sspr_acop_we;
 assign acop_d = sspr_acop_di;
 
+// HACOP
 assign hacop_act = sspr_hacop_we;
 assign hacop_d = sspr_hacop_di;
 
+// DBCR2
 assign dbcr2_act = sspr_dbcr2_we;
 assign dbcr2_d = sspr_dbcr2_di;
 
+// DBCR3
 assign dbcr3_act = sspr_dbcr3_we;
 assign dbcr3_d = sspr_dbcr3_di;
 
+// DSCR
 assign dscr_act = sspr_dscr_we;
 assign dscr_d = sspr_dscr_di;
 
+// EPLC
 assign eplc_act = sspr_eplc_we;
 assign eplc_we_d = sspr_eplc_we;
 assign eplc_d[39:1 + 39] = sspr_eplc_di[39:1 + 39];
 assign eplc_d[(2 + 39) + 9:63] = sspr_eplc_di[(2 + 39) + 9:63];
 
-assign eplc_d[2 + 39:(2 + 39) + 8] = (hyp_state == 1'b1) ? sspr_eplc_di[2 + 39:(2 + 39) + 8] : 
+assign eplc_d[2 + 39:(2 + 39) + 8] = (hyp_state == 1'b1) ? sspr_eplc_di[2 + 39:(2 + 39) + 8] :
                                      eplc_q[2 + 39:(2 + 39) + 8];
 
+// EPSC
 assign epsc_act = sspr_epsc_we;
 assign epsc_we_d = sspr_epsc_we;
 assign epsc_d[39:1 + 39] = sspr_epsc_di[39:1 + 39];
 assign epsc_d[(2 + 39) + 9:63] = sspr_epsc_di[(2 + 39) + 9:63];
 
-assign epsc_d[2 + 39:(2 + 39) + 8] = (hyp_state == 1'b1) ? sspr_epsc_di[2 + 39:(2 + 39) + 8] : 
+assign epsc_d[2 + 39:(2 + 39) + 8] = (hyp_state == 1'b1) ? sspr_epsc_di[2 + 39:(2 + 39) + 8] :
                                      epsc_q[2 + 39:(2 + 39) + 8];
 
 generate
@@ -235,13 +252,13 @@ generate
    end
 endgenerate
 
-	assign sspr_acop_rdec      = (sspr_instr[11:20] == 10'b1111100000);   
-	assign sspr_dbcr2_rdec     = (sspr_instr[11:20] == 10'b1011001001);   
-	assign sspr_dbcr3_rdec     = (sspr_instr[11:20] == 10'b1000011010);   
-	assign sspr_dscr_rdec      = (sspr_instr[11:20] == 10'b1000100000);   
-	assign sspr_eplc_rdec      = (sspr_instr[11:20] == 10'b1001111101);   
-	assign sspr_epsc_rdec      = (sspr_instr[11:20] == 10'b1010011101);   
-	assign sspr_hacop_rdec     = (sspr_instr[11:20] == 10'b1111101010);   
+	assign sspr_acop_rdec      = (sspr_instr[11:20] == 10'b1111100000);   //   31
+	assign sspr_dbcr2_rdec     = (sspr_instr[11:20] == 10'b1011001001);   //  310
+	assign sspr_dbcr3_rdec     = (sspr_instr[11:20] == 10'b1000011010);   //  848
+	assign sspr_dscr_rdec      = (sspr_instr[11:20] == 10'b1000100000);   //   17
+	assign sspr_eplc_rdec      = (sspr_instr[11:20] == 10'b1001111101);   //  947
+	assign sspr_epsc_rdec      = (sspr_instr[11:20] == 10'b1010011101);   //  948
+	assign sspr_hacop_rdec     = (sspr_instr[11:20] == 10'b1111101010);   //  351
 	assign sspr_acop_re        =  sspr_acop_rdec;
 	assign sspr_dbcr2_re       =  sspr_dbcr2_rdec;
 	assign sspr_dbcr3_re       =  sspr_dbcr3_rdec;
@@ -256,7 +273,7 @@ endgenerate
 	assign sspr_dscr_wdec      = sspr_dscr_rdec;
 	assign sspr_eplc_wdec      = sspr_eplc_rdec;
 	assign sspr_epsc_wdec      = sspr_epsc_rdec;
-	assign sspr_hacop_wdec     = (sspr_instr[11:20] == 10'b1111101010);   
+	assign sspr_hacop_wdec     = (sspr_instr[11:20] == 10'b1111101010);   //  351
 	assign sspr_acop_we       = sspr_spr_we & sspr_is_mtspr &  sspr_acop_wdec;
 	assign sspr_dbcr2_we      = sspr_spr_we & sspr_is_mtspr &  sspr_dbcr2_wdec;
 	assign sspr_dbcr3_we      = sspr_spr_we & sspr_is_mtspr &  sspr_dbcr3_wdec;
@@ -266,8 +283,8 @@ endgenerate
 	assign sspr_hacop_we      = sspr_spr_we & sspr_is_mtspr &  sspr_hacop_wdec;
 
 assign tspr_done = slowspr_val_in & (
-                             sspr_acop_rdec       | sspr_dbcr2_rdec      | sspr_dbcr3_rdec      
-                           | sspr_dscr_rdec       | sspr_eplc_rdec       | sspr_epsc_rdec       
+                             sspr_acop_rdec       | sspr_dbcr2_rdec      | sspr_dbcr3_rdec
+                           | sspr_dscr_rdec       | sspr_eplc_rdec       | sspr_epsc_rdec
                            | sspr_hacop_rdec      );
 
 	assign spr_acop_ct                 = acop_q[32:63];
@@ -319,99 +336,107 @@ assign spr_epsc_wr = epsc_we_q;
 assign spr_eplc_wr = eplc_we_q;
 
 
-	assign sspr_acop_di    = { sspr_spr_wd[32:63]               }; 
+	// ACOP
+	assign sspr_acop_di    = { sspr_spr_wd[32:63]               }; //CT
 
 	assign acop_do         = { tidn[0:0]                        ,
-                              tidn[0:31]                       , 
-                              acop_q[32:63]                    }; 
-	assign sspr_dbcr2_di   = { sspr_spr_wd[32:33]               , 
-                              sspr_spr_wd[34:35]               , 
-                              sspr_spr_wd[36:37]               , 
-                              sspr_spr_wd[38:39]               , 
-                              sspr_spr_wd[41:41]               , 
-                              sspr_spr_wd[44:45]               , 
-                              sspr_spr_wd[46:47]               , 
-                              sspr_spr_wd[48:55]               , 
-                              sspr_spr_wd[56:63]               }; 
+                              tidn[0:31]                       , /////
+                              acop_q[32:63]                    }; //CT
+	// DBCR2
+	assign sspr_dbcr2_di   = { sspr_spr_wd[32:33]               , //DAC1US
+                              sspr_spr_wd[34:35]               , //DAC1ER
+                              sspr_spr_wd[36:37]               , //DAC2US
+                              sspr_spr_wd[38:39]               , //DAC2ER
+                              sspr_spr_wd[41:41]               , //DAC12M
+                              sspr_spr_wd[44:45]               , //DVC1M
+                              sspr_spr_wd[46:47]               , //DVC2M
+                              sspr_spr_wd[48:55]               , //DVC1BE
+                              sspr_spr_wd[56:63]               }; //DVC2BE
 
 	assign dbcr2_do        = { tidn[0:0]                        ,
-                              tidn[0:31]                       , 
-                              dbcr2_q[35:36]                   , 
-                              dbcr2_q[37:38]                   , 
-                              dbcr2_q[39:40]                   , 
-                              dbcr2_q[41:42]                   , 
-                              tidn[40:40]                      , 
-                              dbcr2_q[43:43]                   , 
-                              tidn[42:43]                      , 
-                              dbcr2_q[44:45]                   , 
-                              dbcr2_q[46:47]                   , 
-                              dbcr2_q[48:55]                   , 
-                              dbcr2_q[56:63]                   }; 
-	assign sspr_dbcr3_di   = { sspr_spr_wd[32:33]               , 
-                              sspr_spr_wd[34:35]               , 
-                              sspr_spr_wd[36:37]               , 
-                              sspr_spr_wd[38:39]               , 
-                              sspr_spr_wd[41:41]               , 
-                              sspr_spr_wd[63:63]               }; 
+                              tidn[0:31]                       , /////
+                              dbcr2_q[35:36]                   , //DAC1US
+                              dbcr2_q[37:38]                   , //DAC1ER
+                              dbcr2_q[39:40]                   , //DAC2US
+                              dbcr2_q[41:42]                   , //DAC2ER
+                              tidn[40:40]                      , /////
+                              dbcr2_q[43:43]                   , //DAC12M
+                              tidn[42:43]                      , /////
+                              dbcr2_q[44:45]                   , //DVC1M
+                              dbcr2_q[46:47]                   , //DVC2M
+                              dbcr2_q[48:55]                   , //DVC1BE
+                              dbcr2_q[56:63]                   }; //DVC2BE
+	// DBCR3
+	assign sspr_dbcr3_di   = { sspr_spr_wd[32:33]               , //DAC3US
+                              sspr_spr_wd[34:35]               , //DAC3ER
+                              sspr_spr_wd[36:37]               , //DAC4US
+                              sspr_spr_wd[38:39]               , //DAC4ER
+                              sspr_spr_wd[41:41]               , //DAC34M
+                              sspr_spr_wd[63:63]               }; //IVC
 
 	assign dbcr3_do        = { tidn[0:0]                        ,
-                              tidn[0:31]                       , 
-                              dbcr3_q[54:55]                   , 
-                              dbcr3_q[56:57]                   , 
-                              dbcr3_q[58:59]                   , 
-                              dbcr3_q[60:61]                   , 
-                              tidn[40:40]                      , 
-                              dbcr3_q[62:62]                   , 
-                              tidn[42:62]                      , 
-                              dbcr3_q[63:63]                   }; 
-	assign sspr_dscr_di    = { sspr_spr_wd[58:58]               , 
-                              sspr_spr_wd[59:59]               , 
-                              sspr_spr_wd[60:60]               , 
-                              sspr_spr_wd[61:63]               }; 
+                              tidn[0:31]                       , /////
+                              dbcr3_q[54:55]                   , //DAC3US
+                              dbcr3_q[56:57]                   , //DAC3ER
+                              dbcr3_q[58:59]                   , //DAC4US
+                              dbcr3_q[60:61]                   , //DAC4ER
+                              tidn[40:40]                      , /////
+                              dbcr3_q[62:62]                   , //DAC34M
+                              tidn[42:62]                      , /////
+                              dbcr3_q[63:63]                   }; //IVC
+	// DSCR
+	assign sspr_dscr_di    = { sspr_spr_wd[58:58]               , //LSD
+                              sspr_spr_wd[59:59]               , //SNSE
+                              sspr_spr_wd[60:60]               , //SSE
+                              sspr_spr_wd[61:63]               }; //DPFD
 
 	assign dscr_do         = { tidn[0:0]                        ,
-                              tidn[0:31]                       , 
-                              tidn[32:57]                      , 
-                              dscr_q[58:58]                    , 
-                              dscr_q[59:59]                    , 
-                              dscr_q[60:60]                    , 
-                              dscr_q[61:63]                    }; 
-	assign sspr_eplc_di    = { sspr_spr_wd[32:32]               , 
-                              sspr_spr_wd[33:33]               , 
-                              sspr_spr_wd[34:34]               , 
-                              sspr_spr_wd[40:47]               , 
-                              sspr_spr_wd[50:63]               }; 
+                              tidn[0:31]                       , /////
+                              tidn[32:57]                      , /////
+                              dscr_q[58:58]                    , //LSD
+                              dscr_q[59:59]                    , //SNSE
+                              dscr_q[60:60]                    , //SSE
+                              dscr_q[61:63]                    }; //DPFD
+	// EPLC
+	assign sspr_eplc_di    = { sspr_spr_wd[32:32]               , //EPR
+                              sspr_spr_wd[33:33]               , //EAS
+                              sspr_spr_wd[34:34]               , //EGS
+                              sspr_spr_wd[40:47]               , //ELPID
+                              sspr_spr_wd[50:63]               }; //EPID
 
 	assign eplc_do         = { tidn[0:0]                        ,
-                              tidn[0:31]                       , 
-                              eplc_q[39:39]                    , 
-                              eplc_q[40:40]                    , 
-                              eplc_q[41:41]                    , 
-                              tidn[35:39]                      , 
-                              eplc_q[42:49]                    , 
-                              tidn[48:49]                      , 
-                              eplc_q[50:63]                    }; 
-	assign sspr_epsc_di    = { sspr_spr_wd[32:32]               , 
-                              sspr_spr_wd[33:33]               , 
-                              sspr_spr_wd[34:34]               , 
-                              sspr_spr_wd[40:47]               , 
-                              sspr_spr_wd[50:63]               }; 
+                              tidn[0:31]                       , /////
+                              eplc_q[39:39]                    , //EPR
+                              eplc_q[40:40]                    , //EAS
+                              eplc_q[41:41]                    , //EGS
+                              tidn[35:39]                      , /////
+                              eplc_q[42:49]                    , //ELPID
+                              tidn[48:49]                      , /////
+                              eplc_q[50:63]                    }; //EPID
+	// EPSC
+	assign sspr_epsc_di    = { sspr_spr_wd[32:32]               , //EPR
+                              sspr_spr_wd[33:33]               , //EAS
+                              sspr_spr_wd[34:34]               , //EGS
+                              sspr_spr_wd[40:47]               , //ELPID
+                              sspr_spr_wd[50:63]               }; //EPID
 
 	assign epsc_do         = { tidn[0:0]                        ,
-                              tidn[0:31]                       , 
-                              epsc_q[39:39]                    , 
-                              epsc_q[40:40]                    , 
-                              epsc_q[41:41]                    , 
-                              tidn[35:39]                      , 
-                              epsc_q[42:49]                    , 
-                              tidn[48:49]                      , 
-                              epsc_q[50:63]                    }; 
-	assign sspr_hacop_di   = { sspr_spr_wd[32:63]               }; 
+                              tidn[0:31]                       , /////
+                              epsc_q[39:39]                    , //EPR
+                              epsc_q[40:40]                    , //EAS
+                              epsc_q[41:41]                    , //EGS
+                              tidn[35:39]                      , /////
+                              epsc_q[42:49]                    , //ELPID
+                              tidn[48:49]                      , /////
+                              epsc_q[50:63]                    }; //EPID
+	// HACOP
+	assign sspr_hacop_di   = { sspr_spr_wd[32:63]               }; //CT
 
 	assign hacop_do        = { tidn[0:0]                        ,
-                              tidn[0:31]                       , 
-                              hacop_q[32:63]                   }; 
+                              tidn[0:31]                       , /////
+                              hacop_q[32:63]                   }; //CT
 
+	// Unused Signals
 	assign unused_do_bits = |{
 		acop_do[0:64-`GPR_WIDTH]
 		,dbcr2_do[0:64-`GPR_WIDTH]
@@ -590,5 +615,5 @@ tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) epsc_we_reg(
 
 assign siv[0:scan_right - 1] = {sov[1:scan_right - 1], scan_in};
 assign scan_out = sov[0];
-   
+
 endmodule

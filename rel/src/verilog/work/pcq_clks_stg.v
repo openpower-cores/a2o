@@ -7,10 +7,13 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//
+//  Description: Pervasive Core LCB Staging
+//
+//*****************************************************************************
 
-
-
-module pcq_clks_stg( 
+module pcq_clks_stg(
+// Include model build parameters
 `include "tri_a2o.vh"
 
    inout      			vdd,
@@ -35,6 +38,7 @@ module pcq_clks_stg(
    input      			rtim_sl_thold_5,
    input      			sg_5,
    input      			fce_5,
+   // Thold + control outputs to the units
    output     			pc_pc_ccflush_out_dc,
    output     			pc_pc_gptr_sl_thold_4,
    output     			pc_pc_time_sl_thold_4,
@@ -54,6 +58,7 @@ module pcq_clks_stg(
    output     			pc_pc_rtim_sl_thold_4,
    output     			pc_pc_sg_4,
    output     			pc_pc_fce_4,
+   // Thold + control signals used by fu
    output               	pc_fu_ccflush_dc,
    output               	pc_fu_gptr_sl_thold_3,
    output               	pc_fu_time_sl_thold_3,
@@ -70,6 +75,7 @@ module pcq_clks_stg(
    output               	pc_fu_ary_slp_nsl_thold_3,
    output [0:1]              	pc_fu_sg_3,
    output               	pc_fu_fce_3,
+   // Thold + control signals used in pcq
    output     			pc_pc_ccflush_dc,
    output     			pc_pc_gptr_sl_thold_0,
    output     			pc_pc_func_sl_thold_0,
@@ -78,8 +84,11 @@ module pcq_clks_stg(
    output     			pc_pc_cfg_slp_sl_thold_0,
    output     			pc_pc_sg_0
 );
-   
-   
+
+
+//=====================================================================
+// Signal Declarations
+//=====================================================================
    wire       pc_pc_gptr_sl_thold_4_int;
    wire       pc_pc_time_sl_thold_4_int;
    wire       pc_pc_repr_sl_thold_4_int;
@@ -120,13 +129,17 @@ module pcq_clks_stg(
    wire       pc_pc_cfg_slp_sl_thold_1;
    wire       pc_pc_cfg_sl_thold_1;
    wire       pc_pc_sg_1;
-   
 
+
+//=====================================================================
+// LCB control signals staged/redriven to other units
+//=====================================================================
    assign pc_pc_ccflush_out_dc = ccflush_out_dc;
    assign pc_pc_ccflush_dc     = ccflush_out_dc;
    assign pc_fu_ccflush_dc     = ccflush_out_dc;
 
 
+   // Start of thold/SG/FCE staging (level 5 to level 3)
    tri_plat #(.WIDTH(18)) lvl5to4_plat(
       .vd(vdd),
       .gd(gnd),
@@ -134,14 +147,14 @@ module pcq_clks_stg(
       .flush(ccflush_out_dc),
 
       .din({gptr_sl_thold_5,		    time_sl_thold_5,		     repr_sl_thold_5,
-            rtim_sl_thold_5,		    abst_sl_thold_5,		     abst_slp_sl_thold_5, 
+            rtim_sl_thold_5,		    abst_sl_thold_5,		     abst_slp_sl_thold_5,
             regf_sl_thold_5,		    regf_slp_sl_thold_5,	     func_sl_thold_5,
             func_slp_sl_thold_5,	    cfg_sl_thold_5,		     cfg_slp_sl_thold_5,
             func_nsl_thold_5,		    func_slp_nsl_thold_5,	     ary_nsl_thold_5,
             ary_slp_nsl_thold_5,	    sg_5,			     fce_5}),
 
-      .q(  {pc_pc_gptr_sl_thold_4_int,      pc_pc_time_sl_thold_4_int,       pc_pc_repr_sl_thold_4_int,  
-            pc_pc_rtim_sl_thold_4_int, 	    pc_pc_abst_sl_thold_4_int,       pc_pc_abst_slp_sl_thold_4_int,      
+      .q(  {pc_pc_gptr_sl_thold_4_int,      pc_pc_time_sl_thold_4_int,       pc_pc_repr_sl_thold_4_int,
+            pc_pc_rtim_sl_thold_4_int, 	    pc_pc_abst_sl_thold_4_int,       pc_pc_abst_slp_sl_thold_4_int,
             pc_pc_regf_sl_thold_4_int,      pc_pc_regf_slp_sl_thold_4_int,   pc_pc_func_sl_thold_4_int,
             pc_pc_func_slp_sl_thold_4_int,  pc_pc_cfg_sl_thold_4_int,        pc_pc_cfg_slp_sl_thold_4_int,
             pc_pc_func_nsl_thold_4_int,     pc_pc_func_slp_nsl_thold_4_int,  pc_pc_ary_nsl_thold_4_int,
@@ -149,6 +162,7 @@ module pcq_clks_stg(
    );
 
 
+   // Level 4 staging goes to the pervasive repower logic
    assign pc_pc_gptr_sl_thold_4      =  pc_pc_gptr_sl_thold_4_int;
    assign pc_pc_time_sl_thold_4      =  pc_pc_time_sl_thold_4_int;
    assign pc_pc_repr_sl_thold_4      =  pc_pc_repr_sl_thold_4_int;
@@ -168,7 +182,8 @@ module pcq_clks_stg(
    assign pc_pc_sg_4                 =	pc_pc_sg_4_int;
    assign pc_pc_fce_4                =	pc_pc_fce_4_int;
 
-   
+
+   // FU clock control staging: level 4 to 3
    tri_plat #(.WIDTH(18)) fu_clkstg_4to3(
       .vd(vdd),
       .gd(gnd),
@@ -177,20 +192,21 @@ module pcq_clks_stg(
 
       .din({pc_pc_gptr_sl_thold_4_int,		pc_pc_time_sl_thold_4_int,	pc_pc_repr_sl_thold_4_int,
             pc_pc_abst_sl_thold_4_int,		pc_pc_abst_slp_sl_thold_4_int,	pc_pc_func_sl_thold_4_int,
-	    pc_pc_func_sl_thold_4_int,		pc_pc_func_slp_sl_thold_4_int,  pc_pc_func_slp_sl_thold_4_int,	
+	    pc_pc_func_sl_thold_4_int,		pc_pc_func_slp_sl_thold_4_int,  pc_pc_func_slp_sl_thold_4_int,
 	    pc_pc_cfg_sl_thold_4_int,       	pc_pc_cfg_slp_sl_thold_4_int,   pc_pc_func_nsl_thold_4_int,
 	    pc_pc_func_slp_nsl_thold_4_int,     pc_pc_ary_nsl_thold_4_int,      pc_pc_ary_slp_nsl_thold_4_int,
 	    pc_pc_sg_4_int,            		pc_pc_sg_4_int,			pc_pc_fce_4_int }),
 
       .q(  {pc_fu_gptr_sl_thold_3,		pc_fu_time_sl_thold_3,		pc_fu_repr_sl_thold_3,
             pc_fu_abst_sl_thold_3,		pc_fu_abst_slp_sl_thold_3,	pc_fu_func_sl_thold_3[0],
-	    pc_fu_func_sl_thold_3[1],		pc_fu_func_slp_sl_thold_3[0],	pc_fu_func_slp_sl_thold_3[1],		
+	    pc_fu_func_sl_thold_3[1],		pc_fu_func_slp_sl_thold_3[0],	pc_fu_func_slp_sl_thold_3[1],
 	    pc_fu_cfg_sl_thold_3,       	pc_fu_cfg_slp_sl_thold_3,     	pc_fu_func_nsl_thold_3,
 	    pc_fu_func_slp_nsl_thold_3,     	pc_fu_ary_nsl_thold_3,		pc_fu_ary_slp_nsl_thold_3,
 	    pc_fu_sg_3[0],		       	pc_fu_sg_3[1],			pc_fu_fce_3 })
    );
-   
 
+
+   // PC clock control staging: level 4 to 3
    tri_plat #(.WIDTH(6)) pc_lvl4to3(
       .vd(vdd),
       .gd(gnd),
@@ -203,7 +219,14 @@ module pcq_clks_stg(
       .q(  {pc_pc_func_sl_thold_3,         pc_pc_func_slp_sl_thold_3,      pc_pc_cfg_sl_thold_3,
             pc_pc_cfg_slp_sl_thold_3,      pc_pc_gptr_sl_thold_3,          pc_pc_sg_3})
    );
-   
+   // End of thold/SG/FCE staging (level 5 to level 3)
+
+//=====================================================================
+// thold/SG staging (level 3 to level 0) for PC units
+//=====================================================================
+   //----------------------------------------------------
+   // FUNC (RUN)
+   //----------------------------------------------------
    tri_plat #(.WIDTH(1)) func_3_2(
       .vd(vdd),
       .gd(gnd),
@@ -212,7 +235,7 @@ module pcq_clks_stg(
       .din(pc_pc_func_sl_thold_3),
       .q(pc_pc_func_sl_thold_2)
    );
-   
+
    tri_plat #(.WIDTH(1)) func_2_1(
       .vd(vdd),
       .gd(gnd),
@@ -221,7 +244,7 @@ module pcq_clks_stg(
       .din(pc_pc_func_sl_thold_2),
       .q(pc_pc_func_sl_thold_1)
    );
-   
+
    tri_plat #(.WIDTH(1)) func_1_0(
       .vd(vdd),
       .gd(gnd),
@@ -230,7 +253,10 @@ module pcq_clks_stg(
       .din(pc_pc_func_sl_thold_1),
       .q(pc_pc_func_sl_thold_0)
    );
-   
+
+   //----------------------------------------------------
+   // FUNC (SLEEP)
+   //----------------------------------------------------
    tri_plat #(.WIDTH(1)) func_slp_3_2(
       .vd(vdd),
       .gd(gnd),
@@ -239,7 +265,7 @@ module pcq_clks_stg(
       .din(pc_pc_func_slp_sl_thold_3),
       .q(pc_pc_func_slp_sl_thold_2)
    );
-      
+
    tri_plat #(.WIDTH(1)) func_slp_2_1(
       .vd(vdd),
       .gd(gnd),
@@ -248,7 +274,7 @@ module pcq_clks_stg(
       .din(pc_pc_func_slp_sl_thold_2),
       .q(pc_pc_func_slp_sl_thold_1)
    );
-   
+
    tri_plat #(.WIDTH(1)) func_slp_1_0(
       .vd(vdd),
       .gd(gnd),
@@ -257,7 +283,10 @@ module pcq_clks_stg(
       .din(pc_pc_func_slp_sl_thold_1),
       .q(pc_pc_func_slp_sl_thold_0)
    );
-   
+
+   //----------------------------------------------------
+   // CFG (RUN)
+   //----------------------------------------------------
    tri_plat #(.WIDTH(1)) cfg_3_2(
       .vd(vdd),
       .gd(gnd),
@@ -266,7 +295,7 @@ module pcq_clks_stg(
       .din(pc_pc_cfg_sl_thold_3),
       .q(pc_pc_cfg_sl_thold_2)
    );
-   
+
    tri_plat #(.WIDTH(1)) cfg_2_1(
       .vd(vdd),
       .gd(gnd),
@@ -275,7 +304,7 @@ module pcq_clks_stg(
       .din(pc_pc_cfg_sl_thold_2),
       .q(pc_pc_cfg_sl_thold_1)
    );
-      
+
    tri_plat #(.WIDTH(1)) cfg_1_0(
       .vd(vdd),
       .gd(gnd),
@@ -284,7 +313,10 @@ module pcq_clks_stg(
       .din(pc_pc_cfg_sl_thold_1),
       .q(pc_pc_cfg_sl_thold_0)
    );
-   
+
+   //----------------------------------------------------
+   // CFG (SLEEP)
+   //----------------------------------------------------
    tri_plat #(.WIDTH(1)) cfg_slp_3_2(
       .vd(vdd),
       .gd(gnd),
@@ -293,7 +325,7 @@ module pcq_clks_stg(
       .din(pc_pc_cfg_slp_sl_thold_3),
       .q(pc_pc_cfg_slp_sl_thold_2)
    );
-   
+
    tri_plat #(.WIDTH(1)) cfg_slp_2_1(
       .vd(vdd),
       .gd(gnd),
@@ -302,7 +334,7 @@ module pcq_clks_stg(
       .din(pc_pc_cfg_slp_sl_thold_2),
       .q(pc_pc_cfg_slp_sl_thold_1)
    );
-   
+
    tri_plat #(.WIDTH(1)) cfg_slp_1_0(
       .vd(vdd),
       .gd(gnd),
@@ -311,7 +343,10 @@ module pcq_clks_stg(
       .din(pc_pc_cfg_slp_sl_thold_1),
       .q(pc_pc_cfg_slp_sl_thold_0)
    );
-      
+
+   //----------------------------------------------------
+   // GPTR
+   //----------------------------------------------------
    tri_plat #(.WIDTH(1)) gptr_3_2(
       .vd(vdd),
       .gd(gnd),
@@ -320,7 +355,7 @@ module pcq_clks_stg(
       .din(pc_pc_gptr_sl_thold_3),
       .q(pc_pc_gptr_sl_thold_2)
    );
-   
+
    tri_plat #(.WIDTH(1)) gptr_2_1(
       .vd(vdd),
       .gd(gnd),
@@ -329,7 +364,7 @@ module pcq_clks_stg(
       .din(pc_pc_gptr_sl_thold_2),
       .q(pc_pc_gptr_sl_thold_1)
    );
-   
+
    tri_plat #(.WIDTH(1)) gptr_1_0(
       .vd(vdd),
       .gd(gnd),
@@ -338,7 +373,10 @@ module pcq_clks_stg(
       .din(pc_pc_gptr_sl_thold_1),
       .q(pc_pc_gptr_sl_thold_0)
    );
-   
+
+   //----------------------------------------------------
+   // SG
+   //----------------------------------------------------
    tri_plat #(.WIDTH(1)) sg_3_2(
       .vd(vdd),
       .gd(gnd),
@@ -347,7 +385,7 @@ module pcq_clks_stg(
       .din(pc_pc_sg_3),
       .q(pc_pc_sg_2)
    );
-   
+
    tri_plat #(.WIDTH(1)) sg_2_1(
       .vd(vdd),
       .gd(gnd),
@@ -356,7 +394,7 @@ module pcq_clks_stg(
       .din(pc_pc_sg_2),
       .q(pc_pc_sg_1)
    );
-   
+
    tri_plat #(.WIDTH(1)) sg_1_0(
       .vd(vdd),
       .gd(gnd),
@@ -365,7 +403,6 @@ module pcq_clks_stg(
       .din(pc_pc_sg_1),
       .q(pc_pc_sg_0)
    );
-      
+
 
 endmodule
-

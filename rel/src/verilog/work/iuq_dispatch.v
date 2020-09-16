@@ -9,6 +9,12 @@
 
 `timescale 1 ns / 1 ns
 
+//********************************************************************
+//*
+//* TITLE:
+//*
+//* NAME: iuq_dispatch.vhdl
+//*
 
 `include "tri_a2o.vh"
 
@@ -28,7 +34,10 @@ module iuq_dispatch(
    input                        mpw2_b,
    input                        scan_in,
    output                       scan_out,
-   
+
+   //-----------------------------
+   // SPR connections
+   //-----------------------------
    input [0:`THREADS-1]         spr_cpcr_we,
    input [0:4]                  spr_t0_cpcr2_fx0_cnt,
    input [0:4]                  spr_t0_cpcr2_fx1_cnt,
@@ -55,7 +64,7 @@ module iuq_dispatch(
    input [0:4]                  spr_t1_cpcr4_sq_cnt,
    input [0:4]	                 spr_t1_cpcr5_fu0_cnt,
    input [0:4]	                 spr_t1_cpcr5_fu1_cnt,
-`endif              
+`endif
    input [0:4]                  spr_cpcr0_fx0_cnt,
    input [0:4]                  spr_cpcr0_fx1_cnt,
    input [0:4]  	              spr_cpcr0_lq_cnt,
@@ -70,6 +79,9 @@ module iuq_dispatch(
    input [0:5]                  spr_t1_low_pri_count,
 `endif
 
+   //-------------------------------
+   // Performance interface with I$
+   //-------------------------------
    input                        pc_iu_event_bus_enable,
    output [0:`THREADS-1]        perf_iu6_stall,
    output [0:`THREADS-1]        perf_iu6_dispatch_fx0,
@@ -85,6 +97,9 @@ module iuq_dispatch(
    output [0:`THREADS-1]        perf_iu6_axu1_credit_stall,
 
 
+   //----------------------------
+   // SCOM signals
+   //----------------------------
    output [0:`THREADS-1]        iu_pc_fx0_credit_ok,
    output [0:`THREADS-1]        iu_pc_fx1_credit_ok,
    output [0:`THREADS-1]        iu_pc_axu0_credit_ok,
@@ -92,18 +107,24 @@ module iuq_dispatch(
    output [0:`THREADS-1]        iu_pc_lq_credit_ok,
    output [0:`THREADS-1]        iu_pc_sq_credit_ok,
 
-   
+
+   //----------------------------
+   // Credit Interface with IU
+   //----------------------------
    input [0:`THREADS-1]         rv_iu_fx0_credit_free,
-   input [0:`THREADS-1]         rv_iu_fx1_credit_free,		
+   input [0:`THREADS-1]         rv_iu_fx1_credit_free,		// Need to add 2nd unit someday
    input [0:`THREADS-1]         lq_iu_credit_free,
    input [0:`THREADS-1]         sq_iu_credit_free,
-   input [0:`THREADS-1]         axu0_iu_credit_free,		
-   input [0:`THREADS-1]         axu1_iu_credit_free,		
-                                
+   input [0:`THREADS-1]         axu0_iu_credit_free,		// credit free from axu reservation station
+   input [0:`THREADS-1]         axu1_iu_credit_free,		// credit free from axu reservation station
+
    input [0:`THREADS-1]         cp_flush,
    input [0:`THREADS-1]         xu_iu_run_thread,
    output			iu_xu_credits_returned,
-   
+
+   //----------------------------------------------------------------
+   // Interface with rename
+   //----------------------------------------------------------------
    input                        frn_fdis_iu6_t0_i0_vld,
    input [0:`ITAG_SIZE_ENC-1]   frn_fdis_iu6_t0_i0_itag,
    input [0:2]                  frn_fdis_iu6_t0_i0_ucode,
@@ -175,7 +196,7 @@ module iuq_dispatch(
    input [0:`ITAG_SIZE_ENC-1]   frn_fdis_iu6_t0_i0_s3_itag,
    input [0:2]                  frn_fdis_iu6_t0_i0_s3_t,
 
-   input                        frn_fdis_iu6_t0_i1_vld,    
+   input                        frn_fdis_iu6_t0_i1_vld,
    input [0:`ITAG_SIZE_ENC-1]   frn_fdis_iu6_t0_i1_itag,
    input [0:2]                  frn_fdis_iu6_t0_i1_ucode,
    input [0:`UCODE_ENTRIES_ENC-1] frn_fdis_iu6_t0_i1_ucode_cnt,
@@ -247,8 +268,11 @@ module iuq_dispatch(
    input [0:`ITAG_SIZE_ENC-1]   frn_fdis_iu6_t0_i1_s3_itag,
    input [0:2]                  frn_fdis_iu6_t0_i1_s3_t,
    input                        frn_fdis_iu6_t0_i1_s3_dep_hit,
-   
+
 `ifndef THREADS1
+   //----------------------------------------------------------------
+   // Interface with rename
+   //----------------------------------------------------------------
    input                        frn_fdis_iu6_t1_i0_vld,
    input [0:`ITAG_SIZE_ENC-1]   frn_fdis_iu6_t1_i0_itag,
    input [0:2]  		frn_fdis_iu6_t1_i0_ucode,
@@ -394,8 +418,12 @@ module iuq_dispatch(
    input                        frn_fdis_iu6_t1_i1_s3_dep_hit,
 `endif
 
+   // Input to dispatch to block due to ivax
    input [0:`THREADS-1]         cp_dis_ivax,
-   
+
+   //-----------------------------
+   // Stall from MMU
+   //-----------------------------
    input [0:`THREADS-1]         mm_iu_flush_req,
    output [0:`THREADS-1]        dp_cp_hold_req,
    input [0:`THREADS-1]         mm_iu_hold_done,
@@ -403,9 +431,15 @@ module iuq_dispatch(
    output [0:`THREADS-1]        dp_cp_bus_snoop_hold_req,
    input [0:`THREADS-1]         mm_iu_bus_snoop_hold_done,
    input [0:`THREADS-1]         mm_iu_tlbi_complete,
-   
+
+   //-----------------------------
+   // Stall from dispatch
+   //-----------------------------
    output [0:`THREADS-1]        fdis_frn_iu6_stall,
 
+   //----------------------------------------------------------------
+   // Interface to reservation station - Completion is snooping also
+   //----------------------------------------------------------------
    output                       iu_rv_iu6_t0_i0_vld,
    output                       iu_rv_iu6_t0_i0_act,
    output [0:`ITAG_SIZE_ENC-1]  iu_rv_iu6_t0_i0_itag,
@@ -551,6 +585,9 @@ module iuq_dispatch(
    output                       iu_rv_iu6_t0_i1_s3_dep_hit,
 
 `ifndef THREADS1
+   //----------------------------------------------------------------
+   // Interface with rename
+   //----------------------------------------------------------------
    output                       iu_rv_iu6_t1_i0_vld,
    output                       iu_rv_iu6_t1_i0_act,
    output [0:`ITAG_SIZE_ENC-1]  iu_rv_iu6_t1_i0_itag,
@@ -673,7 +710,7 @@ module iuq_dispatch(
    output [0:`GPR_POOL_ENC-1]   iu_rv_iu6_t1_i1_t2_p,
    output [0:2]                 iu_rv_iu6_t1_i1_t2_t,
    output                       iu_rv_iu6_t1_i1_t3_v,
-   output [0:`GPR_POOL_ENC-1]   iu_rv_iu6_t1_i1_t3_a,             
+   output [0:`GPR_POOL_ENC-1]   iu_rv_iu6_t1_i1_t3_a,
    output [0:`GPR_POOL_ENC-1]   iu_rv_iu6_t1_i1_t3_p,
    output [0:2]                 iu_rv_iu6_t1_i1_t3_t,
    output                       iu_rv_iu6_t1_i1_s1_v,
@@ -694,7 +731,7 @@ module iuq_dispatch(
    output [0:`ITAG_SIZE_ENC-1]  iu_rv_iu6_t1_i1_s3_itag,
    output [0:2]                 iu_rv_iu6_t1_i1_s3_t,
    output                       iu_rv_iu6_t1_i1_s3_dep_hit,
-`endif                                                                      
+`endif
    input [0:`THREADS-1]         spr_cpcr2_we
    );
 
@@ -738,12 +775,12 @@ module iuq_dispatch(
    parameter                    mm_iu_bus_snoop_hold_req_offset = mm_iu_hold_done_offset + `THREADS;
    parameter                    mm_iu_bus_snoop_hold_done_offset = mm_iu_bus_snoop_hold_req_offset + `THREADS;
    parameter                    in_ucode_offset = mm_iu_bus_snoop_hold_done_offset + `THREADS;
-   parameter                    in_fusion_offset = in_ucode_offset + `THREADS;   
+   parameter                    in_fusion_offset = in_ucode_offset + `THREADS;
    parameter                    total_pri_mask_offset = in_fusion_offset + `THREADS;
    parameter                    high_pri_mask_offset = total_pri_mask_offset + `THREADS;
    parameter                    med_pri_mask_offset = high_pri_mask_offset + `THREADS;
    parameter                    low_pri_mask_offset = med_pri_mask_offset + `THREADS;
-   parameter                    low_pri_cnt_offset = low_pri_mask_offset + `THREADS;   
+   parameter                    low_pri_cnt_offset = low_pri_mask_offset + `THREADS;
    parameter                    low_pri_max_offset = low_pri_cnt_offset + 8 * `THREADS;
    parameter                    perf_iu6_stall_offset = low_pri_max_offset + (6 * `THREADS);
    parameter                    perf_iu6_dispatch_fx0_offset = perf_iu6_stall_offset + `THREADS;
@@ -764,12 +801,14 @@ module iuq_dispatch(
    parameter                    iu_pc_axu0_credit_ok_offset = iu_pc_sq_credit_ok_offset + `THREADS;
    parameter                    iu_pc_axu1_credit_ok_offset = iu_pc_axu0_credit_ok_offset + `THREADS;
    parameter                    scan_right = iu_pc_axu1_credit_ok_offset + `THREADS - 1;
-  
+
+   // scan
    wire [0:scan_right]          siv;
    wire [0:scan_right]          sov;
-   
+
    wire                         tiup;
-   
+
+   // MMU hold request
    wire [0:`THREADS-1]           mm_hold_req_d;
    wire [0:`THREADS-1]           mm_hold_req_l2;
    wire [0:`THREADS-1]           mm_hold_done_d;
@@ -799,7 +838,8 @@ module iuq_dispatch(
    wire				hold_instructions_d;
    wire				hold_instructions_l2;
 
-   
+
+   // Credit counters
    wire [0:4]           fx0_high_credit_cnt_plus1_temp[0:`THREADS-1];
    wire [0:4]           fx0_high_credit_cnt_plus1[0:`THREADS-1];
    wire [0:4]           fx0_high_credit_cnt_minus1_temp[0:`THREADS-1];
@@ -807,7 +847,7 @@ module iuq_dispatch(
    wire [0:4]           fx0_high_credit_cnt_minus2_temp[0:`THREADS-1];
    wire [0:4]           fx0_high_credit_cnt_minus2[0:`THREADS-1];
    reg [0:4]            fx0_high_credit_cnt_d[0:`THREADS-1];
-   wire [0:4]           fx0_high_credit_cnt_l2[0:`THREADS-1];   
+   wire [0:4]           fx0_high_credit_cnt_l2[0:`THREADS-1];
    wire [0:4]           fx1_high_credit_cnt_plus1_temp[0:`THREADS-1];
    wire [0:4]           fx1_high_credit_cnt_plus1[0:`THREADS-1];
    wire [0:4]           fx1_high_credit_cnt_minus1_temp[0:`THREADS-1];
@@ -815,7 +855,7 @@ module iuq_dispatch(
    wire [0:4]           fx1_high_credit_cnt_minus2_temp[0:`THREADS-1];
    wire [0:4]           fx1_high_credit_cnt_minus2[0:`THREADS-1];
    reg [0:4]            fx1_high_credit_cnt_d[0:`THREADS-1];
-   wire [0:4]           fx1_high_credit_cnt_l2[0:`THREADS-1];   
+   wire [0:4]           fx1_high_credit_cnt_l2[0:`THREADS-1];
    wire [0:4]           lq_cmdq_high_credit_cnt_plus1_temp[0:`THREADS-1];
    wire [0:4]           lq_cmdq_high_credit_cnt_plus1[0:`THREADS-1];
    wire [0:4]           lq_cmdq_high_credit_cnt_minus1_temp[0:`THREADS-1];
@@ -848,7 +888,7 @@ module iuq_dispatch(
    wire [0:4]           fu1_high_credit_cnt_minus2[0:`THREADS-1];
    reg [0:4]            fu1_high_credit_cnt_d[0:`THREADS-1];
    wire [0:4]           fu1_high_credit_cnt_l2[0:`THREADS-1];
-   
+
    wire [0:4]           fx0_med_credit_cnt_plus1_temp[0:`THREADS-1];
    wire [0:4]           fx0_med_credit_cnt_plus1[0:`THREADS-1];
    wire [0:4]           fx0_med_credit_cnt_minus1_temp[0:`THREADS-1];
@@ -856,7 +896,7 @@ module iuq_dispatch(
    wire [0:4]           fx0_med_credit_cnt_minus2_temp[0:`THREADS-1];
    wire [0:4]           fx0_med_credit_cnt_minus2[0:`THREADS-1];
    reg [0:4]            fx0_med_credit_cnt_d[0:`THREADS-1];
-   wire [0:4]           fx0_med_credit_cnt_l2[0:`THREADS-1];   
+   wire [0:4]           fx0_med_credit_cnt_l2[0:`THREADS-1];
    wire [0:4]           fx1_med_credit_cnt_plus1_temp[0:`THREADS-1];
    wire [0:4]           fx1_med_credit_cnt_plus1[0:`THREADS-1];
    wire [0:4]           fx1_med_credit_cnt_minus1_temp[0:`THREADS-1];
@@ -864,7 +904,7 @@ module iuq_dispatch(
    wire [0:4]           fx1_med_credit_cnt_minus2_temp[0:`THREADS-1];
    wire [0:4]           fx1_med_credit_cnt_minus2[0:`THREADS-1];
    reg [0:4]            fx1_med_credit_cnt_d[0:`THREADS-1];
-   wire [0:4]           fx1_med_credit_cnt_l2[0:`THREADS-1];   
+   wire [0:4]           fx1_med_credit_cnt_l2[0:`THREADS-1];
    wire [0:4]           lq_cmdq_med_credit_cnt_plus1_temp[0:`THREADS-1];
    wire [0:4]           lq_cmdq_med_credit_cnt_plus1[0:`THREADS-1];
    wire [0:4]           lq_cmdq_med_credit_cnt_minus1_temp[0:`THREADS-1];
@@ -926,13 +966,14 @@ module iuq_dispatch(
    wire [0:`THREADS-1]  med_pri_mask_l2;
    wire [0:`THREADS-1]  low_pri_mask_d;
    wire [0:`THREADS-1]  low_pri_mask_l2;
-   wire [0:7]           low_pri_cnt_d[0:`THREADS-1];   
+   wire [0:7]           low_pri_cnt_d[0:`THREADS-1];
    wire [0:7]           low_pri_cnt_l2[0:`THREADS-1];
    wire [0:5]           low_pri_max_d[0:`THREADS-1];
    wire [0:5]           low_pri_max_l2[0:`THREADS-1];
    wire [0:`THREADS-1]  low_pri_cnt_act;
-   wire [0:`THREADS-1]  low_pri_en;            
+   wire [0:`THREADS-1]  low_pri_en;
 
+   // Perf count latches
    wire [0:`THREADS-1]  perf_iu6_stall_d;
    wire [0:`THREADS-1]  perf_iu6_stall_l2;
    wire [0:1]           perf_iu6_dispatch_fx0_d[0:`THREADS-1];
@@ -970,7 +1011,8 @@ module iuq_dispatch(
    wire [0:`THREADS-1]  iu_pc_axu0_credit_ok_l2;
    wire [0:`THREADS-1]  iu_pc_axu1_credit_ok_d;
    wire [0:`THREADS-1]  iu_pc_axu1_credit_ok_l2;
-   
+
+   // Counts used for total counts
    reg [0:1]            fx0_credit_cnt_minus_1;
    reg [0:1]            fx0_credit_cnt_minus_2;
    reg [0:1]            fx0_credit_cnt_plus_1;
@@ -996,55 +1038,63 @@ module iuq_dispatch(
    reg [0:1]            fu1_credit_cnt_plus_1;
    reg [0:1]            fu1_credit_cnt_zero;
 
+   // Latch to delay the flush signal
    wire [0:`THREADS-1]  cp_flush_l2;
    wire [0:`THREADS-1]  xu_iu_run_thread_l2;
 
    wire                 iu_xu_credits_returned_d;
    wire                 iu_xu_credits_returned_l2;
 
+   // Rotating bit to determine in a tie which thread will issue
    wire [0:`THREADS-1]  last_thread_d;
    wire [0:`THREADS-1]  last_thread_l2;
    wire                 last_thread_act;
-   
+
+   // This signal compares credits left and issues FX0 and FX1 instructions to FX0 when set
    reg  [0:1]           dual_issue_use_fx0_d;
    wire [0:1]           dual_issue_use_fx0_l2;
-   
+
    wire [0:1]           fx0_send_cnt[0:`THREADS-1];
    wire [0:1]           fx1_send_cnt[0:`THREADS-1];
    wire [0:1]           lq_cmdq_send_cnt[0:`THREADS-1];
    wire [0:1]           sq_cmdq_send_cnt[0:`THREADS-1];
    wire [0:1]           fu0_send_cnt[0:`THREADS-1];
    wire [0:1]           fu1_send_cnt[0:`THREADS-1];
-   
+
    wire [0:`THREADS-1]  core_block_ok;
+   // Check credits if only issue individual thread
    wire [0:`THREADS-1]  fx0_local_credit_ok;
    wire [0:`THREADS-1]  fx1_local_credit_ok;
    wire [0:`THREADS-1]  lq_cmdq_local_credit_ok;
    wire [0:`THREADS-1]  sq_cmdq_local_credit_ok;
    wire [0:`THREADS-1]  fu0_local_credit_ok;
    wire [0:`THREADS-1]  fu1_local_credit_ok;
+   // Check total credits if only issue individual thread
    wire [0:`THREADS-1]  fx0_credit_ok;
    wire [0:`THREADS-1]  fx1_credit_ok;
    wire [0:`THREADS-1]  lq_cmdq_credit_ok;
    wire [0:`THREADS-1]  sq_cmdq_credit_ok;
    wire [0:`THREADS-1]  fu0_credit_ok;
    wire [0:`THREADS-1]  fu1_credit_ok;
+   // Check total credits if issue all `THREADS
    wire                 fx0_both_credit_ok;
    wire                 fx1_both_credit_ok;
    wire                 lq_cmdq_both_credit_ok;
    wire                 sq_cmdq_both_credit_ok;
    wire                 fu0_both_credit_ok;
    wire                 fu1_both_credit_ok;
-   
+
    wire [0:`THREADS-1]  core_block;
-   
+
    wire [0:`THREADS-1]  send_instructions_all;
    wire [0:`THREADS-1]  send_instructions_local;
    wire [0:`THREADS-1]  send_instructions;
-   
+
+   // signals to be used internal to vhdl
    wire [0:`THREADS-1]  iu_rv_iu6_i0_vld_int;
    wire [0:`THREADS-1]  iu_rv_iu6_i1_vld_int;
-                        
+
+   // Pervasive
    wire                 pc_iu_func_sl_thold_1;
    wire                 pc_iu_func_sl_thold_0;
    wire                 pc_iu_func_sl_thold_0_b;
@@ -1054,7 +1104,7 @@ module iuq_dispatch(
    wire                 pc_iu_sg_1;
    wire                 pc_iu_sg_0;
    wire                 force_t;
-                        
+
    wire [0:4]           spr_high_fx0_cnt[0:`THREADS-1];
    wire [0:4]           spr_high_fx1_cnt[0:`THREADS-1];
    wire [0:4]           spr_high_lq_cnt[0:`THREADS-1];
@@ -1070,7 +1120,8 @@ module iuq_dispatch(
    wire [0:4]           spr_med_fu1_cnt[0:`THREADS-1];
 
    wire [0:5]           spr_low_pri_count[0:`THREADS-1];
-   
+
+   // Wires to more to 2D arrays
    wire [0:`THREADS-1]         		frn_fdis_iu6_i0_vld;
    wire [0:`ITAG_SIZE_ENC-1]   		frn_fdis_iu6_i0_itag[0:`THREADS-1];
    wire [0:2]				        		frn_fdis_iu6_i0_ucode[0:`THREADS-1];
@@ -1144,7 +1195,7 @@ module iuq_dispatch(
    wire [0:`ITAG_SIZE_ENC-1]       	frn_fdis_iu6_i0_s3_itag[0:`THREADS-1];
    wire [0:2]         					frn_fdis_iu6_i0_s3_t[0:`THREADS-1];
    wire [0:`THREADS-1]         		frn_fdis_iu6_i0_s3_dep_hit;
-                                             
+
    wire [0:`THREADS-1]         		frn_fdis_iu6_i1_vld;
    wire [0:`ITAG_SIZE_ENC-1]   		frn_fdis_iu6_i1_itag[0:`THREADS-1];
    wire [0:2]				        		frn_fdis_iu6_i1_ucode[0:`THREADS-1];
@@ -1215,7 +1266,7 @@ module iuq_dispatch(
    wire [0:`GPR_POOL_ENC-1]        	frn_fdis_iu6_i1_s3_a[0:`THREADS-1];
    wire [0:`GPR_POOL_ENC-1]        	frn_fdis_iu6_i1_s3_p[0:`THREADS-1];
    wire [0:`ITAG_SIZE_ENC-1]       	frn_fdis_iu6_i1_s3_itag[0:`THREADS-1];
-   wire [0:2]         					frn_fdis_iu6_i1_s3_t[0:`THREADS-1];                   
+   wire [0:2]         					frn_fdis_iu6_i1_s3_t[0:`THREADS-1];
    wire [0:`THREADS-1]         		frn_fdis_iu6_i1_s3_dep_hit;
 
    wire [0:`THREADS-1] fx0_send_cnt_zero;
@@ -1232,7 +1283,8 @@ module iuq_dispatch(
    wire [0:`THREADS-1] sq_cmdq_send_cnt_one;
 
 
-   
+   //!! Bugspray Include: iuq_dispatch
+
    assign spr_high_fx0_cnt[0] 				= spr_t0_cpcr2_fx0_cnt;
    assign spr_high_fx1_cnt[0] 				= spr_t0_cpcr2_fx1_cnt;
    assign spr_high_lq_cnt[0]					= spr_t0_cpcr2_lq_cnt;
@@ -1260,8 +1312,8 @@ module iuq_dispatch(
    assign spr_med_fu0_cnt[1]	            = spr_t1_cpcr5_fu0_cnt;
    assign spr_med_fu1_cnt[1]	            = spr_t1_cpcr5_fu1_cnt;
    assign spr_low_pri_count[1]            = spr_t1_low_pri_count;
-`endif      
-                              
+`endif
+
 	assign frn_fdis_iu6_i0_vld[0] 			= frn_fdis_iu6_t0_i0_vld;
    assign frn_fdis_iu6_i0_itag[0] 			= frn_fdis_iu6_t0_i0_itag;
    assign frn_fdis_iu6_i0_ucode[0] 			= frn_fdis_iu6_t0_i0_ucode;
@@ -1308,7 +1360,7 @@ module iuq_dispatch(
    assign frn_fdis_iu6_i0_t1_v[0]         = frn_fdis_iu6_t0_i0_t1_v;
    assign frn_fdis_iu6_i0_t1_t[0]         = frn_fdis_iu6_t0_i0_t1_t;
    assign frn_fdis_iu6_i0_t1_a[0]         = frn_fdis_iu6_t0_i0_t1_a;
-   assign frn_fdis_iu6_i0_t1_p[0]         = frn_fdis_iu6_t0_i0_t1_p;      
+   assign frn_fdis_iu6_i0_t1_p[0]         = frn_fdis_iu6_t0_i0_t1_p;
    assign frn_fdis_iu6_i0_t2_v[0]         = frn_fdis_iu6_t0_i0_t2_v;
    assign frn_fdis_iu6_i0_t2_a[0]         = frn_fdis_iu6_t0_i0_t2_a;
    assign frn_fdis_iu6_i0_t2_p[0]         = frn_fdis_iu6_t0_i0_t2_p;
@@ -1378,7 +1430,7 @@ module iuq_dispatch(
    assign frn_fdis_iu6_i1_t1_v[0]               = frn_fdis_iu6_t0_i1_t1_v;
    assign frn_fdis_iu6_i1_t1_t[0]               = frn_fdis_iu6_t0_i1_t1_t;
    assign frn_fdis_iu6_i1_t1_a[0]               = frn_fdis_iu6_t0_i1_t1_a;
-   assign frn_fdis_iu6_i1_t1_p[0]               = frn_fdis_iu6_t0_i1_t1_p;      
+   assign frn_fdis_iu6_i1_t1_p[0]               = frn_fdis_iu6_t0_i1_t1_p;
    assign frn_fdis_iu6_i1_t2_v[0]               = frn_fdis_iu6_t0_i1_t2_v;
    assign frn_fdis_iu6_i1_t2_a[0]               = frn_fdis_iu6_t0_i1_t2_a;
    assign frn_fdis_iu6_i1_t2_p[0]               = frn_fdis_iu6_t0_i1_t2_p;
@@ -1453,7 +1505,7 @@ module iuq_dispatch(
    assign frn_fdis_iu6_i0_t1_v[1]               = frn_fdis_iu6_t1_i0_t1_v;
    assign frn_fdis_iu6_i0_t1_t[1]               = frn_fdis_iu6_t1_i0_t1_t;
    assign frn_fdis_iu6_i0_t1_a[1]               = frn_fdis_iu6_t1_i0_t1_a;
-   assign frn_fdis_iu6_i0_t1_p[1]               = frn_fdis_iu6_t1_i0_t1_p;      
+   assign frn_fdis_iu6_i0_t1_p[1]               = frn_fdis_iu6_t1_i0_t1_p;
    assign frn_fdis_iu6_i0_t2_v[1]               = frn_fdis_iu6_t1_i0_t2_v;
    assign frn_fdis_iu6_i0_t2_a[1]               = frn_fdis_iu6_t1_i0_t2_a;
    assign frn_fdis_iu6_i0_t2_p[1]               = frn_fdis_iu6_t1_i0_t2_p;
@@ -1477,7 +1529,7 @@ module iuq_dispatch(
    assign frn_fdis_iu6_i0_s3_p[1]               = frn_fdis_iu6_t1_i0_s3_p;
    assign frn_fdis_iu6_i0_s3_itag[1]            = frn_fdis_iu6_t1_i0_s3_itag;
    assign frn_fdis_iu6_i0_s3_t[1]               = frn_fdis_iu6_t1_i0_s3_t;
-          
+
    assign frn_fdis_iu6_i1_vld[1]                = frn_fdis_iu6_t1_i1_vld;
    assign frn_fdis_iu6_i1_itag[1]               = frn_fdis_iu6_t1_i1_itag;
    assign frn_fdis_iu6_i1_ucode[1]              = frn_fdis_iu6_t1_i1_ucode;
@@ -1523,7 +1575,7 @@ module iuq_dispatch(
    assign frn_fdis_iu6_i1_t1_v[1]               = frn_fdis_iu6_t1_i1_t1_v;
    assign frn_fdis_iu6_i1_t1_t[1]               = frn_fdis_iu6_t1_i1_t1_t;
    assign frn_fdis_iu6_i1_t1_a[1]               = frn_fdis_iu6_t1_i1_t1_a;
-   assign frn_fdis_iu6_i1_t1_p[1]               = frn_fdis_iu6_t1_i1_t1_p;      
+   assign frn_fdis_iu6_i1_t1_p[1]               = frn_fdis_iu6_t1_i1_t1_p;
    assign frn_fdis_iu6_i1_t2_v[1]               = frn_fdis_iu6_t1_i1_t2_v;
    assign frn_fdis_iu6_i1_t2_a[1]               = frn_fdis_iu6_t1_i1_t2_a;
    assign frn_fdis_iu6_i1_t2_p[1]               = frn_fdis_iu6_t1_i1_t2_p;
@@ -1552,67 +1604,78 @@ module iuq_dispatch(
    assign frn_fdis_iu6_i1_s3_dep_hit[1]         = frn_fdis_iu6_t1_i1_s3_dep_hit;
 `endif
 
-   
+
    assign tiup = 1'b1;
-   
+
    assign dp_cp_hold_req = (mm_iu_flush_req_l2 & ~(in_ucode_l2 | in_fusion_l2));
    assign dp_cp_bus_snoop_hold_req = (mm_iu_bus_snoop_hold_req_l2 & ~(in_ucode_l2 | in_fusion_l2));
    assign mm_iu_flush_req_d = mm_iu_flush_req | (mm_iu_flush_req_l2 & (in_ucode_l2 | in_fusion_l2));
    assign mm_iu_bus_snoop_hold_req_d = mm_iu_bus_snoop_hold_req | (mm_iu_bus_snoop_hold_req_l2 & (in_ucode_l2 | in_fusion_l2));
-   
+
+   // Added logic for Erat invalidates to stop dispatch
    generate
    	begin : xhdl1
          genvar i;
          for (i = 0; i <= `THREADS - 1; i = i + 1)
          begin : send_cnt
-            assign in_ucode_d[i] = (cp_flush_l2[i] == 1'b1) ? 1'b0 : 
-                                   (iu_rv_iu6_i0_vld_int[i] == 1'b1 & frn_fdis_iu6_i0_ucode[i][1] == 1'b1 & iu_rv_iu6_i1_vld_int[i] == 1'b0) ? 1'b1 : 
-                                   (iu_rv_iu6_i1_vld_int[i] == 1'b1 & frn_fdis_iu6_i1_ucode[i][1] == 1'b1) ? 1'b1 : 
-                                   (iu_rv_iu6_i0_vld_int[i] == 1'b1 & frn_fdis_iu6_i0_ucode[i][2] == 1'b1 & iu_rv_iu6_i1_vld_int[i] == 1'b0) ? 1'b0 : 
-                                   (iu_rv_iu6_i1_vld_int[i] == 1'b1 & frn_fdis_iu6_i1_ucode[i][2] == 1'b1) ? 1'b0 : 
+            //IN V0 12 V1 12 | IN
+            // -  1 1-  0 -- |  1
+            // -  - --  1 1- |  1
+            // -  1 -1  0 -- |  0
+            // -  - --  1 -1 |  0
+            assign in_ucode_d[i] = (cp_flush_l2[i] == 1'b1) ? 1'b0 :
+                                   (iu_rv_iu6_i0_vld_int[i] == 1'b1 & frn_fdis_iu6_i0_ucode[i][1] == 1'b1 & iu_rv_iu6_i1_vld_int[i] == 1'b0) ? 1'b1 :
+                                   (iu_rv_iu6_i1_vld_int[i] == 1'b1 & frn_fdis_iu6_i1_ucode[i][1] == 1'b1) ? 1'b1 :
+                                   (iu_rv_iu6_i0_vld_int[i] == 1'b1 & frn_fdis_iu6_i0_ucode[i][2] == 1'b1 & iu_rv_iu6_i1_vld_int[i] == 1'b0) ? 1'b0 :
+                                   (iu_rv_iu6_i1_vld_int[i] == 1'b1 & frn_fdis_iu6_i1_ucode[i][2] == 1'b1) ? 1'b0 :
                                    in_ucode_l2[i];
-            
-            assign in_fusion_d[i] = (cp_flush_l2[i] == 1'b1) ? 1'b0 : 
-                                    (iu_rv_iu6_i0_vld_int[i] == 1'b1 & frn_fdis_iu6_i0_fuse_nop[i] == 1'b1 & iu_rv_iu6_i1_vld_int[i] == 1'b0) ? 1'b1 : 
-                                    (iu_rv_iu6_i1_vld_int[i] == 1'b1 & frn_fdis_iu6_i1_fuse_nop[i] == 1'b1) ? 1'b1 : 
-                                    (iu_rv_iu6_i0_vld_int[i] == 1'b1 & frn_fdis_iu6_i0_fuse_nop[i] == 1'b0 & iu_rv_iu6_i1_vld_int[i] == 1'b0) ? 1'b0 : 
-                                    (iu_rv_iu6_i1_vld_int[i] == 1'b1 & frn_fdis_iu6_i1_fuse_nop[i] == 1'b0) ? 1'b0 : 
+
+            //IN V0 F V1 F | IN
+            // -  1 1  0 - |  1
+            // -  - -  1 1 |  1
+            // -  1 0  0 - |  0
+            // -  - -  1 0 |  0
+            assign in_fusion_d[i] = (cp_flush_l2[i] == 1'b1) ? 1'b0 :
+                                    (iu_rv_iu6_i0_vld_int[i] == 1'b1 & frn_fdis_iu6_i0_fuse_nop[i] == 1'b1 & iu_rv_iu6_i1_vld_int[i] == 1'b0) ? 1'b1 :
+                                    (iu_rv_iu6_i1_vld_int[i] == 1'b1 & frn_fdis_iu6_i1_fuse_nop[i] == 1'b1) ? 1'b1 :
+                                    (iu_rv_iu6_i0_vld_int[i] == 1'b1 & frn_fdis_iu6_i0_fuse_nop[i] == 1'b0 & iu_rv_iu6_i1_vld_int[i] == 1'b0) ? 1'b0 :
+                                    (iu_rv_iu6_i1_vld_int[i] == 1'b1 & frn_fdis_iu6_i1_fuse_nop[i] == 1'b0) ? 1'b0 :
                                     in_fusion_l2[i];
 
             assign mm_hold_req_d[i] = (mm_iu_flush_req_l2[i] & ~(in_ucode_l2[i] | in_fusion_l2[i])) |
                                       (mm_hold_req_l2[i] & ~mm_hold_done_l2[i]);
-                                      
+
             assign mm_hold_done_d[i] = mm_iu_hold_done_l2[i];
-            
+
             assign mm_bus_snoop_hold_req_d[i] = (mm_iu_bus_snoop_hold_req_l2[i] & ~(in_ucode_l2[i] | in_fusion_l2[i])) |
                                                 (mm_bus_snoop_hold_req_l2[i] & ~mm_bus_snoop_hold_done_l2[i]);
-                                                
+
             assign mm_bus_snoop_hold_done_d[i] = mm_iu_bus_snoop_hold_done_l2[i];
-            
+
             assign hold_req_d[i] = (send_instructions[i] & core_block[i]) |
                                    (hold_req_l2[i] & ~hold_done_l2[i]);
-                                   
+
             assign hold_done_d[i] = cp_flush_l2[i];
 
             assign ivax_hold_req_d[i] = (cp_dis_ivax[i]) |
                                         (ivax_hold_req_l2[i] & ~mm_iu_tlbi_complete[i]);
-            
+
             assign fx0_send_cnt[i] = {(frn_fdis_iu6_i0_rte_fx0[i] & (~frn_fdis_iu6_i0_rte_fx1[i] | dual_issue_use_fx0_l2[0])),
                                       (frn_fdis_iu6_i1_rte_fx0[i] & (~frn_fdis_iu6_i1_rte_fx1[i] | dual_issue_use_fx0_l2[1]))};
-            
+
             assign fx1_send_cnt[i] = {(frn_fdis_iu6_i0_rte_fx1[i] & (~frn_fdis_iu6_i0_rte_fx0[i] | ~dual_issue_use_fx0_l2[0])),
                                       (frn_fdis_iu6_i1_rte_fx1[i] & (~frn_fdis_iu6_i1_rte_fx0[i] | ~dual_issue_use_fx0_l2[1]))};
-            
+
             assign lq_cmdq_send_cnt[i] = {frn_fdis_iu6_i0_rte_lq[i], frn_fdis_iu6_i1_rte_lq[i]};
-            
+
             assign sq_cmdq_send_cnt[i] = {frn_fdis_iu6_i0_rte_sq[i], frn_fdis_iu6_i1_rte_sq[i]};
-            
+
             assign fu0_send_cnt[i] = {(frn_fdis_iu6_i0_rte_axu0[i] & ~(frn_fdis_iu6_i0_rte_lq[i] & frn_fdis_iu6_i0_isload[i])),
                                       (frn_fdis_iu6_i1_rte_axu0[i] & ~(frn_fdis_iu6_i1_rte_lq[i] & frn_fdis_iu6_i1_isload[i]))};
-            
+
             assign fu1_send_cnt[i] = {(frn_fdis_iu6_i0_rte_axu1[i] & ~(frn_fdis_iu6_i0_rte_lq[i] & frn_fdis_iu6_i0_isload[i])),
                                       (frn_fdis_iu6_i1_rte_axu1[i] & ~(frn_fdis_iu6_i1_rte_lq[i] & frn_fdis_iu6_i1_isload[i]))};
-            
+
             assign core_block[i] = (frn_fdis_iu6_i0_core_block[i] | frn_fdis_iu6_i1_core_block[i]);
          end
       end
@@ -1651,6 +1714,7 @@ module iuq_dispatch(
    endgenerate
 
 `ifdef THREADS1
+   // Checking to make sure we aren't in ucode so we can issue a core blocker
    assign core_block_ok[0] = 1'b1;
 `endif
 `ifndef THREADS1
@@ -1691,15 +1755,15 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
          genvar i;
          for (i = 0; i <= `THREADS - 1; i = i + 1)
          begin : credit_ok
-
+            // Checking the credits allocated for each thread
             assign fx0_local_credit_ok[i] = ((fx0_send_cnt_zero[i]) |
                                             ((fx0_send_cnt_one[i]) & |fx0_credit_cnt_mux[i]) |
                                             (|fx0_credit_cnt_mux[i][0:3]));
-            
+
             assign fx1_local_credit_ok[i] = ((fx1_send_cnt_zero[i]) |
                                             ((fx1_send_cnt_one[i]) & |fx1_credit_cnt_mux[i]) |
                                             (|fx1_credit_cnt_mux[i][0:3]));
-            
+
             assign lq_cmdq_local_credit_ok[i] = ((lq_cmdq_send_cnt_zero[i]) |
                                                 ((lq_cmdq_send_cnt_one[i]) & |lq_cmdq_credit_cnt_mux[i]) |
                                                 (|lq_cmdq_credit_cnt_mux[i][0:3]));
@@ -1711,31 +1775,32 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
             assign fu0_local_credit_ok[i] = ((fu0_send_cnt_zero[i]) |
                                             ((fu0_send_cnt_one[i]) & |fu0_credit_cnt_mux[i]) |
                                             (|fu0_credit_cnt_mux[i][0:3]));
-            
+
             assign fu1_local_credit_ok[i] = ((fu1_send_cnt_zero[i]) |
                                             ((fu1_send_cnt_one[i]) & |fu1_credit_cnt_mux[i]) |
                                             (|fu1_credit_cnt_mux[i][0:3]));
-            
+
+            // Checking total credits if only issuing each thread individually
             assign fx0_credit_ok[i] = ((fx0_send_cnt_zero[i]) |
                                       ((fx0_send_cnt_one[i]) & |fx0_total_credit_cnt_l2) |
                                       (|fx0_total_credit_cnt_l2[0:3]));
-            
+
             assign fx1_credit_ok[i] = ((fx1_send_cnt_zero[i]) |
                                       ((fx1_send_cnt_one[i]) & |fx1_total_credit_cnt_l2) |
                                       (|fx1_total_credit_cnt_l2[0:3]));
-            
+
             assign lq_cmdq_credit_ok[i] = ((lq_cmdq_send_cnt_zero[i]) |
                                           ((lq_cmdq_send_cnt_one[i]) & |lq_cmdq_total_credit_cnt_l2) |
                                           (|lq_cmdq_total_credit_cnt_l2[0:3]));
-            
+
             assign sq_cmdq_credit_ok[i] = ((sq_cmdq_send_cnt_zero[i]) |
                                           ((sq_cmdq_send_cnt_one[i]) & |sq_cmdq_total_credit_cnt_l2) |
                                           (|sq_cmdq_total_credit_cnt_l2[0:3]));
-            
+
             assign fu0_credit_ok[i] = ((fu0_send_cnt_zero[i]) |
                                       ((fu0_send_cnt_one[i]) & |fu0_total_credit_cnt_l2) |
                                       (|fu0_total_credit_cnt_l2[0:3]));
-            
+
             assign fu1_credit_ok[i] = ((fu1_send_cnt_zero[i]) |
                                       ((fu1_send_cnt_one[i]) & |fu1_total_credit_cnt_l2) |
                                       (|fu1_total_credit_cnt_l2[0:3]));
@@ -1757,11 +1822,10 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
          assign fu1_both_credit_ok = 1'b0;
       end
    endgenerate
-            
+
    generate
       if (`THREADS == 2)
       begin : thread_gen_2
-
          assign fx0_both_credit_ok = (fx0_send_cnt_zero[0] & fx0_send_cnt_zero[1]) |
                                    (((fx0_send_cnt_zero[0] & fx0_send_cnt_one[1] ) | (fx0_send_cnt_zero[1] & fx0_send_cnt_one[0])) & (~(fx0_total_credit_cnt_l2 == {5{1'b0}}))) |
                                    (((fx0_send_cnt_zero[0] | fx0_send_cnt_zero[1]) | (fx0_send_cnt_one[0]  & fx0_send_cnt_one[1])) & |fx0_total_credit_cnt_l2[0:3]);
@@ -1773,11 +1837,11 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
          assign lq_cmdq_both_credit_ok = (lq_cmdq_send_cnt_zero[0] & lq_cmdq_send_cnt_zero[1]) |
                                        (((lq_cmdq_send_cnt_zero[0] & lq_cmdq_send_cnt_one[1] ) | (lq_cmdq_send_cnt_zero[1] & lq_cmdq_send_cnt_one[0])) & (~(lq_cmdq_total_credit_cnt_l2 == {5{1'b0}}))) |
                                        (((lq_cmdq_send_cnt_zero[0] | lq_cmdq_send_cnt_zero[1]) | (lq_cmdq_send_cnt_one[0]  & lq_cmdq_send_cnt_one[1])) & |lq_cmdq_total_credit_cnt_l2[0:3]);
-         
+
          assign sq_cmdq_both_credit_ok = (sq_cmdq_send_cnt_zero[0] & sq_cmdq_send_cnt_zero[1]) |
                                        (((sq_cmdq_send_cnt_zero[0] & sq_cmdq_send_cnt_one[1] ) | (sq_cmdq_send_cnt_zero[1] & sq_cmdq_send_cnt_one[0])) & (~(sq_cmdq_total_credit_cnt_l2 == {5{1'b0}}))) |
                                        (((sq_cmdq_send_cnt_zero[0] | sq_cmdq_send_cnt_zero[1]) | (sq_cmdq_send_cnt_one[0]  & sq_cmdq_send_cnt_one[1])) & |sq_cmdq_total_credit_cnt_l2[0:3]);
-          
+
 
          assign fu0_both_credit_ok = (fu0_send_cnt_zero[0] & fu0_send_cnt_zero[1]) |
                                    (((fu0_send_cnt_zero[0] & fu0_send_cnt_one[1] ) | (fu0_send_cnt_zero[1] & fu0_send_cnt_one[0])) & (~(fu0_total_credit_cnt_l2 == {5{1'b0}}))) |
@@ -1789,7 +1853,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
 
       end
    endgenerate
-            
+
    generate
       begin : xhdl3
          genvar i;
@@ -1799,7 +1863,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
                                               (core_block_ok[i] & fx0_local_credit_ok[i] & fx1_local_credit_ok[i] & lq_cmdq_local_credit_ok[i] & sq_cmdq_local_credit_ok[i] &
                                                 fu0_local_credit_ok[i] & fu1_local_credit_ok[i] & (low_pri_mask_l2[i] & frn_fdis_iu6_i0_vld[i])) &
                                           (~(|(core_block) | hold_instructions_l2));
-            
+
             assign send_instructions_local[i] = ((fx0_credit_ok[i] & fx1_credit_ok[i] & lq_cmdq_credit_ok[i] & sq_cmdq_credit_ok[i] & fu0_credit_ok[i] & fu1_credit_ok[i]) &
                                                  (core_block_ok[i] & fx0_local_credit_ok[i] & fx1_local_credit_ok[i] & lq_cmdq_local_credit_ok[i] & sq_cmdq_local_credit_ok[i] &
                                                    fu0_local_credit_ok[i] & fu1_local_credit_ok[i] & (low_pri_mask_l2[i] & frn_fdis_iu6_i0_vld[i])) &
@@ -1810,25 +1874,25 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
 
    assign hold_instructions_d = |(mm_hold_req_d | hold_req_d | ivax_hold_req_d);
 
-      
+
    generate
       if (`THREADS == 1)
       begin : send_thread_gen_1
          assign send_instructions[0] = (send_instructions_all[0] | send_instructions_local[0]) & frn_fdis_iu6_i0_vld[0];
       end
    endgenerate
-      
+
    generate
       if (`THREADS == 2)
       begin : send_thread_gen_2
          assign send_instructions[0] = (send_instructions_all[0] | (last_thread_l2[1] & send_instructions_local[0]) | (~send_instructions_local[1] & send_instructions_local[0])) & frn_fdis_iu6_i0_vld[0];
-         
+
          assign send_instructions[1] = (send_instructions_all[1] | (last_thread_l2[0] & send_instructions_local[1]) | (~send_instructions_local[0] & send_instructions_local[1])) & frn_fdis_iu6_i0_vld[1];
       end
    endgenerate
-      
+
    assign fdis_frn_iu6_stall = frn_fdis_iu6_i0_vld & (~send_instructions);
-   
+
    assign last_thread_act = |send_instructions;
  `ifdef THREADS1
    assign last_thread_d = last_thread_l2[0];
@@ -1837,7 +1901,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
    assign last_thread_d = {last_thread_l2[1:`THREADS - 1], last_thread_l2[0]};
  `endif
 
- 
+
    generate
       begin : local_credit_calc
          genvar i;
@@ -1849,14 +1913,14 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
             assign fx0_med_credit_cnt_plus1_temp[i]   = fx0_med_credit_cnt_l2[i] + value_1[27:31];
             assign fx0_med_credit_cnt_minus1_temp[i]  = fx0_med_credit_cnt_l2[i] - value_1[27:31];
             assign fx0_med_credit_cnt_minus2_temp[i]  = fx0_med_credit_cnt_l2[i] - value_2[27:31];
-                                                       
+
             assign fx1_high_credit_cnt_plus1_temp[i]  = fx1_high_credit_cnt_l2[i] + value_1[27:31];
             assign fx1_high_credit_cnt_minus1_temp[i] = fx1_high_credit_cnt_l2[i] - value_1[27:31];
             assign fx1_high_credit_cnt_minus2_temp[i] = fx1_high_credit_cnt_l2[i] - value_2[27:31];
             assign fx1_med_credit_cnt_plus1_temp[i]   = fx1_med_credit_cnt_l2[i] + value_1[27:31];
             assign fx1_med_credit_cnt_minus1_temp[i]  = fx1_med_credit_cnt_l2[i] - value_1[27:31];
             assign fx1_med_credit_cnt_minus2_temp[i]  = fx1_med_credit_cnt_l2[i] - value_2[27:31];
-            
+
             assign lq_cmdq_high_credit_cnt_plus1_temp[i]  = lq_cmdq_high_credit_cnt_l2[i] + value_1[27:31];
             assign lq_cmdq_high_credit_cnt_minus1_temp[i] = lq_cmdq_high_credit_cnt_l2[i] - value_1[27:31];
             assign lq_cmdq_high_credit_cnt_minus2_temp[i] = lq_cmdq_high_credit_cnt_l2[i] - value_2[27:31];
@@ -1884,7 +1948,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
             assign fu1_med_credit_cnt_plus1_temp[i]   = fu1_med_credit_cnt_l2[i] + value_1[27:31];
             assign fu1_med_credit_cnt_minus1_temp[i]  = fu1_med_credit_cnt_l2[i] - value_1[27:31];
             assign fu1_med_credit_cnt_minus2_temp[i]  = fu1_med_credit_cnt_l2[i] - value_2[27:31];
-            
+
             assign fx0_high_credit_cnt_plus1[i] = ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_high_fx0_cnt[i] :
                                                   (fx0_high_credit_cnt_plus1_temp[i] > spr_high_fx0_cnt[i]) ? spr_high_fx0_cnt[i] :
                                                    fx0_high_credit_cnt_plus1_temp[i];
@@ -1908,7 +1972,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
             assign fx0_med_credit_cnt_minus2[i] = ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_med_fx0_cnt[i] :
                                                   (fx0_med_credit_cnt_minus2_temp[i][0] == 1'b1) ? 5'b0 :
                                                    fx0_med_credit_cnt_minus2_temp[i];
-                                                   
+
             assign fx1_high_credit_cnt_plus1[i] = ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_high_fx1_cnt[i] :
                                                   (fx1_high_credit_cnt_plus1_temp[i] > spr_high_fx1_cnt[i]) ? spr_high_fx1_cnt[i] :
                                                    fx1_high_credit_cnt_plus1_temp[i];
@@ -1932,7 +1996,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
             assign fx1_med_credit_cnt_minus2[i] = ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_med_fx1_cnt[i] :
                                                   (fx1_med_credit_cnt_minus2_temp[i][0] == 1'b1) ? 5'b0 :
                                                    fx1_med_credit_cnt_minus2_temp[i];
-            
+
             assign lq_cmdq_high_credit_cnt_plus1[i] = (spr_cpcr_we[i] == 1'b1) ? spr_high_lq_cnt[i] :
                                                       (lq_cmdq_high_credit_cnt_plus1_temp[i] > spr_high_lq_cnt[i]) ? spr_high_lq_cnt[i] :
                                                        lq_cmdq_high_credit_cnt_plus1_temp[i];
@@ -1956,7 +2020,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
             assign lq_cmdq_med_credit_cnt_minus2[i] = (spr_cpcr_we[i] == 1'b1) ? spr_med_lq_cnt[i] :
                                                       (lq_cmdq_med_credit_cnt_minus2_temp[i][0] == 1'b1) ? 5'b0 :
                                                        lq_cmdq_med_credit_cnt_minus2_temp[i];
-                                                   
+
             assign sq_cmdq_high_credit_cnt_plus1[i] = (spr_cpcr_we[i] == 1'b1) ? spr_high_sq_cnt[i] :
                                                       (sq_cmdq_high_credit_cnt_plus1_temp[i] > spr_high_sq_cnt[i]) ? spr_high_sq_cnt[i] :
                                                        sq_cmdq_high_credit_cnt_plus1_temp[i];
@@ -1980,7 +2044,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
             assign sq_cmdq_med_credit_cnt_minus2[i] = (spr_cpcr_we[i] == 1'b1) ? spr_med_sq_cnt[i] :
                                                       (sq_cmdq_med_credit_cnt_minus2_temp[i][0] == 1'b1) ? 5'b0 :
                                                        sq_cmdq_med_credit_cnt_minus2_temp[i];
-                                                   
+
             assign fu0_high_credit_cnt_plus1[i] = ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_high_fu0_cnt[i] :
                                                   (fu0_high_credit_cnt_plus1_temp[i] > spr_high_fu0_cnt[i]) ? spr_high_fu0_cnt[i] :
                                                    fu0_high_credit_cnt_plus1_temp[i];
@@ -2004,7 +2068,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
             assign fu0_med_credit_cnt_minus2[i] = ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_med_fu0_cnt[i] :
                                                   (fu0_med_credit_cnt_minus2_temp[i][0] == 1'b1) ? 5'b0 :
                                                    fu0_med_credit_cnt_minus2_temp[i];
-                                                   
+
             assign fu1_high_credit_cnt_plus1[i] = ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_high_fu1_cnt[i] :
                                                   (fu1_high_credit_cnt_plus1_temp[i] > spr_high_fu1_cnt[i]) ? spr_high_fu1_cnt[i] :
                                                    fu1_high_credit_cnt_plus1_temp[i];
@@ -2030,14 +2094,14 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
                                                    fu1_med_credit_cnt_minus2_temp[i];
          end
       end
-   endgenerate           
- 
- 
+   endgenerate
+
+
    generate
       begin : xhdl4
          genvar i;
          for (i = 0; i <= `THREADS - 1; i = i + 1)
-         begin : credit_proc            
+         begin : credit_proc
             always @(*)
             begin: fx0_credit_proc
                fx0_high_credit_cnt_d[i] <= ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_high_fx0_cnt[i] : fx0_high_credit_cnt_l2[i];
@@ -2078,7 +2142,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
                fx1_credit_cnt_minus_2[i] <= 1'b0;
                fx1_credit_cnt_plus_1[i] <= 1'b0;
                fx1_credit_cnt_zero[i] <= 1'b1;
-               
+
                if ((rv_iu_fx1_credit_free[i] == 1'b1) & (send_instructions[i] == 1'b0 | fx1_send_cnt[i] == 2'b00))
                begin
                   fx1_high_credit_cnt_d[i] <= fx1_high_credit_cnt_plus1[i];
@@ -2100,9 +2164,9 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
                   fx1_credit_cnt_minus_2[i] <= 1'b1;
                   fx1_credit_cnt_zero[i] <= 1'b0;
                end
-               
-            end            
-            
+
+            end
+
             always @(*)
             begin: lq_cmdq_credit_proc
                lq_cmdq_high_credit_cnt_d[i] <= (spr_cpcr_we[i] == 1'b1) ? spr_high_lq_cnt[i] : lq_cmdq_high_credit_cnt_l2[i];
@@ -2111,7 +2175,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
                lq_cmdq_credit_cnt_minus_2[i] <= 1'b0;
                lq_cmdq_credit_cnt_plus_1[i] <= 1'b0;
                lq_cmdq_credit_cnt_zero[i] <= 1'b1;
-               
+
                if ((lq_iu_credit_free[i] == 1'b1) & (send_instructions[i] == 1'b0 | lq_cmdq_send_cnt[i] == 2'b00))
                begin
                   lq_cmdq_high_credit_cnt_d[i] <= lq_cmdq_high_credit_cnt_plus1[i];
@@ -2133,8 +2197,8 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
                   lq_cmdq_credit_cnt_minus_2[i] <= 1'b1;
                   lq_cmdq_credit_cnt_zero[i] <= 1'b0;
                end
-            end             
-            
+            end
+
             always @(*)
             begin: sq_cmdq_credit_proc
                sq_cmdq_high_credit_cnt_d[i] <= (spr_cpcr_we[i] == 1'b1) ? spr_high_sq_cnt[i] : sq_cmdq_high_credit_cnt_l2[i];
@@ -2165,8 +2229,8 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
                   sq_cmdq_credit_cnt_minus_2[i] <= 1'b1;
                   sq_cmdq_credit_cnt_zero[i] <= 1'b0;
                end
-            end           
-            
+            end
+
             always @(*)
             begin: fu0_credit_proc
                fu0_high_credit_cnt_d[i] <= ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_high_fu0_cnt[i] : fu0_high_credit_cnt_l2[i];
@@ -2175,7 +2239,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
                fu0_credit_cnt_minus_2[i] <= 1'b0;
                fu0_credit_cnt_plus_1[i] <= 1'b0;
                fu0_credit_cnt_zero[i] <= 1'b1;
-               
+
                if ((axu0_iu_credit_free[i] == 1'b1) & (send_instructions[i] == 1'b0 | fu0_send_cnt[i] == 2'b00))
                begin
                   fu0_high_credit_cnt_d[i] <= fu0_high_credit_cnt_plus1[i];
@@ -2197,12 +2261,12 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
                   fu0_credit_cnt_minus_2[i] <= 1'b1;
                   fu0_credit_cnt_zero[i] <= 1'b0;
                end
-            end            
+            end
 
             always @(*)
             begin: fu1_credit_proc
-               fu1_high_credit_cnt_d[i] <= ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_high_fu1_cnt[i] : fu1_high_credit_cnt_l2[i];               
-               fu1_med_credit_cnt_d[i] <= ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_med_fu1_cnt[i] : fu1_med_credit_cnt_l2[i];               
+               fu1_high_credit_cnt_d[i] <= ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_high_fu1_cnt[i] : fu1_high_credit_cnt_l2[i];
+               fu1_med_credit_cnt_d[i] <= ((spr_cpcr_we[i] == 1'b1) | (&cp_flush_l2 == 1'b1)) ? spr_med_fu1_cnt[i] : fu1_med_credit_cnt_l2[i];
                fu1_credit_cnt_minus_1[i] <= 1'b0;
                fu1_credit_cnt_minus_2[i] <= 1'b0;
                fu1_credit_cnt_plus_1[i] <= 1'b0;
@@ -2228,11 +2292,11 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
                   fu1_med_credit_cnt_d[i] <= fu1_med_credit_cnt_minus2[i];
                   fu1_credit_cnt_minus_2[i] <= 1'b1;
                   fu1_credit_cnt_zero[i] <= 1'b0;
-               end               
+               end
             end
          end
       end
-   endgenerate         
+   endgenerate
 
 `ifdef THREADS1
    always @(*)
@@ -2263,14 +2327,14 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
       fu1_credit_cnt_zero[1] <= 1'b1;
    end
 `endif
-   
+
    always @(*)
    begin: fx0_total_credit_proc
 
       fx0_total_credit_cnt_d <= fx0_total_credit_cnt_l2;
-        
+
       if (|spr_cpcr_we == 1'b1 | &cp_flush_l2 == 1'b1)
-         fx0_total_credit_cnt_d <= spr_cpcr0_fx0_cnt;                       
+         fx0_total_credit_cnt_d <= spr_cpcr0_fx0_cnt;
       else
       begin
          if(fx0_credit_cnt_minus_2[0] & fx0_credit_cnt_minus_2[1])
@@ -2286,8 +2350,8 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
          if(fx0_credit_cnt_plus_1[0] & fx0_credit_cnt_plus_1[1])
             fx0_total_credit_cnt_d <= fx0_total_credit_cnt_l2 + value_2[27:31];
       end
-   end      
-      
+   end
+
    always @(*)
    begin: fx1_total_credit_proc
 
@@ -2310,8 +2374,8 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
          if(fx1_credit_cnt_plus_1[0] & fx1_credit_cnt_plus_1[1])
             fx1_total_credit_cnt_d <= fx1_total_credit_cnt_l2 + value_2[27:31];
       end
-   end      
-      
+   end
+
    always @(*)
    begin: lq_cmdq_total_credit_proc
 
@@ -2327,7 +2391,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
             lq_cmdq_total_credit_cnt_d <= lq_cmdq_total_credit_cnt_l2 - value_3[27:31];
          if((lq_cmdq_credit_cnt_minus_2[0] & lq_cmdq_credit_cnt_zero[1]) | (lq_cmdq_credit_cnt_minus_1[0] & lq_cmdq_credit_cnt_minus_1[1]) | (lq_cmdq_credit_cnt_zero[0] &    lq_cmdq_credit_cnt_minus_2[1]))
             lq_cmdq_total_credit_cnt_d <= lq_cmdq_total_credit_cnt_l2 - value_2[27:31];
-         if((lq_cmdq_credit_cnt_minus_2[0] & lq_cmdq_credit_cnt_plus_1[1]) | (lq_cmdq_credit_cnt_minus_1[0] & lq_cmdq_credit_cnt_zero[1]) | (lq_cmdq_credit_cnt_zero[0] & lq_cmdq_credit_cnt_minus_1[1]) | 
+         if((lq_cmdq_credit_cnt_minus_2[0] & lq_cmdq_credit_cnt_plus_1[1]) | (lq_cmdq_credit_cnt_minus_1[0] & lq_cmdq_credit_cnt_zero[1]) | (lq_cmdq_credit_cnt_zero[0] & lq_cmdq_credit_cnt_minus_1[1]) |
             (lq_cmdq_credit_cnt_plus_1[0] & lq_cmdq_credit_cnt_minus_2[1]))
             lq_cmdq_total_credit_cnt_d <= lq_cmdq_total_credit_cnt_l2 - value_1[27:31];
          if((lq_cmdq_credit_cnt_zero[0] & lq_cmdq_credit_cnt_plus_1[1]) | (lq_cmdq_credit_cnt_plus_1[0] & lq_cmdq_credit_cnt_zero[1]))
@@ -2335,8 +2399,8 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
          if(lq_cmdq_credit_cnt_plus_1[0] & lq_cmdq_credit_cnt_plus_1[1])
             lq_cmdq_total_credit_cnt_d <= lq_cmdq_total_credit_cnt_l2 + value_2[27:31];
       end
-   end         
-      
+   end
+
    always @(*)
    begin: sq_cmdq_total_credit_proc
 
@@ -2353,7 +2417,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
          if((sq_cmdq_credit_cnt_minus_2[0] & sq_cmdq_credit_cnt_zero[1]) | (sq_cmdq_credit_cnt_minus_1[0] & sq_cmdq_credit_cnt_minus_1[1]) |
             (sq_cmdq_credit_cnt_zero[0] & sq_cmdq_credit_cnt_minus_2[1]))
             sq_cmdq_total_credit_cnt_d <= sq_cmdq_total_credit_cnt_l2 - value_2[27:31];
-         if((sq_cmdq_credit_cnt_minus_2[0] & sq_cmdq_credit_cnt_plus_1[1]) | (sq_cmdq_credit_cnt_minus_1[0] & sq_cmdq_credit_cnt_zero[1]) | 
+         if((sq_cmdq_credit_cnt_minus_2[0] & sq_cmdq_credit_cnt_plus_1[1]) | (sq_cmdq_credit_cnt_minus_1[0] & sq_cmdq_credit_cnt_zero[1]) |
             (sq_cmdq_credit_cnt_zero[0] & sq_cmdq_credit_cnt_minus_1[1]) | (sq_cmdq_credit_cnt_plus_1[0] & sq_cmdq_credit_cnt_minus_2[1]))
             sq_cmdq_total_credit_cnt_d <= sq_cmdq_total_credit_cnt_l2 - value_1[27:31];
          if((sq_cmdq_credit_cnt_zero[0] & sq_cmdq_credit_cnt_plus_1[1]) | (sq_cmdq_credit_cnt_plus_1[0] & sq_cmdq_credit_cnt_zero[1]))
@@ -2361,8 +2425,8 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
          if(sq_cmdq_credit_cnt_plus_1[0] & sq_cmdq_credit_cnt_plus_1[1])
              sq_cmdq_total_credit_cnt_d <= sq_cmdq_total_credit_cnt_l2 + value_2[27:31];
       end
-   end      
-      
+   end
+
    always @(*)
    begin: fu0_total_credit_proc
 
@@ -2386,7 +2450,7 @@ tri_xor2 sq_cmdq_send_cnt_t1_one (sq_cmdq_send_cnt_one[1],  sq_cmdq_send_cnt[1][
             fu0_total_credit_cnt_d <= fu0_total_credit_cnt_l2 + value_2[27:31];
       end
    end
-                               
+
    always @(*)
    begin: fu1_total_credit_proc
 
@@ -2443,19 +2507,18 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
          genvar i;
          for (i = 0; i <= `THREADS - 1; i = i + 1)
          begin : pri_mask_set
-            assign low_pri_max_d[i] = spr_low_pri_count[i]; 
-            
+            assign low_pri_max_d[i] = spr_low_pri_count[i];
+
             assign low_pri_cnt_d[i] = (iu_rv_iu6_i0_vld_int[i]) ? {8{1'b0}} :
                                       low_pri_cnt_l2[i] + value_1[24:31];
-                                      
+
             assign low_pri_cnt_act[i] = ((low_pri_cnt_l2[i][0:5] != low_pri_max_l2[i]) |
                                         iu_rv_iu6_i0_vld_int[i]) & ~spr_high_pri_mask[i] & ~spr_med_pri_mask[i];
-                                        
-            assign low_pri_en[i] = (low_pri_max_l2[i] == low_pri_cnt_l2[i][0:5]) & ~iu_rv_iu6_i0_vld_int[i] & ~spr_high_pri_mask[i] & ~spr_med_pri_mask[i];            
+
+            assign low_pri_en[i] = (low_pri_max_l2[i] == low_pri_cnt_l2[i][0:5]) & ~iu_rv_iu6_i0_vld_int[i] & ~spr_high_pri_mask[i] & ~spr_med_pri_mask[i];
          end
       end
    endgenerate
-
 
    always @(*)
    begin: dual_iss_fx0_proc
@@ -2756,12 +2819,13 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
    assign iu_rv_iu6_t1_i1_s3_itag = frn_fdis_iu6_i1_s3_itag[1];
    assign iu_rv_iu6_t1_i1_s3_t = frn_fdis_iu6_i1_s3_t[1];
    assign iu_rv_iu6_t1_i1_s3_dep_hit = frn_fdis_iu6_i1_s3_dep_hit[1];
-`endif   
+`endif
 
 
 
 
 
+   // Perf counters
    generate
       begin : perf_set
          genvar i;
@@ -2771,7 +2835,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
 
             assign perf_iu6_dispatch_fx0_d[i][0] = ((iu_rv_iu6_i1_vld_int[i] & fx0_send_cnt[i][1] & frn_fdis_iu6_i1_rte_fx0[i]) & perf_iu6_dispatch_fx0_l2[i][1]) |
                                                    ((iu_rv_iu6_i0_vld_int[i] & fx0_send_cnt[i][0] & frn_fdis_iu6_i0_rte_fx0[i]) & perf_iu6_dispatch_fx0_l2[i][1]) |
-                                                   (iu_rv_iu6_i0_vld_int[i] & fx0_send_cnt[i][0] & frn_fdis_iu6_i0_rte_fx0[i]) & (iu_rv_iu6_i1_vld_int[i] & fx0_send_cnt[i][1] & frn_fdis_iu6_i1_rte_fx0[i]);                                                   
+                                                   (iu_rv_iu6_i0_vld_int[i] & fx0_send_cnt[i][0] & frn_fdis_iu6_i0_rte_fx0[i]) & (iu_rv_iu6_i1_vld_int[i] & fx0_send_cnt[i][1] & frn_fdis_iu6_i1_rte_fx0[i]);
 
             assign perf_iu6_dispatch_fx0_d[i][1] = (~(iu_rv_iu6_i0_vld_int[i] & fx0_send_cnt[i][0] & frn_fdis_iu6_i0_rte_fx0[i]) & ~(iu_rv_iu6_i1_vld_int[i] & fx0_send_cnt[i][1] & frn_fdis_iu6_i1_rte_fx0[i]) & perf_iu6_dispatch_fx0_l2[i][1]) |
                                                    (~(iu_rv_iu6_i0_vld_int[i] & fx0_send_cnt[i][0] & frn_fdis_iu6_i0_rte_fx0[i]) & (iu_rv_iu6_i1_vld_int[i] & fx0_send_cnt[i][1] & frn_fdis_iu6_i1_rte_fx0[i]) & ~perf_iu6_dispatch_fx0_l2[i][1]) |
@@ -2867,7 +2931,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       begin : xhdl7
          genvar i;
          for (i = 0; i <= `THREADS - 1; i = i + 1)
-         begin : thread_latches            
+         begin : thread_latches
             tri_rlmreg_p #(.WIDTH(5), .INIT(`RV_FX0_ENTRIES - 2)) fx0_high_credit_cnt_latch(
                .vd(vdd),
                .gd(gnd),
@@ -2884,8 +2948,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[fx0_high_credit_cnt_offset + 5 * i:fx0_high_credit_cnt_offset + (5 * (i + 1)-1)]),
                .din(fx0_high_credit_cnt_d[i]),
                .dout(fx0_high_credit_cnt_l2[i])
-            );               
-            
+            );
+
             tri_rlmreg_p #(.WIDTH(5), .INIT(`RV_FX1_ENTRIES - 2)) fx1_high_credit_cnt_latch(
                .vd(vdd),
                .gd(gnd),
@@ -2902,8 +2966,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[fx1_high_credit_cnt_offset + 5 * i:fx1_high_credit_cnt_offset + (5 * (i + 1)-1)]),
                .din(fx1_high_credit_cnt_d[i]),
                .dout(fx1_high_credit_cnt_l2[i])
-            );            
-            
+            );
+
             tri_rlmreg_p #(.WIDTH(5), .INIT(`LDSTQ_ENTRIES - 2)) lq_cmdq_high_cnt_latch(
                .vd(vdd),
                .gd(gnd),
@@ -2920,8 +2984,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[lq_cmdq_high_credit_cnt_offset + 5 * i:lq_cmdq_high_credit_cnt_offset + (5 * (i + 1)-1)]),
                .din(lq_cmdq_high_credit_cnt_d[i]),
                .dout(lq_cmdq_high_credit_cnt_l2[i])
-            );            
-            
+            );
+
             tri_rlmreg_p #(.WIDTH(5), .INIT(`STQ_ENTRIES - 2)) sq_cmdq_high_cnt_latch(
                .vd(vdd),
                .gd(gnd),
@@ -2938,8 +3002,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[sq_cmdq_high_credit_cnt_offset + 5 * i:sq_cmdq_high_credit_cnt_offset + (5 * (i + 1)-1)]),
                .din(sq_cmdq_high_credit_cnt_d[i]),
                .dout(sq_cmdq_high_credit_cnt_l2[i])
-            );            
-            
+            );
+
             tri_rlmreg_p #(.WIDTH(5), .INIT(`RV_AXU0_ENTRIES - 2)) fu0_high_credit_cnt_latch(
                .vd(vdd),
                .gd(gnd),
@@ -2956,11 +3020,11 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[fu0_high_credit_cnt_offset + 5 * i:fu0_high_credit_cnt_offset + (5 * (i + 1)-1)]),
                .din(fu0_high_credit_cnt_d[i]),
                .dout(fu0_high_credit_cnt_l2[i])
-            );            
-            
+            );
+
             tri_rlmreg_p #(.WIDTH(5), .INIT(`RV_AXU1_ENTRIES - 2)) fu1_high_credit_cnt_latch(
                .vd(vdd),
-               .gd(gnd),               
+               .gd(gnd),
                .nclk(nclk),
                .act(tiup),
                .force_t(force_t),
@@ -2992,8 +3056,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[fx0_med_credit_cnt_offset + 5 * i:fx0_med_credit_cnt_offset + (5 * (i + 1)-1)]),
                .din(fx0_med_credit_cnt_d[i]),
                .dout(fx0_med_credit_cnt_l2[i])
-            );               
-            
+            );
+
             tri_rlmreg_p #(.WIDTH(5), .INIT(`RV_FX1_ENTRIES / 2)) fx1_med_credit_cnt_latch(
                .vd(vdd),
                .gd(gnd),
@@ -3010,8 +3074,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[fx1_med_credit_cnt_offset + 5 * i:fx1_med_credit_cnt_offset + (5 * (i + 1)-1)]),
                .din(fx1_med_credit_cnt_d[i]),
                .dout(fx1_med_credit_cnt_l2[i])
-            );            
-            
+            );
+
             tri_rlmreg_p #(.WIDTH(5), .INIT(`LDSTQ_ENTRIES / 2)) lq_cmdq_med_cnt_latch(
                .vd(vdd),
                .gd(gnd),
@@ -3028,8 +3092,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[lq_cmdq_med_credit_cnt_offset + 5 * i:lq_cmdq_med_credit_cnt_offset + (5 * (i + 1)-1)]),
                .din(lq_cmdq_med_credit_cnt_d[i]),
                .dout(lq_cmdq_med_credit_cnt_l2[i])
-            );            
-            
+            );
+
             tri_rlmreg_p #(.WIDTH(5), .INIT(`STQ_ENTRIES / 2)) sq_cmdq_med_cnt_latch(
                .vd(vdd),
                .gd(gnd),
@@ -3046,8 +3110,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[sq_cmdq_med_credit_cnt_offset + 5 * i:sq_cmdq_med_credit_cnt_offset + (5 * (i + 1)-1)]),
                .din(sq_cmdq_med_credit_cnt_d[i]),
                .dout(sq_cmdq_med_credit_cnt_l2[i])
-            );            
-            
+            );
+
             tri_rlmreg_p #(.WIDTH(5), .INIT(`RV_AXU0_ENTRIES / 2)) fu0_med_credit_cnt_latch(
                .vd(vdd),
                .gd(gnd),
@@ -3064,11 +3128,11 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[fu0_med_credit_cnt_offset + 5 * i:fu0_med_credit_cnt_offset + (5 * (i + 1)-1)]),
                .din(fu0_med_credit_cnt_d[i]),
                .dout(fu0_med_credit_cnt_l2[i])
-            );            
-            
+            );
+
             tri_rlmreg_p #(.WIDTH(5), .INIT(`RV_AXU1_ENTRIES / 2)) fu1_med_credit_cnt_latch(
                .vd(vdd),
-               .gd(gnd),               
+               .gd(gnd),
                .nclk(nclk),
                .act(tiup),
                .force_t(force_t),
@@ -3082,11 +3146,11 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[fu1_med_credit_cnt_offset + 5 * i:fu1_med_credit_cnt_offset + (5 * (i + 1)-1)]),
                .din(fu1_med_credit_cnt_d[i]),
                .dout(fu1_med_credit_cnt_l2[i])
-            );                        
+            );
          end
       end
-   endgenerate      
-      
+   endgenerate
+
    tri_rlmreg_p #(.WIDTH(5), .INIT(`RV_FX0_ENTRIES)) fx0_total_credit_cnt_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3103,8 +3167,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[fx0_total_credit_cnt_offset:fx0_total_credit_cnt_offset + 5 - 1]),
       .din(fx0_total_credit_cnt_d),
       .dout(fx0_total_credit_cnt_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(5), .INIT(`RV_FX1_ENTRIES)) fx1_total_credit_cnt_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3121,8 +3185,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[fx1_total_credit_cnt_offset:fx1_total_credit_cnt_offset + 5 - 1]),
       .din(fx1_total_credit_cnt_d),
       .dout(fx1_total_credit_cnt_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(5), .INIT(`LDSTQ_ENTRIES)) lq_cmdq_total_cnt_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3139,8 +3203,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[lq_cmdq_total_credit_cnt_offset:lq_cmdq_total_credit_cnt_offset + 5 - 1]),
       .din(lq_cmdq_total_credit_cnt_d),
       .dout(lq_cmdq_total_credit_cnt_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(5), .INIT(`STQ_ENTRIES)) sq_cmdq_total_cnt_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3157,13 +3221,13 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[sq_cmdq_total_credit_cnt_offset:sq_cmdq_total_credit_cnt_offset + 5 - 1]),
       .din(sq_cmdq_total_credit_cnt_d),
       .dout(sq_cmdq_total_credit_cnt_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(5), .INIT(`RV_AXU0_ENTRIES)) fu0_total_credit_cnt_latch(
       .vd(vdd),
       .gd(gnd),
       .nclk(nclk),
-      .act(tiup),                   
+      .act(tiup),
       .force_t(force_t),
       .thold_b(pc_iu_func_sl_thold_0_b),
       .d_mode(d_mode),
@@ -3175,11 +3239,11 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[fu0_total_credit_cnt_offset:fu0_total_credit_cnt_offset + 5 - 1]),
       .din(fu0_total_credit_cnt_d),
       .dout(fu0_total_credit_cnt_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(5), .INIT(`RV_AXU1_ENTRIES)) fu1_total_credit_cnt_latch(
       .vd(vdd),
-      .gd(gnd),                      
+      .gd(gnd),
       .nclk(nclk),
       .act(tiup),
       .force_t(force_t),
@@ -3194,7 +3258,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .din(fu1_total_credit_cnt_d),
       .dout(fu1_total_credit_cnt_l2)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) cp_flush_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3211,8 +3275,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[cp_flush_offset:cp_flush_offset + `THREADS - 1]),
       .din(cp_flush),
       .dout(cp_flush_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) xu_iu_run_thread_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3247,9 +3311,9 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[iu_xu_credits_returned_offset]),
       .din(iu_xu_credits_returned_d),
       .dout(iu_xu_credits_returned_l2)
-   );   
+   );
 
-   
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0)) dual_issue_use_fx0_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3266,8 +3330,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[dual_issue_use_fx0_offset:dual_issue_use_fx0_offset + 2 - 1]),
       .din(dual_issue_use_fx0_d),
       .dout(dual_issue_use_fx0_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(1)) last_thread_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3284,8 +3348,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[last_thread_offset:last_thread_offset + `THREADS - 1]),
       .din(last_thread_d),
       .dout(last_thread_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) mm_hold_req_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3295,15 +3359,15 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .thold_b(pc_iu_func_slp_sl_thold_0_b),
       .d_mode(d_mode),
       .sg(pc_iu_sg_0),
-      .delay_lclkr(delay_lclkr), 
+      .delay_lclkr(delay_lclkr),
       .mpw1_b(mpw1_b),
       .mpw2_b(mpw2_b),
       .scin(siv[mm_hold_req_offset:mm_hold_req_offset + `THREADS - 1]),
       .scout(sov[mm_hold_req_offset:mm_hold_req_offset + `THREADS - 1]),
       .din(mm_hold_req_d),
       .dout(mm_hold_req_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) mm_hold_done_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3320,8 +3384,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[mm_hold_done_offset:mm_hold_done_offset + `THREADS - 1]),
       .din(mm_hold_done_d),
       .dout(mm_hold_done_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) mm_bus_snoop_hold_req_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3338,8 +3402,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[mm_bus_snoop_hold_req_offset:mm_bus_snoop_hold_req_offset + `THREADS - 1]),
       .din(mm_bus_snoop_hold_req_d),
       .dout(mm_bus_snoop_hold_req_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) mm_bus_snoop_hold_done_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3356,7 +3420,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[mm_bus_snoop_hold_done_offset:mm_bus_snoop_hold_done_offset + `THREADS - 1]),
       .din(mm_bus_snoop_hold_done_d),
       .dout(mm_bus_snoop_hold_done_l2)
-   );   
+   );
 
    tri_rlmlatch_p #(.INIT(0)) hold_instructions_latch(
       .vd(vdd),
@@ -3392,7 +3456,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[hold_req_offset:hold_req_offset + `THREADS - 1]),
       .din(hold_req_d),
       .dout(hold_req_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) ivax_hold_req_latch(
       .vd(vdd),
@@ -3410,8 +3474,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[ivax_hold_req_offset:ivax_hold_req_offset + `THREADS - 1]),
       .din(ivax_hold_req_d),
       .dout(ivax_hold_req_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) hold_done_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3428,8 +3492,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[hold_done_offset:hold_done_offset + `THREADS - 1]),
       .din(hold_done_d),
       .dout(hold_done_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) mm_iu_flush_req_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3446,8 +3510,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[mm_iu_flush_req_offset:mm_iu_flush_req_offset + `THREADS - 1]),
       .din(mm_iu_flush_req_d),
       .dout(mm_iu_flush_req_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) mm_iu_hold_done_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3464,8 +3528,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[mm_iu_hold_done_offset:mm_iu_hold_done_offset + `THREADS - 1]),
       .din(mm_iu_hold_done),
       .dout(mm_iu_hold_done_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) mm_iu_bus_snoop_hold_req_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3482,8 +3546,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[mm_iu_bus_snoop_hold_req_offset:mm_iu_bus_snoop_hold_req_offset + `THREADS - 1]),
       .din(mm_iu_bus_snoop_hold_req_d),
       .dout(mm_iu_bus_snoop_hold_req_l2)
-   );   
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) mm_iu_bus_snoop_hold_done_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3500,8 +3564,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[mm_iu_bus_snoop_hold_done_offset:mm_iu_bus_snoop_hold_done_offset + `THREADS - 1]),
       .din(mm_iu_bus_snoop_hold_done),
       .dout(mm_iu_bus_snoop_hold_done_l2)
-   );          
-   
+   );
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) in_ucode_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3537,7 +3601,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .din(in_fusion_d),
       .dout(in_fusion_l2)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) total_pri_mask_latch(
       .vd(vdd),
       .gd(gnd),
@@ -3554,7 +3618,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[total_pri_mask_offset:total_pri_mask_offset + `THREADS - 1]),
       .din(total_pri_mask_d),
       .dout(total_pri_mask_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) high_pri_mask_latch(
       .vd(vdd),
@@ -3572,7 +3636,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[high_pri_mask_offset:high_pri_mask_offset + `THREADS - 1]),
       .din(high_pri_mask_d),
       .dout(high_pri_mask_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) med_pri_mask_latch(
       .vd(vdd),
@@ -3590,7 +3654,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[med_pri_mask_offset:med_pri_mask_offset + `THREADS - 1]),
       .din(med_pri_mask_d),
       .dout(med_pri_mask_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) low_pri_mask_latch(
       .vd(vdd),
@@ -3608,13 +3672,13 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[low_pri_mask_offset:low_pri_mask_offset + `THREADS - 1]),
       .din(low_pri_mask_d),
       .dout(low_pri_mask_l2)
-   );   
-   
+   );
+
    generate
       begin : low_pri_counts
          genvar i;
          for (i = 0; i <= `THREADS - 1; i = i + 1)
-         begin : thread_latches            
+         begin : thread_latches
             tri_rlmreg_p #(.WIDTH(8), .INIT(0)) low_pri_cnt_latch(
                .vd(vdd),
                .gd(gnd),
@@ -3631,8 +3695,8 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[low_pri_cnt_offset + 8 * i:low_pri_cnt_offset + (8 * (i + 1)-1)]),
                .din(low_pri_cnt_d[i]),
                .dout(low_pri_cnt_l2[i])
-            );               
-   
+            );
+
             tri_rlmreg_p #(.WIDTH(6), .INIT(0)) low_pri_max_latch(
                .vd(vdd),
                .gd(gnd),
@@ -3670,13 +3734,13 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[perf_iu6_stall_offset:perf_iu6_stall_offset + `THREADS - 1]),
       .din(perf_iu6_stall_d),
       .dout(perf_iu6_stall_l2)
-   );   
+   );
 
    generate
       begin : perf_counts
          genvar i;
          for (i = 0; i <= `THREADS - 1; i = i + 1)
-         begin : thread_latches            
+         begin : thread_latches
             tri_rlmreg_p #(.WIDTH(2), .INIT(0)) perf_iu6_dispatch_fx0_latch(
                .vd(vdd),
                .gd(gnd),
@@ -3693,7 +3757,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[perf_iu6_dispatch_fx0_offset+2*i:perf_iu6_dispatch_fx0_offset + (2 * (i + 1)-1)]),
                .din(perf_iu6_dispatch_fx0_d[i]),
                .dout(perf_iu6_dispatch_fx0_l2[i])
-            );   
+            );
 
             tri_rlmreg_p #(.WIDTH(2), .INIT(0)) perf_iu6_dispatch_fx1_latch(
                .vd(vdd),
@@ -3711,7 +3775,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[perf_iu6_dispatch_fx1_offset+2*i:perf_iu6_dispatch_fx1_offset + (2 * (i + 1)-1)]),
                .din(perf_iu6_dispatch_fx1_d[i]),
                .dout(perf_iu6_dispatch_fx1_l2[i])
-            );   
+            );
 
             tri_rlmreg_p #(.WIDTH(2), .INIT(0)) perf_iu6_dispatch_lq_latch(
                .vd(vdd),
@@ -3729,7 +3793,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[perf_iu6_dispatch_lq_offset+2*i:perf_iu6_dispatch_lq_offset + (2 * (i + 1)-1)]),
                .din(perf_iu6_dispatch_lq_d[i]),
                .dout(perf_iu6_dispatch_lq_l2[i])
-            );   
+            );
 
             tri_rlmreg_p #(.WIDTH(2), .INIT(0)) perf_iu6_dispatch_axu0_latch(
                .vd(vdd),
@@ -3747,7 +3811,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[perf_iu6_dispatch_axu0_offset+2*i:perf_iu6_dispatch_axu0_offset + (2 * (i + 1)-1)]),
                .din(perf_iu6_dispatch_axu0_d[i]),
                .dout(perf_iu6_dispatch_axu0_l2[i])
-            );   
+            );
 
             tri_rlmreg_p #(.WIDTH(2), .INIT(0)) perf_iu6_dispatch_axu1_latch(
                .vd(vdd),
@@ -3765,7 +3829,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
                .scout(sov[perf_iu6_dispatch_axu1_offset+2*i:perf_iu6_dispatch_axu1_offset + (2 * (i + 1)-1)]),
                .din(perf_iu6_dispatch_axu1_d[i]),
                .dout(perf_iu6_dispatch_axu1_l2[i])
-            );   
+            );
          end
       end
    endgenerate
@@ -3786,7 +3850,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[perf_iu6_fx0_credit_stall_offset:perf_iu6_fx0_credit_stall_offset + `THREADS - 1]),
       .din(perf_iu6_fx0_credit_stall_d),
       .dout(perf_iu6_fx0_credit_stall_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) perf_iu6_fx1_credit_stall_latch(
       .vd(vdd),
@@ -3804,7 +3868,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[perf_iu6_fx1_credit_stall_offset:perf_iu6_fx1_credit_stall_offset + `THREADS - 1]),
       .din(perf_iu6_fx1_credit_stall_d),
       .dout(perf_iu6_fx1_credit_stall_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) perf_iu6_lq_credit_stall_latch(
       .vd(vdd),
@@ -3822,7 +3886,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[perf_iu6_lq_credit_stall_offset:perf_iu6_lq_credit_stall_offset + `THREADS - 1]),
       .din(perf_iu6_lq_credit_stall_d),
       .dout(perf_iu6_lq_credit_stall_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) perf_iu6_sq_credit_stall_latch(
       .vd(vdd),
@@ -3840,7 +3904,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[perf_iu6_sq_credit_stall_offset:perf_iu6_sq_credit_stall_offset + `THREADS - 1]),
       .din(perf_iu6_sq_credit_stall_d),
       .dout(perf_iu6_sq_credit_stall_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) perf_iu6_axu0_credit_stall_latch(
       .vd(vdd),
@@ -3858,7 +3922,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[perf_iu6_axu0_credit_stall_offset:perf_iu6_axu0_credit_stall_offset + `THREADS - 1]),
       .din(perf_iu6_axu0_credit_stall_d),
       .dout(perf_iu6_axu0_credit_stall_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) perf_iu6_axu1_credit_stall_latch(
       .vd(vdd),
@@ -3876,7 +3940,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[perf_iu6_axu1_credit_stall_offset:perf_iu6_axu1_credit_stall_offset + `THREADS - 1]),
       .din(perf_iu6_axu1_credit_stall_d),
       .dout(perf_iu6_axu1_credit_stall_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) iu_pc_fx0_credit_ok_latch(
       .vd(vdd),
@@ -3894,7 +3958,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[iu_pc_fx0_credit_ok_offset:iu_pc_fx0_credit_ok_offset + `THREADS - 1]),
       .din(iu_pc_fx0_credit_ok_d),
       .dout(iu_pc_fx0_credit_ok_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) iu_pc_fx1_credit_ok_latch(
       .vd(vdd),
@@ -3912,7 +3976,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[iu_pc_fx1_credit_ok_offset:iu_pc_fx1_credit_ok_offset + `THREADS - 1]),
       .din(iu_pc_fx1_credit_ok_d),
       .dout(iu_pc_fx1_credit_ok_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) iu_pc_lq_credit_ok_latch(
       .vd(vdd),
@@ -3930,7 +3994,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[iu_pc_lq_credit_ok_offset:iu_pc_lq_credit_ok_offset + `THREADS - 1]),
       .din(iu_pc_lq_credit_ok_d),
       .dout(iu_pc_lq_credit_ok_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) iu_pc_sq_credit_ok_latch(
       .vd(vdd),
@@ -3948,7 +4012,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[iu_pc_sq_credit_ok_offset:iu_pc_sq_credit_ok_offset + `THREADS - 1]),
       .din(iu_pc_sq_credit_ok_d),
       .dout(iu_pc_sq_credit_ok_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) iu_pc_axu0_credit_ok_latch(
       .vd(vdd),
@@ -3966,7 +4030,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[iu_pc_axu0_credit_ok_offset:iu_pc_axu0_credit_ok_offset + `THREADS - 1]),
       .din(iu_pc_axu0_credit_ok_d),
       .dout(iu_pc_axu0_credit_ok_l2)
-   );   
+   );
 
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) iu_pc_axu1_credit_ok_latch(
       .vd(vdd),
@@ -3984,11 +4048,14 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .scout(sov[iu_pc_axu1_credit_ok_offset:iu_pc_axu1_credit_ok_offset + `THREADS - 1]),
       .din(iu_pc_axu1_credit_ok_d),
       .dout(iu_pc_axu1_credit_ok_l2)
-   );   
+   );
 
 
-   
-   
+
+   //-----------------------------------------------
+   // pervasive
+   //-----------------------------------------------
+
    tri_plat #(.WIDTH(3)) perv_2to1_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3997,7 +4064,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .din({pc_iu_func_sl_thold_2, pc_iu_func_slp_sl_thold_2, pc_iu_sg_2}),
       .q({pc_iu_func_sl_thold_1, pc_iu_func_slp_sl_thold_1, pc_iu_sg_1})
    );
-      
+
    tri_plat #(.WIDTH(3)) perv_1to0_reg(
       .vd(vdd),
       .gd(gnd),
@@ -4006,7 +4073,7 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .din({pc_iu_func_sl_thold_1, pc_iu_func_slp_sl_thold_1, pc_iu_sg_1}),
       .q({pc_iu_func_sl_thold_0, pc_iu_func_slp_sl_thold_0, pc_iu_sg_0})
    );
-   
+
    tri_lcbor perv_lcbor_sl(
       .clkoff_b(clkoff_b),
       .thold(pc_iu_func_sl_thold_0),
@@ -4024,9 +4091,10 @@ assign iu_xu_credits_returned = iu_xu_credits_returned_l2;
       .force_t(funcslp_force),
       .thold_b(pc_iu_func_slp_sl_thold_0_b)
    );
-   
+
+   //---------------------------------------------------------------------
+   // Scan
+   //---------------------------------------------------------------------
    assign siv[0:scan_right] = {sov[1:scan_right], scan_in};
    assign scan_out = sov[0];
-endmodule                           
-                           
-                           
+endmodule

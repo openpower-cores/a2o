@@ -9,17 +9,22 @@
 
 `timescale 1 ns / 1 ns
 
+//********************************************************************
+//*
+//* TITLE:
+//*
+//* NAME: iuq_rn_top.vhdl
+//*
+//*********************************************************************
 
 `include "tri_a2o.vh"
-
-
 
 
 module iuq_rn_top(
    inout                          vdd,
    inout                          gnd,
    input [0:`NCLK_WIDTH-1]        nclk,
-   input                          pc_iu_func_sl_thold_2,		
+   input                          pc_iu_func_sl_thold_2,		// acts as reset for non-ibm types
    input                          pc_iu_sg_2,
    input                          clkoff_b,
    input                          act_dis,
@@ -31,6 +36,9 @@ module iuq_rn_top(
    input [0:1]                    func_scan_in,
    output [0:1]                   func_scan_out,
 
+   //-------------------------------
+   // Performance interface with I$
+   //-------------------------------
    input                          pc_iu_event_bus_enable,
    output                         perf_iu5_stall,
    output                         perf_iu5_cpl_credit_stall,
@@ -41,7 +49,10 @@ module iuq_rn_top(
    output                         perf_iu5_xer_credit_stall,
    output                         perf_iu5_br_hold_stall,
    output                         perf_iu5_axu_hold_stall,
-   
+
+   //-----------------------------
+   // Inputs to rename from decode
+   //-----------------------------
    input                          fdec_frn_iu5_i0_vld,
    input [0:2]                    fdec_frn_iu5_i0_ucode,
    input                          fdec_frn_iu5_i0_2ucode,
@@ -101,7 +112,7 @@ module iuq_rn_top(
    input                          fdec_frn_iu5_i0_s3_v,
    input [0:`GPR_POOL_ENC-1]       fdec_frn_iu5_i0_s3_a,
    input [0:2]                    fdec_frn_iu5_i0_s3_t,
-   
+
    input                          fdec_frn_iu5_i1_vld,
    input [0:2]                    fdec_frn_iu5_i1_ucode,
    input                          fdec_frn_iu5_i1_fuse_nop,
@@ -160,17 +171,29 @@ module iuq_rn_top(
    input                          fdec_frn_iu5_i1_s3_v,
    input [0:`GPR_POOL_ENC-1]       fdec_frn_iu5_i1_s3_a,
    input [0:2]                    fdec_frn_iu5_i1_s3_t,
-   
+
+   //-----------------------------
+   // SPR values
+   //-----------------------------
    input                          spr_high_pri_mask,
    input                          spr_cpcr_we,
    input [0:6]                    spr_cpcr3_cp_cnt,
    input [0:6]                    spr_cpcr5_cp_cnt,
    input                          spr_single_issue,
-   
+
+   //-----------------------------
+   // Stall to decode
+   //-----------------------------
    output                         frn_fdec_iu5_stall,
-   
+
+   //-----------------------------
+   // Stall from dispatch
+   //-----------------------------
    input                          fdis_frn_iu6_stall,
-   
+
+   //----------------------------
+   // Completion Interface
+   //----------------------------
    input                          cp_rn_i0_axu_exception_val,
    input [0:3]                    cp_rn_i0_axu_exception,
    input                          cp_rn_i1_axu_exception_val,
@@ -190,7 +213,7 @@ module iuq_rn_top(
    input [0:2]                    cp_rn_i0_t3_t,
    input [0:`GPR_POOL_ENC-1]       cp_rn_i0_t3_p,
    input [0:`GPR_POOL_ENC-1]       cp_rn_i0_t3_a,
-   
+
    input                          cp_rn_i1_v,
    input [0:`ITAG_SIZE_ENC-1]      cp_rn_i1_itag,
    input                          cp_rn_i1_t1_v,
@@ -205,12 +228,15 @@ module iuq_rn_top(
    input [0:2]                    cp_rn_i1_t3_t,
    input [0:`GPR_POOL_ENC-1]       cp_rn_i1_t3_p,
    input [0:`GPR_POOL_ENC-1]       cp_rn_i1_t3_a,
-   
+
    input                          cp_flush,
    input                          cp_flush_into_uc,
    input                          br_iu_redirect,
    input                          cp_rn_uc_credit_free,
-   
+
+   //----------------------------------------------------------------
+   // Interface to reservation station - Completion is snooping also
+   //----------------------------------------------------------------
    output                         frn_fdis_iu6_i0_vld,
    output [0:`ITAG_SIZE_ENC-1]     frn_fdis_iu6_i0_itag,
    output [0:2]                   frn_fdis_iu6_i0_ucode,
@@ -281,7 +307,7 @@ module iuq_rn_top(
    output [0:`GPR_POOL_ENC-1]      frn_fdis_iu6_i0_s3_p,
    output [0:`ITAG_SIZE_ENC-1]     frn_fdis_iu6_i0_s3_itag,
    output [0:2]                   frn_fdis_iu6_i0_s3_t,
-   
+
    output                         frn_fdis_iu6_i1_vld,
    output [0:`ITAG_SIZE_ENC-1]     frn_fdis_iu6_i1_itag,
    output [0:2]                   frn_fdis_iu6_i1_ucode,
@@ -356,18 +382,14 @@ module iuq_rn_top(
    output                         frn_fdis_iu6_i1_s3_dep_hit
 
    );
-   
-   
-   
-   
-   
+
       wire                           au_iu_iu5_stall;
       wire                           iu_au_iu5_send_ok;
       wire [0:`ITAG_SIZE_ENC-1]       iu_au_iu5_next_itag_i0;
       wire [0:`ITAG_SIZE_ENC-1]       iu_au_iu5_next_itag_i1;
       wire                           au_iu_iu5_axu0_send_ok;
       wire                           au_iu_iu5_axu1_send_ok;
-      
+
       wire [0:`GPR_POOL_ENC-1]        au_iu_iu5_i0_t1_p;
       wire [0:`GPR_POOL_ENC-1]        au_iu_iu5_i0_t2_p;
       wire [0:`GPR_POOL_ENC-1]        au_iu_iu5_i0_t3_p;
@@ -389,8 +411,8 @@ module iuq_rn_top(
       wire                            au_iu_iu5_i1_s1_dep_hit;
       wire                            au_iu_iu5_i1_s2_dep_hit;
       wire                            au_iu_iu5_i1_s3_dep_hit;
-      
-      
+
+
       iuq_rn  fx_rn0(
          .vdd(vdd),
          .gnd(gnd),
@@ -407,6 +429,9 @@ module iuq_rn_top(
          .func_scan_in(func_scan_in[0]),
          .func_scan_out(func_scan_out[0]),
 
+         //-------------------------------
+         // Performance interface with I$
+         //-------------------------------
          .pc_iu_event_bus_enable(pc_iu_event_bus_enable),
          .perf_iu5_stall(perf_iu5_stall),
          .perf_iu5_cpl_credit_stall(perf_iu5_cpl_credit_stall),
@@ -417,7 +442,10 @@ module iuq_rn_top(
          .perf_iu5_xer_credit_stall(perf_iu5_xer_credit_stall),
          .perf_iu5_br_hold_stall(perf_iu5_br_hold_stall),
          .perf_iu5_axu_hold_stall(perf_iu5_axu_hold_stall),
-         
+
+         //-----------------------------
+         // Inputs to rename from decode
+         //-----------------------------
          .fdec_frn_iu5_i0_vld(fdec_frn_iu5_i0_vld),
          .fdec_frn_iu5_i0_ucode(fdec_frn_iu5_i0_ucode),
          .fdec_frn_iu5_i0_2ucode(fdec_frn_iu5_i0_2ucode),
@@ -477,7 +505,7 @@ module iuq_rn_top(
          .fdec_frn_iu5_i0_s3_v(fdec_frn_iu5_i0_s3_v),
          .fdec_frn_iu5_i0_s3_a(fdec_frn_iu5_i0_s3_a),
          .fdec_frn_iu5_i0_s3_t(fdec_frn_iu5_i0_s3_t),
-         
+
          .fdec_frn_iu5_i1_vld(fdec_frn_iu5_i1_vld),
          .fdec_frn_iu5_i1_ucode(fdec_frn_iu5_i1_ucode),
          .fdec_frn_iu5_i1_fuse_nop(fdec_frn_iu5_i1_fuse_nop),
@@ -536,18 +564,30 @@ module iuq_rn_top(
          .fdec_frn_iu5_i1_s3_v(fdec_frn_iu5_i1_s3_v),
          .fdec_frn_iu5_i1_s3_a(fdec_frn_iu5_i1_s3_a),
          .fdec_frn_iu5_i1_s3_t(fdec_frn_iu5_i1_s3_t),
-         
+
+         //-----------------------------
+         // SPR values
+         //-----------------------------
          .spr_high_pri_mask(spr_high_pri_mask),
          .spr_cpcr_we(spr_cpcr_we),
          .spr_cpcr3_cp_cnt(spr_cpcr3_cp_cnt),
          .spr_cpcr5_cp_cnt(spr_cpcr5_cp_cnt),
          .spr_single_issue(spr_single_issue),
-         
+
+         //-----------------------------
+         // Stall to decode
+         //-----------------------------
          .frn_fdec_iu5_stall(frn_fdec_iu5_stall),
          .au_iu_iu5_stall(au_iu_iu5_stall),
-         
+
+         //-----------------------------
+         // Stall from dispatch
+         //-----------------------------
          .fdis_frn_iu6_stall(fdis_frn_iu6_stall),
-         
+
+         //----------------------------
+         // Completion Interface
+         //----------------------------
          .cp_rn_empty(cp_rn_empty),
          .cp_rn_i0_v(cp_rn_i0_v),
          .cp_rn_i0_itag(cp_rn_i0_itag),
@@ -563,7 +603,7 @@ module iuq_rn_top(
          .cp_rn_i0_t3_t(cp_rn_i0_t3_t),
          .cp_rn_i0_t3_p(cp_rn_i0_t3_p),
          .cp_rn_i0_t3_a(cp_rn_i0_t3_a),
-         
+
          .cp_rn_i1_v(cp_rn_i1_v),
          .cp_rn_i1_itag(cp_rn_i1_itag),
          .cp_rn_i1_t1_v(cp_rn_i1_t1_v),
@@ -578,29 +618,32 @@ module iuq_rn_top(
          .cp_rn_i1_t3_t(cp_rn_i1_t3_t),
          .cp_rn_i1_t3_p(cp_rn_i1_t3_p),
          .cp_rn_i1_t3_a(cp_rn_i1_t3_a),
-         
+
          .cp_flush(cp_flush),
          .cp_flush_into_uc(cp_flush_into_uc),
          .br_iu_redirect(br_iu_redirect),
          .cp_rn_uc_credit_free(cp_rn_uc_credit_free),
-         
+
+         //----------------------------------------------------------------
+         // AXU Interface
+         //----------------------------------------------------------------
          .iu_au_iu5_send_ok(iu_au_iu5_send_ok),
          .iu_au_iu5_next_itag_i0(iu_au_iu5_next_itag_i0),
          .iu_au_iu5_next_itag_i1(iu_au_iu5_next_itag_i1),
          .au_iu_iu5_axu0_send_ok(au_iu_iu5_axu0_send_ok),
          .au_iu_iu5_axu1_send_ok(au_iu_iu5_axu1_send_ok),
-         
+
          .au_iu_iu5_i0_t1_p(au_iu_iu5_i0_t1_p),
          .au_iu_iu5_i0_t2_p(au_iu_iu5_i0_t2_p),
          .au_iu_iu5_i0_t3_p(au_iu_iu5_i0_t3_p),
          .au_iu_iu5_i0_s1_p(au_iu_iu5_i0_s1_p),
          .au_iu_iu5_i0_s2_p(au_iu_iu5_i0_s2_p),
          .au_iu_iu5_i0_s3_p(au_iu_iu5_i0_s3_p),
-         
+
          .au_iu_iu5_i0_s1_itag(au_iu_iu5_i0_s1_itag),
          .au_iu_iu5_i0_s2_itag(au_iu_iu5_i0_s2_itag),
          .au_iu_iu5_i0_s3_itag(au_iu_iu5_i0_s3_itag),
-         
+
          .au_iu_iu5_i1_t1_p(au_iu_iu5_i1_t1_p),
          .au_iu_iu5_i1_t2_p(au_iu_iu5_i1_t2_p),
          .au_iu_iu5_i1_t3_p(au_iu_iu5_i1_t3_p),
@@ -610,12 +653,15 @@ module iuq_rn_top(
 
          .au_iu_iu5_i1_s1_dep_hit(au_iu_iu5_i1_s1_dep_hit),
          .au_iu_iu5_i1_s2_dep_hit(au_iu_iu5_i1_s2_dep_hit),
-         .au_iu_iu5_i1_s3_dep_hit(au_iu_iu5_i1_s3_dep_hit),                  
-         
+         .au_iu_iu5_i1_s3_dep_hit(au_iu_iu5_i1_s3_dep_hit),
+
          .au_iu_iu5_i1_s1_itag(au_iu_iu5_i1_s1_itag),
          .au_iu_iu5_i1_s2_itag(au_iu_iu5_i1_s2_itag),
          .au_iu_iu5_i1_s3_itag(au_iu_iu5_i1_s3_itag),
-         
+
+         //----------------------------------------------------------------
+         // Interface to reservation station - Completion is snooping also
+         //----------------------------------------------------------------
          .frn_fdis_iu6_i0_vld(frn_fdis_iu6_i0_vld),
          .frn_fdis_iu6_i0_itag(frn_fdis_iu6_i0_itag),
          .frn_fdis_iu6_i0_ucode(frn_fdis_iu6_i0_ucode),
@@ -686,7 +732,7 @@ module iuq_rn_top(
          .frn_fdis_iu6_i0_s3_p(frn_fdis_iu6_i0_s3_p),
          .frn_fdis_iu6_i0_s3_itag(frn_fdis_iu6_i0_s3_itag),
          .frn_fdis_iu6_i0_s3_t(frn_fdis_iu6_i0_s3_t),
-         
+
          .frn_fdis_iu6_i1_vld(frn_fdis_iu6_i1_vld),
          .frn_fdis_iu6_i1_itag(frn_fdis_iu6_i1_itag),
          .frn_fdis_iu6_i1_ucode(frn_fdis_iu6_i1_ucode),
@@ -761,24 +807,24 @@ module iuq_rn_top(
          .frn_fdis_iu6_i1_s3_dep_hit(frn_fdis_iu6_i1_s3_dep_hit)
 
       );
-      
-      
+
+
       iuq_axu_fu_rn #(.FPR_POOL(`GPR_POOL), .FPR_UCODE_POOL(4), .FPSCR_POOL_ENC(5)) axu_rn0(
-         .vdd(vdd),		
-         .gnd(gnd),		
-         .nclk(nclk),		
-         .pc_iu_func_sl_thold_2(pc_iu_func_sl_thold_2),		
-         .pc_iu_sg_2(pc_iu_sg_2),		
-         .clkoff_b(clkoff_b),		
-         .act_dis(act_dis),		
-         .tc_ac_ccflush_dc(tc_ac_ccflush_dc),		
-         .d_mode(d_mode),		
-         .delay_lclkr(delay_lclkr),		
-         .mpw1_b(mpw1_b),		
-         .mpw2_b(mpw2_b),		
-         .func_scan_in(func_scan_in[1]),		
-         .func_scan_out(func_scan_out[1]),		
-         
+         .vdd(vdd),		// inout power_logic;
+         .gnd(gnd),		// inout power_logic;
+         .nclk(nclk),		// in clk_logic;
+         .pc_iu_func_sl_thold_2(pc_iu_func_sl_thold_2),		// in std_ulogic;                     acts as reset for non-ibm types
+         .pc_iu_sg_2(pc_iu_sg_2),		// in std_ulogic;
+         .clkoff_b(clkoff_b),		// in  std_ulogic; todo
+         .act_dis(act_dis),		// in  std_ulogic; todo
+         .tc_ac_ccflush_dc(tc_ac_ccflush_dc),		// in  std_ulogic; todo
+         .d_mode(d_mode),		// in std_ulogic;
+         .delay_lclkr(delay_lclkr),		// in std_ulogic;
+         .mpw1_b(mpw1_b),		// in std_ulogic;
+         .mpw2_b(mpw2_b),		// in std_ulogic;
+         .func_scan_in(func_scan_in[1]),		// in std_ulogic;  todo: hookup
+         .func_scan_out(func_scan_out[1]),		// out std_ulogic;
+
          .iu_au_iu5_i0_vld(fdec_frn_iu5_i0_vld),
          .iu_au_iu5_i0_ucode(fdec_frn_iu5_i0_ucode),
          .iu_au_iu5_i0_rte_lq(fdec_frn_iu5_i0_rte_lq),
@@ -845,44 +891,44 @@ module iuq_rn_top(
          .iu_au_iu5_i1_s3_v(fdec_frn_iu5_i1_s3_v),
          .iu_au_iu5_i1_s3_t(fdec_frn_iu5_i1_s3_t),
          .iu_au_iu5_i1_s3_a(fdec_frn_iu5_i1_s3_a),
-         
-         .spr_single_issue(1'b0),		
-         
-         .au_iu_iu5_stall(au_iu_iu5_stall),		
-         
+
+         .spr_single_issue(1'b0),		// in std_ulogic;
+
+         .au_iu_iu5_stall(au_iu_iu5_stall),		// out std_ulogic;
+
          .cp_rn_i0_axu_exception_val(cp_rn_i0_axu_exception_val),
          .cp_rn_i0_axu_exception(cp_rn_i0_axu_exception),
          .cp_rn_i0_itag(cp_rn_i0_itag),
-         .cp_rn_i0_t1_v(cp_rn_i0_t1_v),		
-         .cp_rn_i0_t1_t(cp_rn_i0_t1_t),		
-         .cp_rn_i0_t1_p(cp_rn_i0_t1_p),		
-         .cp_rn_i0_t1_a(cp_rn_i0_t1_a),		
-         .cp_rn_i0_t2_v(cp_rn_i0_t2_v),		
-         .cp_rn_i0_t2_t(cp_rn_i0_t2_t),		
-         .cp_rn_i0_t2_p(cp_rn_i0_t2_p),		
-         .cp_rn_i0_t2_a(cp_rn_i0_t2_a),		
-         .cp_rn_i0_t3_v(cp_rn_i0_t3_v),		
-         .cp_rn_i0_t3_t(cp_rn_i0_t3_t),		
-         .cp_rn_i0_t3_p(cp_rn_i0_t3_p),		
-         .cp_rn_i0_t3_a(cp_rn_i0_t3_a),		
-         
+         .cp_rn_i0_t1_v(cp_rn_i0_t1_v),		// in std_ulogic;
+         .cp_rn_i0_t1_t(cp_rn_i0_t1_t),		// in std_ulogic;
+         .cp_rn_i0_t1_p(cp_rn_i0_t1_p),		// in std_ulogic_vector(0 to FPR_POOL_ENC-1);
+         .cp_rn_i0_t1_a(cp_rn_i0_t1_a),		// in std_ulogic_vector(0 to FPR_POOL_ENC-1);
+         .cp_rn_i0_t2_v(cp_rn_i0_t2_v),		// in std_ulogic;
+         .cp_rn_i0_t2_t(cp_rn_i0_t2_t),		// in std_ulogic_vector(0 to 2);
+         .cp_rn_i0_t2_p(cp_rn_i0_t2_p),		// in std_ulogic_vector(0 to FPR_POOL_ENC-1);
+         .cp_rn_i0_t2_a(cp_rn_i0_t2_a),		// in std_ulogic_vector(0 to FPR_POOL_ENC-1);
+         .cp_rn_i0_t3_v(cp_rn_i0_t3_v),		// in std_ulogic;
+         .cp_rn_i0_t3_t(cp_rn_i0_t3_t),		// in std_ulogic_vector(0 to 2);
+         .cp_rn_i0_t3_p(cp_rn_i0_t3_p),		// in std_ulogic_vector(0 to FPR_POOL_ENC-1);
+         .cp_rn_i0_t3_a(cp_rn_i0_t3_a),		// in std_ulogic_vector(0 to FPR_POOL_ENC-1);
+
          .cp_rn_i1_axu_exception_val(cp_rn_i1_axu_exception_val),
          .cp_rn_i1_axu_exception(cp_rn_i1_axu_exception),
          .cp_rn_i1_itag(cp_rn_i1_itag),
-         .cp_rn_i1_t1_v(cp_rn_i1_t1_v),		
-         .cp_rn_i1_t1_t(cp_rn_i1_t1_t),		
-         .cp_rn_i1_t1_p(cp_rn_i1_t1_p),		
-         .cp_rn_i1_t1_a(cp_rn_i1_t1_a),		
-         .cp_rn_i1_t2_v(cp_rn_i1_t2_v),		
-         .cp_rn_i1_t2_t(cp_rn_i1_t2_t),		
-         .cp_rn_i1_t2_p(cp_rn_i1_t2_p),		
-         .cp_rn_i1_t2_a(cp_rn_i1_t2_a),		
-         .cp_rn_i1_t3_v(cp_rn_i1_t3_v),		
-         .cp_rn_i1_t3_t(cp_rn_i1_t3_t),		
-         .cp_rn_i1_t3_p(cp_rn_i1_t3_p),		
-         .cp_rn_i1_t3_a(cp_rn_i1_t3_a),		
-         
-         .cp_flush(cp_flush),		
+         .cp_rn_i1_t1_v(cp_rn_i1_t1_v),		// in std_ulogic;
+         .cp_rn_i1_t1_t(cp_rn_i1_t1_t),		// in std_ulogic;
+         .cp_rn_i1_t1_p(cp_rn_i1_t1_p),		// in std_ulogic_vector(0 to FPR_POOL_ENC-1);
+         .cp_rn_i1_t1_a(cp_rn_i1_t1_a),		// in std_ulogic_vector(0 to FPR_POOL_ENC-1);
+         .cp_rn_i1_t2_v(cp_rn_i1_t2_v),		// in std_ulogic;
+         .cp_rn_i1_t2_t(cp_rn_i1_t2_t),		// in std_ulogic_vector(0 to 2);
+         .cp_rn_i1_t2_p(cp_rn_i1_t2_p),		// in std_ulogic_vector(0 to FPR_POOL_ENC-1);
+         .cp_rn_i1_t2_a(cp_rn_i1_t2_a),		// in std_ulogic_vector(0 to FPR_POOL_ENC-1);
+         .cp_rn_i1_t3_v(cp_rn_i1_t3_v),		// in std_ulogic;
+         .cp_rn_i1_t3_t(cp_rn_i1_t3_t),		// in std_ulogic_vector(0 to 2);
+         .cp_rn_i1_t3_p(cp_rn_i1_t3_p),		// in std_ulogic_vector(0 to FPR_POOL_ENC-1);
+         .cp_rn_i1_t3_a(cp_rn_i1_t3_a),		// in std_ulogic_vector(0 to FPR_POOL_ENC-1);
+
+         .cp_flush(cp_flush),		// in std_ulogic;
          .br_iu_redirect(br_iu_redirect),
          .iu_au_iu5_send_ok(iu_au_iu5_send_ok),
          .iu_au_iu5_next_itag_i0(iu_au_iu5_next_itag_i0),
@@ -903,13 +949,13 @@ module iuq_rn_top(
          .au_iu_iu5_i1_t3_p(au_iu_iu5_i1_t3_p),
          .au_iu_iu5_i1_s1_p(au_iu_iu5_i1_s1_p),
          .au_iu_iu5_i1_s2_p(au_iu_iu5_i1_s2_p),
-         .au_iu_iu5_i1_s3_p(au_iu_iu5_i1_s3_p),         
+         .au_iu_iu5_i1_s3_p(au_iu_iu5_i1_s3_p),
          .au_iu_iu5_i1_s1_dep_hit(au_iu_iu5_i1_s1_dep_hit),
          .au_iu_iu5_i1_s2_dep_hit(au_iu_iu5_i1_s2_dep_hit),
-         .au_iu_iu5_i1_s3_dep_hit(au_iu_iu5_i1_s3_dep_hit),                  
+         .au_iu_iu5_i1_s3_dep_hit(au_iu_iu5_i1_s3_dep_hit),
          .au_iu_iu5_i1_s1_itag(au_iu_iu5_i1_s1_itag),
          .au_iu_iu5_i1_s2_itag(au_iu_iu5_i1_s2_itag),
          .au_iu_iu5_i1_s3_itag(au_iu_iu5_i1_s3_itag)
       );
-      
+
 endmodule

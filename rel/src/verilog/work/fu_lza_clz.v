@@ -10,7 +10,7 @@
 `timescale 1 ns / 1 ns
 
    `include "tri_a2o.vh"
-   
+
 module fu_lza_clz(
    lv0_or,
    lv6_or_0,
@@ -23,48 +23,48 @@ module fu_lza_clz(
    output        lv6_or_1;
    output        lza_any_b;
    output [0:7]  lza_amt_b;
-   
-   
+
    parameter     tiup = 1'b1;
    parameter     tidn = 1'b0;
-   
-   wire [0:81]   lv1_or_b;		
+
+   wire [0:81]   lv1_or_b;		// group_002
    wire [0:81]   lv1_inv_b;
    wire [0:81]   lv1_enc7_b;
-   wire [0:40]   lv2_or;		
+   wire [0:40]   lv2_or;		// group_004
    wire [0:40]   lv2_inv;
    wire [0:40]   lv2_enc6;
    wire [0:40]   lv2_enc7;
-   wire [0:20]   lv3_or_b;		
-   
-   wire [0:20]   lv3_inv_b;		
+   wire [0:20]   lv3_or_b;		// group_008
+
+   wire [0:20]   lv3_inv_b;		// group_008
    wire [0:20]   lv3_enc5_b;
    wire [0:20]   lv3_enc6_b;
    wire [0:20]   lv3_enc7_b;
-   
-   wire [0:10]   lv4_or;		
-   wire [0:10]   lv4_inv;		
+
+   wire [0:10]   lv4_or;		// group_016
+   wire [0:10]   lv4_inv;		// group_016
    wire [0:10]   lv4_enc4;
    wire [0:10]   lv4_enc5;
    wire [0:10]   lv4_enc6;
    wire [0:10]   lv4_enc7;
-   
-   wire [0:10]   lv4_or_b;		
+
+   wire [0:10]   lv4_or_b;		// group_016
    wire [0:10]   lv4_enc4_b;
    wire [0:10]   lv4_enc5_b;
    wire [0:10]   lv4_enc6_b;
    wire [0:10]   lv4_enc7_b;
-   
-   
-   wire [0:5]    lv5_or;		
+
+   //-----------------------------------------------------------
+
+   wire [0:5]    lv5_or;		// group_032
    wire [0:5]    lv5_inv;
    wire [0:5]    lv5_enc3;
    wire [0:5]    lv5_enc4;
    wire [0:5]    lv5_enc5;
    wire [0:5]    lv5_enc6;
    wire [0:5]    lv5_enc7;
-   
-   wire [0:2]    lv6_or_b;		
+
+   wire [0:2]    lv6_or_b;		// group_064
    wire [0:2]    lv6_inv_b;
    wire [0:2]    lv6_enc2_b;
    wire [0:2]    lv6_enc3_b;
@@ -72,8 +72,8 @@ module fu_lza_clz(
    wire [0:2]    lv6_enc5_b;
    wire [0:2]    lv6_enc6_b;
    wire [0:2]    lv6_enc7_b;
-   
-   wire [0:1]    lv7_or;		
+
+   wire [0:1]    lv7_or;		// group_128
    wire [0:1]    lv7_inv;
    wire [0:1]    lv7_enc1;
    wire [0:1]    lv7_enc2;
@@ -82,8 +82,8 @@ module fu_lza_clz(
    wire [0:1]    lv7_enc5;
    wire [0:1]    lv7_enc6;
    wire [0:1]    lv7_enc7;
-   
-   wire [0:0]    lv8_or_b;		
+
+   wire [0:0]    lv8_or_b;		// group_256
    wire [0:0]    lv8_inv_b;
    wire [0:0]    lv8_enc0_b;
    wire [0:0]    lv8_enc1_b;
@@ -93,9 +93,14 @@ module fu_lza_clz(
    wire [0:0]    lv8_enc5_b;
    wire [0:0]    lv8_enc6_b;
    wire [0:0]    lv8_enc7_b;
-   
- 
-   
+
+   //=#------------------------------------------------
+   //=#-- ENCODING TREE (CLZ) count leading zeroes
+   //=#------------------------------------------------
+   //--------------------------------------------------------------------------------
+   // 002 bit group (phase_in=P, phase_out=N, level_in=lv0, level_out=lv1)
+   //--------------------------------------------------------------------------------
+
    assign lv1_or_b[0] = (~(lv0_or[0] | lv0_or[1]));
    assign lv1_or_b[1] = (~(lv0_or[2] | lv0_or[3]));
    assign lv1_or_b[2] = (~(lv0_or[4] | lv0_or[5]));
@@ -178,7 +183,7 @@ module fu_lza_clz(
    assign lv1_or_b[79] = (~(lv0_or[158] | lv0_or[159]));
    assign lv1_or_b[80] = (~(lv0_or[160] | lv0_or[161]));
    assign lv1_or_b[81] = (~(lv0_or[162]));
-   
+
    assign lv1_inv_b[0] = (~(lv0_or[0]));
    assign lv1_inv_b[1] = (~(lv0_or[2]));
    assign lv1_inv_b[2] = (~(lv0_or[4]));
@@ -261,7 +266,7 @@ module fu_lza_clz(
    assign lv1_inv_b[79] = (~(lv0_or[158]));
    assign lv1_inv_b[80] = (~(lv0_or[160]));
    assign lv1_inv_b[81] = (~(lv0_or[162]));
-   
+
    assign lv1_enc7_b[0] = (~(lv1_inv_b[0] & lv0_or[1]));
    assign lv1_enc7_b[1] = (~(lv1_inv_b[1] & lv0_or[3]));
    assign lv1_enc7_b[2] = (~(lv1_inv_b[2] & lv0_or[5]));
@@ -343,9 +348,12 @@ module fu_lza_clz(
    assign lv1_enc7_b[78] = (~(lv1_inv_b[78] & lv0_or[157]));
    assign lv1_enc7_b[79] = (~(lv1_inv_b[79] & lv0_or[159]));
    assign lv1_enc7_b[80] = (~(lv1_inv_b[80] & lv0_or[161]));
-   assign lv1_enc7_b[81] = (~(lv1_inv_b[81]));		
-   
-   
+   assign lv1_enc7_b[81] = (~(lv1_inv_b[81]));		//dflt1
+
+   //--------------------------------------------------------------------------------
+   // 004 bit group (phase_in=N, phase_out=P, level_in=lv1, level_out=lv2)
+   //--------------------------------------------------------------------------------
+
    assign lv2_or[0] = (~(lv1_or_b[0] & lv1_or_b[1]));
    assign lv2_or[1] = (~(lv1_or_b[2] & lv1_or_b[3]));
    assign lv2_or[2] = (~(lv1_or_b[4] & lv1_or_b[5]));
@@ -387,7 +395,7 @@ module fu_lza_clz(
    assign lv2_or[38] = (~(lv1_or_b[76] & lv1_or_b[77]));
    assign lv2_or[39] = (~(lv1_or_b[78] & lv1_or_b[79]));
    assign lv2_or[40] = (~(lv1_or_b[80] & lv1_or_b[81]));
-   
+
    assign lv2_inv[0] = (~(lv1_or_b[0]));
    assign lv2_inv[1] = (~(lv1_or_b[2]));
    assign lv2_inv[2] = (~(lv1_or_b[4]));
@@ -429,7 +437,7 @@ module fu_lza_clz(
    assign lv2_inv[38] = (~(lv1_or_b[76]));
    assign lv2_inv[39] = (~(lv1_or_b[78]));
    assign lv2_inv[40] = (~(lv1_or_b[80]));
-   
+
    assign lv2_enc6[0] = (~(lv2_inv[0] | lv1_or_b[1]));
    assign lv2_enc6[1] = (~(lv2_inv[1] | lv1_or_b[3]));
    assign lv2_enc6[2] = (~(lv2_inv[2] | lv1_or_b[5]));
@@ -470,8 +478,8 @@ module fu_lza_clz(
    assign lv2_enc6[37] = (~(lv2_inv[37] | lv1_or_b[75]));
    assign lv2_enc6[38] = (~(lv2_inv[38] | lv1_or_b[77]));
    assign lv2_enc6[39] = (~(lv2_inv[39] | lv1_or_b[79]));
-   assign lv2_enc6[40] = (~(lv2_inv[40]));		
-   
+   assign lv2_enc6[40] = (~(lv2_inv[40]));		//dflt1
+
    assign lv2_enc7[0] = (~(lv1_enc7_b[0] & (lv1_enc7_b[1] | lv2_inv[0])));
    assign lv2_enc7[1] = (~(lv1_enc7_b[2] & (lv1_enc7_b[3] | lv2_inv[1])));
    assign lv2_enc7[2] = (~(lv1_enc7_b[4] & (lv1_enc7_b[5] | lv2_inv[2])));
@@ -513,8 +521,11 @@ module fu_lza_clz(
    assign lv2_enc7[38] = (~(lv1_enc7_b[76] & (lv1_enc7_b[77] | lv2_inv[38])));
    assign lv2_enc7[39] = (~(lv1_enc7_b[78] & (lv1_enc7_b[79] | lv2_inv[39])));
    assign lv2_enc7[40] = (~(lv1_enc7_b[80] & (lv1_enc7_b[81] | lv2_inv[40])));
-   
-   
+
+   //--------------------------------------------------------------------------------
+   // 008 bit group (phase_in=P, phase_out=N, level_in=lv2, level_out=lv3)
+   //--------------------------------------------------------------------------------
+
    assign lv3_or_b[0] = (~(lv2_or[0] | lv2_or[1]));
    assign lv3_or_b[1] = (~(lv2_or[2] | lv2_or[3]));
    assign lv3_or_b[2] = (~(lv2_or[4] | lv2_or[5]));
@@ -536,7 +547,7 @@ module fu_lza_clz(
    assign lv3_or_b[18] = (~(lv2_or[36] | lv2_or[37]));
    assign lv3_or_b[19] = (~(lv2_or[38] | lv2_or[39]));
    assign lv3_or_b[20] = (~(lv2_or[40]));
-   
+
    assign lv3_inv_b[0] = (~(lv2_or[0]));
    assign lv3_inv_b[1] = (~(lv2_or[2]));
    assign lv3_inv_b[2] = (~(lv2_or[4]));
@@ -558,7 +569,7 @@ module fu_lza_clz(
    assign lv3_inv_b[18] = (~(lv2_or[36]));
    assign lv3_inv_b[19] = (~(lv2_or[38]));
    assign lv3_inv_b[20] = (~(lv2_or[40]));
-   
+
    assign lv3_enc5_b[0] = (~(lv3_inv_b[0] & lv2_or[1]));
    assign lv3_enc5_b[1] = (~(lv3_inv_b[1] & lv2_or[3]));
    assign lv3_enc5_b[2] = (~(lv3_inv_b[2] & lv2_or[5]));
@@ -579,8 +590,8 @@ module fu_lza_clz(
    assign lv3_enc5_b[17] = (~(lv3_inv_b[17] & lv2_or[35]));
    assign lv3_enc5_b[18] = (~(lv3_inv_b[18] & lv2_or[37]));
    assign lv3_enc5_b[19] = (~(lv3_inv_b[19] & lv2_or[39]));
-   assign lv3_enc5_b[20] = tiup;		
-   
+   assign lv3_enc5_b[20] = tiup;		//dflt0
+
    assign lv3_enc6_b[0] = (~(lv2_enc6[0] | (lv2_enc6[1] & lv3_inv_b[0])));
    assign lv3_enc6_b[1] = (~(lv2_enc6[2] | (lv2_enc6[3] & lv3_inv_b[1])));
    assign lv3_enc6_b[2] = (~(lv2_enc6[4] | (lv2_enc6[5] & lv3_inv_b[2])));
@@ -601,8 +612,8 @@ module fu_lza_clz(
    assign lv3_enc6_b[17] = (~(lv2_enc6[34] | (lv2_enc6[35] & lv3_inv_b[17])));
    assign lv3_enc6_b[18] = (~(lv2_enc6[36] | (lv2_enc6[37] & lv3_inv_b[18])));
    assign lv3_enc6_b[19] = (~(lv2_enc6[38] | (lv2_enc6[39] & lv3_inv_b[19])));
-   assign lv3_enc6_b[20] = (~(lv2_enc6[40] | lv3_inv_b[20]));		
-   
+   assign lv3_enc6_b[20] = (~(lv2_enc6[40] | lv3_inv_b[20]));		//dflt1
+
    assign lv3_enc7_b[0] = (~(lv2_enc7[0] | (lv2_enc7[1] & lv3_inv_b[0])));
    assign lv3_enc7_b[1] = (~(lv2_enc7[2] | (lv2_enc7[3] & lv3_inv_b[1])));
    assign lv3_enc7_b[2] = (~(lv2_enc7[4] | (lv2_enc7[5] & lv3_inv_b[2])));
@@ -623,9 +634,12 @@ module fu_lza_clz(
    assign lv3_enc7_b[17] = (~(lv2_enc7[34] | (lv2_enc7[35] & lv3_inv_b[17])));
    assign lv3_enc7_b[18] = (~(lv2_enc7[36] | (lv2_enc7[37] & lv3_inv_b[18])));
    assign lv3_enc7_b[19] = (~(lv2_enc7[38] | (lv2_enc7[39] & lv3_inv_b[19])));
-   assign lv3_enc7_b[20] = (~(lv2_enc7[40] | lv3_inv_b[20]));		
-   
-   
+   assign lv3_enc7_b[20] = (~(lv2_enc7[40] | lv3_inv_b[20]));		//dflt1
+
+   //--------------------------------------------------------------------------------
+   // 016 bit group (phase_in=N, phase_out=P, level_in=lv3, level_out=lv4)
+   //--------------------------------------------------------------------------------
+
    assign lv4_or[0] = (~(lv3_or_b[0] & lv3_or_b[1]));
    assign lv4_or[1] = (~(lv3_or_b[2] & lv3_or_b[3]));
    assign lv4_or[2] = (~(lv3_or_b[4] & lv3_or_b[5]));
@@ -637,7 +651,7 @@ module fu_lza_clz(
    assign lv4_or[8] = (~(lv3_or_b[16] & lv3_or_b[17]));
    assign lv4_or[9] = (~(lv3_or_b[18] & lv3_or_b[19]));
    assign lv4_or[10] = (~(lv3_or_b[20]));
-   
+
    assign lv4_inv[0] = (~(lv3_or_b[0]));
    assign lv4_inv[1] = (~(lv3_or_b[2]));
    assign lv4_inv[2] = (~(lv3_or_b[4]));
@@ -649,7 +663,7 @@ module fu_lza_clz(
    assign lv4_inv[8] = (~(lv3_or_b[16]));
    assign lv4_inv[9] = (~(lv3_or_b[18]));
    assign lv4_inv[10] = (~(lv3_or_b[20]));
-   
+
    assign lv4_enc4[0] = (~(lv4_inv[0] | lv3_or_b[1]));
    assign lv4_enc4[1] = (~(lv4_inv[1] | lv3_or_b[3]));
    assign lv4_enc4[2] = (~(lv4_inv[2] | lv3_or_b[5]));
@@ -660,8 +674,8 @@ module fu_lza_clz(
    assign lv4_enc4[7] = (~(lv4_inv[7] | lv3_or_b[15]));
    assign lv4_enc4[8] = (~(lv4_inv[8] | lv3_or_b[17]));
    assign lv4_enc4[9] = (~(lv4_inv[9] | lv3_or_b[19]));
-   assign lv4_enc4[10] = tidn;		
-   
+   assign lv4_enc4[10] = tidn;		//dflt0
+
    assign lv4_enc5[0] = (~(lv3_enc5_b[0] & (lv3_enc5_b[1] | lv4_inv[0])));
    assign lv4_enc5[1] = (~(lv3_enc5_b[2] & (lv3_enc5_b[3] | lv4_inv[1])));
    assign lv4_enc5[2] = (~(lv3_enc5_b[4] & (lv3_enc5_b[5] | lv4_inv[2])));
@@ -672,8 +686,8 @@ module fu_lza_clz(
    assign lv4_enc5[7] = (~(lv3_enc5_b[14] & (lv3_enc5_b[15] | lv4_inv[7])));
    assign lv4_enc5[8] = (~(lv3_enc5_b[16] & (lv3_enc5_b[17] | lv4_inv[8])));
    assign lv4_enc5[9] = (~(lv3_enc5_b[18] & (lv3_enc5_b[19] | lv4_inv[9])));
-   assign lv4_enc5[10] = (~(lv3_enc5_b[20]));		
-   
+   assign lv4_enc5[10] = (~(lv3_enc5_b[20]));		//dflt0 pass
+
    assign lv4_enc6[0] = (~(lv3_enc6_b[0] & (lv3_enc6_b[1] | lv4_inv[0])));
    assign lv4_enc6[1] = (~(lv3_enc6_b[2] & (lv3_enc6_b[3] | lv4_inv[1])));
    assign lv4_enc6[2] = (~(lv3_enc6_b[4] & (lv3_enc6_b[5] | lv4_inv[2])));
@@ -684,8 +698,8 @@ module fu_lza_clz(
    assign lv4_enc6[7] = (~(lv3_enc6_b[14] & (lv3_enc6_b[15] | lv4_inv[7])));
    assign lv4_enc6[8] = (~(lv3_enc6_b[16] & (lv3_enc6_b[17] | lv4_inv[8])));
    assign lv4_enc6[9] = (~(lv3_enc6_b[18] & (lv3_enc6_b[19] | lv4_inv[9])));
-   assign lv4_enc6[10] = (~(lv3_enc6_b[20] & lv4_inv[10]));		
-   
+   assign lv4_enc6[10] = (~(lv3_enc6_b[20] & lv4_inv[10]));		//dflt1
+
    assign lv4_enc7[0] = (~(lv3_enc7_b[0] & (lv3_enc7_b[1] | lv4_inv[0])));
    assign lv4_enc7[1] = (~(lv3_enc7_b[2] & (lv3_enc7_b[3] | lv4_inv[1])));
    assign lv4_enc7[2] = (~(lv3_enc7_b[4] & (lv3_enc7_b[5] | lv4_inv[2])));
@@ -696,207 +710,219 @@ module fu_lza_clz(
    assign lv4_enc7[7] = (~(lv3_enc7_b[14] & (lv3_enc7_b[15] | lv4_inv[7])));
    assign lv4_enc7[8] = (~(lv3_enc7_b[16] & (lv3_enc7_b[17] | lv4_inv[8])));
    assign lv4_enc7[9] = (~(lv3_enc7_b[18] & (lv3_enc7_b[19] | lv4_inv[9])));
-   assign lv4_enc7[10] = (~(lv3_enc7_b[20] & lv4_inv[10]));		
-   
-   assign lv4_or_b[0] = (~(lv4_or[0]));		
-   assign lv4_or_b[1] = (~(lv4_or[1]));		
-   assign lv4_or_b[2] = (~(lv4_or[2]));		
-   assign lv4_or_b[3] = (~(lv4_or[3]));		
-   assign lv4_or_b[4] = (~(lv4_or[4]));		
-   assign lv4_or_b[5] = (~(lv4_or[5]));		
-   assign lv4_or_b[6] = (~(lv4_or[6]));		
-   assign lv4_or_b[7] = (~(lv4_or[7]));		
-   assign lv4_or_b[8] = (~(lv4_or[8]));		
-   assign lv4_or_b[9] = (~(lv4_or[9]));		
-   assign lv4_or_b[10] = (~(lv4_or[10]));		
-   assign lv4_enc4_b[0] = (~(lv4_enc4[0]));		
-   assign lv4_enc4_b[1] = (~(lv4_enc4[1]));		
-   assign lv4_enc4_b[2] = (~(lv4_enc4[2]));		
-   assign lv4_enc4_b[3] = (~(lv4_enc4[3]));		
-   assign lv4_enc4_b[4] = (~(lv4_enc4[4]));		
-   assign lv4_enc4_b[5] = (~(lv4_enc4[5]));		
-   assign lv4_enc4_b[6] = (~(lv4_enc4[6]));		
-   assign lv4_enc4_b[7] = (~(lv4_enc4[7]));		
-   assign lv4_enc4_b[8] = (~(lv4_enc4[8]));		
-   assign lv4_enc4_b[9] = (~(lv4_enc4[9]));		
-   assign lv4_enc4_b[10] = (~(lv4_enc4[10]));		
-   assign lv4_enc5_b[0] = (~(lv4_enc5[0]));		
-   assign lv4_enc5_b[1] = (~(lv4_enc5[1]));		
-   assign lv4_enc5_b[2] = (~(lv4_enc5[2]));		
-   assign lv4_enc5_b[3] = (~(lv4_enc5[3]));		
-   assign lv4_enc5_b[4] = (~(lv4_enc5[4]));		
-   assign lv4_enc5_b[5] = (~(lv4_enc5[5]));		
-   assign lv4_enc5_b[6] = (~(lv4_enc5[6]));		
-   assign lv4_enc5_b[7] = (~(lv4_enc5[7]));		
-   assign lv4_enc5_b[8] = (~(lv4_enc5[8]));		
-   assign lv4_enc5_b[9] = (~(lv4_enc5[9]));		
-   assign lv4_enc5_b[10] = (~(lv4_enc5[10]));		
-   assign lv4_enc6_b[0] = (~(lv4_enc6[0]));		
-   assign lv4_enc6_b[1] = (~(lv4_enc6[1]));		
-   assign lv4_enc6_b[2] = (~(lv4_enc6[2]));		
-   assign lv4_enc6_b[3] = (~(lv4_enc6[3]));		
-   assign lv4_enc6_b[4] = (~(lv4_enc6[4]));		
-   assign lv4_enc6_b[5] = (~(lv4_enc6[5]));		
-   assign lv4_enc6_b[6] = (~(lv4_enc6[6]));		
-   assign lv4_enc6_b[7] = (~(lv4_enc6[7]));		
-   assign lv4_enc6_b[8] = (~(lv4_enc6[8]));		
-   assign lv4_enc6_b[9] = (~(lv4_enc6[9]));		
-   assign lv4_enc6_b[10] = (~(lv4_enc6[10]));		
-   assign lv4_enc7_b[0] = (~(lv4_enc7[0]));		
-   assign lv4_enc7_b[1] = (~(lv4_enc7[1]));		
-   assign lv4_enc7_b[2] = (~(lv4_enc7[2]));		
-   assign lv4_enc7_b[3] = (~(lv4_enc7[3]));		
-   assign lv4_enc7_b[4] = (~(lv4_enc7[4]));		
-   assign lv4_enc7_b[5] = (~(lv4_enc7[5]));		
-   assign lv4_enc7_b[6] = (~(lv4_enc7[6]));		
-   assign lv4_enc7_b[7] = (~(lv4_enc7[7]));		
-   assign lv4_enc7_b[8] = (~(lv4_enc7[8]));		
-   assign lv4_enc7_b[9] = (~(lv4_enc7[9]));		
-   assign lv4_enc7_b[10] = (~(lv4_enc7[10]));		
-   
-   
+   assign lv4_enc7[10] = (~(lv3_enc7_b[20] & lv4_inv[10]));		//dflt1
+
+   assign lv4_or_b[0] = (~(lv4_or[0]));		//repower,long wire
+   assign lv4_or_b[1] = (~(lv4_or[1]));		//repower,long wire
+   assign lv4_or_b[2] = (~(lv4_or[2]));		//repower,long wire
+   assign lv4_or_b[3] = (~(lv4_or[3]));		//repower,long wire
+   assign lv4_or_b[4] = (~(lv4_or[4]));		//repower,long wire
+   assign lv4_or_b[5] = (~(lv4_or[5]));		//repower,long wire
+   assign lv4_or_b[6] = (~(lv4_or[6]));		//repower,long wire
+   assign lv4_or_b[7] = (~(lv4_or[7]));		//repower,long wire
+   assign lv4_or_b[8] = (~(lv4_or[8]));		//repower,long wire
+   assign lv4_or_b[9] = (~(lv4_or[9]));		//repower,long wire
+   assign lv4_or_b[10] = (~(lv4_or[10]));		//repower,long wire
+   assign lv4_enc4_b[0] = (~(lv4_enc4[0]));		//repower,long wire
+   assign lv4_enc4_b[1] = (~(lv4_enc4[1]));		//repower,long wire
+   assign lv4_enc4_b[2] = (~(lv4_enc4[2]));		//repower,long wire
+   assign lv4_enc4_b[3] = (~(lv4_enc4[3]));		//repower,long wire
+   assign lv4_enc4_b[4] = (~(lv4_enc4[4]));		//repower,long wire
+   assign lv4_enc4_b[5] = (~(lv4_enc4[5]));		//repower,long wire
+   assign lv4_enc4_b[6] = (~(lv4_enc4[6]));		//repower,long wire
+   assign lv4_enc4_b[7] = (~(lv4_enc4[7]));		//repower,long wire
+   assign lv4_enc4_b[8] = (~(lv4_enc4[8]));		//repower,long wire
+   assign lv4_enc4_b[9] = (~(lv4_enc4[9]));		//repower,long wire
+   assign lv4_enc4_b[10] = (~(lv4_enc4[10]));		//repower,long wire
+   assign lv4_enc5_b[0] = (~(lv4_enc5[0]));		//repower,long wire
+   assign lv4_enc5_b[1] = (~(lv4_enc5[1]));		//repower,long wire
+   assign lv4_enc5_b[2] = (~(lv4_enc5[2]));		//repower,long wire
+   assign lv4_enc5_b[3] = (~(lv4_enc5[3]));		//repower,long wire
+   assign lv4_enc5_b[4] = (~(lv4_enc5[4]));		//repower,long wire
+   assign lv4_enc5_b[5] = (~(lv4_enc5[5]));		//repower,long wire
+   assign lv4_enc5_b[6] = (~(lv4_enc5[6]));		//repower,long wire
+   assign lv4_enc5_b[7] = (~(lv4_enc5[7]));		//repower,long wire
+   assign lv4_enc5_b[8] = (~(lv4_enc5[8]));		//repower,long wire
+   assign lv4_enc5_b[9] = (~(lv4_enc5[9]));		//repower,long wire
+   assign lv4_enc5_b[10] = (~(lv4_enc5[10]));		//repower,long wire
+   assign lv4_enc6_b[0] = (~(lv4_enc6[0]));		//repower,long wire
+   assign lv4_enc6_b[1] = (~(lv4_enc6[1]));		//repower,long wire
+   assign lv4_enc6_b[2] = (~(lv4_enc6[2]));		//repower,long wire
+   assign lv4_enc6_b[3] = (~(lv4_enc6[3]));		//repower,long wire
+   assign lv4_enc6_b[4] = (~(lv4_enc6[4]));		//repower,long wire
+   assign lv4_enc6_b[5] = (~(lv4_enc6[5]));		//repower,long wire
+   assign lv4_enc6_b[6] = (~(lv4_enc6[6]));		//repower,long wire
+   assign lv4_enc6_b[7] = (~(lv4_enc6[7]));		//repower,long wire
+   assign lv4_enc6_b[8] = (~(lv4_enc6[8]));		//repower,long wire
+   assign lv4_enc6_b[9] = (~(lv4_enc6[9]));		//repower,long wire
+   assign lv4_enc6_b[10] = (~(lv4_enc6[10]));		//repower,long wire
+   assign lv4_enc7_b[0] = (~(lv4_enc7[0]));		//repower,long wire
+   assign lv4_enc7_b[1] = (~(lv4_enc7[1]));		//repower,long wire
+   assign lv4_enc7_b[2] = (~(lv4_enc7[2]));		//repower,long wire
+   assign lv4_enc7_b[3] = (~(lv4_enc7[3]));		//repower,long wire
+   assign lv4_enc7_b[4] = (~(lv4_enc7[4]));		//repower,long wire
+   assign lv4_enc7_b[5] = (~(lv4_enc7[5]));		//repower,long wire
+   assign lv4_enc7_b[6] = (~(lv4_enc7[6]));		//repower,long wire
+   assign lv4_enc7_b[7] = (~(lv4_enc7[7]));		//repower,long wire
+   assign lv4_enc7_b[8] = (~(lv4_enc7[8]));		//repower,long wire
+   assign lv4_enc7_b[9] = (~(lv4_enc7[9]));		//repower,long wire
+   assign lv4_enc7_b[10] = (~(lv4_enc7[10]));		//repower,long wire
+
+   //--------------------------------------------------------------------------------
+   // 032 bit group (phase_in=N, phase_out=P, level_in=lv4, level_out=lv5)
+   //--------------------------------------------------------------------------------
+
    assign lv5_or[0] = (~(lv4_or_b[0] & lv4_or_b[1]));
    assign lv5_or[1] = (~(lv4_or_b[2] & lv4_or_b[3]));
    assign lv5_or[2] = (~(lv4_or_b[4] & lv4_or_b[5]));
    assign lv5_or[3] = (~(lv4_or_b[6] & lv4_or_b[7]));
    assign lv5_or[4] = (~(lv4_or_b[8] & lv4_or_b[9]));
    assign lv5_or[5] = (~(lv4_or_b[10]));
-   
+
    assign lv5_inv[0] = (~(lv4_or_b[0]));
    assign lv5_inv[1] = (~(lv4_or_b[2]));
    assign lv5_inv[2] = (~(lv4_or_b[4]));
    assign lv5_inv[3] = (~(lv4_or_b[6]));
    assign lv5_inv[4] = (~(lv4_or_b[8]));
    assign lv5_inv[5] = (~(lv4_or_b[10]));
-   
+
    assign lv5_enc3[0] = (~(lv5_inv[0] | lv4_or_b[1]));
    assign lv5_enc3[1] = (~(lv5_inv[1] | lv4_or_b[3]));
    assign lv5_enc3[2] = (~(lv5_inv[2] | lv4_or_b[5]));
    assign lv5_enc3[3] = (~(lv5_inv[3] | lv4_or_b[7]));
    assign lv5_enc3[4] = (~(lv5_inv[4] | lv4_or_b[9]));
-   assign lv5_enc3[5] = tidn;		
-   
+   assign lv5_enc3[5] = tidn;		//dflt0
+
    assign lv5_enc4[0] = (~(lv4_enc4_b[0] & (lv4_enc4_b[1] | lv5_inv[0])));
    assign lv5_enc4[1] = (~(lv4_enc4_b[2] & (lv4_enc4_b[3] | lv5_inv[1])));
    assign lv5_enc4[2] = (~(lv4_enc4_b[4] & (lv4_enc4_b[5] | lv5_inv[2])));
    assign lv5_enc4[3] = (~(lv4_enc4_b[6] & (lv4_enc4_b[7] | lv5_inv[3])));
    assign lv5_enc4[4] = (~(lv4_enc4_b[8] & (lv4_enc4_b[9] | lv5_inv[4])));
-   assign lv5_enc4[5] = (~(lv4_enc4_b[10]));		
-   
+   assign lv5_enc4[5] = (~(lv4_enc4_b[10]));		//dflt0 pass
+
    assign lv5_enc5[0] = (~(lv4_enc5_b[0] & (lv4_enc5_b[1] | lv5_inv[0])));
    assign lv5_enc5[1] = (~(lv4_enc5_b[2] & (lv4_enc5_b[3] | lv5_inv[1])));
    assign lv5_enc5[2] = (~(lv4_enc5_b[4] & (lv4_enc5_b[5] | lv5_inv[2])));
    assign lv5_enc5[3] = (~(lv4_enc5_b[6] & (lv4_enc5_b[7] | lv5_inv[3])));
    assign lv5_enc5[4] = (~(lv4_enc5_b[8] & (lv4_enc5_b[9] | lv5_inv[4])));
-   assign lv5_enc5[5] = (~(lv4_enc5_b[10]));		
-   
+   assign lv5_enc5[5] = (~(lv4_enc5_b[10]));		//dflt0 pass
+
    assign lv5_enc6[0] = (~(lv4_enc6_b[0] & (lv4_enc6_b[1] | lv5_inv[0])));
    assign lv5_enc6[1] = (~(lv4_enc6_b[2] & (lv4_enc6_b[3] | lv5_inv[1])));
    assign lv5_enc6[2] = (~(lv4_enc6_b[4] & (lv4_enc6_b[5] | lv5_inv[2])));
    assign lv5_enc6[3] = (~(lv4_enc6_b[6] & (lv4_enc6_b[7] | lv5_inv[3])));
    assign lv5_enc6[4] = (~(lv4_enc6_b[8] & (lv4_enc6_b[9] | lv5_inv[4])));
-   assign lv5_enc6[5] = (~(lv4_enc6_b[10] & lv5_inv[5]));		
-   
+   assign lv5_enc6[5] = (~(lv4_enc6_b[10] & lv5_inv[5]));		//dflt1
+
    assign lv5_enc7[0] = (~(lv4_enc7_b[0] & (lv4_enc7_b[1] | lv5_inv[0])));
    assign lv5_enc7[1] = (~(lv4_enc7_b[2] & (lv4_enc7_b[3] | lv5_inv[1])));
    assign lv5_enc7[2] = (~(lv4_enc7_b[4] & (lv4_enc7_b[5] | lv5_inv[2])));
    assign lv5_enc7[3] = (~(lv4_enc7_b[6] & (lv4_enc7_b[7] | lv5_inv[3])));
    assign lv5_enc7[4] = (~(lv4_enc7_b[8] & (lv4_enc7_b[9] | lv5_inv[4])));
-   assign lv5_enc7[5] = (~(lv4_enc7_b[10] & lv5_inv[5]));		
-   
-   
+   assign lv5_enc7[5] = (~(lv4_enc7_b[10] & lv5_inv[5]));		//dflt1
+
+   //--------------------------------------------------------------------------------
+   // 064 bit group (phase_in=P, phase_out=N, level_in=lv5, level_out=lv6)
+   //--------------------------------------------------------------------------------
+
    assign lv6_or_0 = (~lv6_or_b[0]);
    assign lv6_or_1 = (~lv6_or_b[1]);
-   
+
    assign lv6_or_b[0] = (~(lv5_or[0] | lv5_or[1]));
    assign lv6_or_b[1] = (~(lv5_or[2] | lv5_or[3]));
    assign lv6_or_b[2] = (~(lv5_or[4] | lv5_or[5]));
-   
+
    assign lv6_inv_b[0] = (~(lv5_or[0]));
    assign lv6_inv_b[1] = (~(lv5_or[2]));
    assign lv6_inv_b[2] = (~(lv5_or[4]));
-   
+
    assign lv6_enc2_b[0] = (~(lv6_inv_b[0] & lv5_or[1]));
    assign lv6_enc2_b[1] = (~(lv6_inv_b[1] & lv5_or[3]));
-   assign lv6_enc2_b[2] = (~(lv6_inv_b[2]));		
-   
+   assign lv6_enc2_b[2] = (~(lv6_inv_b[2]));		//dflt1
+
    assign lv6_enc3_b[0] = (~(lv5_enc3[0] | (lv5_enc3[1] & lv6_inv_b[0])));
    assign lv6_enc3_b[1] = (~(lv5_enc3[2] | (lv5_enc3[3] & lv6_inv_b[1])));
    assign lv6_enc3_b[2] = (~(lv5_enc3[4] | (lv5_enc3[5] & lv6_inv_b[2])));
-   
+
    assign lv6_enc4_b[0] = (~(lv5_enc4[0] | (lv5_enc4[1] & lv6_inv_b[0])));
    assign lv6_enc4_b[1] = (~(lv5_enc4[2] | (lv5_enc4[3] & lv6_inv_b[1])));
    assign lv6_enc4_b[2] = (~(lv5_enc4[4] | (lv5_enc4[5] & lv6_inv_b[2])));
-   
+
    assign lv6_enc5_b[0] = (~(lv5_enc5[0] | (lv5_enc5[1] & lv6_inv_b[0])));
    assign lv6_enc5_b[1] = (~(lv5_enc5[2] | (lv5_enc5[3] & lv6_inv_b[1])));
    assign lv6_enc5_b[2] = (~(lv5_enc5[4] | (lv5_enc5[5] & lv6_inv_b[2])));
-   
+
    assign lv6_enc6_b[0] = (~(lv5_enc6[0] | (lv5_enc6[1] & lv6_inv_b[0])));
    assign lv6_enc6_b[1] = (~(lv5_enc6[2] | (lv5_enc6[3] & lv6_inv_b[1])));
    assign lv6_enc6_b[2] = (~(lv5_enc6[4] | (lv5_enc6[5] & lv6_inv_b[2])));
-   
+
    assign lv6_enc7_b[0] = (~(lv5_enc7[0] | (lv5_enc7[1] & lv6_inv_b[0])));
    assign lv6_enc7_b[1] = (~(lv5_enc7[2] | (lv5_enc7[3] & lv6_inv_b[1])));
    assign lv6_enc7_b[2] = (~(lv5_enc7[4] | (lv5_enc7[5] & lv6_inv_b[2])));
-   
-   
+
+   //--------------------------------------------------------------------------------
+   // 128 bit group (phase_in=N, phase_out=P, level_in=lv6, level_out=lv7)
+   //--------------------------------------------------------------------------------
+
    assign lv7_or[0] = (~(lv6_or_b[0] & lv6_or_b[1]));
    assign lv7_or[1] = (~(lv6_or_b[2]));
-   
+
    assign lv7_inv[0] = (~(lv6_or_b[0]));
    assign lv7_inv[1] = (~(lv6_or_b[2]));
-   
+
    assign lv7_enc1[0] = (~(lv7_inv[0] | lv6_or_b[1]));
-   assign lv7_enc1[1] = tidn;		
-   
+   assign lv7_enc1[1] = tidn;		//dflt0
+
    assign lv7_enc2[0] = (~(lv6_enc2_b[0] & (lv6_enc2_b[1] | lv7_inv[0])));
-   assign lv7_enc2[1] = (~(lv6_enc2_b[2] & lv7_inv[1]));		
-   
+   assign lv7_enc2[1] = (~(lv6_enc2_b[2] & lv7_inv[1]));		//dflt1
+
    assign lv7_enc3[0] = (~(lv6_enc3_b[0] & (lv6_enc3_b[1] | lv7_inv[0])));
-   assign lv7_enc3[1] = (~(lv6_enc3_b[2]));		
-   
+   assign lv7_enc3[1] = (~(lv6_enc3_b[2]));		//dflt0 pass
+
    assign lv7_enc4[0] = (~(lv6_enc4_b[0] & (lv6_enc4_b[1] | lv7_inv[0])));
-   assign lv7_enc4[1] = (~(lv6_enc4_b[2]));		
-   
+   assign lv7_enc4[1] = (~(lv6_enc4_b[2]));		//dflt0 pass
+
    assign lv7_enc5[0] = (~(lv6_enc5_b[0] & (lv6_enc5_b[1] | lv7_inv[0])));
-   assign lv7_enc5[1] = (~(lv6_enc5_b[2]));		
-   
+   assign lv7_enc5[1] = (~(lv6_enc5_b[2]));		//dflt0 pass
+
    assign lv7_enc6[0] = (~(lv6_enc6_b[0] & (lv6_enc6_b[1] | lv7_inv[0])));
-   assign lv7_enc6[1] = (~(lv6_enc6_b[2] & lv7_inv[1]));		
-   
+   assign lv7_enc6[1] = (~(lv6_enc6_b[2] & lv7_inv[1]));		//dflt1
+
    assign lv7_enc7[0] = (~(lv6_enc7_b[0] & (lv6_enc7_b[1] | lv7_inv[0])));
-   assign lv7_enc7[1] = (~(lv6_enc7_b[2] & lv7_inv[1]));		
-   
-   
+   assign lv7_enc7[1] = (~(lv6_enc7_b[2] & lv7_inv[1]));		//dflt1
+
+   //--------------------------------------------------------------------------------
+   // 256 bit group (phase_in=P, phase_out=N, level_in=lv7, level_out=lv8)
+   //--------------------------------------------------------------------------------
+
    assign lv8_or_b[0] = (~(lv7_or[0] | lv7_or[1]));
-   
+
    assign lv8_inv_b[0] = (~(lv7_or[0]));
-   
-   assign lv8_enc0_b[0] = (~(lv8_inv_b[0]));		
-   
+
+   assign lv8_enc0_b[0] = (~(lv8_inv_b[0]));		//dflt1
+
    assign lv8_enc1_b[0] = (~(lv7_enc1[0] | (lv7_enc1[1] & lv8_inv_b[0])));
-   
+
    assign lv8_enc2_b[0] = (~(lv7_enc2[0] | (lv7_enc2[1] & lv8_inv_b[0])));
-   
+
    assign lv8_enc3_b[0] = (~(lv7_enc3[0] | (lv7_enc3[1] & lv8_inv_b[0])));
-   
+
    assign lv8_enc4_b[0] = (~(lv7_enc4[0] | (lv7_enc4[1] & lv8_inv_b[0])));
-   
+
    assign lv8_enc5_b[0] = (~(lv7_enc5[0] | (lv7_enc5[1] & lv8_inv_b[0])));
-   
+
    assign lv8_enc6_b[0] = (~(lv7_enc6[0] | (lv7_enc6[1] & lv8_inv_b[0])));
-   
+
    assign lv8_enc7_b[0] = (~(lv7_enc7[0] | (lv7_enc7[1] & lv8_inv_b[0])));
-   
-   assign lza_any_b = (lv8_or_b[0]);		
-   assign lza_amt_b[0] = (lv8_enc0_b[0]);		
-   assign lza_amt_b[1] = (lv8_enc1_b[0]);		
-   assign lza_amt_b[2] = (lv8_enc2_b[0]);		
-   assign lza_amt_b[3] = (lv8_enc3_b[0]);		
-   assign lza_amt_b[4] = (lv8_enc4_b[0]);		
-   assign lza_amt_b[5] = (lv8_enc5_b[0]);		
-   assign lza_amt_b[6] = (lv8_enc6_b[0]);		
-   assign lza_amt_b[7] = (lv8_enc7_b[0]);		
-   
+
+   assign lza_any_b = (lv8_or_b[0]);		//repower,long wire
+   assign lza_amt_b[0] = (lv8_enc0_b[0]);		//repower,long wire
+   assign lza_amt_b[1] = (lv8_enc1_b[0]);		//repower,long wire
+   assign lza_amt_b[2] = (lv8_enc2_b[0]);		//repower,long wire
+   assign lza_amt_b[3] = (lv8_enc3_b[0]);		//repower,long wire
+   assign lza_amt_b[4] = (lv8_enc4_b[0]);		//repower,long wire
+   assign lza_amt_b[5] = (lv8_enc5_b[0]);		//repower,long wire
+   assign lza_amt_b[6] = (lv8_enc6_b[0]);		//repower,long wire
+   assign lza_amt_b[7] = (lv8_enc7_b[0]);		//repower,long wire
+
 endmodule

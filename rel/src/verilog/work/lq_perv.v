@@ -9,9 +9,11 @@
 
 `timescale 1 ns / 1 ns
 
+//  Description:  XU Pervasive
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
-
 
 module lq_perv(
    vdd,
@@ -111,20 +113,25 @@ inout                       gnd;
 (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)
 input [0:`NCLK_WIDTH-1]     nclk;
 
+// Pervasive Debug Control
 input                       pc_lq_trace_bus_enable;
 input [0:10]                pc_lq_debug_mux1_ctrls;
 input [0:10]                pc_lq_debug_mux2_ctrls;
 input                       pc_lq_instr_trace_mode;
 input [0:`THREADS-1]        pc_lq_instr_trace_tid;
 
+// Pass Thru Debug Trace Bus
 input [0:31]                debug_bus_in;
 input [0:3]                 coretrace_ctrls_in;
 
+// Debug Data
 input [0:31]                lq_debug_bus0;
 
+// Outputs
 output [0:31]               debug_bus_out;
 output [0:3]                coretrace_ctrls_out;
 
+// Pervasive Performance Event Control
 input                       pc_lq_event_bus_enable;
 input [0:2]                 pc_lq_event_count_mode;
 input [0:23]                ctl_perv_spr_lesr1;
@@ -140,9 +147,11 @@ input [0:4+`THREADS-1]      lsq_perv_odq_events;
 input [0:`THREADS-1]        xu_lq_spr_msr_pr;
 input [0:`THREADS-1]        xu_lq_spr_msr_gs;
 
+// Performance Event Outputs
 input [0:(4*`THREADS)-1]    event_bus_in;
 output [0:(4*`THREADS)-1]   event_bus_out;
 
+// Pervasive Clock Controls
 input                       pc_lq_sg_3;
 input                       pc_lq_func_sl_thold_3;
 input                       pc_lq_func_slp_sl_thold_3;
@@ -210,6 +219,9 @@ input                       func_scan_in;
 (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
 output                      func_scan_out;
 
+//--------------------------
+// signals
+//--------------------------
 wire [0:4]                  gptr_siv;
 wire [0:4]                  gptr_sov;
 wire                        perv_sg_2;
@@ -286,6 +298,9 @@ wire [0:5]                  ldq_perf_events[0:`THREADS-1];
 wire [1:63]                 lq_perf_events[0:`THREADS-1];
 wire [1:63]                 lq_events_en[0:`THREADS-1];
 
+//--------------------------
+// register constants
+//--------------------------
 parameter                   pc_lq_trace_bus_enable_offset = 0;
 parameter                   pc_lq_debug_mux1_ctrls_offset = pc_lq_trace_bus_enable_offset + 1;
 parameter                   pc_lq_debug_mux2_ctrls_offset = pc_lq_debug_mux1_ctrls_offset + 11;
@@ -312,17 +327,20 @@ wire                        unused;
 
 assign tiup = 1;
 assign tidn = 0;
-assign unused = (|perf_event_mux_ctrl) | clkoff_dc_b_int[1] | d_mode_dc_int[1] | act_dis_dc_int[1] | mpw2_dc_b_int[1] | 
+assign unused = (|perf_event_mux_ctrl) | clkoff_dc_b_int[1] | d_mode_dc_int[1] | act_dis_dc_int[1] | mpw2_dc_b_int[1] |
                 g6t_act_dis_dc_int | g8t_act_dis_dc_int | cam_act_dis_ac_int;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Debug Bus Control Logic
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-generate 
+generate
   begin : dbgData
     genvar bus;
     for (bus=0; bus<32; bus=bus+1) begin : dbgData
       assign lq_dbg_data_mux1[bus] = lq_debug_bus0;
       assign lq_dbg_data_mux2[bus] = lq_debug_bus0;
-    end 
+    end
   end
 endgenerate
 
@@ -415,52 +433,128 @@ tri_debug_mux32 dbgmux2(
 assign debug_bus_out       = lq_mux2_debug_data_out_q;
 assign coretrace_ctrls_out = lq_mux2_coretrace_out_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Performance Events Control Logic
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// MSR[GS] Guest State
+// 1 => Processor is in Guest State
+// 0 => Processor is in Hypervisor State
 assign spr_msr_gs_d = xu_lq_spr_msr_gs;
 
+// MSR[PR] Problem State
+// 1 => Processor is in User Mode
+// 0 => Processor is in Supervisor Mode
 assign spr_msr_pr_d = xu_lq_spr_msr_pr;
 
-assign perf_event_en_d = ( spr_msr_pr_q &                 {`THREADS{pc_lq_event_count_mode_q[0]}}) |    
-                         (~spr_msr_pr_q &  spr_msr_gs_q & {`THREADS{pc_lq_event_count_mode_q[1]}}) |    
-                         (~spr_msr_pr_q & ~spr_msr_gs_q & {`THREADS{pc_lq_event_count_mode_q[2]}});     
+// Processor State Control
+assign perf_event_en_d = ( spr_msr_pr_q &                 {`THREADS{pc_lq_event_count_mode_q[0]}}) |    // User
+                         (~spr_msr_pr_q &  spr_msr_gs_q & {`THREADS{pc_lq_event_count_mode_q[1]}}) |    // Guest Supervisor
+                         (~spr_msr_pr_q & ~spr_msr_gs_q & {`THREADS{pc_lq_event_count_mode_q[2]}});     // Hypervisor
 
-
+// Muxing
 assign perf_event_mux_ctrl = {ctl_perv_spr_lesr1, ctl_perv_spr_lesr2};
 
 generate begin : TidPerf
-  genvar tid;    
+  genvar tid;
   for (tid=0;tid<`THREADS;tid=tid+1) begin : TidPerf
+      // Generate Events Per Thread
       assign ex6_perf_events[tid]  = ctl_perv_ex6_perf_events[0:17] & {18{ctl_perv_ex6_perf_events[18+tid]}};
       assign stq4_perf_events[tid] = ctl_perv_stq4_perf_events[0:5] & {6{ctl_perv_stq4_perf_events[6+tid]}};
       assign odq_perf_events[tid]  = lsq_perv_odq_events[0:3]       & {4{lsq_perv_odq_events[4+tid]}};
-      assign dir_perf_events[tid]  = {ctl_perv_dir_perf_events[0:1],                ctl_perv_dir_perf_events[2+(0*`THREADS)+tid], 
+      assign dir_perf_events[tid]  = {ctl_perv_dir_perf_events[0:1],                ctl_perv_dir_perf_events[2+(0*`THREADS)+tid],
                                       ctl_perv_dir_perf_events[2+(1*`THREADS)+tid], ctl_perv_dir_perf_events[2+(2*`THREADS)+tid]};
-      assign stq_perf_events[tid]  = {lsq_perv_stq_events[0:2],                lsq_perv_stq_events[3+(0*`THREADS)+tid], 
+      assign stq_perf_events[tid]  = {lsq_perv_stq_events[0:2],                lsq_perv_stq_events[3+(0*`THREADS)+tid],
                                       lsq_perv_stq_events[3+(1*`THREADS)+tid], lsq_perv_stq_events[3+(2*`THREADS)+tid]};
-      assign ldq_perf_events[tid]  = {lsq_perv_ldq_events[0:3],                lsq_perv_ldq_events[4+(0*`THREADS)+tid], 
+      assign ldq_perf_events[tid]  = {lsq_perv_ldq_events[0:3],                lsq_perv_ldq_events[4+(0*`THREADS)+tid],
                                       lsq_perv_ldq_events[4+(1*`THREADS)+tid]};
 
+      // Tie Up all performance events
+      // (0)  =>                              => empty events, tied to 0           <-- Needs to always be 0
+      // (1)  =>                              => empty events, tied to 0
+      // (2)  =>                              => empty events, tied to 0
+      // (3)  =>                              => empty events, tied to 0
+      // (4)  =>                              => empty events, tied to 0
+      // (5)  =>                              => empty events, tied to 0
+      // (6)  => perf_ex6_derat_attmpts       => ctl_perv_ex6_perf_events(0)
+      // (7)  => perf_ex6_derat_restarts      => ctl_perv_ex6_perf_events(1)
       assign lq_perf_events[tid][1:7]   = {{5{1'b0}}, ex6_perf_events[tid][0:1]};
 
+      // (8)  => perf_ex6_pfetch_iss          => ctl_perv_ex6_perf_events(2)
+      // (9)  => perf_ex6_pfetch_hit          => ctl_perv_ex6_perf_events(3)
+      // (10) => perf_ex6_pfetch_emiss        => ctl_perv_ex6_perf_events(4)
+      // (11) => perf_ex6_pfetch_ldq_full     => ctl_perv_ex6_perf_events(5)
+      // (12) => perf_ex6_pfetch_ldq_hit      => ctl_perv_ex6_perf_events(6)
+      // (13) => perf_ex6_pfetch_stq_restart  => ctl_perv_ex6_perf_events(7)
+      // (14) => perf_ex6_pfetch_odq_restart  => lsq_perv_ex7_events(0)
+      // (15) => perf_ex6_dir_restart         => ctl_perv_ex6_perf_events(8)
       assign lq_perf_events[tid][8:15]  = {ex6_perf_events[tid][2:7], lsq_perv_ex7_events[tid], ex6_perf_events[tid][8]};
 
+      // (16) => perf_ex6_dec_restart         => ctl_perv_ex6_perf_events(9)
+      // (17) => perf_ex6_wNComp_restart      => ctl_perv_ex6_perf_events(10)
+      // (18) => perf_ex6_ldq_full            => ctl_perv_ex6_perf_events(11)
+      // (19) => perf_ex6_ldq_hit             => ctl_perv_ex6_perf_events(12)
+      // (20) => perf_ex6_lgq_full            => ctl_perv_ex6_perf_events(13)
+      // (21) => perf_ex6_lgq_hit             => ctl_perv_ex6_perf_events(14)
+      // (22) => perf_ex6_stq_sametid         => ctl_perv_ex6_perf_events(15)
+      // (23) => perf_ex6_stq_difftid         => ctl_perv_ex6_perf_events(16)
       assign lq_perf_events[tid][16:23] = ex6_perf_events[tid][9:16];
 
+      // (24) => perf_dir_binv_val            => ctl_perv_dir_perf_events(0)
+      // (25) => perf_dir_binv_hit            => ctl_perv_dir_perf_events(1)
+      // (26) => perf_dir_binv_watchlost      => ctl_perv_dir_perf_events(2+(0*`THREADS))
+      // (27) => perf_dir_evict_watchlost     => ctl_perv_dir_perf_events(2+(1*`THREADS))
+      // (28) => perf_dir_interTid_watchlost  => ctl_perv_dir_perf_events(2+(2*`THREADS))
+      // (29) => perf_stq_stores              => ctl_perv_stq4_perf_events(0)
+      // (30) => perf_stq_store_miss          => ctl_perv_stq4_perf_events(1)
+      // (31) => perf_stq_stcx_exec           => ctl_perv_stq4_perf_events(2)
       assign lq_perf_events[tid][24:31] = {dir_perf_events[tid], stq4_perf_events[tid][0:2]};
 
-      assign lq_perf_events[tid][32:39] = {stq_perf_events[tid][3], stq4_perf_events[tid][3], stq_perf_events[tid][4:5], stq4_perf_events[tid][4:5], 
+      // (32) => perf_stq_stcx_fail           => lsq_perv_stq_events(3+(0*`THREADS))
+      // (33) => perf_stq_axu_store           => ctl_perv_stq4_perf_events(3)
+      // (34) => perf_stq_icswxr_nbusy        => lsq_perv_stq_events(3+(1*`THREADS))
+      // (35) => perf_stq_icswxr_busy         => lsq_perv_stq_events(3+(2*`THREADS))
+      // (36) => perf_stq_wclr                => ctl_perv_stq4_perf_events(4)
+      // (37) => perf_stq_wclr_set            => ctl_perv_stq4_perf_events(5)
+      // (38) => perf_ldq_cpl_larx            => lsq_perv_ldq_events(4+(0*`THREADS))
+      // (39) => perf_ldq_rel_attmpt          => lsq_perv_ldq_events(0)
+      assign lq_perf_events[tid][32:39] = {stq_perf_events[tid][3], stq4_perf_events[tid][3], stq_perf_events[tid][4:5], stq4_perf_events[tid][4:5],
                                            ldq_perf_events[tid][4], ldq_perf_events[tid][0]};
 
+      // (40) => perf_ldq_rel_cmmt            => lsq_perv_ldq_events(1)
+      // (41) => perf_ldq_rel_need_hole       => lsq_perv_ldq_events(2)
+      // (42) => perf_stq_cmmt_attmpt         => lsq_perv_stq_events(0)
+      // (43) => perf_stq_cmmt_val            => lsq_perv_stq_events(1)
+      // (44) => perf_stq_need_hole           => lsq_perv_stq_events(2)
+      // (45) => perf_ex6_align_flush         => ctl_perv_ex6_perf_events(17)
+      // (46) => perf_ldq_cpl_binv            => lsq_perv_ldq_events(4+(1*`THREADS))
+      // (47) =>                              => lsq_perv_odq_events(0)
       assign lq_perf_events[tid][40:47] = {ldq_perf_events[tid][1:2], stq_perf_events[tid][0:2], ex6_perf_events[tid][17], ldq_perf_events[tid][5],
                                            odq_perf_events[tid][0]};
 
+      // (48) =>                              => lsq_perv_odq_events(1)
+      // (49) =>                              => lsq_perv_odq_events(2)
+      // (50) =>                              => lsq_perv_odq_events(3)
+      // (51) => perf_ldq_rel_latency         => lsq_perv_ldq_events(3)
+      // (52) => perf_com_loads               => commit events, tied to 0
+      // (53) => perf_com_loadmiss            => commit events, tied to 0
+      // (54) => perf_com_cinh_loads          => commit events, tied to 0
+      // (55) => perf_com_load_fwd            => commit events, tied to 0
       assign lq_perf_events[tid][48:55] = {odq_perf_events[tid][1:3], ldq_perf_events[tid][3], {4{1'b0}}};
 
+      // (56) => perf_com_axu_load            => commit events, tied to 0
+      // (57) => perf_com_dcbt_sent           => commit events, tied to 0
+      // (58) => perf_com_dcbt_hit            => commit events, tied to 0
+      // (59) => perf_com_watch_set           => commit events, tied to 0
+      // (60) => perf_com_watch_dup           => commit events, tied to 0
+      // (61) => perf_com_wchkall             => commit events, tied to 0
+      // (62) => perf_com_wchkall_succ        => commit events, tied to 0
+      // (63) => ex5_ld_gath_q                => commit events, tied to 0
       assign lq_perf_events[tid][56:63] = {8{1'b0}};
 
       assign lq_events_en[tid]  = lq_perf_events[tid] & {63{perf_event_en_q[tid]}};
 
-      tri_event_mux1t #(.EVENTS_IN(64)) perfMux(	
+      tri_event_mux1t #(.EVENTS_IN(64)) perfMux(
          .vd(vdd),
          .gd(gnd),
          .select_bits(perf_event_mux_ctrl[tid*24:(tid*24)+23]),
@@ -474,18 +568,21 @@ endgenerate
 
 assign event_bus_out = perf_event_data_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Pervasive Clock Control Logic
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 tri_plat #(.WIDTH(18)) perv_3to2_reg(
    .vd(vdd),
    .gd(gnd),
    .nclk(nclk),
    .flush(pc_lq_ccflush_dc),
-   .din({pc_lq_func_sl_thold_3, 
-         pc_lq_func_slp_sl_thold_3, 
-         pc_lq_gptr_sl_thold_3, 
-         pc_lq_sg_3, 
+   .din({pc_lq_func_sl_thold_3,
+         pc_lq_func_slp_sl_thold_3,
+         pc_lq_gptr_sl_thold_3,
+         pc_lq_sg_3,
          pc_lq_fce_3,
-         pc_lq_func_nsl_thold_3, 
+         pc_lq_func_nsl_thold_3,
          pc_lq_func_slp_nsl_thold_3,
          pc_lq_abst_sl_thold_3,
          pc_lq_abst_slp_sl_thold_3,
@@ -494,7 +591,7 @@ tri_plat #(.WIDTH(18)) perv_3to2_reg(
          pc_lq_ary_slp_nsl_thold_3,
          pc_lq_cfg_sl_thold_3,
          pc_lq_repr_sl_thold_3,
-         pc_lq_bolt_sl_thold_3, 
+         pc_lq_bolt_sl_thold_3,
          pc_lq_cfg_slp_sl_thold_3,
          pc_lq_regf_slp_sl_thold_3,
          pc_lq_bo_enable_3}),
@@ -667,6 +764,9 @@ tri_lcbcntl_array_mac perv_lcbctrl_cam_0(
    .scan_out(gptr_sov[2])
 );
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Registers
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) pc_lq_trace_bus_enable_reg(
    .vd(vdd),
    .gd(gnd),
@@ -941,6 +1041,5 @@ assign gptr_siv[0:4]     = {gptr_sov[1:4], gptr_scan_in};
 assign gptr_scan_out     = gptr_sov[0];
 assign siv[0:scan_right] = {sov[1:scan_right], func_scan_in};
 assign func_scan_out     = sov[0];
-   
-endmodule
 
+endmodule

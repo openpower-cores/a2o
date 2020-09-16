@@ -10,11 +10,28 @@
 
 `timescale 1 ns / 1 ns
 
+//-----------------------------------------------------------------------------------------------------
+// Title:   rv.vhdl
+// Desc:       top level of Reservation station heirarchy.
+//             contains reservation stations for the three main fixed point functional units
+//             as well as the operand available scorecard and associated inline compare logic.
+//
+// Notes:
+//          All indexes are assumed to be physical register indices
+//
+//          Interface to the fetcher is actual instruction, renamed physical register fields, 20 bits of ifar, and 20 bits of
+//             the bta.  Lots of bits.
+//
+//-----------------------------------------------------------------------------------------------------
 
 (* recursive_synthesis="0" *)
+
 module rv(
 `include "tri_a2o.vh"
-	  
+
+	  //------------------------------------------------------------------------------------------------------------
+	  // Instructions from IU
+	  //------------------------------------------------------------------------------------------------------------
 	  input                              iu_rv_iu6_t0_i0_vld,
 	  input 			      iu_rv_iu6_t0_i0_rte_lq,
 	  input 			      iu_rv_iu6_t0_i0_rte_sq,
@@ -220,14 +237,23 @@ module rv(
 	  input [0:`ITAG_SIZE_ENC-1]          cp_t1_next_itag,
 `endif
 
+	  //------------------------------------------------------------------------------------------------------------
+	  // Credit Interface with IU
+	  //------------------------------------------------------------------------------------------------------------
 	  output [0:`THREADS-1]                           rv_iu_lq_credit_free,
 	  output [0:`THREADS-1]                           rv_iu_fx0_credit_free,
 	  output [0:`THREADS-1]                           rv_iu_fx1_credit_free,
 	  output [0:`THREADS-1]                           rv_iu_axu0_credit_free,
 	  output [0:`THREADS-1]                           rv_iu_axu1_credit_free,
 
+	  //------------------------------------------------------------------------------------------------------------
+	  // Machine zap interface
+	  //------------------------------------------------------------------------------------------------------------
 	  input [0:`THREADS-1]                            cp_flush,
 
+	  //------------------------------------------------------------------------------------------------------------
+	  // Interface to FX0
+	  //------------------------------------------------------------------------------------------------------------
 	  output [0:`THREADS-1]                           rv_fx0_vld,
 	  output                                         rv_fx0_s1_v,
 	  output [0:`GPR_POOL_ENC-1]                      rv_fx0_s1_p,
@@ -268,6 +294,9 @@ module rv(
 	  input [0:`ITAG_SIZE_ENC-1]                      fx0_rv_ord_itag,
 	  input                                          fx0_rv_hold_all,
 
+	  //------------------------------------------------------------------------------------------------------------
+	  // Interface to FX1
+	  //------------------------------------------------------------------------------------------------------------
 	  output [0:`THREADS-1]                           rv_fx1_vld,
 	  output                                         rv_fx1_s1_v,
 	  output [0:`GPR_POOL_ENC-1]                      rv_fx1_s1_p,
@@ -291,9 +320,11 @@ module rv(
 
 	  input                                          fx1_rv_hold_all,
 
+	  //------------------------------------------------------------------------------------------------------------
+	  // Interface to LQ
+	  //------------------------------------------------------------------------------------------------------------
 	  output [0:`THREADS-1]                           rv_lq_vld,
 	  output                                         rv_lq_isLoad,
-
 
 	  output [0:`ITAG_SIZE_ENC-1]                     rv_lq_ex0_itag,
 	  output [0:31]                                  rv_lq_ex0_instr,
@@ -352,6 +383,9 @@ module rv(
 
 	  output [0:`THREADS-1]                           rv_lq_rvs_empty,
 
+	  //------------------------------------------------------------------------------------------------------------
+	  // Interface to AXU0
+	  //------------------------------------------------------------------------------------------------------------
 	  output [0:`THREADS-1]                           rv_axu0_vld,
 	  output                                         rv_axu0_s1_v,
 	  output [0:`GPR_POOL_ENC-1]                      rv_axu0_s1_p,
@@ -375,12 +409,18 @@ module rv(
 	  input                                          axu0_rv_ord_complete,
 	  input                                          axu0_rv_hold_all,
 
+	  //------------------------------------------------------------------------------------------------------------
+	  // Interface to AXU1
+	  //------------------------------------------------------------------------------------------------------------
 
 	  input [0:`THREADS-1]                            axu1_rv_itag_vld,
 	  input [0:`ITAG_SIZE_ENC-1]                      axu1_rv_itag,
 	  input                                           axu1_rv_itag_abort,
 	  input                                          axu1_rv_hold_all,
 
+	  //------------------------------------------------------------------------------------------------------------
+	  // Abort Mechanism
+	  //------------------------------------------------------------------------------------------------------------
 	  input                                           lq_rv_ex2_s1_abort,
 	  input                                           lq_rv_ex2_s2_abort,
 	  input                                           fx0_rv_ex2_s1_abort,
@@ -392,7 +432,13 @@ module rv(
 	  input                                           axu0_rv_ex2_s1_abort,
 	  input                                           axu0_rv_ex2_s2_abort,
 	  input                                           axu0_rv_ex2_s3_abort,
-	  
+
+	  //------------------------------------------------------------------------------------------------------------
+	  // Bypass Control
+	  //------------------------------------------------------------------------------------------------------------
+	  //-------------------------------------------------------------------
+	  // Interface with FXU0
+	  //-------------------------------------------------------------------
 	  output [1:11] 	    rv_fx0_ex0_s1_fx0_sel,
 	  output [1:11] 	    rv_fx0_ex0_s2_fx0_sel,
 	  output [1:11] 	    rv_fx0_ex0_s3_fx0_sel,
@@ -402,14 +448,20 @@ module rv(
 	  output [1:6] 	    rv_fx0_ex0_s1_fx1_sel,
 	  output [1:6] 	    rv_fx0_ex0_s2_fx1_sel,
 	  output [1:6] 	    rv_fx0_ex0_s3_fx1_sel,
-	  
+
+	  //-------------------------------------------------------------------
+	  // Interface with LQ
+	  //-------------------------------------------------------------------
 	  output [2:12] 	    rv_lq_ex0_s1_fx0_sel,
 	  output [2:12] 	    rv_lq_ex0_s2_fx0_sel,
 	  output [4:8]             rv_lq_ex0_s1_lq_sel,
 	  output [4:8]             rv_lq_ex0_s2_lq_sel,
 	  output [2:7] 	    rv_lq_ex0_s1_fx1_sel,
 	  output [2:7] 	    rv_lq_ex0_s2_fx1_sel,
-	  
+
+	  //-------------------------------------------------------------------
+	  // Interface with FXU1
+	  //-------------------------------------------------------------------
 	  output [1:11] 	    rv_fx1_ex0_s1_fx0_sel,
 	  output [1:11] 	    rv_fx1_ex0_s2_fx0_sel,
 	  output [1:11] 	    rv_fx1_ex0_s3_fx0_sel,
@@ -419,7 +471,7 @@ module rv(
 	  output [1:6] 	    rv_fx1_ex0_s1_fx1_sel,
 	  output [1:6] 	    rv_fx1_ex0_s2_fx1_sel,
 	  output [1:6] 	    rv_fx1_ex0_s3_fx1_sel,
-	  
+
 	  output [2:3]             rv_fx0_ex0_s1_rel_sel,
 	  output [2:3]             rv_fx0_ex0_s2_rel_sel,
 	  output [2:3]             rv_fx0_ex0_s3_rel_sel,
@@ -429,6 +481,10 @@ module rv(
 	  output [2:3]             rv_fx1_ex0_s2_rel_sel,
 	  output [2:3]             rv_fx1_ex0_s3_rel_sel,
 
+	  //------------------------------------------------------------------------------------------------------------
+	  // LQ Regfile
+	  //------------------------------------------------------------------------------------------------------------
+	  // Write ports
 	  input                                          xu0_gpr_ex6_we,
 	  input [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1]       xu0_gpr_ex6_wa,
 	  input [64-`GPR_WIDTH:63+(`GPR_WIDTH/8)]          xu0_gpr_ex6_wd,
@@ -444,9 +500,13 @@ module rv(
 	  input [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1]       lq_rv_gpr_rel_wa,
 	  input [64-`GPR_WIDTH:63+(`GPR_WIDTH/8)]          lq_rv_gpr_rel_wd,
 
+	  // Read ports
 	  output [64-`GPR_WIDTH:63+(`GPR_WIDTH/8)]         rv_lq_gpr_ex1_r0d,
 	  output [64-`GPR_WIDTH:63+(`GPR_WIDTH/8)]         rv_lq_gpr_ex1_r1d,
 
+	  //------------------------------------------------------------------------------------------------------------
+	  // Debug and Perf
+	  //------------------------------------------------------------------------------------------------------------
 	  input                                          pc_rv_trace_bus_enable,
 	  input [0:10]  				 pc_rv_debug_mux_ctrls,
 	  input                                          pc_rv_event_bus_enable,
@@ -460,7 +520,10 @@ module rv(
 	  output [0:3]		    	                 coretrace_ctrls_out,
           input [0:`THREADS-1]                           spr_msr_gs,
           input [0:`THREADS-1]                           spr_msr_pr,
-	  (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) 
+	  //------------------------------------------------------------------------------------------------------------
+	  // Pervasive
+	  //------------------------------------------------------------------------------------------------------------
+	  (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) // nclk
 	  input[0:`NCLK_WIDTH-1]                         nclk,
 
 	  input                                          rp_rv_ccflush_dc,
@@ -470,17 +533,15 @@ module rv(
 	  input                                          rp_rv_fce_3,
 	  input                                          an_ac_scan_diag_dc,
 	  input                                          an_ac_scan_dis_dc_b,
-	  
-	  (* pin_data="PIN_FUNCTION=/SCAN_IN/" *) 
+
+	  (* pin_data="PIN_FUNCTION=/SCAN_IN/" *) // scan_in
 	  input                                          scan_in,
-	  (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 
+	  (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) // scan_out
 	  output                                         scan_out
 
 	  );
 
-   
-
-   wire [0:`THREADS*`ITAG_SIZE_ENC-1] 			 cp_next_itag; 			 
+   wire [0:`THREADS*`ITAG_SIZE_ENC-1] 			 cp_next_itag;
    wire [0:`G_BRANCH_LEN-1]				 iu_rv_iu6_t0_i0_branch;
    wire [0:`G_BRANCH_LEN-1]				 iu_rv_iu6_t0_i1_branch;
 `ifndef THREADS1
@@ -488,8 +549,8 @@ module rv(
    wire [0:`G_BRANCH_LEN-1]				 iu_rv_iu6_t1_i1_branch;
 `endif
    wire [0:`G_BRANCH_LEN-1] 				 rv_fx0_ex0_branch;
-   
-   
+
+
    wire [0:`THREADS-1] 					 rv0_fx0_instr_i0_vld;
    wire 						 rv0_fx0_instr_i0_rte_fx0;
    wire [0:31] 						 rv0_fx0_instr_i0_instr;
@@ -740,23 +801,29 @@ module rv(
    wire [0:`ITAG_SIZE_ENC-1] 				 rv0_axu0_instr_i1_s2_itag;
    wire 						 rv0_axu0_instr_i1_s3_dep_hit;
    wire [0:`ITAG_SIZE_ENC-1] 				 rv0_axu0_instr_i1_s3_itag;
-   
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Itag busses and shadow
+   //------------------------------------------------------------------------------------------------------------
+
    wire [0:`THREADS-1] 					 fx0_rv_itag_vld;
    wire 						 fx0_rv_itag_abort;
    wire [0:`ITAG_SIZE_ENC-1] 				 fx0_rv_itag;
    wire [0:`THREADS-1] 					 fx0_rv_ext_itag_vld;
    wire 						 fx0_rv_ext_itag_abort;
    wire [0:`ITAG_SIZE_ENC-1] 				 fx0_rv_ext_itag;
-   
+
    wire [0:`THREADS-1] 					 fx1_rv_itag_vld;
    wire 						 fx1_rv_itag_abort;
    wire [0:`ITAG_SIZE_ENC-1] 				 fx1_rv_itag;
    wire [0:`THREADS-1] 					 fx1_rv_ext_itag_vld;
    wire 						 fx1_rv_ext_itag_abort;
    wire [0:`ITAG_SIZE_ENC-1] 				 fx1_rv_ext_itag;
-   
-   wire [0:`THREADS-1] 					 rv_byp_fx0_vld;		
+
+   //------------------------------------------------------------------------------------------------------------
+   // Bypass
+   //------------------------------------------------------------------------------------------------------------
+   wire [0:`THREADS-1] 					 rv_byp_fx0_vld;		// FX0 Ports
    wire [0:`ITAG_SIZE_ENC-1] 				 rv_byp_fx0_itag;
    wire [0:3] 						 rv_byp_fx0_ilat;
    wire 						 rv_byp_fx0_ord;
@@ -769,12 +836,12 @@ module rv(
    wire [0:2] 						 rv_byp_fx0_s1_t;
    wire [0:2] 						 rv_byp_fx0_s2_t;
    wire [0:2] 						 rv_byp_fx0_s3_t;
-   wire [0:`THREADS-1] 					 rv_byp_lq_vld;		
-   wire [0:`ITAG_SIZE_ENC-1] 				 rv_byp_lq_itag;		
+   wire [0:`THREADS-1] 					 rv_byp_lq_vld;		// LQ Ports
+   wire [0:`ITAG_SIZE_ENC-1] 				 rv_byp_lq_itag;		// LQ Ports
    wire [0:`ITAG_SIZE_ENC-1] 				 rv_byp_lq_ex0_s1_itag;
    wire [0:`ITAG_SIZE_ENC-1] 				 rv_byp_lq_ex0_s2_itag;
    wire                                                  rv_byp_fx0_ex0_is_brick;
-						 
+
    wire 						 rv_byp_lq_t1_v;
    wire 						 rv_byp_lq_t3_v;
    wire [0:2] 						 rv_byp_lq_t3_t;
@@ -784,7 +851,7 @@ module rv(
    wire                                                  rv_byp_lq_s2_v;
    wire [0:`GPR_POOL_ENC-1] 				 rv_byp_lq_s2_p;
    wire [0:2] 						 rv_byp_lq_s2_t;
-   wire [0:`THREADS-1] 					 rv_byp_fx1_vld;		
+   wire [0:`THREADS-1] 					 rv_byp_fx1_vld;		// FX0 Ports
    wire [0:`ITAG_SIZE_ENC-1] 				 rv_byp_fx1_itag;
    wire [0:3] 						 rv_byp_fx1_ilat;
    wire 						 rv_byp_fx1_t1_v;
@@ -793,33 +860,33 @@ module rv(
    wire [0:2] 						 rv_byp_fx1_s1_t;
    wire [0:2] 						 rv_byp_fx1_s2_t;
    wire [0:2] 						 rv_byp_fx1_s3_t;
-   
+
    wire [0:`ITAG_SIZE_ENC-1] 				 rv_byp_fx0_s1_itag;
    wire [0:`ITAG_SIZE_ENC-1] 				 rv_byp_fx0_s2_itag;
    wire [0:`ITAG_SIZE_ENC-1] 				 rv_byp_fx0_s3_itag;
-   
+
    wire [0:`ITAG_SIZE_ENC-1] 				 rv_byp_fx1_s1_itag;
    wire [0:`ITAG_SIZE_ENC-1] 				 rv_byp_fx1_s2_itag;
    wire [0:`ITAG_SIZE_ENC-1] 				 rv_byp_fx1_s3_itag;
    wire 						 rv_byp_fx1_ex0_isStore;
-   
+
    wire [0:`THREADS-1] 					 rv_byp_fx0_ilat0_vld;
    wire [0:`THREADS-1] 					 rv_byp_fx0_ilat1_vld;
    wire [0:`THREADS-1] 					 rv_byp_fx1_ilat0_vld;
    wire [0:`THREADS-1] 					 rv_byp_fx1_ilat1_vld;
-   
+
    wire [0:`THREADS-1] 					 rv1_fx0_ilat0_vld;
    wire [0:`ITAG_SIZE_ENC-1] 				 rv1_fx0_ilat0_itag;
    wire [0:`THREADS-1] 					 rv1_fx1_ilat0_vld;
    wire [0:`ITAG_SIZE_ENC-1] 				 rv1_fx1_ilat0_itag;
-   
+
    wire [0:`THREADS-1] 					 fx0_release_ord_hold;
    wire [0:`THREADS-1] 					 fx0_rv_ord_tid;
-   
+
    wire [0:`THREADS-1] 					 lq_rv_ext_itag0_vld;
    wire 						 lq_rv_ext_itag0_abort;
    wire [0:`ITAG_SIZE_ENC-1] 				 lq_rv_ext_itag0    ;
-   wire [0:`THREADS-1] 					 lq_rv_ext_itag1_vld; 
+   wire [0:`THREADS-1] 					 lq_rv_ext_itag1_vld;
    wire 						 lq_rv_ext_itag1_abort;
    wire [0:`ITAG_SIZE_ENC-1] 				 lq_rv_ext_itag1    ;
    wire [0:`THREADS-1] 					 lq_rv_ext_itag2_vld;
@@ -831,7 +898,7 @@ module rv(
    wire [0:`THREADS-1] 					 axu1_rv_ext_itag_vld;
    wire 						 axu1_rv_ext_itag_abort;
    wire [0:`ITAG_SIZE_ENC-1] 				 axu1_rv_ext_itag;
-   
+
    wire [64-`GPR_WIDTH:77] 				 w_data_in_1;
    wire [64-`GPR_WIDTH:77] 				 w_data_in_2;
    wire [64-`GPR_WIDTH:77] 				 w_data_in_3;
@@ -840,10 +907,10 @@ module rv(
    wire [64-`GPR_WIDTH:77] 				 r_data_out_1;
    (* analysis_not_referenced="<72:77>true" *)
    wire [64-`GPR_WIDTH:77] 				 r_data_out_2;
-   
+
    wire [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1] 		 rv_lq_gpr_s1_p;
    wire [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1] 		 rv_lq_gpr_s2_p;
-   
+
    wire 						 lqrf_si;
    (* analysis_not_referenced="true" *)
    wire 						 lqrf_so;
@@ -857,8 +924,9 @@ module rv(
    wire [0:8*`THREADS-1]				 axu0_rvs_perf_bus;
    wire [0:31] 						 axu0_rvs_dbg_bus;
 
+   //todo review pervaice sigs.
    wire 						 func_sl_thold_1;
-   (* analysis_not_referenced="true" *) 
+   (* analysis_not_referenced="true" *)
    wire 						 fce_1;
    wire 						 sg_1;
    wire 						 clkoff_dc_b;
@@ -871,13 +939,14 @@ module rv(
    wire 						 gptr_scan_in;
    (* analysis_not_referenced="true" *)
    wire 						 gptr_scan_out;
-   
+
    wire 						 chip_b_sl_2_thold_0_b;
    wire 						 force_t;
    wire 						 d_mode;
    (* analysis_not_referenced="true" *)
    wire 						 unused;
-   
+
+   // Scan Chain
    parameter                                             rv_deps_offset = 0;
    parameter                                             rv_fx0_rvs_offset = rv_deps_offset +1;
    parameter                                             rv_fx1_rvs_offset = rv_fx0_rvs_offset +1;
@@ -885,13 +954,14 @@ module rv(
    parameter                                             rv_axu0_rvs_offset = rv_lq_rvs_offset +1;
    parameter                                             rv_rf_byp_offset =  rv_axu0_rvs_offset +1;
    parameter                                             perv_func_offset =  rv_rf_byp_offset +1;
-      
+
 
 
    parameter                      scan_right = perv_func_offset +1;
    wire [0:scan_right-1] 	   siv;
    wire [0:scan_right-1] 	   sov;
 
+   //!! Bugspray Include: rv;
 
    wire 			   vdd;
    wire 			   gnd;
@@ -899,12 +969,13 @@ module rv(
    assign gnd = 1'b0;
 
    assign unused = axu1_rv_hold_all;
-   
-   
+
+   //---------------------------------------------------------------------------------------------------------------
+
    assign chip_b_sl_2_thold_0_b = (~func_sl_thold_1);
    assign force_t = 1'b0;
    assign d_mode = 1'b0;
-	     
+
    assign iu_rv_iu6_t0_i0_branch = {iu_rv_iu6_t0_i0_bta,
 	  			    iu_rv_iu6_t0_i0_bta_val,
 	  			    iu_rv_iu6_t0_i0_br_pred,
@@ -920,7 +991,7 @@ module rv(
 	  			    iu_rv_iu6_t0_i1_gshare,
 	  			    iu_rv_iu6_t0_i1_bh_update};
    assign cp_next_itag[0:`ITAG_SIZE_ENC-1] = cp_t0_next_itag;
-   
+
 `ifndef THREADS1
    assign iu_rv_iu6_t1_i0_branch = {iu_rv_iu6_t1_i0_bta,
 				    iu_rv_iu6_t1_i0_bta_val,
@@ -937,9 +1008,9 @@ module rv(
 	  	     		    iu_rv_iu6_t1_i1_gshare,
 	  		    	    iu_rv_iu6_t1_i1_bh_update};
    assign cp_next_itag[`ITAG_SIZE_ENC:`THREADS*`ITAG_SIZE_ENC-1] = cp_t1_next_itag;
-   
-`endif 
-   
+
+`endif //  `ifndef THREADS1
+
    assign rv_fx0_ex0_pred_bta = rv_fx0_ex0_branch[0:`EFF_IFAR_WIDTH - 1];
    assign rv_fx0_ex0_bta_val = rv_fx0_ex0_branch[20];
    assign rv_fx0_ex0_br_pred = rv_fx0_ex0_branch[21];
@@ -947,9 +1018,12 @@ module rv(
    assign rv_fx0_ex0_ls_ptr = rv_fx0_ex0_branch[42:44];
    assign rv_fx0_ex0_gshare = rv_fx0_ex0_branch[45:62];
    assign rv_fx0_ex0_bh_update = rv_fx0_ex0_branch[63];
-   
-   
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Scorecards
+   //------------------------------------------------------------------------------------------------------------
+
+
    rv_deps
      rv_deps0(
 	      .iu_rv_iu6_t0_i0_vld(iu_rv_iu6_t0_i0_vld),
@@ -1141,14 +1215,14 @@ module rv(
 	      .axu0_rv_itag(axu0_rv_itag),
 	      .axu1_rv_itag_vld(axu1_rv_itag_vld),
 	      .axu1_rv_itag(axu1_rv_itag),
-	      
+
 	      .fx0_rv_itag_abort(fx0_rv_itag_abort),
 	      .fx1_rv_itag_abort(fx1_rv_itag_abort),
 	      .lq_rv_itag0_abort(lq_rv_itag0_abort),
 	      .lq_rv_itag1_abort(lq_rv_itag1_abort),
 	      .axu0_rv_itag_abort(axu0_rv_itag_abort),
 	      .axu1_rv_itag_abort(axu1_rv_itag_abort),
-	      
+
 	      .rv0_fx0_instr_i0_vld(rv0_fx0_instr_i0_vld),
 	      .rv0_fx0_instr_i0_rte_fx0(rv0_fx0_instr_i0_rte_fx0),
 	      .rv0_fx0_instr_i0_instr(rv0_fx0_instr_i0_instr),
@@ -1411,7 +1485,7 @@ module rv(
 	      .rv_lq_rv1_i0_rte_lq(rv_lq_rv1_i0_rte_lq),
 	      .rv_lq_rv1_i0_rte_sq(rv_lq_rv1_i0_rte_sq),
 	      .rv_lq_rv1_i0_ifar(rv_lq_rv1_i0_ifar),
-	      
+
 	      .rv_lq_rv1_i1_vld(rv_lq_rv1_i1_vld),
 	      .rv_lq_rv1_i1_ucode_preissue(rv_lq_rv1_i1_ucode_preissue),
 	      .rv_lq_rv1_i1_2ucode(rv_lq_rv1_i1_2ucode),
@@ -1424,7 +1498,7 @@ module rv(
 	      .rv_lq_rv1_i1_rte_sq(rv_lq_rv1_i1_rte_sq),
 	      .rv_lq_rv1_i1_ifar(rv_lq_rv1_i1_ifar),
 
-	      	      
+
 	      .vdd(vdd),
 	      .gnd(gnd),
 	      .nclk(nclk),
@@ -1440,11 +1514,18 @@ module rv(
 	      .scan_in(siv[rv_deps_offset]),
 	      .scan_out(sov[rv_deps_offset])
 	      );
-   
-   
-   
-   
-   
+
+   // Outputs
+
+   //------------------------------------------------------------------------------------------------------------
+   // Reservation Stations
+   //------------------------------------------------------------------------------------------------------------
+
+   //------------------------------------------------------------------------------------------------------------
+   // fx0 reservation station
+   //------------------------------------------------------------------------------------------------------------
+
+
    rv_fx0_rvs
      fx0_rvs(
 	     .rv0_instr_i0_vld(rv0_fx0_instr_i0_vld),
@@ -1541,7 +1622,7 @@ module rv(
 	     .rv_byp_fx0_s3_t(rv_byp_fx0_s3_t),
 	     .rv_byp_fx0_ilat(rv_byp_fx0_ilat),
 	     .rv_byp_fx0_ex0_is_brick(rv_byp_fx0_ex0_is_brick),
-	     
+
 	     .rv_fx0_vld(rv_fx0_vld),
 	     .rv_fx0_s1_v(rv_fx0_s1_v),
 	     .rv_fx0_s1_p(rv_fx0_s1_p),
@@ -1600,14 +1681,14 @@ module rv(
 	     .fx0_rv_ex2_s1_abort(fx0_rv_ex2_s1_abort),
 	     .fx0_rv_ex2_s2_abort(fx0_rv_ex2_s2_abort),
 	     .fx0_rv_ex2_s3_abort(fx0_rv_ex2_s3_abort),
-	     
+
 	     .fx0_rv_itag_abort(fx0_rv_itag_abort),
 	     .fx1_rv_itag_abort(fx1_rv_itag_abort),
 	     .lq_rv_ext_itag0_abort(lq_rv_ext_itag0_abort),
 	     .lq_rv_ext_itag1_abort(lq_rv_ext_itag1_abort),
 	     .axu0_rv_ext_itag_abort(axu0_rv_ext_itag_abort),
 	     .axu1_rv_ext_itag_abort(axu1_rv_ext_itag_abort),
-	     
+
 	     .fx0_rv_ord_complete(fx0_release_ord_hold),
 	     .fx0_rv_ord_tid(fx0_rv_ord_tid),
 	     .fx0_rv_hold_all(fx0_rv_hold_all),
@@ -1634,9 +1715,12 @@ module rv(
 	     .scan_in(siv[rv_fx0_rvs_offset]),
 	     .scan_out(sov[rv_fx0_rvs_offset])
 	     );
-   
-   
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // fx1 reservation station
+   //------------------------------------------------------------------------------------------------------------
+
+
    rv_fx1_rvs
      fx1_rvs(
 	     .rv0_instr_i0_vld(rv0_fx1_instr_i0_vld),
@@ -1743,7 +1827,7 @@ module rv(
 	     .fx1_rv_ex2_s1_abort(fx1_rv_ex2_s1_abort),
 	     .fx1_rv_ex2_s2_abort(fx1_rv_ex2_s2_abort),
 	     .fx1_rv_ex2_s3_abort(fx1_rv_ex2_s3_abort),
-	     
+
 	     .fx0_rv_itag_vld(fx0_rv_itag_vld),
 	     .fx0_rv_itag(fx0_rv_itag),
 	     .fx1_rv_itag_vld(fx1_rv_itag_vld),
@@ -1771,7 +1855,7 @@ module rv(
 	     .lq_rv_ext_itag1_abort(lq_rv_ext_itag1_abort),
 	     .axu0_rv_ext_itag_abort(axu0_rv_ext_itag_abort),
 	     .axu1_rv_ext_itag_abort(axu1_rv_ext_itag_abort),
-	     
+
 	     .fx1_rv_hold_all(fx1_rv_hold_all),
 	     .rv_byp_fx1_ilat0_vld(rv_byp_fx1_ilat0_vld),
 	     .rv_byp_fx1_ilat1_vld(rv_byp_fx1_ilat1_vld),
@@ -1796,9 +1880,12 @@ module rv(
 	     .scan_in(siv[rv_fx1_rvs_offset]),
 	     .scan_out(sov[rv_fx1_rvs_offset])
 	     );
-   
-   
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // lq reservation station
+   //------------------------------------------------------------------------------------------------------------
+
+
    rv_lq_rvs
      lq0_rvs(
 	     .rv0_instr_i0_vld(rv0_lq_instr_i0_vld),
@@ -1898,7 +1985,7 @@ module rv(
 
 	     .lq_rv_ex2_s1_abort(lq_rv_ex2_s1_abort),
 	     .lq_rv_ex2_s2_abort(lq_rv_ex2_s2_abort),
-	     
+
 	     .fx0_rv_ext_itag_vld(fx0_rv_ext_itag_vld),
 	     .fx0_rv_ext_itag(fx0_rv_ext_itag),
 	     .fx1_rv_ext_itag_vld(fx1_rv_ext_itag_vld),
@@ -1907,7 +1994,7 @@ module rv(
 	     .axu0_rv_ext_itag(axu0_rv_ext_itag),
 	     .axu1_rv_ext_itag_vld(axu1_rv_ext_itag_vld),
 	     .axu1_rv_ext_itag(axu1_rv_ext_itag),
-	     
+
 	     .lq_rv_itag0_vld(lq_rv_itag0_vld),
 	     .lq_rv_itag0(lq_rv_itag0),
 	     .lq_rv_itag1_vld(lq_rv_itag1_vld),
@@ -1924,7 +2011,7 @@ module rv(
 	     .fx0_rv_ext_itag_abort(fx0_rv_ext_itag_abort),
 	     .fx1_rv_ext_itag_abort(fx1_rv_ext_itag_abort),
 	     .lq_rv_itag0_abort(lq_rv_itag0_abort),
-	     .lq_rv_itag1_abort(lq_rv_itag1_abort),	     
+	     .lq_rv_itag1_abort(lq_rv_itag1_abort),
 	     .axu0_rv_ext_itag_abort(axu0_rv_ext_itag_abort),
 	     .axu1_rv_ext_itag_abort(axu1_rv_ext_itag_abort),
 
@@ -1954,13 +2041,23 @@ module rv(
 	     .scan_in(siv[rv_lq_rvs_offset]),
 	     .scan_out(sov[rv_lq_rvs_offset])
 	     );
-   
+
+   // Bypass
    assign rv_lq_vld = rv_byp_lq_vld;
-   
-   
-   
-   
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // sq reservation station
+   //------------------------------------------------------------------------------------------------------------
+
+   //------------------------------------------------------------------------------------------------------------
+   // br reservation station
+   //------------------------------------------------------------------------------------------------------------
+
+   //------------------------------------------------------------------------------------------------------------
+   // axu0 reservation station
+   //------------------------------------------------------------------------------------------------------------
+
+
    rv_axu0_rvs
      axu0_rvs(
 	      .rv0_instr_i0_vld(rv0_axu0_instr_i0_vld),
@@ -2058,11 +2155,11 @@ module rv(
 	      .axu0_rv_ex2_s1_abort(axu0_rv_ex2_s1_abort),
 	      .axu0_rv_ex2_s2_abort(axu0_rv_ex2_s2_abort),
 	      .axu0_rv_ex2_s3_abort(axu0_rv_ex2_s3_abort),
-	      
+
 	      .fx0_rv_ext_itag_abort(fx0_rv_ext_itag_abort),
 	      .fx1_rv_ext_itag_abort(fx1_rv_ext_itag_abort),
 	      .lq_rv_ext_itag0_abort(lq_rv_ext_itag0_abort),
-	      .lq_rv_ext_itag1_abort(lq_rv_ext_itag1_abort),	     
+	      .lq_rv_ext_itag1_abort(lq_rv_ext_itag1_abort),
 	      .axu0_rv_itag_abort(axu0_rv_itag_abort),
 	      .axu1_rv_itag_abort(axu1_rv_itag_abort),
 
@@ -2071,7 +2168,7 @@ module rv(
 	      .axu0_rv_ext_itag_abort(axu0_rv_ext_itag_abort),
 	      .axu0_rvs_perf_bus(axu0_rvs_perf_bus),
 	      .axu0_rvs_dbg_bus(axu0_rvs_dbg_bus),
-	      
+
 	      .vdd(vdd),
 	      .gnd(gnd),
 	      .nclk(nclk),
@@ -2087,21 +2184,28 @@ module rv(
 	      .scan_in(siv[rv_axu0_rvs_offset]),
 	      .scan_out(sov[rv_axu0_rvs_offset])
 	      );
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // axu1 reservation station
+   //------------------------------------------------------------------------------------------------------------
+   // reserved
    assign rv_iu_axu1_credit_free = {`THREADS{1'b0}};
 
    assign axu1_rv_ext_itag_vld   = axu1_rv_itag_vld;
    assign axu1_rv_ext_itag       = axu1_rv_itag;
    assign axu1_rv_ext_itag_abort = axu1_rv_itag_abort;
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // LQ Regfile
+   //------------------------------------------------------------------------------------------------------------
    assign w_data_in_1 = {xu0_gpr_ex6_wd[64 - `GPR_WIDTH:63 + (`GPR_WIDTH/8)], 6'b000000};
    assign w_data_in_2 = {lq_rv_gpr_ex6_wd[64 - `GPR_WIDTH:63 + (`GPR_WIDTH/8)], 6'b000000};
    assign w_data_in_3 = {lq_rv_gpr_rel_wd[64 - `GPR_WIDTH:63 + (`GPR_WIDTH/8)], 6'b000000};
    assign w_data_in_4 = {xu1_gpr_ex3_wd[64 - `GPR_WIDTH:63 + (`GPR_WIDTH/8)], 6'b000000};
-   
+
    assign rv_lq_gpr_ex1_r0d = r_data_out_1[64 - `GPR_WIDTH:63 + (`GPR_WIDTH/8)];
    assign rv_lq_gpr_ex1_r1d = r_data_out_2[64 - `GPR_WIDTH:63 + (`GPR_WIDTH/8)];
-   
+
    generate
       if (`THREADS == 2)
         begin : tp2
@@ -2109,7 +2213,7 @@ module rv(
            assign rv_lq_gpr_s2_p = {rv_byp_lq_s2_p, rv_byp_lq_vld[1]};
         end
    endgenerate
-   
+
    generate
       if (`THREADS == 1)
         begin : tp1
@@ -2117,7 +2221,7 @@ module rv(
            assign rv_lq_gpr_s2_p = rv_byp_lq_s2_p;
         end
    endgenerate
-   
+
    tri_144x78_2r4w
      lqrf(
           .nclk(nclk),
@@ -2153,7 +2257,10 @@ module rv(
           .w_data_in_4(w_data_in_4)
           );
 
-   
+   //------------------------------------------------------------------------------------------------------------
+   // RF GPR Bypass Control
+   //------------------------------------------------------------------------------------------------------------
+
    rv_rf_byp
      rf_byp(
 	    .cp_flush(cp_flush),
@@ -2223,6 +2330,9 @@ module rv(
 	    .rv_fx1_ex0_s2_rel_sel(rv_fx1_ex0_s2_rel_sel),
 	    .rv_fx1_ex0_s3_rel_sel(rv_fx1_ex0_s3_rel_sel),
 
+	    //-------------------------------------------------------------------
+	    // FX0 RV Release
+	    //-------------------------------------------------------------------
 	    .fx0_rv_itag_vld(fx0_rv_itag_vld),
 	    .fx0_rv_itag_abort(fx0_rv_itag_abort),
 	    .fx0_rv_itag(fx0_rv_itag),
@@ -2243,18 +2353,20 @@ module rv(
 	    .rv_byp_fx1_ilat1_vld(rv_byp_fx1_ilat1_vld),
 	    .fx0_release_ord_hold(fx0_release_ord_hold),
 	    .fx0_rv_ord_tid(fx0_rv_ord_tid),
-	
+
 	    .fx0_rv_ex2_s1_abort(fx0_rv_ex2_s1_abort),
 	    .fx0_rv_ex2_s2_abort(fx0_rv_ex2_s2_abort),
 	    .fx0_rv_ex2_s3_abort(fx0_rv_ex2_s3_abort),
 
+	    //-------------------------------------------------------------------
+	    // FX1 RV Release
+	    //-------------------------------------------------------------------
 	    .fx1_rv_itag_vld(fx1_rv_itag_vld),
 	    .fx1_rv_itag_abort(fx1_rv_itag_abort),
 	    .fx1_rv_itag(fx1_rv_itag),
 	    .fx1_rv_ext_itag_vld(fx1_rv_ext_itag_vld),
 	    .fx1_rv_ext_itag_abort(fx1_rv_ext_itag_abort),
 	    .fx1_rv_ext_itag(fx1_rv_ext_itag),
-
 
 	    .rv_fx1_s1_itag(rv_byp_fx1_s1_itag),
 	    .rv_fx1_s2_itag(rv_byp_fx1_s2_itag),
@@ -2264,11 +2376,20 @@ module rv(
 	    .fx1_rv_ex2_s2_abort(fx1_rv_ex2_s2_abort),
 	    .fx1_rv_ex2_s3_abort(fx1_rv_ex2_s3_abort),
 
+	    //-------------------------------------------------------------------
+	    // LQ RV Release
+	    //-------------------------------------------------------------------
 	    .rv_byp_lq_itag(rv_byp_lq_itag),
 
+	    //-------------------------------------------------------------------
+	    // LQ RV REL Release
+	    //-------------------------------------------------------------------
 	    .lq_rv_itag2_vld(lq_rv_itag2_vld),
 	    .lq_rv_itag2(lq_rv_itag2),
 
+	    //-------------------------------------------------------------------
+	    // Pervasive
+	    //-------------------------------------------------------------------
 	    .nclk(nclk),
 	    .vdd(vdd),
 	    .gnd(gnd),
@@ -2285,8 +2406,11 @@ module rv(
 	    .scan_in(siv[rv_rf_byp_offset]),
 	    .scan_out(sov[rv_rf_byp_offset])
 	    );
-   
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // RV Pervasive
+   //------------------------------------------------------------------------------------------------------------
+
    rv_perv
      prv(
          .nclk(nclk),
@@ -2336,13 +2460,12 @@ module rv(
 	 .coretrace_ctrls_in(coretrace_ctrls_in)
 
          );
-   
+
+   //todo
    assign lqrf_si = 1'b0;
    assign gptr_scan_in = 1'b0;
 
    assign siv[0:scan_right-1] = {sov[1:scan_right-1], scan_in};
    assign scan_out = sov[0];
 
-endmodule 
-
-
+endmodule // rv

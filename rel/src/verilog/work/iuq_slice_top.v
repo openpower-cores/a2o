@@ -9,9 +9,13 @@
 
 `timescale 1 ns / 1 ns
 
+//********************************************************************
+//*
+//* TITLE:
+//*
+//* NAME: iuq_slice_top.vhdl
+//*********************************************************************
 `include "tri_a2o.vh"
-
-
 
 
 module iuq_slice_top(
@@ -38,15 +42,18 @@ module iuq_slice_top(
    output [0:`THREADS-1]        iu_pc_sq_credit_ok,
 
 
+   //-------------------------------
+   // Performance interface with I$
+   //-------------------------------
    input                            pc_iu_event_bus_enable,
    output [0:20]                    slice_ic_t0_perf_events,
  `ifndef THREADS1
    output [0:20]                    slice_ic_t1_perf_events,
  `endif
-                                 	
+
    input [0:31]                  	spr_dec_mask,
    input [0:31]                  	spr_dec_match,
-                                 	
+
    input                         	xu_iu_ccr2_ucode_dis,
    input                         	mm_iu_tlbwe_binv,
    input [0:35]                  	rm_ib_iu3_instr,
@@ -68,7 +75,7 @@ module iuq_slice_top(
 
    input [0:`THREADS-1]           	cp_iu_iu4_flush,
    input [0:`THREADS-1]           	cp_flush_into_uc,
-                                  	
+
    input [0:`THREADS-1]           	xu_iu_epcr_dgtmi,
    input [0:`THREADS-1]           	xu_iu_msrp_uclep,
    input [0:`THREADS-1]           	xu_iu_msr_pr,
@@ -76,9 +83,13 @@ module iuq_slice_top(
    input [0:`THREADS-1]           	xu_iu_msr_ucle,
    input [0:`THREADS-1]	         	spr_single_issue,
 
+   // Input to dispatch to block due to ivax
    input [0:`THREADS-1]                 cp_dis_ivax,
-   
-   
+
+   //-----------------------------
+   // MMU Connections
+   //-----------------------------
+
    input [0:`THREADS-1]         		mm_iu_flush_req,
    output [0:`THREADS-1]        		dp_cp_hold_req,
    input [0:`THREADS-1]         		mm_iu_hold_done,
@@ -86,12 +97,15 @@ module iuq_slice_top(
    output [0:`THREADS-1]        		dp_cp_bus_snoop_hold_req,
    input [0:`THREADS-1]         		mm_iu_bus_snoop_hold_done,
    input [0:`THREADS-1]         		mm_iu_tlbi_complete,
+   //----------------------------
+   // Credit Interface with IU
+   //----------------------------
    input [0:`THREADS-1]           	rv_iu_fx0_credit_free,
-   input [0:`THREADS-1]           	rv_iu_fx1_credit_free,		
+   input [0:`THREADS-1]           	rv_iu_fx1_credit_free,		// Need to add 2nd unit someday
    input [0:`THREADS-1]           	lq_iu_credit_free,
    input [0:`THREADS-1]           	sq_iu_credit_free,
-   input [0:`THREADS-1]           	axu0_iu_credit_free,		
-   input [0:`THREADS-1]           	axu1_iu_credit_free,		
+   input [0:`THREADS-1]           	axu0_iu_credit_free,		// credit free from axu reservation station
+   input [0:`THREADS-1]           	axu1_iu_credit_free,		// credit free from axu reservation station
 
 
    output [0:`THREADS-1]				ib_rm_rdy,
@@ -110,7 +124,11 @@ module iuq_slice_top(
    output						iu_xu_credits_returned,
 
 
+//threaded
 
+   //-----------------------------
+   // SPR connections
+   //-----------------------------
    input [0:`THREADS-1]             spr_cpcr_we,
    input [0:4] 	                  spr_t0_cpcr2_fx0_cnt,
    input [0:4] 	                  spr_t0_cpcr2_fx1_cnt,
@@ -141,7 +159,7 @@ module iuq_slice_top(
    input [0:4]                   	spr_t1_cpcr5_fu0_cnt,
    input [0:4]	                     spr_t1_cpcr5_fu1_cnt,
    input [0:6]           				spr_t1_cpcr5_cp_cnt,
-`endif              
+`endif
    input [0:4] 	                  spr_cpcr0_fx0_cnt,
    input [0:4] 	                  spr_cpcr0_fx1_cnt,
    input [0:4]  	                  spr_cpcr0_lq_cnt,
@@ -155,9 +173,15 @@ module iuq_slice_top(
 `ifndef THREADS1
    input [0:5]                      spr_t1_low_pri_count,
 `endif
-   
+
+   //-----------------------------
+   // SPR values
+   //-----------------------------
    input [0:7]           				iu_au_t0_config_iucr,
-      
+
+   //----------------------------
+   // Ucode interface with IB
+   //----------------------------
    input [0:3]         					uc_ib_iu3_t0_invalid,
    input [0:1]								uc_ib_t0_val,
    input [0:31]							uc_ib_t0_instr0,
@@ -166,7 +190,10 @@ module iuq_slice_top(
    input [62-`EFF_IFAR_WIDTH:61]   	uc_ib_t0_ifar1,
    input [0:3]								uc_ib_t0_ext0,
    input [0:3]								uc_ib_t0_ext1,
-   
+
+   //----------------------------
+   // Completion Interface
+   //----------------------------
    input [0:`THREADS-1]					cp_rn_empty,
    input										cp_rn_t0_i0_axu_exception_val,
    input [0:3]								cp_rn_t0_i0_axu_exception,
@@ -186,7 +213,7 @@ module iuq_slice_top(
    input [0:2]								cp_rn_t0_i0_t3_t,
    input [0:`GPR_POOL_ENC-1]			cp_rn_t0_i0_t3_p,
    input [0:`GPR_POOL_ENC-1]			cp_rn_t0_i0_t3_a,
-   
+
    input										cp_rn_t0_i1_v,
    input [0:`ITAG_SIZE_ENC-1]			cp_rn_t0_i1_itag,
    input										cp_rn_t0_i1_t1_v,
@@ -201,7 +228,10 @@ module iuq_slice_top(
    input [0:2]								cp_rn_t0_i1_t3_t,
    input [0:`GPR_POOL_ENC-1]			cp_rn_t0_i1_t3_p,
    input [0:`GPR_POOL_ENC-1]			cp_rn_t0_i1_t3_a,
-      
+
+   //----------------------------------------------------------------
+   // Interface to reservation station - Completion is snooping also
+   //----------------------------------------------------------------
    output									iu_rv_iu6_t0_i0_vld,
    output									iu_rv_iu6_t0_i0_act,
    output [0:`ITAG_SIZE_ENC-1]		iu_rv_iu6_t0_i0_itag,
@@ -345,14 +375,23 @@ module iuq_slice_top(
    output [0:`ITAG_SIZE_ENC-1]		iu_rv_iu6_t0_i1_s3_itag,
    output [0:2]          				iu_rv_iu6_t0_i1_s3_t,
    output									iu_rv_iu6_t0_i1_s3_dep_hit,
-   
-`ifndef THREADS1   
+
+`ifndef THREADS1
+   //-----------------------------
+   // SPR values
+   //-----------------------------
    input [0:7]           				iu_au_t1_config_iucr,
-   
-   
+
+
+   //----------------------------
+   // Ifetch with slice
+   //----------------------------
    output [0:(`IBUFF_DEPTH/4)-1]		ib_ic_t1_need_fetch,
    input [0:3]								bp_ib_iu3_t1_val,
-   
+
+   //----------------------------
+   // Ucode interface with IB
+   //----------------------------
    input [0:3]          					uc_ib_iu3_t1_invalid,
    input [0:1]								uc_ib_t1_val,
    input [0:31]							uc_ib_t1_instr0,
@@ -361,7 +400,10 @@ module iuq_slice_top(
    input [62-`EFF_IFAR_WIDTH:61]   	uc_ib_t1_ifar1,
    input [0:3]								uc_ib_t1_ext0,
    input [0:3]								uc_ib_t1_ext1,
-   
+
+   //----------------------------
+   // Completion Interface
+   //----------------------------
    input										cp_rn_t1_i0_axu_exception_val,
    input [0:3]								cp_rn_t1_i0_axu_exception,
    input										cp_rn_t1_i1_axu_exception_val,
@@ -380,7 +422,7 @@ module iuq_slice_top(
    input [0:2]								cp_rn_t1_i0_t3_t,
    input [0:`GPR_POOL_ENC-1]			cp_rn_t1_i0_t3_p,
    input [0:`GPR_POOL_ENC-1]			cp_rn_t1_i0_t3_a,
-   
+
    input										cp_rn_t1_i1_v,
    input [0:`ITAG_SIZE_ENC-1]			cp_rn_t1_i1_itag,
    input										cp_rn_t1_i1_t1_v,
@@ -395,8 +437,11 @@ module iuq_slice_top(
    input [0:2]								cp_rn_t1_i1_t3_t,
    input [0:`GPR_POOL_ENC-1]			cp_rn_t1_i1_t3_p,
    input [0:`GPR_POOL_ENC-1]			cp_rn_t1_i1_t3_a,
-     
-   
+
+
+   //----------------------------------------------------------------
+   // Interface to reservation station - Completion is snooping also
+   //----------------------------------------------------------------
    output									iu_rv_iu6_t1_i0_vld,
    output									iu_rv_iu6_t1_i0_act,
    output [0:`ITAG_SIZE_ENC-1]		iu_rv_iu6_t1_i0_itag,
@@ -542,14 +587,17 @@ module iuq_slice_top(
    output									iu_rv_iu6_t1_i1_s3_dep_hit,
 `endif
 
+   //----------------------------
+   // Ifetch with slice
+   //----------------------------
    output [0:(`IBUFF_DEPTH/4)-1]		ib_ic_t0_need_fetch,
    input [0:3]								bp_ib_iu3_t0_val
 
-
-
-
    );
 
+   //----------------------------------------------------------------
+   // Interface with rename
+   //----------------------------------------------------------------
    wire                         frn_fdis_iu6_t0_i0_vld;
    wire [0:`ITAG_SIZE_ENC-1]    frn_fdis_iu6_t0_i0_itag;
    wire [0:2]  			         frn_fdis_iu6_t0_i0_ucode;
@@ -693,8 +741,11 @@ module iuq_slice_top(
    wire [0:`ITAG_SIZE_ENC-1]    frn_fdis_iu6_t0_i1_s3_itag;
    wire [0:2]          			  frn_fdis_iu6_t0_i1_s3_t;
    wire                         frn_fdis_iu6_t0_i1_s3_dep_hit;
-   
+
 `ifndef THREADS1
+   //----------------------------------------------------------------
+   // Interface with rename
+   //----------------------------------------------------------------
    wire                         frn_fdis_iu6_t1_i0_vld;
    wire [0:`ITAG_SIZE_ENC-1]    frn_fdis_iu6_t1_i0_itag;
    wire [0:2]  			         frn_fdis_iu6_t1_i0_ucode;
@@ -842,6 +893,9 @@ module iuq_slice_top(
 
    wire [0:`THREADS-1]          fdis_frn_iu6_stall;
 
+   //-------------------------------
+   // Performance interface with I$
+   //-------------------------------
    wire [0:`THREADS-1]          perf_iu5_stall;
    wire [0:`THREADS-1]          perf_iu5_cpl_credit_stall;
    wire [0:`THREADS-1]          perf_iu5_gpr_credit_stall;
@@ -882,7 +936,7 @@ module iuq_slice_top(
                                      perf_iu6_lq_credit_stall[1], perf_iu6_sq_credit_stall[1], perf_iu6_axu0_credit_stall[1], perf_iu6_axu1_credit_stall[1]};
 `endif
 
-      
+
                iuq_slice  slice0(
                   .vdd(vdd),
                   .gnd(gnd),
@@ -898,7 +952,10 @@ module iuq_slice_top(
                   .mpw2_b(mpw2_b),
                   .scan_in(scan_in[1:7]),
                   .scan_out(scan_out[1:7]),
-                  
+
+                  //-------------------------------
+                  // Performance interface with I$
+                  //-------------------------------
                   .pc_iu_event_bus_enable(pc_iu_event_bus_enable),
                   .perf_iu5_stall(perf_iu5_stall[0]),
                   .perf_iu5_cpl_credit_stall(perf_iu5_cpl_credit_stall[0]),
@@ -912,14 +969,17 @@ module iuq_slice_top(
 
                   .cp_iu_iu4_flush(cp_iu_iu4_flush[0]),
                   .cp_flush_into_uc(cp_flush_into_uc[0]),
-                  
+
                   .xu_iu_epcr_dgtmi(xu_iu_epcr_dgtmi[0]),
                   .xu_iu_msrp_uclep(xu_iu_msrp_uclep[0]),
                   .xu_iu_msr_pr(xu_iu_msr_pr[0]),
                   .xu_iu_msr_gs(xu_iu_msr_gs[0]),
                   .xu_iu_msr_ucle(xu_iu_msr_ucle[0]),
                   .xu_iu_ccr2_ucode_dis(xu_iu_ccr2_ucode_dis),
-                  
+
+                  //-----------------------------
+                  // SPR values
+                  //-----------------------------
                   .spr_high_pri_mask(spr_high_pri_mask[0]),
                   .spr_cpcr_we(spr_cpcr_we[0]),
                   .spr_cpcr3_cp_cnt(spr_t0_cpcr3_cp_cnt),
@@ -929,15 +989,18 @@ module iuq_slice_top(
                   .spr_dec_match(spr_dec_match),
                   .iu_au_config_iucr(iu_au_t0_config_iucr),
                   .mm_iu_tlbwe_binv(mm_iu_tlbwe_binv),
-                  
+
+                  //----------------------------
+                  // Ifetch with slice
+                  //----------------------------
                   .ib_rm_rdy(ib_rm_rdy[0]),
                   .rm_ib_iu3_val(rm_ib_iu3_val[0]),
                   .rm_ib_iu3_instr(rm_ib_iu3_instr),
-                  
+
                   .uc_ib_iu3_invalid(uc_ib_iu3_t0_invalid),
-                  
+
                   .ib_ic_need_fetch(ib_ic_t0_need_fetch),
-                  
+
                   .bp_ib_iu3_ifar(bp_ib_iu3_t0_ifar),
                   .bp_ib_iu3_val(bp_ib_iu3_t0_val),
                   .bp_ib_iu3_0_instr(bp_ib_iu3_t0_0_instr),
@@ -945,7 +1008,10 @@ module iuq_slice_top(
                   .bp_ib_iu3_2_instr(bp_ib_iu3_t0_2_instr),
                   .bp_ib_iu3_3_instr(bp_ib_iu3_t0_3_instr),
                   .bp_ib_iu3_bta(bp_ib_iu3_t0_bta),
-                  
+
+                  //----------------------------
+                  // Ucode interface with IB
+                  //----------------------------
                   .ib_uc_rdy(ib_uc_rdy[0]),
                   .uc_ib_val(uc_ib_t0_val),
                   .uc_ib_done(uc_ib_done[0]),
@@ -955,7 +1021,10 @@ module iuq_slice_top(
                   .uc_ib_ifar1(uc_ib_t0_ifar1),
                   .uc_ib_ext0(uc_ib_t0_ext0),
                   .uc_ib_ext1(uc_ib_t0_ext1),
-                  
+
+                  //----------------------------
+                  // Completion Interface
+                  //----------------------------
                   .cp_rn_i0_axu_exception_val(cp_rn_t0_i0_axu_exception_val),
                   .cp_rn_i0_axu_exception(cp_rn_t0_i0_axu_exception),
                   .cp_rn_i1_axu_exception_val(cp_rn_t0_i1_axu_exception_val),
@@ -975,7 +1044,7 @@ module iuq_slice_top(
                   .cp_rn_i0_t3_t(cp_rn_t0_i0_t3_t),
                   .cp_rn_i0_t3_p(cp_rn_t0_i0_t3_p),
                   .cp_rn_i0_t3_a(cp_rn_t0_i0_t3_a),
-                  
+
                   .cp_rn_i1_v(cp_rn_t0_i1_v),
                   .cp_rn_i1_itag(cp_rn_t0_i1_itag),
                   .cp_rn_i1_t1_v(cp_rn_t0_i1_t1_v),
@@ -990,15 +1059,21 @@ module iuq_slice_top(
                   .cp_rn_i1_t3_t(cp_rn_t0_i1_t3_t),
                   .cp_rn_i1_t3_p(cp_rn_t0_i1_t3_p),
                   .cp_rn_i1_t3_a(cp_rn_t0_i1_t3_a),
-                  
+
                   .iu_flush(iu_flush[0]),
                   .cp_flush(cp_flush[0]),
                   .br_iu_redirect(br_iu_redirect[0]),
 		  .uc_ib_iu3_flush_all(uc_ib_iu3_flush_all[0]),
                   .cp_rn_uc_credit_free(cp_rn_uc_credit_free[0]),
-                  
+
+                  //-----------------------------
+                  // Stall from dispatch
+                  //-----------------------------
                   .fdis_frn_iu6_stall(fdis_frn_iu6_stall[0]),
-                  
+
+                  //----------------------------------------------------------------
+                  // Interface to reservation station - Completion is snooping also
+                  //----------------------------------------------------------------
                   .frn_fdis_iu6_i0_vld(frn_fdis_iu6_t0_i0_vld),
                   .frn_fdis_iu6_i0_itag(frn_fdis_iu6_t0_i0_itag),
                   .frn_fdis_iu6_i0_ucode(frn_fdis_iu6_t0_i0_ucode),
@@ -1161,6 +1236,9 @@ module iuq_slice_top(
                   .scan_in(scan_in[8:14]),
                   .scan_out(scan_out[8:14]),
 
+                  //-------------------------------
+                  // Performance interface with I$
+                  //-------------------------------
                   .pc_iu_event_bus_enable(pc_iu_event_bus_enable),
                   .perf_iu5_stall(perf_iu5_stall[1]),
                   .perf_iu5_cpl_credit_stall(perf_iu5_cpl_credit_stall[1]),
@@ -1171,17 +1249,20 @@ module iuq_slice_top(
                   .perf_iu5_xer_credit_stall(perf_iu5_xer_credit_stall[1]),
                   .perf_iu5_br_hold_stall(perf_iu5_br_hold_stall[1]),
                   .perf_iu5_axu_hold_stall(perf_iu5_axu_hold_stall[1]),
-                  
+
                   .cp_iu_iu4_flush(cp_iu_iu4_flush[1]),
                   .cp_flush_into_uc(cp_flush_into_uc[1]),
-                  
+
                   .xu_iu_epcr_dgtmi(xu_iu_epcr_dgtmi[1]),
                   .xu_iu_msrp_uclep(xu_iu_msrp_uclep[1]),
                   .xu_iu_msr_pr(xu_iu_msr_pr[1]),
                   .xu_iu_msr_gs(xu_iu_msr_gs[1]),
                   .xu_iu_msr_ucle(xu_iu_msr_ucle[1]),
                   .xu_iu_ccr2_ucode_dis(xu_iu_ccr2_ucode_dis),
-                  
+
+                  //-----------------------------
+                  // SPR values
+                  //-----------------------------
                   .spr_high_pri_mask(spr_high_pri_mask[1]),
                   .spr_cpcr_we(spr_cpcr_we[1]),
                   .spr_cpcr3_cp_cnt(spr_t1_cpcr3_cp_cnt),
@@ -1191,15 +1272,18 @@ module iuq_slice_top(
                   .spr_dec_match(spr_dec_match),
                   .iu_au_config_iucr(iu_au_t1_config_iucr),
                   .mm_iu_tlbwe_binv(mm_iu_tlbwe_binv),
-                  
+
+                  //----------------------------
+                  // Ifetch with slice
+                  //----------------------------
                   .ib_rm_rdy(ib_rm_rdy[1]),
                   .rm_ib_iu3_val(rm_ib_iu3_val[1]),
                   .rm_ib_iu3_instr(rm_ib_iu3_instr),
-                  
+
                   .uc_ib_iu3_invalid(uc_ib_iu3_t1_invalid),
-                  
+
                   .ib_ic_need_fetch(ib_ic_t1_need_fetch),
-                  
+
                   .bp_ib_iu3_val(bp_ib_iu3_t1_val),
                   .bp_ib_iu3_ifar(bp_ib_iu3_t1_ifar),
                   .bp_ib_iu3_0_instr(bp_ib_iu3_t1_0_instr),
@@ -1207,7 +1291,10 @@ module iuq_slice_top(
                   .bp_ib_iu3_2_instr(bp_ib_iu3_t1_2_instr),
                   .bp_ib_iu3_3_instr(bp_ib_iu3_t1_3_instr),
                   .bp_ib_iu3_bta(bp_ib_iu3_t1_bta),
-                  
+
+                  //----------------------------
+                  // Ucode interface with IB
+                  //----------------------------
                   .ib_uc_rdy(ib_uc_rdy[1]),
                   .uc_ib_val(uc_ib_t1_val),
                   .uc_ib_done(uc_ib_done[1]),
@@ -1217,7 +1304,10 @@ module iuq_slice_top(
                   .uc_ib_ifar1(uc_ib_t1_ifar1),
                   .uc_ib_ext0(uc_ib_t1_ext0),
                   .uc_ib_ext1(uc_ib_t1_ext1),
-                  
+
+                  //----------------------------
+                  // Completion Interface
+                  //----------------------------
                   .cp_rn_i0_axu_exception_val(cp_rn_t1_i0_axu_exception_val),
                   .cp_rn_i0_axu_exception(cp_rn_t1_i0_axu_exception),
                   .cp_rn_i1_axu_exception_val(cp_rn_t1_i1_axu_exception_val),
@@ -1237,7 +1327,7 @@ module iuq_slice_top(
                   .cp_rn_i0_t3_t(cp_rn_t1_i0_t3_t),
                   .cp_rn_i0_t3_p(cp_rn_t1_i0_t3_p),
                   .cp_rn_i0_t3_a(cp_rn_t1_i0_t3_a),
-                  
+
                   .cp_rn_i1_v(cp_rn_t1_i1_v),
                   .cp_rn_i1_itag(cp_rn_t1_i1_itag),
                   .cp_rn_i1_t1_v(cp_rn_t1_i1_t1_v),
@@ -1252,15 +1342,21 @@ module iuq_slice_top(
                   .cp_rn_i1_t3_t(cp_rn_t1_i1_t3_t),
                   .cp_rn_i1_t3_p(cp_rn_t1_i1_t3_p),
                   .cp_rn_i1_t3_a(cp_rn_t1_i1_t3_a),
-                  
+
                   .iu_flush(iu_flush[1]),
                   .cp_flush(cp_flush[1]),
                   .br_iu_redirect(br_iu_redirect[1]),
 		  .uc_ib_iu3_flush_all(uc_ib_iu3_flush_all[1]),
                   .cp_rn_uc_credit_free(cp_rn_uc_credit_free[1]),
-                  
+
+                  //-----------------------------
+                  // Stall from dispatch
+                  //-----------------------------
                   .fdis_frn_iu6_stall(fdis_frn_iu6_stall[1]),
-                  
+
+                  //----------------------------------------------------------------
+                  // Interface to reservation station - Completion is snooping also
+                  //----------------------------------------------------------------
                   .frn_fdis_iu6_i0_vld(frn_fdis_iu6_t1_i0_vld),
                   .frn_fdis_iu6_i0_itag(frn_fdis_iu6_t1_i0_itag),
                   .frn_fdis_iu6_i0_ucode(frn_fdis_iu6_t1_i0_ucode),
@@ -1405,8 +1501,8 @@ module iuq_slice_top(
                   .frn_fdis_iu6_i1_s3_t(frn_fdis_iu6_t1_i1_s3_t),
                   .frn_fdis_iu6_i1_s3_dep_hit(frn_fdis_iu6_t1_i1_s3_dep_hit)
                );
-`endif         
-         
+`endif
+
          iuq_dispatch dispatch(
             .vdd(vdd),
             .gnd(gnd),
@@ -1423,7 +1519,10 @@ module iuq_slice_top(
             .mpw2_b(mpw2_b),
             .scan_in(scan_in[0]),
             .scan_out(scan_out[0]),
-            
+
+            //-----------------------------
+            // SPR connections
+            //-----------------------------
             .spr_cpcr_we(spr_cpcr_we),
             .spr_t0_cpcr2_fx0_cnt(spr_t0_cpcr2_fx0_cnt),
             .spr_t0_cpcr2_fx1_cnt(spr_t0_cpcr2_fx1_cnt),
@@ -1464,6 +1563,9 @@ module iuq_slice_top(
             .spr_t1_low_pri_count(spr_t1_low_pri_count),
 `endif
 
+            //-------------------------------
+            // Performance interface with I$
+            //-------------------------------
             .pc_iu_event_bus_enable(pc_iu_event_bus_enable),
             .perf_iu6_stall(perf_iu6_stall),
             .perf_iu6_dispatch_fx0(perf_iu6_dispatch_fx0),
@@ -1484,18 +1586,24 @@ module iuq_slice_top(
             .iu_pc_sq_credit_ok(iu_pc_sq_credit_ok),
             .iu_pc_axu0_credit_ok(iu_pc_axu0_credit_ok),
             .iu_pc_axu1_credit_ok(iu_pc_axu1_credit_ok),
-            
+
+            //----------------------------
+            // Credit Interface with IU
+            //----------------------------
             .rv_iu_fx0_credit_free(rv_iu_fx0_credit_free),
-            .rv_iu_fx1_credit_free(rv_iu_fx1_credit_free),		
+            .rv_iu_fx1_credit_free(rv_iu_fx1_credit_free),		// Need to add 2nd unit someday
             .lq_iu_credit_free(lq_iu_credit_free),
             .sq_iu_credit_free(sq_iu_credit_free),
-            .axu0_iu_credit_free(axu0_iu_credit_free),		
-            .axu1_iu_credit_free(axu1_iu_credit_free),		
-            
+            .axu0_iu_credit_free(axu0_iu_credit_free),		// credit free from axu reservation station
+            .axu1_iu_credit_free(axu1_iu_credit_free),		// credit free from axu reservation station
+
             .cp_flush(cp_flush),
             .xu_iu_run_thread(xu_iu_run_thread),
             .iu_xu_credits_returned(iu_xu_credits_returned),
-            
+
+            //----------------------------------------------------------------
+            // Interface with rename
+            //----------------------------------------------------------------
             .frn_fdis_iu6_t0_i0_vld(frn_fdis_iu6_t0_i0_vld),
             .frn_fdis_iu6_t0_i0_itag(frn_fdis_iu6_t0_i0_itag),
             .frn_fdis_iu6_t0_i0_ucode(frn_fdis_iu6_t0_i0_ucode),
@@ -1566,7 +1674,7 @@ module iuq_slice_top(
             .frn_fdis_iu6_t0_i0_s3_p(frn_fdis_iu6_t0_i0_s3_p),
             .frn_fdis_iu6_t0_i0_s3_itag(frn_fdis_iu6_t0_i0_s3_itag),
             .frn_fdis_iu6_t0_i0_s3_t(frn_fdis_iu6_t0_i0_s3_t),
-            
+
             .frn_fdis_iu6_t0_i1_vld(frn_fdis_iu6_t0_i1_vld),
             .frn_fdis_iu6_t0_i1_itag(frn_fdis_iu6_t0_i1_itag),
             .frn_fdis_iu6_t0_i1_ucode(frn_fdis_iu6_t0_i1_ucode),
@@ -1710,7 +1818,7 @@ module iuq_slice_top(
             .frn_fdis_iu6_t1_i0_s3_p(frn_fdis_iu6_t1_i0_s3_p),
             .frn_fdis_iu6_t1_i0_s3_itag(frn_fdis_iu6_t1_i0_s3_itag),
             .frn_fdis_iu6_t1_i0_s3_t(frn_fdis_iu6_t1_i0_s3_t),
-            
+
             .frn_fdis_iu6_t1_i1_vld(frn_fdis_iu6_t1_i1_vld),
             .frn_fdis_iu6_t1_i1_itag(frn_fdis_iu6_t1_i1_itag),
             .frn_fdis_iu6_t1_i1_ucode(frn_fdis_iu6_t1_i1_ucode),
@@ -1784,9 +1892,15 @@ module iuq_slice_top(
             .frn_fdis_iu6_t1_i1_s3_t(frn_fdis_iu6_t1_i1_s3_t),
             .frn_fdis_iu6_t1_i1_s3_dep_hit(frn_fdis_iu6_t1_i1_s3_dep_hit),
 `endif
-                         
+
+            //-----------------------------
+            // Stall from dispatch
+            //-----------------------------
             .fdis_frn_iu6_stall(fdis_frn_iu6_stall),
-            
+
+            //----------------------------------------------------------------
+            // Interface to reservation station - Completion is snooping also
+            //----------------------------------------------------------------
             .iu_rv_iu6_t0_i0_vld(iu_rv_iu6_t0_i0_vld),
             .iu_rv_iu6_t0_i0_act(iu_rv_iu6_t0_i0_act),
             .iu_rv_iu6_t0_i0_itag(iu_rv_iu6_t0_i0_itag),
@@ -1857,7 +1971,7 @@ module iuq_slice_top(
             .iu_rv_iu6_t0_i0_s3_p(iu_rv_iu6_t0_i0_s3_p),
             .iu_rv_iu6_t0_i0_s3_itag(iu_rv_iu6_t0_i0_s3_itag),
             .iu_rv_iu6_t0_i0_s3_t(iu_rv_iu6_t0_i0_s3_t),
-            
+
             .iu_rv_iu6_t0_i1_vld(iu_rv_iu6_t0_i1_vld),
             .iu_rv_iu6_t0_i1_act(iu_rv_iu6_t0_i1_act),
             .iu_rv_iu6_t0_i1_itag(iu_rv_iu6_t0_i1_itag),
@@ -2001,7 +2115,7 @@ module iuq_slice_top(
             .iu_rv_iu6_t1_i0_s3_p(iu_rv_iu6_t1_i0_s3_p),
             .iu_rv_iu6_t1_i0_s3_itag(iu_rv_iu6_t1_i0_s3_itag),
             .iu_rv_iu6_t1_i0_s3_t(iu_rv_iu6_t1_i0_s3_t),
-            
+
             .iu_rv_iu6_t1_i1_vld(iu_rv_iu6_t1_i1_vld),
             .iu_rv_iu6_t1_i1_act(iu_rv_iu6_t1_i1_act),
             .iu_rv_iu6_t1_i1_itag(iu_rv_iu6_t1_i1_itag),
@@ -2072,12 +2186,16 @@ module iuq_slice_top(
             .iu_rv_iu6_t1_i1_s3_a(iu_rv_iu6_t1_i1_s3_a),
             .iu_rv_iu6_t1_i1_s3_p(iu_rv_iu6_t1_i1_s3_p),
             .iu_rv_iu6_t1_i1_s3_itag(iu_rv_iu6_t1_i1_s3_itag),
-            .iu_rv_iu6_t1_i1_s3_t(iu_rv_iu6_t1_i1_s3_t),          
+            .iu_rv_iu6_t1_i1_s3_t(iu_rv_iu6_t1_i1_s3_t),
             .iu_rv_iu6_t1_i1_s3_dep_hit(iu_rv_iu6_t1_i1_s3_dep_hit),
-`endif                                                  
+`endif
 
+            // Input to dispatch to block due to ivax
             .cp_dis_ivax(cp_dis_ivax),
 
+            //-----------------------------
+            // Stall from MMU
+            //-----------------------------
 
             .mm_iu_flush_req(mm_iu_flush_req),
             .dp_cp_hold_req(dp_cp_hold_req),
@@ -2087,5 +2205,5 @@ module iuq_slice_top(
             .mm_iu_bus_snoop_hold_done(mm_iu_bus_snoop_hold_done),
             .mm_iu_tlbi_complete(mm_iu_tlbi_complete)
          );
-         
+
 endmodule

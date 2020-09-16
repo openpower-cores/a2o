@@ -7,10 +7,13 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//
+//  Description: Pervasive Core LCB Controls
+//
+//*****************************************************************************
 
-
-
-module pcq_clks( 
+module pcq_clks(
+// Include model build parameters
 `include "tri_a2o.vh"
 
    inout			vdd,
@@ -32,6 +35,7 @@ module pcq_clks(
    input			ct_ck_pm_ccflush_disable,
    input			ct_ck_pm_raise_tholds,
    input  [0:8]			scan_type_dc,
+   //  --Thold + control outputs to the units
    output			pc_pc_ccflush_out_dc,
    output			pc_pc_gptr_sl_thold_4,
    output			pc_pc_time_sl_thold_4,
@@ -51,6 +55,7 @@ module pcq_clks(
    output			pc_pc_rtim_sl_thold_4,
    output			pc_pc_sg_4,
    output			pc_pc_fce_4,
+   // Thold + control signals used by fu
    output               	pc_fu_ccflush_dc,
    output               	pc_fu_gptr_sl_thold_3,
    output               	pc_fu_time_sl_thold_3,
@@ -67,6 +72,7 @@ module pcq_clks(
    output               	pc_fu_ary_slp_nsl_thold_3,
    output [0:1]              	pc_fu_sg_3,
    output               	pc_fu_fce_3,
+   // Thold + control signals used in pcq
    output			pc_pc_ccflush_dc,
    output			pc_pc_gptr_sl_thold_0,
    output			pc_pc_func_sl_thold_0,
@@ -75,8 +81,11 @@ module pcq_clks(
    output			pc_pc_cfg_slp_sl_thold_0,
    output			pc_pc_sg_0
 );
-   
-   
+
+
+//=====================================================================
+// Signal Declarations
+//=====================================================================
    wire          	rtim_sl_thold_6;
    wire          	func_sl_thold_6;
    wire          	func_nsl_thold_6;
@@ -102,8 +111,11 @@ module pcq_clks(
    wire          	rtim_sl_thold_5;
    wire          	sg_5;
    wire          	fce_5;
-      
-   
+
+
+//=====================================================================
+// Clock Control and Staging Logic
+//=====================================================================
    pcq_clks_ctrl  clkctrl(
       .vdd(vdd),
       .gnd(gnd),
@@ -124,6 +136,7 @@ module pcq_clks(
       .rg_ck_fast_xstop(rg_ck_fast_xstop),
       .ct_ck_pm_ccflush_disable(ct_ck_pm_ccflush_disable),
       .ct_ck_pm_raise_tholds(ct_ck_pm_raise_tholds),
+      //  --Thold + control outputs to the units
       .ccflush_out_dc(ccflush_out_dc),
       .gptr_sl_thold_5(gptr_sl_thold_5),
       .time_sl_thold_5(time_sl_thold_5),
@@ -144,8 +157,8 @@ module pcq_clks(
       .sg_5(sg_5),
       .fce_5(fce_5)
    );
-   
-   
+
+
    pcq_clks_stg  clkstg(
       .vdd(vdd),
       .gnd(gnd),
@@ -169,6 +182,7 @@ module pcq_clks(
       .rtim_sl_thold_5(rtim_sl_thold_5),
       .sg_5(sg_5),
       .fce_5(fce_5),
+      //  Thold + control outputs to the units
       .pc_pc_ccflush_out_dc(pc_pc_ccflush_out_dc),
       .pc_pc_gptr_sl_thold_4(pc_pc_gptr_sl_thold_4),
       .pc_pc_time_sl_thold_4(pc_pc_time_sl_thold_4),
@@ -188,6 +202,7 @@ module pcq_clks(
       .pc_pc_rtim_sl_thold_4(pc_pc_rtim_sl_thold_4),
       .pc_pc_sg_4(pc_pc_sg_4),
       .pc_pc_fce_4(pc_pc_fce_4),
+      // Thold + control signals used by fu
       .pc_fu_ccflush_dc(pc_fu_ccflush_dc),
       .pc_fu_gptr_sl_thold_3(pc_fu_gptr_sl_thold_3),
       .pc_fu_time_sl_thold_3(pc_fu_time_sl_thold_3),
@@ -204,6 +219,7 @@ module pcq_clks(
       .pc_fu_ary_slp_nsl_thold_3(pc_fu_ary_slp_nsl_thold_3),
       .pc_fu_sg_3(pc_fu_sg_3),
       .pc_fu_fce_3(pc_fu_fce_3),
+      //  PC Unit thold + control signals
       .pc_pc_ccflush_dc(pc_pc_ccflush_dc),
       .pc_pc_gptr_sl_thold_0(pc_pc_gptr_sl_thold_0),
       .pc_pc_func_sl_thold_0(pc_pc_func_sl_thold_0),
@@ -213,7 +229,7 @@ module pcq_clks(
       .pc_pc_sg_0(pc_pc_sg_0)
    );
 
-   
+
 
    tri_plat #(.WIDTH(6)) lvl7to6_plat(
       .vd(vdd),
@@ -227,7 +243,6 @@ module pcq_clks(
       .q(  {rtim_sl_thold_6,  func_sl_thold_6,  func_nsl_thold_6,
 	    ary_nsl_thold_6,  sg_6,             fce_6})
    );
-       
+
 
 endmodule
-

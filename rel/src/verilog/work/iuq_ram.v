@@ -9,10 +9,11 @@
 
 `timescale 1 ns / 1 ns
 
-
-
-
-
+// *********************************************************************
+//
+// This is the ENTITY for iuq_ram
+//
+// *********************************************************************
 
 module iuq_ram(
    pc_iu_ram_instr,
@@ -40,19 +41,22 @@ module iuq_ram(
    scan_out
 );
 `include "tri_a2o.vh"
+//   parameter            `EXPAND_TYPE = 2;
+//   parameter            `THREADS = 2;		// 0 = ibm umbra, 1 = xilinx, 2 = ibm mpg
    input [0:31]         pc_iu_ram_instr;
    input [0:3]          pc_iu_ram_instr_ext;
    input                pc_iu_ram_issue;
    input [0:`THREADS-1]  pc_iu_ram_active;
-   
+
    input                iu_pc_ram_done;
    input [0:`THREADS-1]  cp_flush;
-   
+
    input [0:`THREADS-1]  ib_rm_rdy;
-   
+
    output [0:`THREADS-1] rm_ib_iu3_val;
    output [0:35]        rm_ib_iu3_instr;
-   
+
+   //pervasive
    inout                vdd;
    inout                gnd;
    (* pin_data="PIN_FUNCTION=/G_CLK/" *)
@@ -67,28 +71,33 @@ module iuq_ram(
    input                mpw1_b;
    input                mpw2_b;
    input                scan_in;
-   
+
    output               scan_out;
-   
-   
-   
-   
-   
-   
-   
-   
+
+   //--------------------------
+   // components
+   //--------------------------
+
+   //--------------------------
+   // constants
+   //--------------------------
+
+   //scan chain
       parameter            cp_flush_offset = 0;
       parameter            ram_val_offset = cp_flush_offset + `THREADS;
       parameter            ram_act_offset = ram_val_offset + `THREADS;
       parameter            ram_instr_offset = ram_act_offset + `THREADS;
       parameter            ram_done_offset = ram_instr_offset + 36;
       parameter            scan_right = ram_done_offset + 1 - 1;
-      
-      
+
+      //--------------------------
+      // signals
+      //--------------------------
+
       wire                 tiup;
-      
+
       wire                 ram_valid;
-      
+
       wire [0:`THREADS-1]   ram_val_d;
       wire [0:`THREADS-1]   ram_val_q;
       wire [0:`THREADS-1]   ram_act_d;
@@ -97,52 +106,57 @@ module iuq_ram(
       wire [0:35]          ram_instr_q;
       wire                 ram_done_d;
       wire                 ram_done_q;
-      
+
       wire [0:`THREADS-1]   cp_flush_d;
       wire [0:`THREADS-1]   cp_flush_q;
-      
+
       wire                 pc_iu_func_sl_thold_1;
       wire                 pc_iu_func_sl_thold_0;
       wire                 pc_iu_func_sl_thold_0_b;
       wire                 pc_iu_sg_1;
       wire                 pc_iu_sg_0;
       wire                 force_t;
-      
+
       wire [0:scan_right]  siv;
       wire [0:scan_right]  sov;
 
-
-
-
       assign tiup = 1'b1;
-      
+      //assign tidn = 1'b0;
+
+      //-----------------------------------------------
+      // logic
+      //-----------------------------------------------
       assign cp_flush_d = cp_flush;
       assign ram_done_d = iu_pc_ram_done;
-      
-      
-      
+
       generate
          begin : xhdl1
             genvar               i;
             for (i = 0; i <= `THREADS - 1; i = i + 1)
             begin : issue_gating
                assign ram_val_d[i] = (pc_iu_ram_active[i] & pc_iu_ram_issue) | (ram_val_q[i] & (~ib_rm_rdy[i])) | (cp_flush_q[i] & ram_act_d[i]);
-               assign ram_act_d[i] = (ram_done_q == 1'b1) ? 1'b0 : 
-                                     (ram_val_q[i] == 1'b1) ? 1'b1 : 
+               assign ram_act_d[i] = (ram_done_q == 1'b1) ? 1'b0 :
+                                     (ram_val_q[i] == 1'b1) ? 1'b1 :
                                      ram_act_q[i];
             end
          end
          endgenerate
-         
+
          assign ram_valid = pc_iu_ram_issue;
          assign ram_instr_d = {pc_iu_ram_instr, pc_iu_ram_instr_ext};
-         
-         
+
+         //-----------------------------------------------
+         // outputs
+         //-----------------------------------------------
+
          assign rm_ib_iu3_val = ram_val_q;
          assign rm_ib_iu3_instr = ram_instr_q;
-         
-         
-         
+
+         //-----------------------------------------------
+         // latches
+         //-----------------------------------------------
+
+
          tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) cp_flush_reg(
             .vd(vdd),
             .gd(gnd),
@@ -160,8 +174,8 @@ module iuq_ram(
             .din(cp_flush_d),
             .dout(cp_flush_q)
          );
-         
-         
+
+
          tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) ram_val_reg(
             .vd(vdd),
             .gd(gnd),
@@ -179,8 +193,8 @@ module iuq_ram(
             .din(ram_val_d),
             .dout(ram_val_q)
          );
-         
-         
+
+
          tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) ram_act_reg(
             .vd(vdd),
             .gd(gnd),
@@ -198,8 +212,8 @@ module iuq_ram(
             .din(ram_act_d),
             .dout(ram_act_q)
          );
-         
-         
+
+
          tri_rlmreg_p #(.WIDTH(36), .INIT(0)) ram_instr_reg(
             .vd(vdd),
             .gd(gnd),
@@ -217,8 +231,8 @@ module iuq_ram(
             .din(ram_instr_d[0:35]),
             .dout(ram_instr_q[0:35])
          );
-         
-         
+
+
          tri_rlmlatch_p #(.INIT(0)) ram_done_reg(
             .vd(vdd),
             .gd(gnd),
@@ -236,9 +250,12 @@ module iuq_ram(
             .din(ram_done_d),
             .dout(ram_done_q)
          );
-         
-         
-         
+
+         //-----------------------------------------------
+         // pervasive
+         //-----------------------------------------------
+
+
    tri_plat #(.WIDTH(2)) perv_2to1_reg(
       .vd(vdd),
       .gd(gnd),
@@ -247,8 +264,8 @@ module iuq_ram(
       .din({pc_iu_func_sl_thold_2,pc_iu_sg_2}),
       .q({pc_iu_func_sl_thold_1,pc_iu_sg_1})
    );
-   
-   
+
+
    tri_plat #(.WIDTH(2)) perv_1to0_reg(
       .vd(vdd),
       .gd(gnd),
@@ -257,8 +274,8 @@ module iuq_ram(
       .din({pc_iu_func_sl_thold_1,pc_iu_sg_1}),
       .q({pc_iu_func_sl_thold_0,pc_iu_sg_0})
    );
-         
-         
+
+
          tri_lcbor  perv_lcbor(
             .clkoff_b(clkoff_b),
             .thold(pc_iu_func_sl_thold_0),
@@ -267,10 +284,13 @@ module iuq_ram(
             .force_t(force_t),
             .thold_b(pc_iu_func_sl_thold_0_b)
          );
-         
-         
+
+         //-----------------------------------------------
+         // scan
+         //-----------------------------------------------
+
          assign siv[0:scan_right] = {scan_in, sov[0:scan_right - 1]};
          assign scan_out = sov[scan_right];
-         
+
 
 endmodule

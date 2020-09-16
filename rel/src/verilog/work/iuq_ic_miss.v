@@ -9,11 +9,15 @@
 
 `timescale 1 ns / 1 ns
 
-
+//********************************************************************
+//*
+//* TITLE:
+//*
+//* NAME: iuq_ic_miss.v
+//*
+//*********************************************************************
 
 `include "tri_a2o.vh"
-
-
 
 
 module iuq_ic_miss(
@@ -108,11 +112,11 @@ module iuq_ic_miss(
    event_bus_enable
 );
 
-    
+
    inout                           vdd;
-    
+
    inout                           gnd;
-    
+
     (* pin_data ="PIN_FUNCTION=/G_CLK/" *)
    input [0:`NCLK_WIDTH-1]         nclk;
    input                           pc_iu_func_sl_thold_0_b;
@@ -174,20 +178,20 @@ module iuq_ic_miss(
    output                          icm_icd_iu3_ecc_fp_cancel;
    output                          icm_icd_any_reld_r2;
 
-   input                           icd_icm_miss;        
+   input                           icd_icm_miss;        // These signals, except icd_icm_miss, come off a latch
    input                           icd_icm_prefetch;
    input [0:`THREADS-1]            icd_icm_tid;
    input [64-`REAL_IFAR_WIDTH:61]  icd_icm_addr_real;
-   input [62-`EFF_IFAR_WIDTH:51]   icd_icm_addr_eff;    
-   input [0:4]                     icd_icm_wimge;       
+   input [62-`EFF_IFAR_WIDTH:51]   icd_icm_addr_eff;    // Shares bits 52:61 with real_ifar
+   input [0:4]                     icd_icm_wimge;       // (1): CI, (4): Endian
    input [0:3]                     icd_icm_userdef;
    input                           icd_icm_2ucode;
    input                           icd_icm_2ucode_type;
    input                           icd_icm_iu2_inval;
    input                           icd_icm_any_iu2_valid;
 
-   input [0:2]                     icd_icm_row_lru;     
-   input [0:3]                     icd_icm_row_val;     
+   input [0:2]                     icd_icm_row_lru;     // valid same cycle as read_lru
+   input [0:3]                     icd_icm_row_val;     // valid same cycle as read_lru
 
    output [0:2]                    ic_perf_t0_event;
  `ifndef THREADS1
@@ -199,18 +203,18 @@ module iuq_ic_miss(
    output [0:`THREADS-1]           iu_xu_icache_quiesce;
    output [0:`THREADS-1]           iu_pc_icache_quiesce;
 
-   input                           an_ac_reld_data_vld;         
-   input [0:4]                     an_ac_reld_core_tag;         
-   input [58:59]                   an_ac_reld_qw;               
-   input [0:127]                   an_ac_reld_data;             
-   input                           an_ac_reld_ecc_err;          
-   input                           an_ac_reld_ecc_err_ue;       
+   input                           an_ac_reld_data_vld;         // This comes back two cycles before the data
+   input [0:4]                     an_ac_reld_core_tag;         // This signal comes active two cycles before the data
+   input [58:59]                   an_ac_reld_qw;               // This signal comes active two cycles before the data
+   input [0:127]                   an_ac_reld_data;             // This signal comes active two cycles after the valid
+   input                           an_ac_reld_ecc_err;          // This signal comes active one cycle after data
+   input                           an_ac_reld_ecc_err_ue;       // This signal comes active one cycle after data
 
-   input                           spr_ic_cls;                  
-   input [0:3]                     spr_ic_bp_config;            
+   input                           spr_ic_cls;                  // (0): 64B cacheline, (1): 128B cacheline
+   input [0:3]                     spr_ic_bp_config;            // (0): bc, (1): bclr, (2): bcctr, (3): sw
 
    output [0:`THREADS-1]           iu_lq_request;
-   output [0:1]                    iu_lq_ctag;                  
+   output [0:1]                    iu_lq_ctag;                  // (0): thread ID, (1): prefetch
    output [64-`REAL_IFAR_WIDTH:59] iu_lq_ra;
    output [0:4]                    iu_lq_wimge;
    output [0:3]                    iu_lq_userdef;
@@ -218,10 +222,10 @@ module iuq_ic_miss(
    input                           event_bus_enable;
 
 
-   localparam [0:31]              value_1 = 32'h00000001;							 
-   localparam [0:31]              value_2 = 32'h00000002;							 
+   localparam [0:31]              value_1 = 32'h00000001;
+   localparam [0:31]              value_2 = 32'h00000002;
 
-   parameter                      SM_MAX = 4;   
+   parameter                      SM_MAX = 4;   // max # of state machines (# of tables)
    parameter                      TAGS_USED = `THREADS * 2;
 
    parameter                      spr_ic_cls_offset = 0;
@@ -278,6 +282,7 @@ module iuq_ic_miss(
 
    wire [1:24]                    select_lru_way_pt;
 
+   // Latch definition begin
    wire [0:TAGS_USED-1]           reld_r1_val_d;
    wire                           spr_ic_cls_d;
    wire [0:3]                     bp_config_d;
@@ -342,7 +347,7 @@ module iuq_ic_miss(
    wire [0:4]                     req_wimge_l2;
    wire [0:3]                     req_userdef_l2;
    wire                           iu3_miss_match_l2;
-   wire [0:5]                     miss_tid_sm_l2[0:SM_MAX-1];       
+   wire [0:5]                     miss_tid_sm_l2[0:SM_MAX-1];       //state machine for each tag
    wire [0:2]                     miss_count_l2[0:TAGS_USED-1];
    wire [64-`REAL_IFAR_WIDTH:61]  miss_addr_real_l2[0:TAGS_USED-1];
    wire [62-`EFF_IFAR_WIDTH:51]   miss_addr_eff_l2[0:TAGS_USED-1];
@@ -350,7 +355,7 @@ module iuq_ic_miss(
    wire [0:TAGS_USED-1]           miss_flush_occurred_l2;
    wire [0:SM_MAX-1]              miss_flushed_l2;
    wire [0:SM_MAX-1]              miss_inval_l2;
-   wire [0:TAGS_USED-1]           miss_block_fp_l2;     
+   wire [0:TAGS_USED-1]           miss_block_fp_l2;     //block fastpath
    wire [0:TAGS_USED-1]           miss_ecc_err_l2;
    wire [0:TAGS_USED-1]           miss_ecc_err_ue_l2;
    wire [0:TAGS_USED-1]           miss_wrote_dir_l2;
@@ -363,15 +368,18 @@ module iuq_ic_miss(
    wire [0:TAGS_USED-1]           lru_write_l2;
    wire [0:`THREADS-1]            miss_prefetch_perf_l2;
    wire [0:2]                     perf_event_l2[0:`THREADS-1];
+   // Latch definition end
 
    wire [46:52]                   iu0_ifar[0:TAGS_USED-1];
 
+   // Act control; only needed for power reduction
    wire [0:TAGS_USED-1]           default_reld_act_v;
    wire                           default_reld_act;
    wire                           miss_or_default_act;
    wire                           reld_r2_act;
    wire [0:TAGS_USED-1]           miss_act;
 
+   // reload pipeline
    wire                           reld_r0_vld;
    wire [0:TAGS_USED-1]           reld_r0_tag;
    wire [0:`THREADS-1]            reld_r3_tid;
@@ -392,6 +400,7 @@ module iuq_ic_miss(
    wire [0:TAGS_USED-1]           sent_fp;
    wire [0:TAGS_USED-1]           set_block_fp;
 
+   // this signal will check incoming addr against current valid addresses
    wire [0:TAGS_USED-1]           addr_equal;
    wire [0:TAGS_USED-1]           addr_match_tag;
    wire                           addr_match;
@@ -400,10 +409,13 @@ module iuq_ic_miss(
    wire                           release_sm;
    wire [0:SM_MAX-1]              release_sm_hold;
 
+   // IU0 inval
    wire [0:TAGS_USED-1]           iu0_inval_match;
 
+   // OR these together to get iu_lq_request
    wire [0:SM_MAX-1]              request_tag;
 
+   // fastpath
    wire [0:TAGS_USED-1]           preload_r0_tag;
    wire [0:`THREADS-1]            preload_r0_tid;
    wire [0:`THREADS-1]            preload_hold_iu0;
@@ -415,9 +427,11 @@ module iuq_ic_miss(
    wire [0:TAGS_USED-1]           load_tag_no_block;
    wire [0:`THREADS-1]            load_tid_no_block;
 
+   // this signal indicates critical quadword is in r0, r1
    wire [0:TAGS_USED-1]           r0_crit_qw;
    wire [0:TAGS_USED-1]           r1_crit_qw;
 
+   // lru
    wire                           lru_write_hit;
    wire [0:2]                     hit_lru;
    wire [0:2]                     row_lru;
@@ -430,9 +444,11 @@ module iuq_ic_miss(
    wire [0:3]                     next_lru_way;
    wire [0:3]                     next_way;
 
+   // this signal is set by each state machine; OR bits together for final holds
    wire [0:SM_MAX-1]              hold_tid;
    wire                           hold_iu0;
 
+   // OR these together to get icm_icd_*
    wire [0:SM_MAX-1]              write_dir_inval;
    wire [0:SM_MAX-1]              write_dir_val;
    wire [0:SM_MAX-1]              data_write;
@@ -456,6 +472,7 @@ module iuq_ic_miss(
    reg [51:57]                    lru_write_addr;
    reg [0:3]                      lru_write_way;
 
+   // ECC Error handling
    wire [0:TAGS_USED-1]           new_ecc_err;
    wire [0:TAGS_USED-1]           new_ecc_err_ue;
    wire [0:SM_MAX-1]              ecc_err;
@@ -472,12 +489,12 @@ module iuq_ic_miss(
 
    wire [0:31]                    tidn32;
 
-    
+
     (* analysis_not_referenced="true" *)
-    
+
    wire                           miss_unused;
 
-
+   //@@ START OF EXECUTABLE CODE FOR IUQ_IC_MISS
 
    assign tidn32 = 32'b0;
 
@@ -485,14 +502,16 @@ module iuq_ic_miss(
    begin : xhdl1
      if (TAGS_USED < SM_MAX)
      begin : gen_unused_t1
-	   assign miss_unused = | {load_tag[TAGS_USED:SM_MAX - 1], reset_state[TAGS_USED:SM_MAX - 1], request_tag[TAGS_USED:SM_MAX - 1], write_dir_val[TAGS_USED:SM_MAX - 1], hold_tid[TAGS_USED:SM_MAX - 1], dir_write[TAGS_USED:SM_MAX - 1], miss_ci_d[TAGS_USED:SM_MAX - 1], miss_flushed_d[TAGS_USED:SM_MAX - 1], miss_inval_d[TAGS_USED:SM_MAX - 1], active_l1_miss[TAGS_USED:SM_MAX-1], miss_tid_sm_d[TAGS_USED], miss_tid_sm_d[SM_MAX - 1]};    
+	   assign miss_unused = | {load_tag[TAGS_USED:SM_MAX - 1], reset_state[TAGS_USED:SM_MAX - 1], request_tag[TAGS_USED:SM_MAX - 1], write_dir_val[TAGS_USED:SM_MAX - 1], hold_tid[TAGS_USED:SM_MAX - 1], dir_write[TAGS_USED:SM_MAX - 1], miss_ci_d[TAGS_USED:SM_MAX - 1], miss_flushed_d[TAGS_USED:SM_MAX - 1], miss_inval_d[TAGS_USED:SM_MAX - 1], active_l1_miss[TAGS_USED:SM_MAX-1], miss_tid_sm_d[TAGS_USED], miss_tid_sm_d[SM_MAX - 1]};    // ??? tid_sm isn't covered for (sm_max-tags_used > 2)
 
+       // sourceless unused
        assign iu2_flush[TAGS_USED:SM_MAX - 1]       = {SM_MAX-TAGS_USED{1'b0}};
        assign new_miss[TAGS_USED:SM_MAX - 1]        = {SM_MAX-TAGS_USED{1'b0}};
        assign last_data[TAGS_USED:SM_MAX - 1]       = {SM_MAX-TAGS_USED{1'b0}};
        assign ecc_err[TAGS_USED:SM_MAX - 1]         = {SM_MAX-TAGS_USED{1'b0}};
        assign ecc_err_ue[TAGS_USED:SM_MAX - 1]      = {SM_MAX-TAGS_USED{1'b0}};
 
+       // Latches
        assign reld_r1_val_l2[TAGS_USED:SM_MAX - 1]  = {SM_MAX-TAGS_USED{1'b0}};
 
        assign miss_flushed_d[TAGS_USED:SM_MAX - 1]  = {SM_MAX-TAGS_USED{1'b0}};
@@ -527,6 +546,9 @@ module iuq_ic_miss(
      assign iu0_ifar[3] = ics_icm_iu0_t1_ifar;
   `endif
 
+   //---------------------------------------------------------------------
+   // Latch Inputs, Reload pipeline
+   //---------------------------------------------------------------------
    generate
    begin : xhdl2
      genvar  i;
@@ -541,15 +563,17 @@ module iuq_ic_miss(
    assign miss_or_default_act = default_reld_act | (|(miss_act));
    assign reld_r2_act = |(reld_r1_val_l2);
 
-   assign bp_config_d = spr_ic_bp_config;        
+   assign bp_config_d = spr_ic_bp_config;        // ??? Do I need to latch these?  How far away is spr?
    assign spr_ic_cls_d = spr_ic_cls;
 
+   // d-2 (r0)
    assign an_ac_reld_data_vld_d = an_ac_reld_data_vld;
    assign an_ac_reld_core_tag_d = an_ac_reld_core_tag;
    assign an_ac_reld_qw_d = an_ac_reld_qw;
 
+   // d-1 (r1)
+   // Core_tag(0:2) specifies unit (IU is '010'); Core_tag(3:4) is encoded Thread ID
    assign reld_r0_vld = an_ac_reld_data_vld_l2 & (an_ac_reld_core_tag_l2[0:2] == 3'b010);
-
 
    generate
    begin : xhdl3
@@ -565,9 +589,12 @@ module iuq_ic_miss(
    assign reld_r1_val_d = {TAGS_USED{reld_r0_vld}} & reld_r0_tag;
    assign reld_r1_qw_d = an_ac_reld_qw_l2;
 
+   // d (r2)
+   // Use reld_r1_vld as act to gate clock
    assign reld_r2_val_d = reld_r1_val_l2[0:TAGS_USED - 1];
    assign reld_r2_qw_d = reld_r1_qw_l2;
 
+   // d+1 (r3)
    assign reld_r3_val_d = reld_r2_val_l2;
    assign an_ac_reld_ecc_err_d = an_ac_reld_ecc_err;
    assign an_ac_reld_ecc_err_ue_d = an_ac_reld_ecc_err_ue;
@@ -584,6 +611,24 @@ module iuq_ic_miss(
    end
    endgenerate
 
+   //---------------------------------------------------------------------
+   // State Machine
+   //---------------------------------------------------------------------
+   // Example State Ordering for cacheable reloads
+   // OLD:
+   //  64B Cacheline, No Gaps    :  (1)(3)(4)(5)(6)(11)            - Wait 0, Data0, Data1, Data2, Data3, CheckECC
+   //  64B Cacheline, Always Gaps:  (1)(3)(8)(4)(9)(5)(10)(6)(11)  - Wait 0, Data0, Wait1, Data1, Wait2, Data2, Wait3, Data3, CheckECC
+   // 128B Cacheline, No Gaps    :  (1)(3)(4)(5)(12)(13)(14)(15)(6)(11)    - Wait 0, Data0, Data1, Data2, Data3_128B, Data4_128B, Data5_128B, Data6_128B, Data3/7, CheckECC
+   // 128B Cacheline, Always Gaps:  (1)(3)(8)(4)(9)(5)(16)(12)(17)(13)(18)(14)(19)(15)(10)(6)(11)
+   //          - Wait 0, Data0, Wait1, Data1, Wait2, Data2, Wait3_128B, Data3_128B, Wait4_128B, Data4_128B, Wait5_128B, Data5_128B, Wait6_128B, Data6_128B, Data3/7, CheckECC
+   //
+   // New:
+   //  64B Cacheline, No Gaps      : (2)(3)(3)(3)(3)(5)            - Wait, Data, Data, Data, Data, CheckECC
+   //  64B Cacheline, Always Gaps  : (2)(3)(2)(3)(2)(3)(2)(3)(5)   - Wait, Data, Wait, Data, Wait, Data, Wait, Data, CheckECC
+   // similar pattern for 128B
+   //
+   // For now, always generating 4 tables, even if only 1 thread.  Can't generate based on a generic, and don't want to include config file.  Extra tables should optimize out when not needed.
+   //
    generate
    begin
      genvar  i;
@@ -618,11 +663,13 @@ module iuq_ic_miss(
    end
    endgenerate
 
+   //---------------------------------------------------------------------
 
    assign iu_mm_lmq_empty = &(iu_xu_icache_quiesce_int) & (~(|(cp_async_block)));
    assign iu_xu_icache_quiesce = iu_xu_icache_quiesce_int;
    assign iu_pc_icache_quiesce = iu_xu_icache_quiesce_int;
 
+   // SM0 is only for non-prefetches, SM1 is for prefetches, or for new IFetches if SM1 is free and SM0 is busy (e.g. sometimes after flush)
    generate
    begin : xhdl5
      genvar  i;
@@ -631,6 +678,7 @@ module iuq_ic_miss(
        assign new_miss[2*i]     = icd_icm_miss & icd_icm_tid[i] & (~icd_icm_prefetch);
        assign new_miss[2*i+1] = icd_icm_miss & icd_icm_tid[i] & ((icd_icm_prefetch & (~icd_icm_wimge[1]) & (~icd_icm_wimge[3])) | (~miss_tid_sm_l2[2*i][IDLE]));
 
+       // Only active when performance enabled
        assign miss_prefetch_perf_d[i] = (icd_icm_miss & icd_icm_tid[i] & miss_tid_sm_l2[2*i+1][IDLE]) ?
 	 (icd_icm_prefetch & (~icd_icm_wimge[1]) & (~icd_icm_wimge[3])) :
 	  miss_prefetch_perf_l2[i];
@@ -640,8 +688,10 @@ module iuq_ic_miss(
        assign icm_ics_prefetch_sm_idle[i] = miss_tid_sm_l2[2*i+1][IDLE];
      end
 
+     //genvar  i;
      for (i = 0; i < TAGS_USED; i = i + 1)
      begin : gen_miss
+       // Count down from 3 (if 64B) or 7 (if 128B)
        assign miss_count_d[i] = ((request_tag[i] | (miss_tid_sm_l2[i][CHECK_ECC] & ecc_err[i])) == 1'b1) ? {spr_ic_cls_l2, 2'b11} :
                                 (miss_tid_sm_l2[i][DATA] == 1'b1) ? miss_count_l2[i] - 3'b001 :
                                  miss_count_l2[i];
@@ -649,57 +699,62 @@ module iuq_ic_miss(
        assign last_data[i] = miss_count_l2[i] == 3'b000;
        assign no_data[i] = miss_count_l2[i] == {spr_ic_cls_l2, 2'b11};
 
-       assign miss_act[i] = miss_tid_sm_l2[i][IDLE] & icd_icm_any_iu2_valid & icd_icm_tid[i/2];         
-       assign miss_addr_real_d[i] = icd_icm_addr_real;          
-       assign miss_addr_eff_d[i] = icd_icm_addr_eff;            
-       assign miss_ci_d[i] = icd_icm_wimge[1];                  
-       assign miss_endian_d[i] = icd_icm_wimge[4];              
-       assign miss_2ucode_d[i] = icd_icm_2ucode;                
-       assign miss_2ucode_type_d[i] = icd_icm_2ucode_type;      
+       assign miss_act[i] = miss_tid_sm_l2[i][IDLE] & icd_icm_any_iu2_valid & icd_icm_tid[i/2];         // Idle state and processing this thread
+       assign miss_addr_real_d[i] = icd_icm_addr_real;          // uses miss_act
+       assign miss_addr_eff_d[i] = icd_icm_addr_eff;            // uses miss_act
+       assign miss_ci_d[i] = icd_icm_wimge[1];                  // uses miss_act
+       assign miss_endian_d[i] = icd_icm_wimge[4];              // uses miss_act
+       assign miss_2ucode_d[i] = icd_icm_2ucode;                // uses miss_act
+       assign miss_2ucode_type_d[i] = icd_icm_2ucode_type;      // uses miss_act
 
+       // State-related latches
        assign set_flush_occurred[i] = (iu_flush[i/2] | br_iu_redirect[i/2] | bp_ic_iu4_redirect[i/2]) & (~miss_tid_sm_l2[i][IDLE]) & (~miss_tid_sm_l2[i][WAITMISS]);
-       assign miss_flush_occurred_d[i] = (reset_state[i] == 1'b1) ?        1'b0 :  
-                                         (set_flush_occurred[i] == 1'b1) ? 1'b1 :  
+       assign miss_flush_occurred_d[i] = (reset_state[i] == 1'b1) ?        1'b0 :  // reset when going back to idle state
+                                         (set_flush_occurred[i] == 1'b1) ? 1'b1 :  // set when new flush
                                          miss_flush_occurred_l2[i];
 
-       assign flush_addr_outside_range[i] = iu0_ifar[i] != {miss_addr_eff_l2[i][46:51], miss_addr_real_l2[i][52]};    
+       // Flushed before entering Data0 - don't load ICache if flushed outside range
+       assign flush_addr_outside_range[i] = iu0_ifar[i] != {miss_addr_eff_l2[i][46:51], miss_addr_real_l2[i][52]};    // eff address shares lower bits with real addr
 
        assign set_flushed[i] = miss_flush_occurred_l2[i] & flush_addr_outside_range[i] & reld_r1_val_l2[i] &
            ((miss_tid_sm_l2[i][WAITSTATE] & no_data[i]) | miss_tid_sm_l2[i][CHECK_ECC]);
 
-       assign miss_flushed_d[i] = (reset_state[i] == 1'b1) ? 1'b0 :  
-                                  (set_flushed[i] == 1'b1) ? 1'b1 :  
+       assign miss_flushed_d[i] = (reset_state[i] == 1'b1) ? 1'b0 :  // reset when going back to idle state
+                                  (set_flushed[i] == 1'b1) ? 1'b1 :  // set when new flush
                                   miss_flushed_l2[i];
      end
 
      assign inval_equal = {TAGS_USED{icd_icm_iu2_inval}} & addr_equal;
 
+     //genvar  i;
      for (i = 0; i < TAGS_USED; i = i + 1)
      begin : gen_miss_inval
        assign set_invalidated[i] = inval_equal[i] & (~miss_tid_sm_l2[i][IDLE]) & (~miss_tid_sm_l2[i][WAITMISS]) & (~miss_ci_l2[i]);
-       assign miss_inval_d[i] = (reset_state[i] == 1'b1)     ? 1'b0 :  
-                                (set_invalidated[i] == 1'b1) ? 1'b1 :  
+       assign miss_inval_d[i] = (reset_state[i] == 1'b1)     ? 1'b0 :  // reset when going back to idle state
+                                (set_invalidated[i] == 1'b1) ? 1'b1 :  // set when new back_inv
                                 miss_inval_l2[i];
      end
 
+     //genvar  i;
      for (i = 0; i < TAGS_USED; i = i + 1)
      begin : gen_miss_block_fp
-       assign sent_fp[i] = (r3_loaded_l2 & (~(an_ac_reld_ecc_err_l2))) & reld_r3_val_l2[i];   
-       assign set_block_fp[i] = sent_fp[i] |    
+       assign sent_fp[i] = (r3_loaded_l2 & (~(an_ac_reld_ecc_err_l2))) & reld_r3_val_l2[i];   // sent critical qw last cycle (unless it was blocked)
+       assign set_block_fp[i] = sent_fp[i] |    // sent critical qw last cycle and not ecc err
            (iu2_flush[i] & (~(miss_tid_sm_l2[i][IDLE] | miss_tid_sm_l2[i][WAITMISS]))) |
            (icd_icm_prefetch & new_miss[i] & miss_tid_sm_l2[i][IDLE] & miss_tid_sm_d[i][WAITSTATE]);
-       assign miss_block_fp_d[i] = (reset_state[i] == 1'b1)  ? 1'b0 :  
-                                   (set_block_fp[i] == 1'b1) ? 1'b1 :  
+       assign miss_block_fp_d[i] = (reset_state[i] == 1'b1)  ? 1'b0 :  // reset when going back to idle state
+                                   (set_block_fp[i] == 1'b1) ? 1'b1 :  // set when new block condition
                                    miss_block_fp_l2[i];
      end
 
+     //genvar  i;
      for (i = 0; i < TAGS_USED; i = i + 1)
      begin : gen_miss_ecc_err
-       assign miss_ecc_err_d[i] = ((miss_tid_sm_l2[i][WAITSTATE] & no_data[i]) == 1'b1) ? 1'b0 :  
+       assign miss_ecc_err_d[i] = ((miss_tid_sm_l2[i][WAITSTATE] & no_data[i]) == 1'b1) ? 1'b0 :  // reset before starting or resending data
                                   (new_ecc_err[i] == 1'b1) ? 1'b1 :
                                   miss_ecc_err_l2[i];
 
-       assign miss_ecc_err_ue_d[i] = ((miss_tid_sm_l2[i][WAITSTATE] & no_data[i]) == 1'b1) ? 1'b0 :  
+       assign miss_ecc_err_ue_d[i] = ((miss_tid_sm_l2[i][WAITSTATE] & no_data[i]) == 1'b1) ? 1'b0 :  // reset before starting or resending data
                                      (new_ecc_err_ue[i] == 1'b1) ? an_ac_reld_ecc_err_ue_l2 :
                                      miss_ecc_err_ue_l2[i];
 
@@ -721,36 +776,44 @@ module iuq_ic_miss(
                                      ((miss_tid_sm_l2[2][IDLE] | miss_tid_sm_l2[3][IDLE]) & icd_icm_tid[1]);
      end
 
-     assign iu3_miss_match_d = (miss_thread_has_idle == 1'b1) ? addr_match :    
-                                                                1'b1;  
+     assign iu3_miss_match_d = (miss_thread_has_idle == 1'b1) ? addr_match :    // new miss matches other reload
+                                                                1'b1;  //(not miss_thread_has_idle)  --2nd (or 3rd) miss for thread - SM's full;
      assign icm_ics_iu3_miss_match = iu3_miss_match_l2;
 
      assign release_sm = |(release_sm_hold);
 
+     //genvar  i;
      for (i = 0; i < TAGS_USED; i = i + 1)
      begin : gen_miss_wrote
+       // Detect write through collision with invalidate array read
        assign iu0_inval_match[i] = ics_icm_iu0_inval & (ics_icm_iu0_inval_addr[51:56] == miss_addr_real_l2[i][51:56]) &
                                       (spr_ic_cls_l2 | (ics_icm_iu0_inval_addr[57] == miss_addr_real_l2[i][57]));
 
-       assign miss_wrote_dir_d[i] = (reset_state[i] == 1'b1) ? 1'b0 :  
+       assign miss_wrote_dir_d[i] = (reset_state[i] == 1'b1) ? 1'b0 :  // reset when going back to idle state
                                     (dir_write_no_block[i] | miss_wrote_dir_l2[i]);
      end
 
+     //genvar  i;
      for (i = 0; i < `THREADS; i = i + 1)
      begin : gen_need_hold
+       // Hold if new miss to SM0, or if new miss and no SMs available
        assign miss_need_hold_d[2*i] = (iu2_flush[2*i] == 1'b1) ? 1'b0 :
                 ((new_miss[2*i] &
                   (miss_tid_sm_l2[2*i][IDLE] | ((~miss_tid_sm_l2[2*i][IDLE]) & (~miss_tid_sm_l2[2*i+1][IDLE])))) == 1'b1) ? 1'b1 :
                 miss_need_hold_l2[2*i];
 
+       // Hold if new miss to SM1
        assign miss_need_hold_d[2*i+1] = ((iu2_flush[2*i+1] | reset_state[2*i+1]) == 1'b1) ? 1'b0 :
-                                        ((new_miss[2*i] &     
+                                        ((new_miss[2*i] &     // -- yes, I meant new_miss(2*i) - this is miss and tid and not prefetch
                                           miss_tid_sm_l2[2*i+1][IDLE] & (~miss_tid_sm_l2[2*i][IDLE])) == 1'b1) ? 1'b1 :
                                         miss_need_hold_l2[2 * i + 1];
      end
    end
    endgenerate
 
+   //---------------------------------------------------------------------
+   // Send request
+   //---------------------------------------------------------------------
    generate
    begin : xhdl12
      genvar  i;
@@ -770,7 +833,7 @@ module iuq_ic_miss(
    end
    endgenerate
 
-   assign req_ctag_d[1] = new_miss[1] | new_miss[TAGS_USED - 1];        
+   assign req_ctag_d[1] = new_miss[1] | new_miss[TAGS_USED - 1];        // prefetch or extra IFetch
 
    assign req_ra_d = icd_icm_addr_real[64 - `REAL_IFAR_WIDTH:59];
    assign req_wimge_d = icd_icm_wimge;
@@ -782,7 +845,11 @@ module iuq_ic_miss(
    assign iu_lq_wimge = req_wimge_l2;
    assign iu_lq_userdef = req_userdef_l2;
 
+   //---------------------------------------------------------------------
+   // address muxing
+   //---------------------------------------------------------------------
 
+//   always @(reld_r0_tag or reld_r1_val_l2 or reld_r2_val_l2 or lru_write_l2 or reld_r3_val_l2 or row_match or miss_addr_eff_l2 or miss_addr_real_l2 or miss_way_l2)
    always @(*)
    begin: addr_mux_proc
      reg [50:59]                    r0_addr_calc;
@@ -843,6 +910,10 @@ module iuq_ic_miss(
      row_match_way <= row_match_way_calc;
    end
 
+   //---------------------------------------------------------------------
+   // fastpath-related signals
+   //---------------------------------------------------------------------
+   // for first beat of data: create hole in IU0 so we can fastpath data into IU2
    assign preload_r0_tag = r0_crit_qw & reld_r0_tag & (~miss_block_fp_l2) & (~miss_flushed_l2[0:TAGS_USED - 1]);
 
    generate
@@ -881,6 +952,10 @@ module iuq_ic_miss(
 
    assign r3_loaded_d = |(load_tid_no_block);
 
+   //---------------------------------------------------------------------
+   // Critical Quadword
+   //---------------------------------------------------------------------
+   // Note: Could latch reld_crit_qw signal from L2, but we need addr (60:61), so might as well keep whole address
    generate
    begin : xhdl15
      genvar  i;
@@ -894,6 +969,10 @@ module iuq_ic_miss(
 
    assign r2_crit_qw_d = |(r1_crit_qw & reld_r1_val_l2[0:TAGS_USED - 1]);
 
+   //---------------------------------------------------------------------
+   // Get LRU
+   //---------------------------------------------------------------------
+   // ??? Might have to read in r0
 
    assign lru_write_hit = |(lru_write) & (lru_addr[51:56] == lru_write_addr[51:56]) &
                          (spr_ic_cls_l2 | (lru_addr[57] == lru_write_addr[57]));
@@ -911,20 +990,56 @@ module iuq_ic_miss(
      genvar  i;
      for (i = 0; i < TAGS_USED; i = i + 1)
      begin : gen_lru
+       // Select_lru in r1
        assign select_lru[i] = (~miss_ci_l2[i]) & reld_r1_val_l2[i] & (miss_tid_sm_l2[i][WAITSTATE] & no_data[i]) & (~miss_flushed_l2[i]) & (~miss_inval_l2[i]);
 
+       // lru/way is valid in Data0-3, Wait1-3, CheckECC
+       // lru_valid(<a>) <= (miss_tid<a>_sm_l2(3) or miss_tid<a>_sm_l2(4) or miss_tid<a>_sm_l2(5) or miss_tid<a>_sm_l2(6) or
+       //                   miss_tid<a>_sm_l2(8) or miss_tid<a>_sm_l2(9) or miss_tid<a>_sm_l2(10) or miss_tid<a>_sm_l2(11) ) and not miss_flushed<a>_l2 and not miss_inval<a>_l2;
        assign lru_valid[i] = (~(miss_tid_sm_l2[i][IDLE] | miss_tid_sm_l2[i][WAITMISS] | (miss_tid_sm_l2[i][WAITSTATE] & no_data[i]) | miss_flushed_l2[i] | miss_inval_l2[i] | miss_ci_l2[i]));
 
+       // check if any other thread is writing into this spot in the cache
        assign row_match[i] = lru_valid[i] & (lru_addr[51:56] == miss_addr_real_l2[i][51:56]) & (spr_ic_cls_l2 | (lru_addr[57] == miss_addr_real_l2[i][57]));
      end
    end
    endgenerate
 
-
    assign val_or_match = icd_icm_row_val | row_match_way;
 
+   // Old: Use if can never hit more than one entry, since only two reloads are in data mode at a time
+   //?TABLE select_lru_way LISTING(final) OPTIMIZE PARMS(ON-SET, OFF-SET);
+   //*INPUTS*=================*OUTPUTS*======*
+   //|                        |              |
+   //| row_match_way          |              |
+   //| |     row_lru          |              |
+   //| |     |                | next_lru_way |
+   //| |     |                | |            |
+   //| |     |                | |            |
+   //| 0123  012              | 0123         |
+   //*TYPE*===================+==============+
+   //| PPPP  PPP              | PPPP         |
+   //*TERMS*==================+==============+
+   //| 0---  00-              | 1000         |
+   //| 1---  000              | 0010         |
+   //| 1---  001              | 0001         |
+   //|                        |              |
+   //| -0--  01-              | 0100         |
+   //| -1--  010              | 0010         |
+   //| -1--  011              | 0001         |
+   //|                        |              |
+   //| --0-  1-0              | 0010         |
+   //| --1-  100              | 1000         |
+   //| --1-  110              | 0100         |
+   //|                        |              |
+   //| ---0  1-1              | 0001         |
+   //| ---1  101              | 1000         |
+   //| ---1  111              | 0100         |
+   //*END*====================+==============+
+   //?TABLE END select_lru_way;
 
+   // Could have all 4 tags going to same row
 /*
+//table_start
 ?TABLE select_lru_way LISTING(final) OPTIMIZE PARMS(ON-SET, OFF-SET);
 *INPUTS*=================*OUTPUTS*======*
 |                        |              |
@@ -970,122 +1085,125 @@ module iuq_ic_miss(
 | 111  -111              | 1000         |
 *END*====================+==============+
 ?TABLE END select_lru_way;
+//table_end
 */
 
+//assign_start
 
 assign select_lru_way_pt[1] =
-    (({ row_lru[0] , row_lru[2] , 
-    row_match_way[0] , row_match_way[1] , 
+    (({ row_lru[0] , row_lru[2] ,
+    row_match_way[0] , row_match_way[1] ,
     row_match_way[3] }) === 5'b01011);
 assign select_lru_way_pt[2] =
-    (({ row_lru[0] , row_lru[2] , 
-    row_match_way[0] , row_match_way[1] , 
+    (({ row_lru[0] , row_lru[2] ,
+    row_match_way[0] , row_match_way[1] ,
     row_match_way[2] }) === 5'b00011);
 assign select_lru_way_pt[3] =
-    (({ row_lru[0] , row_lru[2] , 
-    row_match_way[0] , row_match_way[1] , 
+    (({ row_lru[0] , row_lru[2] ,
+    row_match_way[0] , row_match_way[1] ,
     row_match_way[3] }) === 5'b01101);
 assign select_lru_way_pt[4] =
-    (({ row_lru[0] , row_lru[2] , 
-    row_match_way[0] , row_match_way[1] , 
+    (({ row_lru[0] , row_lru[2] ,
+    row_match_way[0] , row_match_way[1] ,
     row_match_way[2] }) === 5'b00101);
 assign select_lru_way_pt[5] =
-    (({ row_lru[0] , row_lru[1] , 
-    row_match_way[1] , row_match_way[2] , 
+    (({ row_lru[0] , row_lru[1] ,
+    row_match_way[1] , row_match_way[2] ,
     row_match_way[3] }) === 5'b11101);
 assign select_lru_way_pt[6] =
-    (({ row_lru[0] , row_lru[1] , 
-    row_match_way[0] , row_match_way[2] , 
+    (({ row_lru[0] , row_lru[1] ,
+    row_match_way[0] , row_match_way[2] ,
     row_match_way[3] }) === 5'b10101);
 assign select_lru_way_pt[7] =
-    (({ row_lru[0] , row_lru[1] , 
-    row_match_way[1] , row_match_way[2] , 
+    (({ row_lru[0] , row_lru[1] ,
+    row_match_way[1] , row_match_way[2] ,
     row_match_way[3] }) === 5'b11110);
 assign select_lru_way_pt[8] =
-    (({ row_lru[0] , row_lru[1] , 
-    row_match_way[0] , row_match_way[2] , 
+    (({ row_lru[0] , row_lru[1] ,
+    row_match_way[0] , row_match_way[2] ,
     row_match_way[3] }) === 5'b10110);
 assign select_lru_way_pt[9] =
-    (({ row_lru[0] , row_lru[1] , 
-    row_match_way[1] , row_match_way[2] , 
+    (({ row_lru[0] , row_lru[1] ,
+    row_match_way[1] , row_match_way[2] ,
     row_match_way[3] }) === 5'b11111);
 assign select_lru_way_pt[10] =
-    (({ row_lru[0] , row_lru[1] , 
-    row_match_way[0] , row_match_way[2] , 
+    (({ row_lru[0] , row_lru[1] ,
+    row_match_way[0] , row_match_way[2] ,
     row_match_way[3] }) === 5'b10111);
 assign select_lru_way_pt[11] =
-    (({ row_lru[0] , row_lru[2] , 
-    row_match_way[0] , row_match_way[1] , 
+    (({ row_lru[0] , row_lru[2] ,
+    row_match_way[0] , row_match_way[1] ,
     row_match_way[3] }) === 5'b01111);
 assign select_lru_way_pt[12] =
-    (({ row_lru[0] , row_lru[2] , 
-    row_match_way[0] , row_match_way[1] , 
+    (({ row_lru[0] , row_lru[2] ,
+    row_match_way[0] , row_match_way[1] ,
     row_match_way[2] }) === 5'b00111);
 assign select_lru_way_pt[13] =
-    (({ row_lru[1] , row_lru[2] , 
+    (({ row_lru[1] , row_lru[2] ,
     row_match_way[0] , row_match_way[3]
      }) === 4'b0101);
 assign select_lru_way_pt[14] =
-    (({ row_lru[1] , row_lru[2] , 
+    (({ row_lru[1] , row_lru[2] ,
     row_match_way[0] , row_match_way[2]
      }) === 4'b0001);
 assign select_lru_way_pt[15] =
-    (({ row_lru[1] , row_lru[2] , 
+    (({ row_lru[1] , row_lru[2] ,
     row_match_way[1] , row_match_way[3]
      }) === 4'b1101);
 assign select_lru_way_pt[16] =
-    (({ row_lru[1] , row_lru[2] , 
+    (({ row_lru[1] , row_lru[2] ,
     row_match_way[1] , row_match_way[2]
      }) === 4'b1001);
 assign select_lru_way_pt[17] =
-    (({ row_lru[1] , row_lru[2] , 
+    (({ row_lru[1] , row_lru[2] ,
     row_match_way[1] , row_match_way[2]
      }) === 4'b1010);
 assign select_lru_way_pt[18] =
-    (({ row_lru[1] , row_lru[2] , 
+    (({ row_lru[1] , row_lru[2] ,
     row_match_way[0] , row_match_way[2]
      }) === 4'b0010);
 assign select_lru_way_pt[19] =
-    (({ row_lru[1] , row_lru[2] , 
+    (({ row_lru[1] , row_lru[2] ,
     row_match_way[1] , row_match_way[3]
      }) === 4'b1110);
 assign select_lru_way_pt[20] =
-    (({ row_lru[1] , row_lru[2] , 
+    (({ row_lru[1] , row_lru[2] ,
     row_match_way[0] , row_match_way[3]
      }) === 4'b0110);
 assign select_lru_way_pt[21] =
-    (({ row_lru[0] , row_lru[1] , 
+    (({ row_lru[0] , row_lru[1] ,
     row_match_way[0] }) === 3'b000);
 assign select_lru_way_pt[22] =
-    (({ row_lru[0] , row_lru[1] , 
+    (({ row_lru[0] , row_lru[1] ,
     row_match_way[1] }) === 3'b010);
 assign select_lru_way_pt[23] =
-    (({ row_lru[0] , row_lru[2] , 
+    (({ row_lru[0] , row_lru[2] ,
     row_match_way[2] }) === 3'b100);
 assign select_lru_way_pt[24] =
-    (({ row_lru[0] , row_lru[2] , 
+    (({ row_lru[0] , row_lru[2] ,
     row_match_way[3] }) === 3'b110);
-assign next_lru_way[0] = 
+assign next_lru_way[0] =
     (select_lru_way_pt[1] | select_lru_way_pt[2]
      | select_lru_way_pt[9] | select_lru_way_pt[13]
      | select_lru_way_pt[14] | select_lru_way_pt[21]
     );
-assign next_lru_way[1] = 
+assign next_lru_way[1] =
     (select_lru_way_pt[3] | select_lru_way_pt[4]
      | select_lru_way_pt[10] | select_lru_way_pt[15]
      | select_lru_way_pt[16] | select_lru_way_pt[22]
     );
-assign next_lru_way[2] = 
+assign next_lru_way[2] =
     (select_lru_way_pt[5] | select_lru_way_pt[6]
      | select_lru_way_pt[11] | select_lru_way_pt[17]
      | select_lru_way_pt[18] | select_lru_way_pt[23]
     );
-assign next_lru_way[3] = 
+assign next_lru_way[3] =
     (select_lru_way_pt[7] | select_lru_way_pt[8]
      | select_lru_way_pt[12] | select_lru_way_pt[19]
      | select_lru_way_pt[20] | select_lru_way_pt[24]
     );
 
+//assign_end
 
    assign next_way = (val_or_match[0] == 1'b0) ? 4'b1000 :
                      (val_or_match[1] == 1'b0) ? 4'b0100 :
@@ -1104,6 +1222,9 @@ assign next_lru_way[3] =
    end
    endgenerate
 
+   //---------------------------------------------------------------------
+   // setting output signals
+   //---------------------------------------------------------------------
    generate
    begin : xhdl18
      genvar  i;
@@ -1114,8 +1235,9 @@ assign next_lru_way[3] =
    end
    endgenerate
 
-
-
+   // Note: If data_write timing is bad, can switch back to using hold_all_tids, but use reld_r2
+   // Hold iu0 when writing into Data this cycle or fastpath 2 cycles from now.
+   // For reld in Wait0, not checking flush for timing reasons.
    assign hold_iu0 = |(data_write) | (|(preload_hold_iu0));
 
    assign icm_ics_hold_iu0 = hold_iu0;
@@ -1123,12 +1245,13 @@ assign next_lru_way[3] =
    assign icm_icd_data_write = |(data_write);
    assign icm_icd_dir_inval = |(write_dir_inval);
 
+   // ??? Move inval_equal for timing?
    assign icm_icd_dir_val = | (write_dir_val[0:TAGS_USED - 1] & miss_wrote_dir_l2 & (~inval_equal));
-
 
    assign icm_icd_reload_addr = {reload_addr[51:57], reld_r2_qw_l2};
    assign icm_icd_reload_way = reload_way;
 
+   // Check which endian
    assign reload_endian = | (reld_r2_val_l2 & miss_endian_l2);
    assign reld_r1_endian = | (reld_r1_val_l2[0:TAGS_USED - 1] & miss_endian_l2);
 
@@ -1141,6 +1264,7 @@ assign next_lru_way[3] =
    assign reld_data_d = (reld_r1_endian == 1'b0) ? an_ac_reld_data :
                         swap_endian_data;
 
+   // Branch Decode
    iuq_bd br_decode0(
       .instruction(reld_data_l2[0:31]),
       .instruction_next(reld_data_l2[32:63]),
@@ -1188,12 +1312,14 @@ assign next_lru_way[3] =
 
    assign icm_icd_reload_data = instr_data;
 
+   // Dir Write moved to r2
    assign dir_write_no_block = dir_write[0:TAGS_USED - 1] & (~iu0_inval_match);
    assign icm_icd_dir_write = |(dir_write_no_block);
    assign icm_icd_dir_write_addr = reload_addr;
    assign icm_icd_dir_write_endian = reload_endian;
    assign icm_icd_dir_write_way = reload_way;
 
+   // LRU Write: Occurs 2 cycles after Data 2 data_write (64B mode) or Data6 (128B mode)
    generate
    begin : xhdl19
      genvar  i;
@@ -1207,13 +1333,16 @@ assign next_lru_way[3] =
 
    assign lru_write_d = lru_write_next_cycle_l2;
 
-
    assign icm_icd_lru_write = |(lru_write);
    assign icm_icd_lru_write_addr = lru_write_addr;
    assign icm_icd_lru_write_way = lru_write_way;
 
+   // For act's in idir
    assign icm_icd_any_reld_r2 = |(reld_r2_val_l2);
 
+   //---------------------------------------------------------------------
+   // ECC Error handling
+   //---------------------------------------------------------------------
    assign new_ecc_err = {TAGS_USED{an_ac_reld_ecc_err_l2}} & reld_r3_val_l2;
    assign new_ecc_err_ue = {TAGS_USED{an_ac_reld_ecc_err_ue_l2}} & reld_r3_val_l2;
    assign ecc_err[0:TAGS_USED - 1] = new_ecc_err | miss_ecc_err_l2;
@@ -1224,43 +1353,55 @@ assign next_lru_way[3] =
      genvar  i;
      for (i = 0; i < TAGS_USED; i = i + 1)
      begin : gen_ecc_inval
-       assign ecc_inval[i] = (an_ac_reld_ecc_err_l2 | an_ac_reld_ecc_err_ue_l2 | inval_equal[i]) &	
+       assign ecc_inval[i] = (an_ac_reld_ecc_err_l2 | an_ac_reld_ecc_err_ue_l2 | inval_equal[i]) &
             miss_tid_sm_l2[i][CHECK_ECC] & (~miss_ci_l2[i]) & (~miss_flushed_l2[i]) & (~miss_inval_l2[i]);
-       assign ecc_block_iu0[i] = ecc_err[i] & (miss_tid_sm_l2[i][CHECK_ECC] | (miss_tid_sm_l2[i][DATA] & last_data[i]));  
+       assign ecc_block_iu0[i] = ecc_err[i] & (miss_tid_sm_l2[i][CHECK_ECC] | (miss_tid_sm_l2[i][DATA] & last_data[i]));  // moved last data check here from hold_tid for timing; check need_hold in hold_thread logic
      end
    end
    endgenerate
 
+   // CheckECC stage
+   // Non-CI: If last beat of data has bad ECC, invalidate cache & flush IU1
 
-   assign icm_icd_ecc_inval = |(ecc_inval);    
-
+   // Back inval in Check ECC state
+   assign icm_icd_ecc_inval = |(ecc_inval);    //or back_inval_check_ecc;
 
    assign icm_icd_ecc_addr = r3_addr[51:57];
    assign icm_icd_ecc_way  = r3_way;
 
-
+   // CI/Critical QW: Invalidate IU3 or set error bit
    assign ecc_fp = r3_loaded_l2 & an_ac_reld_ecc_err_l2;
    assign icm_icd_iu3_ecc_fp_cancel = ecc_fp;
    assign icm_ics_iu3_ecc_fp_cancel = {`THREADS{ecc_fp}} & reld_r3_tid;
    assign ic_bp_iu3_ecc_err = r3_loaded_l2 & an_ac_reld_ecc_err_ue_l2;
 
+   //---------------------------------------------------------------------
+   // Performance Events
+   //---------------------------------------------------------------------
    generate
    begin : xhdl11
      genvar  i;
      for (i = 0; i < SM_MAX; i = i + 1)
      begin : g11
+       //      - not CI, not Idle, not WaitMiss, & not (CheckECC & done)
        assign active_l1_miss[i] = ~miss_ci_l2[i] & ~miss_tid_sm_l2[i][IDLE] & ~miss_tid_sm_l2[i][WAITMISS] & ~(miss_tid_sm_l2[i][CHECK_ECC] & ~ecc_err[i]);
      end
 
      genvar  t;
      for (t = 0; t < `THREADS; t = t + 1)
      begin : gen_perf
+       // IL1 Miss Cycles
+       //      - not CI, not Idle, not WaitMiss, & not (CheckECC & done)
+       //      - event mode/edge should not count multiple times if flushed and recycled
        assign perf_event_d[t][0] = active_l1_miss[2*t] | (active_l1_miss[2*t+1] & ~miss_prefetch_perf_l2[t]);
 
+       // IL1 Reload Dropped
+       //     - not CI, flushed, & returning to Idle; includes prefetches
        assign perf_event_d[t][1] =
 	 (~miss_ci_l2[2*t]   & miss_flushed_l2[2*t]   & (miss_tid_sm_l2[2*t][CHECK_ECC]   & ~ecc_err[2*t])) |
 	 (~miss_ci_l2[2*t+1] & miss_flushed_l2[2*t+1] & (miss_tid_sm_l2[2*t+1][CHECK_ECC] & ~ecc_err[2*t+1]));
 
+       // Prefetch cycles
        assign perf_event_d[t][2] = active_l1_miss[2*t+1] & miss_prefetch_perf_l2[t];
      end
    end
@@ -1271,6 +1412,9 @@ assign next_lru_way[3] =
      assign ic_perf_t1_event = perf_event_l2[1];
  `endif
 
+   //---------------------------------------------------------------------
+   // Latches
+   //---------------------------------------------------------------------
 
    tri_rlmlatch_p #(.INIT(0)) spr_ic_cls_latch(
       .vd(vdd),
@@ -2053,8 +2197,10 @@ assign next_lru_way[3] =
       .dout(miss_prefetch_perf_l2)
      );
 
+   //---------------------------------------------------------------------
+   // Scan
+   //---------------------------------------------------------------------
    assign siv[0:scan_right] = {sov[1:scan_right], scan_in};
    assign scan_out = sov[0];
 
 endmodule
-

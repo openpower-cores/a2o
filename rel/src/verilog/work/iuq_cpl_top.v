@@ -9,13 +9,18 @@
 
 `timescale 1 ns / 1 ns
 
+//  Description:  Completion Unit
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
 
 module iuq_cpl_top(
+   // Clocks
     (* pin_data="PIN_FUNCTION=/G_CLK/" *)
    input [0:`NCLK_WIDTH-1]    nclk,
-   
+
+   // Pervasive
    input                       tc_ac_ccflush_dc,
    input                       clkoff_dc_b,
    input                       d_mode_dc,
@@ -28,6 +33,7 @@ module iuq_cpl_top(
    input [0:`THREADS]          cp_scan_in,
    output [0:`THREADS]         cp_scan_out,
 
+   // Perfomance selectors
    input                       pc_iu_event_bus_enable,
    input [0:2]		       pc_iu_event_count_mode,
 
@@ -35,6 +41,7 @@ module iuq_cpl_top(
    input [0:4*`THREADS-1]      event_bus_in,
    output [0:4*`THREADS-1]     event_bus_out,
 
+   // Instruction 0 Issue
    input                       rn_cp_iu6_t0_i0_vld,
    input [1:`ITAG_SIZE_ENC-1]  rn_cp_iu6_t0_i0_itag,
    input [0:2]                 rn_cp_iu6_t0_i0_ucode,
@@ -45,12 +52,12 @@ module iuq_cpl_top(
    input                       rn_cp_iu6_t0_i0_rte_fx1,
    input                       rn_cp_iu6_t0_i0_rte_axu0,
    input                       rn_cp_iu6_t0_i0_rte_axu1,
-                               
+
    input [62-`EFF_IFAR_WIDTH:61] rn_cp_iu6_t0_i0_ifar,
    input [62-`EFF_IFAR_WIDTH:61] rn_cp_iu6_t0_i0_bta,
    input                       rn_cp_iu6_t0_i0_isram,
    input [0:31]                rn_cp_iu6_t0_i0_instr,
-                               
+
    input                       rn_cp_iu6_t0_i0_valop,
    input [0:2]                 rn_cp_iu6_t0_i0_error,
    input                       rn_cp_iu6_t0_i0_br_pred,
@@ -61,33 +68,34 @@ module iuq_cpl_top(
    input [0:9]                 rn_cp_iu6_t0_i0_gshare,
    input [0:2]                 rn_cp_iu6_t0_i0_ls_ptr,
    input                       rn_cp_iu6_t0_i0_match,
-                               
+
    input                       rn_cp_iu6_t0_i0_type_fp,
    input                       rn_cp_iu6_t0_i0_type_ap,
    input                       rn_cp_iu6_t0_i0_type_spv,
    input                       rn_cp_iu6_t0_i0_type_st,
    input                       rn_cp_iu6_t0_i0_async_block,
    input                       rn_cp_iu6_t0_i0_np1_flush,
-                               
+
    input                       rn_cp_iu6_t0_i0_t1_v,
    input [0:2]                 rn_cp_iu6_t0_i0_t1_t,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t0_i0_t1_p,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t0_i0_t1_a,
-                               
+
    input                       rn_cp_iu6_t0_i0_t2_v,
    input [0:2]                 rn_cp_iu6_t0_i0_t2_t,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t0_i0_t2_p,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t0_i0_t2_a,
-                               
+
    input                       rn_cp_iu6_t0_i0_t3_v,
    input [0:2]                 rn_cp_iu6_t0_i0_t3_t,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t0_i0_t3_p,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t0_i0_t3_a,
-                               
+
    input                       rn_cp_iu6_t0_i0_btb_entry,
    input [0:1]                 rn_cp_iu6_t0_i0_btb_hist,
    input                       rn_cp_iu6_t0_i0_bta_val,
-                               
+
+   // Instruction 1 Issue
    input                       rn_cp_iu6_t0_i1_vld,
    input [1:`ITAG_SIZE_ENC-1]  rn_cp_iu6_t0_i1_itag,
    input [0:2]                 rn_cp_iu6_t0_i1_ucode,
@@ -98,12 +106,12 @@ module iuq_cpl_top(
    input                       rn_cp_iu6_t0_i1_rte_fx1,
    input                       rn_cp_iu6_t0_i1_rte_axu0,
    input                       rn_cp_iu6_t0_i1_rte_axu1,
-                               
+
    input [62-`EFF_IFAR_WIDTH:61] rn_cp_iu6_t0_i1_ifar,
    input [62-`EFF_IFAR_WIDTH:61] rn_cp_iu6_t0_i1_bta,
    input                       rn_cp_iu6_t0_i1_isram,
    input [0:31]                rn_cp_iu6_t0_i1_instr,
-                               
+
    input                       rn_cp_iu6_t0_i1_valop,
    input [0:2]                 rn_cp_iu6_t0_i1_error,
    input                       rn_cp_iu6_t0_i1_br_pred,
@@ -114,34 +122,35 @@ module iuq_cpl_top(
    input [0:9]                 rn_cp_iu6_t0_i1_gshare,
    input [0:2]                 rn_cp_iu6_t0_i1_ls_ptr,
    input                       rn_cp_iu6_t0_i1_match,
-                               
+
    input                       rn_cp_iu6_t0_i1_type_fp,
    input                       rn_cp_iu6_t0_i1_type_ap,
    input                       rn_cp_iu6_t0_i1_type_spv,
    input                       rn_cp_iu6_t0_i1_type_st,
    input                       rn_cp_iu6_t0_i1_async_block,
    input                       rn_cp_iu6_t0_i1_np1_flush,
-                               
+
    input                       rn_cp_iu6_t0_i1_t1_v,
    input [0:2]                 rn_cp_iu6_t0_i1_t1_t,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t0_i1_t1_p,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t0_i1_t1_a,
-                               
+
    input                       rn_cp_iu6_t0_i1_t2_v,
    input [0:2]                 rn_cp_iu6_t0_i1_t2_t,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t0_i1_t2_p,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t0_i1_t2_a,
-                               
+
    input                       rn_cp_iu6_t0_i1_t3_v,
    input [0:2]                 rn_cp_iu6_t0_i1_t3_t,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t0_i1_t3_p,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t0_i1_t3_a,
-                               
+
    input                       rn_cp_iu6_t0_i1_btb_entry,
    input [0:1]                 rn_cp_iu6_t0_i1_btb_hist,
    input                       rn_cp_iu6_t0_i1_bta_val,
-    
-`ifndef THREADS1  
+
+`ifndef THREADS1
+   // Instruction 0 Issue
    input                       rn_cp_iu6_t1_i0_vld,
    input [1:`ITAG_SIZE_ENC-1]  rn_cp_iu6_t1_i0_itag,
    input [0:2]                 rn_cp_iu6_t1_i0_ucode,
@@ -152,12 +161,12 @@ module iuq_cpl_top(
    input                       rn_cp_iu6_t1_i0_rte_fx1,
    input                       rn_cp_iu6_t1_i0_rte_axu0,
    input                       rn_cp_iu6_t1_i0_rte_axu1,
-                               
+
    input [62-`EFF_IFAR_WIDTH:61] rn_cp_iu6_t1_i0_ifar,
    input [62-`EFF_IFAR_WIDTH:61] rn_cp_iu6_t1_i0_bta,
    input                       rn_cp_iu6_t1_i0_isram,
    input [0:31]                rn_cp_iu6_t1_i0_instr,
-                               
+
    input                       rn_cp_iu6_t1_i0_valop,
    input [0:2]                 rn_cp_iu6_t1_i0_error,
    input                       rn_cp_iu6_t1_i0_br_pred,
@@ -168,33 +177,34 @@ module iuq_cpl_top(
    input [0:9]                 rn_cp_iu6_t1_i0_gshare,
    input [0:2]                 rn_cp_iu6_t1_i0_ls_ptr,
    input                       rn_cp_iu6_t1_i0_match,
-                               
+
    input                       rn_cp_iu6_t1_i0_type_fp,
    input                       rn_cp_iu6_t1_i0_type_ap,
    input                       rn_cp_iu6_t1_i0_type_spv,
    input                       rn_cp_iu6_t1_i0_type_st,
    input                       rn_cp_iu6_t1_i0_async_block,
    input                       rn_cp_iu6_t1_i0_np1_flush,
-                               
+
    input                       rn_cp_iu6_t1_i0_t1_v,
    input [0:2]                 rn_cp_iu6_t1_i0_t1_t,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t1_i0_t1_p,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t1_i0_t1_a,
-                               
+
    input                       rn_cp_iu6_t1_i0_t2_v,
    input [0:2]                 rn_cp_iu6_t1_i0_t2_t,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t1_i0_t2_p,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t1_i0_t2_a,
-                               
+
    input                       rn_cp_iu6_t1_i0_t3_v,
    input [0:2]                 rn_cp_iu6_t1_i0_t3_t,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t1_i0_t3_p,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t1_i0_t3_a,
-                               
+
    input                       rn_cp_iu6_t1_i0_btb_entry,
    input [0:1]                 rn_cp_iu6_t1_i0_btb_hist,
    input                       rn_cp_iu6_t1_i0_bta_val,
-                               
+
+   // Instruction 1 Issue
    input                       rn_cp_iu6_t1_i1_vld,
    input [1:`ITAG_SIZE_ENC-1]  rn_cp_iu6_t1_i1_itag,
    input [0:2]                 rn_cp_iu6_t1_i1_ucode,
@@ -205,12 +215,12 @@ module iuq_cpl_top(
    input                       rn_cp_iu6_t1_i1_rte_fx1,
    input                       rn_cp_iu6_t1_i1_rte_axu0,
    input                       rn_cp_iu6_t1_i1_rte_axu1,
-                               
+
    input [62-`EFF_IFAR_WIDTH:61] rn_cp_iu6_t1_i1_ifar,
    input [62-`EFF_IFAR_WIDTH:61] rn_cp_iu6_t1_i1_bta,
    input                       rn_cp_iu6_t1_i1_isram,
    input [0:31]                rn_cp_iu6_t1_i1_instr,
-                               
+
    input                       rn_cp_iu6_t1_i1_valop,
    input [0:2]                 rn_cp_iu6_t1_i1_error,
    input                       rn_cp_iu6_t1_i1_br_pred,
@@ -221,37 +231,39 @@ module iuq_cpl_top(
    input [0:9]                 rn_cp_iu6_t1_i1_gshare,
    input [0:2]                 rn_cp_iu6_t1_i1_ls_ptr,
    input                       rn_cp_iu6_t1_i1_match,
-                               
+
    input                       rn_cp_iu6_t1_i1_type_fp,
    input                       rn_cp_iu6_t1_i1_type_ap,
    input                       rn_cp_iu6_t1_i1_type_spv,
    input                       rn_cp_iu6_t1_i1_type_st,
    input                       rn_cp_iu6_t1_i1_async_block,
    input                       rn_cp_iu6_t1_i1_np1_flush,
-                               
+
    input                       rn_cp_iu6_t1_i1_t1_v,
    input [0:2]                 rn_cp_iu6_t1_i1_t1_t,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t1_i1_t1_p,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t1_i1_t1_a,
-                               
+
    input                       rn_cp_iu6_t1_i1_t2_v,
    input [0:2]                 rn_cp_iu6_t1_i1_t2_t,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t1_i1_t2_p,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t1_i1_t2_a,
-                               
+
    input                       rn_cp_iu6_t1_i1_t3_v,
    input [0:2]                 rn_cp_iu6_t1_i1_t3_t,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t1_i1_t3_p,
    input [0:`GPR_POOL_ENC-1]   rn_cp_iu6_t1_i1_t3_a,
-                               
+
    input                       rn_cp_iu6_t1_i1_btb_entry,
    input [0:1]                 rn_cp_iu6_t1_i1_btb_hist,
    input                       rn_cp_iu6_t1_i1_bta_val,
  `endif
-      
+
+   // completion empty
    output [0:`THREADS-1]       cp_rn_empty,
    output [0:`THREADS-1]       cp_async_block,
-                               
+
+   // Instruction 0 Complete
    output                      cp_rn_t0_i0_v,
    output                      cp_rn_t0_i0_axu_exception_val,
    output [0:3]                cp_rn_t0_i0_axu_exception,
@@ -259,17 +271,18 @@ module iuq_cpl_top(
    output [0:2]                cp_rn_t0_i0_t1_t,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i0_t1_p,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i0_t1_a,
-                               
+
    output                      cp_rn_t0_i0_t2_v,
    output [0:2]                cp_rn_t0_i0_t2_t,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i0_t2_p,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i0_t2_a,
-                               
+
    output                      cp_rn_t0_i0_t3_v,
    output [0:2]                cp_rn_t0_i0_t3_t,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i0_t3_p,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i0_t3_a,
-                               
+
+   // Instruction 1 Complete
    output                      cp_rn_t0_i1_v,
    output                      cp_rn_t0_i1_axu_exception_val,
    output [0:3]                cp_rn_t0_i1_axu_exception,
@@ -277,18 +290,19 @@ module iuq_cpl_top(
    output [0:2]                cp_rn_t0_i1_t1_t,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i1_t1_p,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i1_t1_a,
-                               
+
    output                      cp_rn_t0_i1_t2_v,
    output [0:2]                cp_rn_t0_i1_t2_t,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i1_t2_p,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i1_t2_a,
-                               
+
    output                      cp_rn_t0_i1_t3_v,
    output [0:2]                cp_rn_t0_i1_t3_t,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i1_t3_p,
-   output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i1_t3_a,  
+   output [0:`GPR_POOL_ENC-1]  cp_rn_t0_i1_t3_a,
 
-`ifndef THREADS1  
+`ifndef THREADS1
+   // Instruction 0 Complete
    output                      cp_rn_t1_i0_v,
    output                      cp_rn_t1_i0_axu_exception_val,
    output [0:3]                cp_rn_t1_i0_axu_exception,
@@ -296,17 +310,18 @@ module iuq_cpl_top(
    output [0:2]                cp_rn_t1_i0_t1_t,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i0_t1_p,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i0_t1_a,
-                               
+
    output                      cp_rn_t1_i0_t2_v,
    output [0:2]                cp_rn_t1_i0_t2_t,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i0_t2_p,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i0_t2_a,
-                               
+
    output                      cp_rn_t1_i0_t3_v,
    output [0:2]                cp_rn_t1_i0_t3_t,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i0_t3_p,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i0_t3_a,
-                               
+
+   // Instruction 1 Complete
    output                      cp_rn_t1_i1_v,
    output                      cp_rn_t1_i1_axu_exception_val,
    output [0:3]                cp_rn_t1_i1_axu_exception,
@@ -314,18 +329,19 @@ module iuq_cpl_top(
    output [0:2]                cp_rn_t1_i1_t1_t,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i1_t1_p,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i1_t1_a,
-                               
+
    output                      cp_rn_t1_i1_t2_v,
    output [0:2]                cp_rn_t1_i1_t2_t,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i1_t2_p,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i1_t2_a,
-                               
+
    output                      cp_rn_t1_i1_t3_v,
    output [0:2]                cp_rn_t1_i1_t3_t,
    output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i1_t3_p,
-   output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i1_t3_a,  
+   output [0:`GPR_POOL_ENC-1]  cp_rn_t1_i1_t3_a,
 `endif
-      
+
+   // Branch Prediction Complete
    output                      cp_bp_t0_val,
    output [62-`EFF_IFAR_WIDTH:61] cp_bp_t0_ifar,
    output [0:1]                cp_bp_t0_bh0_hist,
@@ -346,7 +362,8 @@ module iuq_cpl_top(
    output                      cp_bp_t0_btb_entry,
    output [0:1]                cp_bp_t0_btb_hist,
 
-`ifndef THREADS1  
+`ifndef THREADS1
+   // Branch Prediction Complete
    output                      cp_bp_t1_val,
    output [62-`EFF_IFAR_WIDTH:61] cp_bp_t1_ifar,
    output [0:1]                cp_bp_t1_bh0_hist,
@@ -368,8 +385,10 @@ module iuq_cpl_top(
    output [0:1]                cp_bp_t1_btb_hist,
 `endif
 
+   // Output to dispatch to block due to ivax
    output [0:`THREADS-1]       cp_dis_ivax,
-   
+
+   // LQ Instruction Executed
    input [0:`THREADS-1]        lq0_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]  lq0_iu_itag,
    input                       lq0_iu_n_flush,
@@ -384,7 +403,7 @@ module iuq_cpl_top(
    input                       lq0_iu_flush2ucode_type,
    input [0:`THREADS-1]        lq0_iu_recirc_val,
    input [0:`THREADS-1]        lq0_iu_dear_val,
-   
+
    input [0:`THREADS-1]        lq1_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]  lq1_iu_itag,
    input                       lq1_iu_n_flush,
@@ -394,25 +413,27 @@ module iuq_cpl_top(
    input                       lq1_iu_dacr_type,
    input [0:3]                 lq1_iu_dacrw,
    input [0:3]                 lq1_iu_perf_events,
-   
+
    output [0:`THREADS-1]       iu_lq_i0_completed,
    output [0:`THREADS-1]       iu_lq_i1_completed,
    output [0:`ITAG_SIZE_ENC-1] iu_lq_t0_i0_completed_itag,
    output [0:`ITAG_SIZE_ENC-1] iu_lq_t0_i1_completed_itag,
-`ifndef THREADS1  
+`ifndef THREADS1
    output [0:`ITAG_SIZE_ENC-1] iu_lq_t1_i0_completed_itag,
    output [0:`ITAG_SIZE_ENC-1] iu_lq_t1_i1_completed_itag,
-`endif        
+`endif
 
    output [0:`THREADS-1]       iu_lq_recirc_val,
-   
+
+   // BR Instruction Executed
    input [0:`THREADS-1]        br_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]  br_iu_itag,
    input [0:`THREADS-1]        br_iu_redirect,
    input [62-`EFF_IFAR_ARCH:61] br_iu_bta,
    input                       br_iu_taken,
    input [0:3]                 br_iu_perf_events,
-   
+
+   // XU0 Instruction Executed
    input [0:`THREADS-1]        xu_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]  xu_iu_itag,
    input                       xu_iu_n_flush,
@@ -423,10 +444,12 @@ module iuq_cpl_top(
    input [0:`THREADS-1]        xu_iu_mtiar,
    input [62-`EFF_IFAR_ARCH:61] xu_iu_bta,
    input [0:3]                 xu_iu_perf_events,
-   
+
+   // XU0 Instruction Executed
    input [0:`THREADS-1]        xu1_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]  xu1_iu_itag,
-   
+
+   // AXU0 Instruction Executed
    input [0:`THREADS-1]        axu0_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]  axu0_iu_itag,
    input                       axu0_iu_n_flush,
@@ -437,7 +460,8 @@ module iuq_cpl_top(
    input                       axu0_iu_exception_val,
    input [0:3]                 axu0_iu_exception,
    input [0:3]                 axu0_iu_perf_events,
-   
+
+   // AXU1 Instruction Executed
    input [0:`THREADS-1]        axu1_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]  axu1_iu_itag,
    input                       axu1_iu_n_flush,
@@ -447,7 +471,8 @@ module iuq_cpl_top(
    input                       axu1_iu_exception_val,
    input [0:3]                 axu1_iu_exception,
    input [0:3]                 axu1_iu_perf_events,
-   
+
+   // Interrupts
 	input [0:`THREADS-1]        an_ac_uncond_dbg_event,
    input [0:`THREADS-1]        xu_iu_external_mchk,
    input [0:`THREADS-1]        xu_iu_ext_interrupt,
@@ -467,26 +492,28 @@ module iuq_cpl_top(
    input [0:`THREADS-1]        xu_iu_gmcdbell_interrupt,
    input [0:`THREADS-1]        xu_iu_dbsr_ide,
    input [62-`EFF_IFAR_ARCH:61] xu_iu_t0_rest_ifar,
-`ifndef THREADS1  
+`ifndef THREADS1
    input [62-`EFF_IFAR_ARCH:61] xu_iu_t1_rest_ifar,
-`endif        
+`endif
    input [0:`THREADS-1]        axu0_iu_async_fex,
-   
-   output                      cp_is_isync,		
-   output                      cp_is_csync,		
-   
+
+   // To Ierats
+   output                      cp_is_isync,		// Or together from each completion unit
+   output                      cp_is_csync,		// Or together from each completion unit
+
+   // Flushes
    output [0:`THREADS-1]       iu_flush,
    output [0:`THREADS-1]       cp_flush_into_uc,
    output [43:61]              cp_uc_t0_flush_ifar,
-`ifndef THREADS1  
+`ifndef THREADS1
    output [43:61]              cp_uc_t1_flush_ifar,
-`endif        
+`endif
    output [0:`THREADS-1]       cp_uc_np1_flush,
    output [0:`THREADS-1]       cp_flush,
    output [0:`ITAG_SIZE_ENC-1]   cp_t0_next_itag,
    output [0:`ITAG_SIZE_ENC-1]   cp_t0_flush_itag,
    output [62-`EFF_IFAR_ARCH:61] cp_t0_flush_ifar,
-`ifndef THREADS1  
+`ifndef THREADS1
    output [0:`ITAG_SIZE_ENC-1]   cp_t1_next_itag,
    output [0:`ITAG_SIZE_ENC-1]   cp_t1_flush_itag,
    output [62-`EFF_IFAR_ARCH:61] cp_t1_flush_ifar,
@@ -496,7 +523,8 @@ module iuq_cpl_top(
    output [0:`THREADS-1]       cp_iu0_flush_nonspec,
    input                       pc_iu_init_reset,
    output [0:`THREADS-1]       cp_rn_uc_credit_free,
-   
+
+   // Signals to SPR partition
    output [0:`THREADS-1]       iu_xu_rfi,
    output [0:`THREADS-1]       iu_xu_rfgi,
    output [0:`THREADS-1]       iu_xu_rfci,
@@ -580,6 +608,7 @@ module iuq_cpl_top(
    output [0:`THREADS-1]       iu_xu_quiesce,
    output [0:`THREADS-1]       iu_pc_quiesce,
 
+   // MMU Errors
    input [0:`THREADS-1]        mm_iu_ierat_rel_val,
    input [0:`THREADS-1]        mm_iu_ierat_pt_fault,
    input [0:`THREADS-1]        mm_iu_ierat_lrat_miss,
@@ -598,6 +627,7 @@ module iuq_cpl_top(
    output [0:5]                cp_mm_except_taken_t1,
 `endif
 
+   // SPRs
    input [0:`THREADS-1]        xu_iu_single_instr_mode,
    input [0:`THREADS-1]        spr_single_issue,
    input [64-`GPR_WIDTH:51]    spr_ivpr,
@@ -606,17 +636,19 @@ module iuq_cpl_top(
    input [62-`EFF_IFAR_ARCH:61] spr_iac2,
    input [62-`EFF_IFAR_ARCH:61] spr_iac3,
    input [62-`EFF_IFAR_ARCH:61] spr_iac4,
-   
+
+   // XER read bus to RF for store conditionals
    output [0:`XER_POOL_ENC-1]  iu_rf_t0_xer_p,
 `ifndef THREADS1
    output [0:`XER_POOL_ENC-1]  iu_rf_t1_xer_p,
 `endif
-   
+
+   // Signals from pervasive
    input [0:`THREADS-1]        pc_iu_ram_active,
    input [0:`THREADS-1]        pc_iu_ram_flush_thread,
    input [0:`THREADS-1]        xu_iu_msrovride_enab,
-   output                      iu_pc_ram_done,				
-   output                      iu_pc_ram_interrupt,		
+   output                      iu_pc_ram_done,				// Need to Or these togther to create
+   output                      iu_pc_ram_interrupt,		// Need to Or these togther to create
    output                      iu_pc_ram_unsupported,
    input [0:`THREADS-1]        pc_iu_stop,
    input [0:`THREADS-1]        pc_iu_step,
@@ -631,7 +663,7 @@ module iuq_cpl_top(
    output [0:`THREADS-1]       iu_pc_err_mchk_disabled,
    output [0:`THREADS-1]       ac_an_debug_trigger,
    output [0:`THREADS-1]       iu_xu_stop,
-   
+
    input                            pc_iu_trace_bus_enable,
    input [0:10]                     pc_iu_debug_mux_ctrls,
    input  [0:31]                    debug_bus_in,
@@ -639,10 +671,11 @@ module iuq_cpl_top(
    input  [0:3]                     coretrace_ctrls_in,
    output [0:3]                     coretrace_ctrls_out,
 
-   
+
+   // Power
    inout                       vdd,
-   inout                       gnd);   
-   
+   inout                       gnd);
+
    wire [0:`THREADS-1]          cp_is_isync_int;
    wire [0:`THREADS-1]          cp_is_csync_int;
    wire [0:`THREADS-1]          iu_pc_ram_done_int;
@@ -668,8 +701,7 @@ module iuq_cpl_top(
    wire [0:31]                     unit_dbg_data14;
    wire [0:31]                     unit_dbg_data15;
 
-
-
+   // for now assigning the debug to 0
    assign unit_dbg_data0  = 32'h00000000;
    assign unit_dbg_data1  = 32'h00000000;
    assign unit_dbg_data2  = 32'h00000000;
@@ -688,7 +720,7 @@ module iuq_cpl_top(
    assign unit_dbg_data15 = 32'h00000000;
 
 
-   
+
    assign cp_is_isync = |cp_is_isync_int;
    assign cp_is_csync = |cp_is_csync_int;
    assign iu_pc_ram_done = |iu_pc_ram_done_int;
@@ -700,7 +732,7 @@ module iuq_cpl_top(
  `ifndef THREADS1
    assign iu_pc_stop_dbg_event = {(iu_pc_stop_dbg_event_int[0][0] | iu_pc_stop_dbg_event_int[1][1]), (iu_pc_stop_dbg_event_int[0][1] | iu_pc_stop_dbg_event_int[1][0])};
  `endif
-   
+
 	iuq_cpl iuq_cpl0(
       .vdd(vdd),
       .gnd(gnd),
@@ -1041,7 +1073,7 @@ module iuq_cpl_top(
       .mm_iu_tlb_par_err(mm_iu_tlb_par_err[0]),
       .mm_iu_lru_par_err(mm_iu_lru_par_err[0]),
       .mm_iu_tlb_miss(mm_iu_tlb_miss[0]),
-      .mm_iu_reload_hit(mm_iu_reload_hit[0]),      
+      .mm_iu_reload_hit(mm_iu_reload_hit[0]),
       .mm_iu_ierat_mmucr1(mm_iu_ierat_mmucr1[3:4]),
       .ic_cp_nonspec_hit(ic_cp_nonspec_hit[0]),
       .cp_mm_except_taken(cp_mm_except_taken_t0),
@@ -1482,7 +1514,5 @@ iuq_dbg iuq_cpl_dbg(
       .coretrace_ctrls_out(coretrace_ctrls_out)
 );
 
-   
-endmodule         
 
-                       
+endmodule

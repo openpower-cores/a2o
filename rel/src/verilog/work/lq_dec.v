@@ -9,6 +9,8 @@
 
 `timescale 1 ns / 1 ns
 
+//  Description:  LQ SFX Decode
+//*****************************************************************************
 
 `include "tri_a2o.vh"
 
@@ -188,9 +190,24 @@ module lq_dec(
    dcc_dec_ex5_wren
 );
 
-                                                            
+//-------------------------------------------------------------------
+// Generics
+//-------------------------------------------------------------------
+//parameter                                               EXPAND_TYPE = 2;
+//parameter                                               `GPR_WIDTH_ENC = 6;
+//parameter                                               `XER_POOL_ENC = 4;
+//parameter                                               `CR_POOL_ENC = 5;
+//parameter                                               `GPR_POOL_ENC = 6;
+//parameter                                               `AXU_SPARE_ENC = 3;
+//parameter                                               `CL_SIZE = 6;
+//parameter                                               `REAL_IFAR_WIDTH = 42;
+//parameter                                               `UCODE_ENTRIES_ENC = 3;
+//parameter                                               `THREADS = 2;
+//parameter                                               `THREADS_POOL_ENC = 1;
+//parameter                                               `ITAG_SIZE_ENC = 7;
 
-                       
+
+
 inout                                                       vdd;
 
 
@@ -199,7 +216,7 @@ inout                                                       gnd;
 (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)
 
 input [0:`NCLK_WIDTH-1]                                     nclk;
-                                                            
+
 input                                                       d_mode_dc;
 input                                                       delay_lclkr_dc;
 input                                                       mpw1_dc_b;
@@ -238,9 +255,9 @@ input [0:`GPR_POOL_ENC-1]                                   rv_lq_ex0_t1_p;
 input [0:`GPR_POOL_ENC-1]                                   rv_lq_ex0_t3_p;
 input                                                       rv_lq_ex0_s1_v;
 input                                                       rv_lq_ex0_s2_v;
-                                                            
+
 input                                                       dcc_dec_hold_all;
-                                                            
+
 input                                                       xu_lq_hold_req;
 input                                                       mm_lq_hold_req;
 input                                                       mm_lq_hold_done;
@@ -249,10 +266,10 @@ output [0:`THREADS-1]                                       lq_rv_itag0_vld;
 output [0:`ITAG_SIZE_ENC-1]                                 lq_rv_itag0;
 output                                                      lq_rv_itag0_abort;
 output                                                      lq_rv_hold_all;
-                                                            
+
 output                                                      lq_rv_gpr_ex6_we;
 output                                                      lq_xu_gpr_ex5_we;
-                                                            
+
 output                                                      lq_xu_ex5_act;
 output                                                      dec_byp_ex1_s1_vld;
 output                                                      dec_byp_ex1_s2_vld;
@@ -271,7 +288,7 @@ input [64-(2**`GPR_WIDTH_ENC):63-`CL_SIZE]                  pf_dec_req_addr;
 input [0:`THREADS-1]                                        pf_dec_req_thrd;
 input                                                       pf_dec_req_val;
 output                                                      dec_pf_ack;
-                                                            
+
 input                                                       lsq_ctl_sync_in_stq;
 
 input                                                       lsq_ctl_stq_release_itag_vld;
@@ -283,11 +300,11 @@ input [64-`REAL_IFAR_WIDTH:63-`CL_SIZE]                     lsq_ctl_rv1_back_inv
 
 input                                                       dcc_dec_arr_rd_rv1_val;
 input [0:5]                                                 dcc_dec_arr_rd_congr_cl;
-input                                                       dir_dec_rel3_dir_wr_val;     
-input [64-(`DC_SIZE-3):63-`CL_SIZE]                         dir_dec_rel3_dir_wr_addr;   
+input                                                       dir_dec_rel3_dir_wr_val;     // Reload Directory Write Stage is valid
+input [64-(`DC_SIZE-3):63-`CL_SIZE]                         dir_dec_rel3_dir_wr_addr;   // Reload Directory Write Address
 input                                                       dcc_dec_stq3_mftgpr_val;
 input                                                       dcc_dec_stq5_mftgpr_val;
-                                                            
+
 input                                                       derat_rv1_snoop_val;
 input [0:51]                                                derat_dec_rv1_snoop_addr;
 input                                                       derat_dec_hole_all;
@@ -389,11 +406,15 @@ output                                                      dec_dcc_ex5_axu_abor
 output                                                      ctl_lsq_ex_pipe_full;
 
 input                                                       dcc_dec_ex5_wren;
+//@@  Signal Declarations
 wire [1:79]                                                 TBL_LD_ST_DEC_PT;
 wire [1:50]                                                 TBL_VAL_STG_GATE_PT;
 wire                                                        tiup;
 wire                                                        tidn;
 parameter                                                   AXU_TARGET_ENC = `GPR_POOL_ENC + `THREADS_POOL_ENC + `AXU_SPARE_ENC;
+//-------------------------------------------------------------------
+// Immediate Logic
+//-------------------------------------------------------------------
 wire                                                        ex1_zero_imm;
 wire                                                        ex1_use_imm;
 wire                                                        ex1_imm_size;
@@ -403,6 +424,9 @@ wire [0:63]                                                 ex1_64b_imm;
 wire [0:63]                                                 ex1_imm_sign_ext;
 wire                                                        ex1_pfetch_rel_collision;
 wire                                                        ex1_use_pfetch;
+//-------------------------------------------------------------------
+// Instruction Decode
+//-------------------------------------------------------------------
 wire                                                        ex1_opcode_is_62;
 wire                                                        ex1_opcode_is_58;
 wire                                                        ex1_opcode_is_31;
@@ -601,6 +625,9 @@ wire                                                        lq_rel_itag0_val;
 wire                                                        lq_rel_itag0_abort;
 wire [0:`ITAG_SIZE_ENC-1]                                   lq_rel_itag0_itag;
 wire [0:`THREADS-1]                                         lq_rel_itag0_tid;
+//-------------------------------------------------------------------
+// Latches
+//-------------------------------------------------------------------
 wire                                                        ex0_vld_q;
 wire                                                        ex0_vld_d;
 wire                                                        ex1_vld_q;
@@ -788,6 +815,9 @@ wire                                                        ex1_stg_flush;
 wire                                                        ex2_stg_flush;
 wire                                                        ex3_stg_flush;
 wire                                                        ex4_stg_flush;
+//-------------------------------------------------------------------
+// Scan Chain
+//-------------------------------------------------------------------
 parameter                                                   spr_msr_gs_offset = 0;
 parameter                                                   spr_msr_pr_offset = spr_msr_gs_offset + `THREADS;
 parameter                                                   spr_msr_ucle_offset = spr_msr_pr_offset + `THREADS;
@@ -882,12 +912,11 @@ wire [0:scan_right-1]                                       siv;
 wire [0:scan_right-1]                                       sov;
 
 
-(* analysis_not_referenced="true" *) 
+(* analysis_not_referenced="true" *)
 wire                                                        unused;
 
-
-assign tiup = 1'b1; 
-assign tidn = 1'b0; 
+assign tiup = 1'b1;
+assign tidn = 1'b0;
 
 assign spr_msr_gs_d     = xu_lq_spr_msr_gs;
 assign spr_msr_gs       = |(spr_msr_gs_q & ex1_tid_q);
@@ -903,6 +932,7 @@ assign spr_ccr2_en_icswx_d = xu_lq_spr_ccr2_en_icswx;
 assign stq6_mftgpr_val_d = dcc_dec_stq5_mftgpr_val;
 assign stq7_mftgpr_val_d = stq6_mftgpr_val_q;
 
+// Added logic for Erat invalidates
 assign xu_lq_hold_req_d       = xu_lq_hold_req;
 assign mm_hold_req_d          = mm_lq_hold_req | (mm_hold_req_q & (~(mm_hold_done_q)));
 assign mm_hold_done_d         = mm_lq_hold_done;
@@ -923,6 +953,9 @@ assign ex0_selimm_addr_val    = ex0_back_inv_q | ex0_arr_rd_val_q | ex0_derat_sn
 assign ex1_selimm_addr_val_d  = ex0_selimm_addr_val;
 assign ex1_selimm_addr_d[64-`REAL_IFAR_WIDTH:63-`CL_SIZE] = ex0_back_inv_q ? ex0_back_inv_addr_q : ex0_non_back_inv_addr[64-`REAL_IFAR_WIDTH:63-`CL_SIZE];
 assign ex1_selimm_addr_d[0:64-`REAL_IFAR_WIDTH-1]         = ex0_non_back_inv_addr[0:64-`REAL_IFAR_WIDTH-1];
+//----------------------------------------------------------------------------------------------------------------------------------------
+// CP Flush of the Pipeline
+//----------------------------------------------------------------------------------------------------------------------------------------
 assign iu_lq_cp_flush_d = iu_lq_cp_flush;
 assign rv1_stg_flush    = |(rv_lq_vld & iu_lq_cp_flush_q);
 assign ex0_stg_flush    = |(ex0_tid_q & iu_lq_cp_flush_q);
@@ -930,6 +963,9 @@ assign ex1_stg_flush    = |(ex1_tid_q & iu_lq_cp_flush_q);
 assign ex2_stg_flush    = |(ex2_tid_q & iu_lq_cp_flush_q) | byp_dec_ex2_req_aborted;
 assign ex3_stg_flush    = |(ex3_tid_q & iu_lq_cp_flush_q);
 assign ex4_stg_flush    = |(ex4_tid_q & iu_lq_cp_flush_q);
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Valid/ACT Pipeline
+//----------------------------------------------------------------------------------------------------------------------------------------
 assign rv1_vld                  = |(rv_lq_vld);
 assign ex0_vld_d                = rv1_vld   & ~rv1_stg_flush;
 assign ex1_vld_d                = ex0_vld_q & ~ex0_stg_flush;
@@ -939,6 +975,7 @@ assign ex4_vld_d                = ex3_vld_q & ~ex3_stg_flush;
 assign ex5_vld_d                = ex4_vld_q & ~ex4_stg_flush;
 assign ctl_lsq_ex_pipe_full     = ex0_vld_q & ex1_vld_q & ex2_vld_q & ex3_vld_q & ex4_vld_q;
 
+// Execution Pipe ACT Generation
 assign ex0_stg_act_d       = rv1_vld;
 assign ex1_stg_act_d       = ex0_stg_act_q;
 assign ex2_stg_act_d       = ex1_stg_act_q | ex1_use_pfetch;
@@ -954,10 +991,18 @@ assign dec_byp_ex5_stg_act = ex5_stg_act;
 assign dec_byp_ex6_stg_act = ex6_stg_act_q;
 assign dec_byp_ex7_stg_act = ex7_stg_act_q;
 
+// Execution Pipe and LSQ Pipe ACT Generation
 assign ex0_stq2_stg_act = ex0_stg_act_q | stq2_release_vld_q;
 assign ex1_stq3_stg_act = ex1_stg_act_q | stq3_release_vld_q | ex1_use_pfetch;
+//----------------------------------------------------------------------------------------------------------------------------------------
+// uCode Pipeline
+//----------------------------------------------------------------------------------------------------------------------------------------
 assign ex1_ucode_d = rv_lq_ex0_ucode;
 assign ex1_ucode_cnt_d = rv_lq_ex0_ucode_cnt;
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Target we/wa controls
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Target 1 write enable pipe
 assign ex1_t1_we_d = rv_lq_ex0_t1_v & ex1_vld_d;
 assign ex2_t1_we_d = ex1_t1_we_q & ex2_vld_d & (au_lq_ex1_ldst_update | (~(ex1_load_instr | ex1_dcm_instr | ex1_is_ditc)));
 assign ex3_t1_we_d = ex2_t1_we_q & ex3_vld_d;
@@ -966,6 +1011,7 @@ assign ex5_t1_we_d = ex4_t1_we_q & ex5_vld_d;
 assign ex5_t1_we   = ((ex5_t1_we_q | dcc_dec_ex5_wren) & ex5_vld_q) | stq7_mftgpr_val_q;
 assign ex6_t1_we_d = ex5_t1_we;
 
+// Target 1 controls
 generate
    if (`THREADS_POOL_ENC == 0) begin : tid1
       assign ex1_t1_wa   = ex1_t1_wa_q;
@@ -974,13 +1020,13 @@ generate
 endgenerate
 
 generate
-   if (`THREADS_POOL_ENC > 0) begin : tidMulti 
+   if (`THREADS_POOL_ENC > 0) begin : tidMulti
       reg [0:`THREADS_POOL_ENC]     ex1_enc_tid;
       always @(*) begin: tidEnc
          reg [0:`THREADS_POOL_ENC-1]            encEx1;
-         
+
          (* analysis_not_referenced="true" *)
-         
+
          reg [0:31]                             tid;
          encEx1                                           = {`THREADS_POOL_ENC{1'b0}};
          ex1_enc_tid[`THREADS_POOL_ENC:`THREADS_POOL_ENC] = 1'b0;
@@ -990,7 +1036,7 @@ generate
          ex1_enc_tid[0:`THREADS_POOL_ENC - 1] <= encEx1;
       end
       assign ex1_t1_wa = {ex1_t1_wa_q, ex1_enc_tid[0:`THREADS_POOL_ENC - 1]};
-      assign unused = ex1_enc_tid[`THREADS_POOL_ENC:`THREADS_POOL_ENC] | |ex1_num_bytes_plus3[6:7] | |au_lq_ex1_ldst_dimm | 
+      assign unused = ex1_enc_tid[`THREADS_POOL_ENC:`THREADS_POOL_ENC] | |ex1_num_bytes_plus3[6:7] | |au_lq_ex1_ldst_dimm |
                       byp_dec_ex1_s1_abort | byp_dec_ex1_s2_abort;
    end
 endgenerate
@@ -999,6 +1045,10 @@ assign lq_xu_ex5_act    = lq_xu_ex5_act_q;
 assign lq_xu_gpr_ex5_we = ex5_t1_we;
 assign lq_rv_gpr_ex6_we = ex6_t1_we_q;
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Dependent op release
+//----------------------------------------------------------------------------------------------------------------------------------------
+// LSQ Release ITAG Staging
 assign stq1_release_vld   = lsq_ctl_stq_release_itag_vld;
 assign stq2_release_vld_d = stq1_release_vld;
 assign stq3_release_vld_d = stq2_release_vld_q;
@@ -1007,13 +1057,19 @@ assign stq5_release_vld_d = stq4_release_vld_q;
 assign stq6_release_vld_d = stq5_release_vld_q;
 assign stq7_release_vld_d = stq6_release_vld_q;
 
+// Mux in between LSQ Complete and EX0 Instruction,
+// There shouldnt be an instruction in EX0 since HOLD_REQ
+// was requested by LSQ
 assign stq2_release_itag_d = lsq_ctl_stq_release_itag;
 assign stq2_release_tid_d  = lsq_ctl_stq_release_tid;
 assign ex0_iss_stq2_itag   = (rv_lq_ex0_itag & {`ITAG_SIZE_ENC{~stq2_release_vld_q}}) | (stq2_release_itag_q & {`ITAG_SIZE_ENC{stq2_release_vld_q}});
 assign ex0_iss_stq2_tid    = (ex0_tid_q      &       {`THREADS{~stq2_release_vld_q}}) | (stq2_release_tid_q  &       {`THREADS{stq2_release_vld_q}});
 
+// Intructions are in correct pipeline stage to allow dependent op release, and they have not been released yet
+// adding ex2_needs_release to handle the case where an ABORT was reported instead of instruction in EX1_STQ3
 assign ex1_stq3_sched_release  = ex1_needs_release | stq3_needs_release_q | ex1_stq3_needs_release;
 
+// Pipeline to keep track of instructions that have not been released yet
 assign ex0_cpNext_instr       = ex0_is_ldawx | ex0_is_larx | ex0_is_stcx | ex0_is_icswxdot | au_lq_ex0_mftgpr;
 assign ex0_needs_release_d    = rv1_vld & ~rv1_stg_flush;
 assign ex0_release_vld        = ex0_needs_release_q & ~(ex0_stg_flush | ex0_cpNext_instr);
@@ -1029,22 +1085,33 @@ assign stq3_release_attmp_d   = stq2_release_vld_q & ~ex1_stq3_sched_release;
 assign stq3_needs_release_d   = stq2_needs_release;
 assign ex1_stq3_needs_release = (stq3_release_attmp_q | ex1_needs_release | ex1_release_attmp) & ex2_needs_release;
 
+// Use prioritized schedule to determine which stage to release itag/vld out of (Will be latched)
 assign release_itag_d     = (ex0_iss_stq2_itag & {`ITAG_SIZE_ENC{~ex1_stq3_sched_release}}) | (ex1_itag_q & {`ITAG_SIZE_ENC{ex1_stq3_sched_release}});
 assign release_itag_vld_d = ((ex0_release_vld | stq2_release_vld_q) & (~ex1_stq3_sched_release)) | ex1_stq3_sched_release;
 assign release_tid_d      = (ex0_iss_stq2_tid  & {`THREADS{~ex1_stq3_sched_release}}) | (ex1_tid_q & {`THREADS{ex1_stq3_sched_release}});
 
+// Abort Pipeline Request that updates a physical speculatively,
+// Needs to have a separate ex2_stg_flush to remove the ex2_req_abort from the flush gen
+// LARX is removed from the equation because it doesnt release
+// a dependent instruction speculativevly
 assign ex2_physical_upd_d     = (ex1_load_instr & ~ex1_resv_instr) | (au_lq_ex1_mffgpr & ~au_lq_ex1_movedp) | ex1_st_w_update;
 assign ex2_req_abort_rpt      = byp_dec_ex2_req_aborted & ex2_vld_q & ex2_physical_upd_q;
 assign ex3_req_abort_rpt_d    = ex2_req_abort_rpt   & ~(|(ex2_tid_q & iu_lq_cp_flush_q));
 assign ex4_req_abort_rpt_d    = ex3_req_abort_rpt_q & ~ex3_stg_flush;
 assign ex5_req_abort_rpt_d    = ex4_req_abort_rpt_q & ~ex4_stg_flush;
 
+// Abort AXU Pipeline Request that updates an AXU physical speculatively,
+// Needs to have a separate ex2_stg_flush to remove the ex2_req_abort from the flush gen
+// Dont want to set if the instruction is a preIssue of an AXU instruction
 assign ex2_axu_physical_upd_d = ((au_lq_ex1_ldst_v & ex1_load_instr) | (au_lq_ex1_mffgpr & ~au_lq_ex1_movedp)) & ~ex1_ucode_q[1];
 assign ex2_axu_abort_rpt      = ex2_vld_q & ex2_axu_physical_upd_q;
 assign ex3_axu_abort_rpt_d    = ex2_axu_abort_rpt   & ~(|(ex2_tid_q & iu_lq_cp_flush_q));
 assign ex4_axu_abort_rpt_d    = ex3_axu_abort_rpt_q & ~ex3_stg_flush;
 assign ex5_axu_abort_rpt_d    = ex4_axu_abort_rpt_q & ~ex4_stg_flush;
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// RV Completion
+//----------------------------------------------------------------------------------------------------------------------------------------
 assign ex2_abort_sel_val  = byp_dec_ex2_req_aborted & ex2_vld_q & ~ex2_needs_release_q;
 assign lq_rel_itag0_val   = release_itag_vld_q |  ex2_abort_sel_val;
 assign lq_rel_itag0_itag  = (release_itag_q & {`ITAG_SIZE_ENC{~ex2_abort_sel_val}}) | (ex2_itag_q & {`ITAG_SIZE_ENC{ex2_abort_sel_val}});
@@ -1054,50 +1121,79 @@ assign lq_rv_itag0_vld    = lq_rel_itag0_tid & {`THREADS{lq_rel_itag0_val}};
 assign lq_rv_itag0        = lq_rel_itag0_itag;
 assign lq_rv_itag0_abort  = lq_rel_itag0_abort;
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// IU Completion
+//----------------------------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------------------
+// GPR Source 0
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Regular XU ops
 assign ex1_gpr0_zero_reg_op = (~ex1_s1_vld_q);
 
+// AXU and Not Indexed Op
 assign ex1_gpr0_zero_axu_op = au_lq_ex1_ldst_v & (~(ex1_s1_vld_q | au_lq_ex1_mftgpr | au_lq_ex1_mffgpr));
 
+// Other ops that need this zeroed
 assign ex1_gpr0_zero_other  = ex1_is_msgsnd;
 assign ex1_gpr0_zero        = ex1_gpr0_zero_reg_op | ex1_gpr0_zero_axu_op | ex1_gpr0_zero_other | ex1_selimm_addr_val_q | ex1_use_pfetch;
 assign dec_byp_ex1_rs1_zero = ex1_gpr0_zero;
 
-assign ex1_use_imm = ex1_is_lbz      | ex1_is_ld   | ex1_is_lha  | ex1_is_lhz  | ex1_is_lwa   | ex1_is_lwz  | 
-                     ex1_is_lhzu     | ex1_is_lhau | ex1_is_lwzu | ex1_is_lbzu | ex1_is_lmw   | 
-                     ex1_is_stb      | ex1_is_std  | ex1_is_sth  | ex1_is_stw  | ex1_is_stbu  | ex1_is_sthu | 
-                     ex1_is_stwu     | ex1_is_stdu | ex1_is_stmw | ex1_is_ldu  | ex1_is_stswi | ex1_is_lswi | 
-                     ex1_mtspr_trace | 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Immediate Logic
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Determine what ops use immediate:
+// Branches, Arith/Logical/Other Immediate forms, Loads/Stores, SPR Instructions
+assign ex1_use_imm = ex1_is_lbz      | ex1_is_ld   | ex1_is_lha  | ex1_is_lhz  | ex1_is_lwa   | ex1_is_lwz  |
+                     ex1_is_lhzu     | ex1_is_lhau | ex1_is_lwzu | ex1_is_lbzu | ex1_is_lmw   |
+                     ex1_is_stb      | ex1_is_std  | ex1_is_sth  | ex1_is_stw  | ex1_is_stbu  | ex1_is_sthu |
+                     ex1_is_stwu     | ex1_is_stdu | ex1_is_stmw | ex1_is_ldu  | ex1_is_stswi | ex1_is_lswi |
+                     ex1_mtspr_trace |
                      (au_lq_ex1_ldst_v & (~(au_lq_ex1_ldst_indexed | au_lq_ex1_mftgpr | au_lq_ex1_mffgpr)));
 
-assign ex1_imm_size = ex1_is_lbz  | ex1_is_lbzu | ex1_is_lhz  | ex1_is_lhzu | ex1_is_lha  | ex1_is_lhau | 
-                      ex1_is_lwz  | ex1_is_lwzu | ex1_is_lwa  | ex1_is_ld   | ex1_is_ldu  | ex1_is_lmw  | 
-                      ex1_is_stb  | ex1_is_sth  | ex1_is_stw  | ex1_is_stbu | ex1_is_sthu | ex1_is_stwu | 
-                      ex1_is_stdu | ex1_is_std  | ex1_is_stmw | 
+// Determine ops that use 15 bit immediate
+assign ex1_imm_size = ex1_is_lbz  | ex1_is_lbzu | ex1_is_lhz  | ex1_is_lhzu | ex1_is_lha  | ex1_is_lhau |
+                      ex1_is_lwz  | ex1_is_lwzu | ex1_is_lwa  | ex1_is_ld   | ex1_is_ldu  | ex1_is_lmw  |
+                      ex1_is_stb  | ex1_is_sth  | ex1_is_stw  | ex1_is_stbu | ex1_is_sthu | ex1_is_stwu |
+                      ex1_is_stdu | ex1_is_std  | ex1_is_stmw |
                       (au_lq_ex1_ldst_v & (~au_lq_ex1_ldst_indexed));
 
-assign ex1_imm_signext = ex1_is_lbz  | ex1_is_lbzu | ex1_is_lhz  | ex1_is_lhzu | ex1_is_lha  | ex1_is_lhau | 
-                         ex1_is_lwz  | ex1_is_lwzu | ex1_is_lwa  | ex1_is_ld   | ex1_is_ldu  | ex1_is_lmw  | 
-                         ex1_is_stb  | ex1_is_sth  | ex1_is_stw  | ex1_is_stbu | ex1_is_sthu | ex1_is_stwu | 
-                         ex1_is_stdu | ex1_is_std  | ex1_is_stmw | 
+// Determine ops that use sign-extended immediate
+assign ex1_imm_signext = ex1_is_lbz  | ex1_is_lbzu | ex1_is_lhz  | ex1_is_lhzu | ex1_is_lha  | ex1_is_lhau |
+                         ex1_is_lwz  | ex1_is_lwzu | ex1_is_lwa  | ex1_is_ld   | ex1_is_ldu  | ex1_is_lmw  |
+                         ex1_is_stb  | ex1_is_sth  | ex1_is_stw  | ex1_is_stbu | ex1_is_sthu | ex1_is_stwu |
+                         ex1_is_stdu | ex1_is_std  | ex1_is_stmw |
                          (au_lq_ex1_ldst_v & (~au_lq_ex1_ldst_indexed));
 
+// Immediate should be zeroed
 assign ex1_zero_imm = ex1_is_stswi | ex1_is_lswi | ex1_mtspr_trace;
 
+// Some ops need lower two bits of immediate tied down
 assign ex1_16b_imm      = ~(ex1_is_std | ex1_is_stdu | ex1_is_lwa | ex1_is_ld | ex1_is_ldu) ? ex1_instr_q[16:31] : {ex1_instr_q[16:29], {2{tidn}}};
 assign ex1_64b_imm      = ex1_selimm_addr_val_q ? {ex1_selimm_addr_q, {`CL_SIZE{1'b0}}} : {{38{1'b0}}, ex1_instr_q[6:31]};
-assign ex1_imm_sign_ext = ({(ex1_imm_size & (~ex1_selimm_addr_val_q)), ex1_imm_signext} == 2'b11) ? {{48{ex1_16b_imm[0]}}, ex1_16b_imm} : 
-                          ({(ex1_imm_size & (~ex1_selimm_addr_val_q)), ex1_imm_signext} == 2'b10) ? {{48{          1'b0}}, ex1_16b_imm} : 
+assign ex1_imm_sign_ext = ({(ex1_imm_size & (~ex1_selimm_addr_val_q)), ex1_imm_signext} == 2'b11) ? {{48{ex1_16b_imm[0]}}, ex1_16b_imm} :
+                          ({(ex1_imm_size & (~ex1_selimm_addr_val_q)), ex1_imm_signext} == 2'b10) ? {{48{          1'b0}}, ex1_16b_imm} :
                           ex1_64b_imm;
+// prefetch
+// removed mm_hold_req_q because it would lead to a deadlock
+// the pfetch will not be quiesced because we block all pfetches
+// while the mmu requests a hold, but the mmu waits for quiesce
+// before executing
 assign ex1_pfetch_rel_collision = dir_dec_rel3_dir_wr_val & (dir_dec_rel3_dir_wr_addr == pf_dec_req_addr[64-(`DC_SIZE-3):63-`CL_SIZE]);
 assign ex1_use_pfetch  = pf_dec_req_val & ~ex1_vld_q & ~ex1_selimm_addr_val_q & ~lsq_ctl_sync_in_stq & ~ex1_hold_taken_q & ~ex1_pfetch_rel_collision & ~dcc_dec_stq3_mftgpr_val;
 assign dec_pf_ack      = ex1_use_pfetch;
 
-assign dec_byp_ex1_imm     = ~ex1_use_pfetch ? (ex1_imm_sign_ext[64-(2**`GPR_WIDTH_ENC):63] & {2**`GPR_WIDTH_ENC{~ex1_zero_imm}}) : 
+assign dec_byp_ex1_imm     = ~ex1_use_pfetch ? (ex1_imm_sign_ext[64-(2**`GPR_WIDTH_ENC):63] & {2**`GPR_WIDTH_ENC{~ex1_zero_imm}}) :
                              {pf_dec_req_addr, {`CL_SIZE{1'b0}}};
 assign dec_byp_ex1_use_imm = ex1_use_imm | ex1_selimm_addr_val_q | ex1_use_pfetch;
 assign dec_byp_ex1_s1_vld  = ex1_s1_vld_q & ex1_vld_q;
 assign dec_byp_ex1_s2_vld  = ex1_s2_vld_q & ex1_vld_q;
 assign ex1_tid             = ~ex1_use_pfetch ? ex1_tid_q : pf_dec_req_thrd;
+//-------------------------------------------------------------------
+// DITC Control Logic
+//-------------------------------------------------------------------
+//-------------------------------------------------------------------
+// LSU Control Logic
+//-------------------------------------------------------------------
 assign ex1_priv_prog_excp       = ex1_instr_priv & ex1_vld_q & spr_msr_pr;
 assign ex1_hypv_prog_excp       = ex1_instr_hypv & ex1_vld_q & (spr_msr_pr | spr_msr_gs);
 assign ex1_illeg_prog_excp      = ex1_vld_q & ex1_illeg_instr;
@@ -1176,8 +1272,8 @@ assign dec_derat_ex0_is_extstore    = ex0_derat_is_extstore;
 assign ex1_th_fld_b6                = ex1_instr_q[6] & (ex1_is_dcbt | ex1_is_dcbtep | ex1_is_dcbtst | ex1_is_dcbtstep);
 assign ex1_th_fld_c                 = ~ex1_th_fld_b6 & (ex1_instr_q[7:10] == 4'b0000);
 assign ex1_th_fld_l2                = ~ex1_th_fld_b6 & (ex1_instr_q[7:10] == 4'b0010);
-assign dec_derat_ex1_is_touch       = ex1_is_dcbt | ex1_is_dcbtep | ex1_is_dcbtst | ex1_is_dcbtstep | ex1_is_icbt | 
-                                      ((ex1_is_dcbtls | ex1_is_dcbtstls | ex1_is_dcblc) & (~(ex1_th_fld_c | ex1_th_fld_l2))) | 
+assign dec_derat_ex1_is_touch       = ex1_is_dcbt | ex1_is_dcbtep | ex1_is_dcbtst | ex1_is_dcbtstep | ex1_is_icbt |
+                                      ((ex1_is_dcbtls | ex1_is_dcbtstls | ex1_is_dcblc) & (~(ex1_th_fld_c | ex1_th_fld_l2))) |
                                       ((ex1_is_icbtls | ex1_is_icblc)                   & (~(ex1_th_fld_c | ex1_th_fld_l2)));
 
 assign dec_dcc_ex1_mword_instr      = ex1_is_lmw | ex1_is_stmw;
@@ -1199,8 +1295,14 @@ assign dec_ex2_is_any_load_dac  = ex2_is_any_load_dac_q;
 assign dec_ex2_is_any_store_dac = ex2_is_any_store_dac_q;
 assign ex2_dir_rd_act_d         = ex1_dir_rd_act | ex1_use_pfetch | ex1_selimm_addr_val_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Instruction Decode
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign ex1_instr_d = ex1_vld_d ? rv_lq_ex0_instr : 32'h7C00022C;
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// AXU Load/Store Instruction Decode
+//----------------------------------------------------------------------------------------------------------------------------------------
 
 lq_axu_dec axu(
    .lq_au_ex0_instr(rv_lq_ex0_instr),
@@ -1227,8 +1329,11 @@ lq_axu_dec axu(
    .au_lq_ex1_instr_type(au_lq_ex1_instr_type)
 );
 
-assign ex1_instr_priv       = ex1_is_dcbfep | ex1_is_dcbi    | ex1_is_dcbstep | ex1_is_dcbtep | ex1_is_dcbtstep | ex1_is_dcbzep | ex1_is_dci    | ex1_is_icbiep  | 
-                              ex1_is_ici    | ex1_is_icswepx | ex1_is_lbepx   | ex1_is_ldepx  | ex1_is_lhepx    | ex1_is_lwepx  | ex1_is_mfdp   | ex1_is_mfdpx   | 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Illegal ops
+//----------------------------------------------------------------------------------------------------------------------------------------
+assign ex1_instr_priv       = ex1_is_dcbfep | ex1_is_dcbi    | ex1_is_dcbstep | ex1_is_dcbtep | ex1_is_dcbtstep | ex1_is_dcbzep | ex1_is_dci    | ex1_is_icbiep  |
+                              ex1_is_ici    | ex1_is_icswepx | ex1_is_lbepx   | ex1_is_ldepx  | ex1_is_lhepx    | ex1_is_lwepx  | ex1_is_mfdp   | ex1_is_mfdpx   |
                               ex1_is_msgsnd | ex1_is_mtdp    | ex1_is_mtdpx   | ex1_is_stbepx | ex1_is_stdepx   | ex1_is_sthepx | ex1_is_stwepx | ex1_is_tlbsync | au_lq_ex1_ldst_priv;
 assign ex1_instr_hypv       = ex1_is_msgsnd | ex1_is_tlbsync;
 assign ex1_dlk_dstor_cond0  = spr_msrp_uclep & spr_msr_gs & spr_msr_pr;
@@ -1242,12 +1347,15 @@ assign ex1_illeg_ditc       = ex1_is_ditc & (~spr_ccr2_en_ditc_q);
 assign ex1_illeg_icswx      = (ex1_is_icswx | ex1_is_icswepx) & (~spr_ccr2_en_icswx_q);
 assign ex1_illeg_instr      = ex1_illeg_msgsnd | ex1_illeg_ditc | ex1_illeg_icswx | ex1_illeg_lswi | ex1_illeg_lmw | ex1_illeg_upd_form;
 
-assign ex1_fxu_ld_update = ex1_is_lbzu | ex1_is_lbzux | ex1_is_ldu | ex1_is_ldux | ex1_is_lhau | ex1_is_lhaux | 
+// Load/Store Update Form Instruction Decode
+// Load with Update Valid
+assign ex1_fxu_ld_update = ex1_is_lbzu | ex1_is_lbzux | ex1_is_ldu | ex1_is_ldux | ex1_is_lhau | ex1_is_lhaux |
                            ex1_is_lhzu | ex1_is_lhzux | ex1_is_lwaux | ex1_is_lwzu | ex1_is_lwzux;
 assign ex1_axu_ld_update = (~au_lq_ex1_st_v) & au_lq_ex1_ldst_update;
 assign ex1_ld_w_update   = au_lq_ex1_ldst_v ? ex1_axu_ld_update : ex1_fxu_ld_update;
 
-assign ex1_fxu_st_update  = ex1_is_stbu | ex1_is_stbux | ex1_is_stdu | ex1_is_stdux | ex1_is_sthu | ex1_is_sthux | 
+// Store with Update Valid
+assign ex1_fxu_st_update  = ex1_is_stbu | ex1_is_stbux | ex1_is_stdu | ex1_is_stdux | ex1_is_sthu | ex1_is_sthux |
                             ex1_is_stwu | ex1_is_stwux;
 assign ex1_axu_st_update  = au_lq_ex1_st_v & au_lq_ex1_ldst_update;
 assign ex1_st_w_update    = au_lq_ex1_ldst_v ? ex1_axu_st_update : ex1_fxu_st_update;
@@ -1255,6 +1363,7 @@ assign ex1_ra_eq_zero     = (ex1_instr_q[11:15] == 5'b00000);
 assign ex1_ra_eq_rt       = (ex1_instr_q[11:15] == ex1_instr_q[6:10]) & (~au_lq_ex1_ldst_v);
 assign ex1_illeg_upd_form = (ex1_ld_w_update & (ex1_ra_eq_zero | ex1_ra_eq_rt)) | (ex1_st_w_update & ex1_ra_eq_zero);
 
+// Illegal forms of LSWI and LMW
 assign ex1_num_bytes        = {2'b00, (~(|ex1_instr_q[16:20])), ex1_instr_q[16:20]};
 assign ex1_num_bytes_plus3  = ex1_num_bytes + 8'b00000011;
 assign ex1_num_regs         = ex1_num_bytes_plus3[0:5];
@@ -1264,137 +1373,226 @@ assign ex1_upper_bnd_wrap   = {1'b0, ex1_upper_bnd[1:5]};
 assign ex1_range_wrap       = ex1_upper_bnd[0];
 assign ex1_ra_in_rng_lmw    = ({1'b0, ex1_instr_q[11:15]}) >= ex1_lower_bnd;
 
-assign ex1_ra_in_rng_nowrap = (({1'b0, ex1_instr_q[11:15]}) >= ex1_lower_bnd) & 
+// RA in range
+assign ex1_ra_in_rng_nowrap = (({1'b0, ex1_instr_q[11:15]}) >= ex1_lower_bnd) &
                               (({1'b0, ex1_instr_q[11:15]}) <  ex1_upper_bnd);
 assign ex1_ra_in_rng_wrap   = (({1'b0, ex1_instr_q[11:15]}) <  ex1_upper_bnd_wrap);
 assign ex1_ra_in_rng        = (ex1_ra_in_rng_nowrap) | (ex1_ra_in_rng_wrap & ex1_range_wrap);
 assign ex1_illeg_lswi       = ex1_is_lswi & ex1_ra_in_rng;
 assign ex1_illeg_lmw        = ex1_is_lmw & ex1_ra_in_rng_lmw;
 
-assign TBL_VAL_STG_GATE_PT[1]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[11], 
-                                   ex1_instr_q[12], ex1_instr_q[13], ex1_instr_q[14], ex1_instr_q[15], ex1_instr_q[16], ex1_instr_q[17], ex1_instr_q[18], 
-                                   ex1_instr_q[19], ex1_instr_q[20], ex1_instr_q[21], ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// FXU Instruction Decode
+//----------------------------------------------------------------------------------------------------------------------------------------
+//
+// Final Table Listing
+//      *INPUTS*==================================================*OUTPUTS*============================================*
+//      |                                                         |                                                    |
+//      | ex1_instr_q                                             | ex1_cache_acc                                      |
+//      | |      ex1_instr_q                                      | | ex1_is_msgsnd                                    |
+//      | |      |          ex1_instr_q                           | | | dec_dcc_ex1_mbar_instr                         |
+//      | |      |          |          ex1_instr_q                | | | | dec_dcc_ex1_sync_instr                       |
+//      | |      |          |          |  au_lq_ex1_ldst_v        | | | | | dec_dcc_ex1_makeitso_instr                 |
+//      | |      |          |          |  | au_lq_ex1_mftgpr      | | | | | | dec_dcc_ex1_tlbsync_instr                |
+//      | |      |          |          |  | | au_lq_ex1_mffgpr    | | | | | | | dec_dcc_ex1_wclr_instr                 |
+//      | |      |          |          |  | | | au_lq_ex1_movedp  | | | | | | | | dec_dcc_ex1_wchk_instr               |
+//      | |      |          |          |  | | | | ex1_vld_q       | | | | | | | | | dec_dcc_ex1_src_gpr                |
+//      | |      |          |          |  | | | | |               | | | | | | | | | | dec_dcc_ex1_src_axu              |
+//      | |      |          |          |  | | | | |               | | | | | | | | | | | dec_dcc_ex1_src_dp             |
+//      | |      |          |          |  | | | | |               | | | | | | | | | | | | dec_dcc_ex1_targ_gpr         |
+//      | |      |          |          |  | | | | |               | | | | | | | | | | | | | dec_dcc_ex1_targ_axu       |
+//      | |      |          |          |  | | | | |               | | | | | | | | | | | | | | dec_dcc_ex1_targ_dp      |
+//      | |      |          |          |  | | | | |               | | | | | | | | | | | | | | | ex1_cmd_act            |
+//      | |      |          |          |  | | | | |               | | | | | | | | | | | | | | | | ctl_dat_ex1_data_act |
+//      | |      |          |          |  | | | | |               | | | | | | | | | | | | | | | | | ex1_mtspr_trace    |
+//      | |      |          |          |  | | | | |               | | | | | | | | | | | | | | | | | | ex1_derat_act    |
+//      | |      |          |          |  | | | | |               | | | | | | | | | | | | | | | | | | | ex1_dir_rd_act |
+//      | |      |          |          |  | | | | |               | | | | | | | | | | | | | | | | | | | |              |
+//      | |      |          |          |  | | | | |               | | | | | | | | | | | | | | | | | | | |              |
+//      | 000000 1111111112 2222222223 33 | | | | |               | | | | | | | | | | | | | | | | | | | |              |
+//      | 012345 1234567890 1234567890 01 | | | | |               | | | | | | | | | | | | | | | | | | | |              |
+//      *TYPE*====================================================+====================================================+
+//      | PPPPPP PPPPPPPPPP PPPPPPPPPP PP P P P P P               | P P P P P P P P P P P P P P P P P P P              |
+//      *POLARITY*----------------------------------------------->| + + + + + + + + + + + + + + + + + + +              |
+//      *PHASE*-------------------------------------------------->| T T T T T T T T T T T T T T T T T T T              |
+//      *TERMS*===================================================+====================================================+
+//    1 | 011111 0111011111 0111010011 -- - - - - 1               | . . . . . . . . . . . . . . 1 . 1 . .              |
+//    2 | 011111 ---------- 0000-00011 -- - - - 0 1               | . . . . . . . . . . . 1 . . . . . . .              |
+//    3 | 011111 ---------- 1110000110 -- - - - - 1               | . . . . . . . 1 . . . . . . . . . . .              |
+//    4 | 011111 ---------- 0011111111 -- - - - - 1               | . . . . . . . . . . . . . . . . . . 1              |
+//    5 | 011111 ---------- 0011001110 -- - - - - 1               | . 1 . . . . . . . . . . . . 1 . . . .              |
+//    6 | 011111 ---------- 0000110010 -- - - - - 1               | . . . . 1 . . . . . . . . . 1 . . . .              |
+//    7 | 011111 ---------- 1101010110 -- - - - - 1               | . . 1 . . . . . . . . . . . 1 . . . .              |
+//    8 | 011111 ---------- 1110100110 -- - - - - 1               | 1 . . . . . 1 . . . . . . . 1 . . . .              |
+//    9 | 011111 ---------- 1000110110 -- - - - - 1               | . . . . . 1 . . . . . . . . 1 . . . .              |
+//   10 | 011111 ---------- 1001010110 -- - - - - 1               | . . . 1 . . . . . . . . . . 1 . . . .              |
+//   11 | 011111 ---------- 0001-00011 -- - - - - 1               | . . . . . . . . 1 . . . . 1 1 1 . . .              |
+//   12 | 011111 ---------- 0000-00011 -- - - - - 1               | . . . . . . . . . . 1 . . . 1 1 . . .              |
+//   13 | 011111 ---------- 10000101-0 -- - - - - 1               | . . . . . . . . . . . . . . . 1 . . 1              |
+//   14 | 011111 ---------- 0-0001-111 -- - - - - 1               | . . . . . . . . . . . . . . . 1 . . .              |
+//   15 | 011111 ---------- 000001-1-1 -- - - - - 1               | . . . . . . . . . . . . . . . 1 . . 1              |
+//   16 | 011111 ---------- 1111-11111 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   17 | 011111 ---------- 000-01-111 -- - - - - 1               | . . . . . . . . . . . . . . . 1 . . 1              |
+//   18 | 011111 ---------- 0-11100110 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   19 | 011111 ---------- 0011110110 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 1              |
+//   20 | 011111 ---------- -11-0-0110 -- - - - - 1               | . . . . . . . . . . . . . . 1 . . . .              |
+//   21 | 011111 ---------- 0-100-0110 -- - - - - 1               | 1 . . . . . . . . . . . . . . . . 1 .              |
+//   22 | 011111 ---------- 0100-11111 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 1              |
+//   23 | 011111 ---------- 0010-00110 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 1              |
+//   24 | 011111 ---------- 00-1010100 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 1 . 1 1              |
+//   25 | 011111 ---------- 01010101-1 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 1 . 1 1              |
+//   26 | 011111 ---------- 111--10110 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   27 | 011111 ---------- 000--11111 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   28 | 011111 ---------- 010001011- -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 1              |
+//   29 | 011111 ---------- 10-00101-0 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   30 | 011111 ---------- 0011-1-111 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   31 | 011111 ---------- 1-00010110 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 1 . 1 1              |
+//   32 | 011111 ---------- 1-10-10110 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   33 | 011111 ---------- 0010-101-1 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   34 | 011111 ---------- 0000-101-0 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   35 | 011111 ---------- 0-10-10111 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   36 | 011111 ---------- 000--10100 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 1 . 1 1              |
+//   37 | 011111 ---------- 00-001-1-1 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   38 | 011111 ---------- 0--001-111 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   39 | 011111 ---------- --1-010110 -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   40 | 011111 ---------- 00--01011- -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   41 | 1-1010 ---------- ---------- -0 - - - - 1               | 1 . . . . . . . . . . . . . 1 1 . 1 1              |
+//   42 | 111110 ---------- ---------- 0- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   43 | ------ ---------- ---------- -- 1 0 0 0 1               | 1 . . . . . . . . . . . . . 1 1 . 1 1              |
+//   44 | 10-0-0 ---------- ---------- -- - - - - 1               | 1 . . . . . . . . . . . . . 1 1 . 1 1              |
+//   45 | ------ ---------- ---------- -- - - 1 1 1               | . . . . . . . . . . 1 . 1 . 1 . . . .              |
+//   46 | ------ ---------- ---------- -- - 1 - 1 1               | . . . . . . . . . 1 . . . 1 1 . . . .              |
+//   47 | ------ ---------- ---------- -- - 1 - 0 1               | . . . . . . . . . 1 . 1 . . 1 . . . .              |
+//   48 | ------ ---------- ---------- -- - - 1 0 1               | . . . . . . . . 1 . . . 1 . 1 . . . .              |
+//   49 | 10-10- ---------- ---------- -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//   50 | 1001-- ---------- ---------- -- - - - - 1               | 1 . . . . . . . . . . . . . 1 . . 1 .              |
+//      *==============================================================================================================*
+//
+// Table TBL_VAL_STG_GATE Signal Assignments for Product Terms
+assign TBL_VAL_STG_GATE_PT[1]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[11],
+                                   ex1_instr_q[12], ex1_instr_q[13], ex1_instr_q[14], ex1_instr_q[15], ex1_instr_q[16], ex1_instr_q[17], ex1_instr_q[18],
+                                   ex1_instr_q[19], ex1_instr_q[20], ex1_instr_q[21], ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25],
                                    ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30], ex1_vld_q}) == 27'b011111011101111101110100111;
-assign TBL_VAL_STG_GATE_PT[2]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_VAL_STG_GATE_PT[2]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                    ex1_instr_q[30], au_lq_ex1_movedp, ex1_vld_q}) == 17'b01111100000001101;
-assign TBL_VAL_STG_GATE_PT[3]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[3]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[29], ex1_instr_q[30], ex1_vld_q}) == 17'b01111111100001101;
-assign TBL_VAL_STG_GATE_PT[4]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[4]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[29], ex1_instr_q[30], ex1_vld_q}) == 17'b01111100111111111;
-assign TBL_VAL_STG_GATE_PT[5]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[5]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[29], ex1_instr_q[30], ex1_vld_q}) == 17'b01111100110011101;
-assign TBL_VAL_STG_GATE_PT[6]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[6]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[29], ex1_instr_q[30], ex1_vld_q}) == 17'b01111100001100101;
-assign TBL_VAL_STG_GATE_PT[7]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[7]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[29], ex1_instr_q[30], ex1_vld_q}) == 17'b01111111010101101;
-assign TBL_VAL_STG_GATE_PT[8]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[8]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[29], ex1_instr_q[30], ex1_vld_q}) == 17'b01111111101001101;
-assign TBL_VAL_STG_GATE_PT[9]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[9]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[29], ex1_instr_q[30], ex1_vld_q}) == 17'b01111110001101101;
-assign TBL_VAL_STG_GATE_PT[10] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[10] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[29], ex1_instr_q[30], ex1_vld_q}) == 17'b01111110010101101;
-assign TBL_VAL_STG_GATE_PT[11] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_VAL_STG_GATE_PT[11] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                    ex1_instr_q[30], ex1_vld_q}) == 16'b0111110001000111;
-assign TBL_VAL_STG_GATE_PT[12] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_VAL_STG_GATE_PT[12] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                    ex1_instr_q[30], ex1_vld_q}) == 16'b0111110000000111;
-assign TBL_VAL_STG_GATE_PT[13] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[13] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[30], ex1_vld_q}) == 16'b0111111000010101;
-assign TBL_VAL_STG_GATE_PT[14] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[14] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111000011111;
-assign TBL_VAL_STG_GATE_PT[15] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[15] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111000001111;
-assign TBL_VAL_STG_GATE_PT[16] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_VAL_STG_GATE_PT[16] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                    ex1_instr_q[30], ex1_vld_q}) == 16'b0111111111111111;
-assign TBL_VAL_STG_GATE_PT[17] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[17] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111000011111;
-assign TBL_VAL_STG_GATE_PT[18] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_VAL_STG_GATE_PT[18] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                    ex1_instr_q[30], ex1_vld_q}) == 16'b0111110111001101;
-assign TBL_VAL_STG_GATE_PT[19] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[19] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[29], ex1_instr_q[30], ex1_vld_q}) == 17'b01111100111101101;
-assign TBL_VAL_STG_GATE_PT[20] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[22], 
-                                   ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[20] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[22],
+                                   ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30],
                                    ex1_vld_q}) == 14'b01111111001101;
-assign TBL_VAL_STG_GATE_PT[21] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[21] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111010001101;
-assign TBL_VAL_STG_GATE_PT[22] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_VAL_STG_GATE_PT[22] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                    ex1_instr_q[30], ex1_vld_q}) == 16'b0111110100111111;
-assign TBL_VAL_STG_GATE_PT[23] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_VAL_STG_GATE_PT[23] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                    ex1_instr_q[30], ex1_vld_q}) == 16'b0111110010001101;
-assign TBL_VAL_STG_GATE_PT[24] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_VAL_STG_GATE_PT[24] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                    ex1_instr_q[30], ex1_vld_q}) == 16'b0111110010101001;
-assign TBL_VAL_STG_GATE_PT[25] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[25] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[30], ex1_vld_q}) == 16'b0111110101010111;
-assign TBL_VAL_STG_GATE_PT[26] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[26] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111111101101;
-assign TBL_VAL_STG_GATE_PT[27] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[27] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111000111111;
-assign TBL_VAL_STG_GATE_PT[28] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[28] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[29], ex1_vld_q}) == 16'b0111110100010111;
-assign TBL_VAL_STG_GATE_PT[29] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[29] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111100010101;
-assign TBL_VAL_STG_GATE_PT[30] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[30] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111001111111;
-assign TBL_VAL_STG_GATE_PT[31] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_VAL_STG_GATE_PT[31] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                    ex1_instr_q[30], ex1_vld_q}) == 16'b0111111000101101;
-assign TBL_VAL_STG_GATE_PT[32] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[32] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111110101101;
-assign TBL_VAL_STG_GATE_PT[33] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[33] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111001010111;
-assign TBL_VAL_STG_GATE_PT[34] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[34] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111000010101;
-assign TBL_VAL_STG_GATE_PT[35] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[35] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111010101111;
-assign TBL_VAL_STG_GATE_PT[36] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[36] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30],
                                    ex1_vld_q}) == 15'b011111000101001;
-assign TBL_VAL_STG_GATE_PT[37] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                   ex1_instr_q[22], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[30], 
+assign TBL_VAL_STG_GATE_PT[37] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                   ex1_instr_q[22], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[30],
                                    ex1_vld_q}) == 14'b01111100001111;
-assign TBL_VAL_STG_GATE_PT[38] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], 
-                                   ex1_instr_q[21], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_VAL_STG_GATE_PT[38] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05],
+                                   ex1_instr_q[21], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],
                                    ex1_instr_q[30], ex1_vld_q}) == 14'b01111100011111;
-assign TBL_VAL_STG_GATE_PT[39] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], 
-                                   ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_VAL_STG_GATE_PT[39] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05],
+                                   ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                    ex1_instr_q[30], ex1_vld_q}) == 14'b01111110101101;
-assign TBL_VAL_STG_GATE_PT[40] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], 
-                                   ex1_instr_q[21], ex1_instr_q[22], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_VAL_STG_GATE_PT[40] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05],
+                                   ex1_instr_q[21], ex1_instr_q[22], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                    ex1_instr_q[29], ex1_vld_q}) == 14'b01111100010111;
-assign TBL_VAL_STG_GATE_PT[41] = ({ex1_instr_q[00], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[31], 
+assign TBL_VAL_STG_GATE_PT[41] = ({ex1_instr_q[00], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[31],
                                    ex1_vld_q}) == 7'b1101001;
-assign TBL_VAL_STG_GATE_PT[42] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], 
+assign TBL_VAL_STG_GATE_PT[42] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05],
                                    ex1_instr_q[30], ex1_vld_q}) == 8'b11111001;
 assign TBL_VAL_STG_GATE_PT[43] = ({au_lq_ex1_ldst_v, au_lq_ex1_mftgpr, au_lq_ex1_mffgpr, au_lq_ex1_movedp, ex1_vld_q}) == 5'b10001;
 assign TBL_VAL_STG_GATE_PT[44] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[03], ex1_instr_q[05], ex1_vld_q}) == 5'b10001;
@@ -1404,13 +1602,14 @@ assign TBL_VAL_STG_GATE_PT[47] = ({au_lq_ex1_mftgpr, au_lq_ex1_movedp, ex1_vld_q
 assign TBL_VAL_STG_GATE_PT[48] = ({au_lq_ex1_mffgpr, au_lq_ex1_movedp, ex1_vld_q}) == 3'b101;
 assign TBL_VAL_STG_GATE_PT[49] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[03], ex1_instr_q[04], ex1_vld_q}) == 5'b10101;
 assign TBL_VAL_STG_GATE_PT[50] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_vld_q}) == 5'b10011;
-assign ex1_cache_acc           = (TBL_VAL_STG_GATE_PT[8]  | TBL_VAL_STG_GATE_PT[16] | TBL_VAL_STG_GATE_PT[18] | TBL_VAL_STG_GATE_PT[19] | 
-                                  TBL_VAL_STG_GATE_PT[21] | TBL_VAL_STG_GATE_PT[22] | TBL_VAL_STG_GATE_PT[23] | TBL_VAL_STG_GATE_PT[24] | 
-                                  TBL_VAL_STG_GATE_PT[25] | TBL_VAL_STG_GATE_PT[26] | TBL_VAL_STG_GATE_PT[27] | TBL_VAL_STG_GATE_PT[28] | 
-                                  TBL_VAL_STG_GATE_PT[29] | TBL_VAL_STG_GATE_PT[30] | TBL_VAL_STG_GATE_PT[31] | TBL_VAL_STG_GATE_PT[32] | 
-                                  TBL_VAL_STG_GATE_PT[33] | TBL_VAL_STG_GATE_PT[34] | TBL_VAL_STG_GATE_PT[35] | TBL_VAL_STG_GATE_PT[36] | 
-                                  TBL_VAL_STG_GATE_PT[37] | TBL_VAL_STG_GATE_PT[38] | TBL_VAL_STG_GATE_PT[39] | TBL_VAL_STG_GATE_PT[40] | 
-                                  TBL_VAL_STG_GATE_PT[41] | TBL_VAL_STG_GATE_PT[42] | TBL_VAL_STG_GATE_PT[43] | TBL_VAL_STG_GATE_PT[44] | 
+// Table TBL_VAL_STG_GATE Signal Assignments for Outputs
+assign ex1_cache_acc           = (TBL_VAL_STG_GATE_PT[8]  | TBL_VAL_STG_GATE_PT[16] | TBL_VAL_STG_GATE_PT[18] | TBL_VAL_STG_GATE_PT[19] |
+                                  TBL_VAL_STG_GATE_PT[21] | TBL_VAL_STG_GATE_PT[22] | TBL_VAL_STG_GATE_PT[23] | TBL_VAL_STG_GATE_PT[24] |
+                                  TBL_VAL_STG_GATE_PT[25] | TBL_VAL_STG_GATE_PT[26] | TBL_VAL_STG_GATE_PT[27] | TBL_VAL_STG_GATE_PT[28] |
+                                  TBL_VAL_STG_GATE_PT[29] | TBL_VAL_STG_GATE_PT[30] | TBL_VAL_STG_GATE_PT[31] | TBL_VAL_STG_GATE_PT[32] |
+                                  TBL_VAL_STG_GATE_PT[33] | TBL_VAL_STG_GATE_PT[34] | TBL_VAL_STG_GATE_PT[35] | TBL_VAL_STG_GATE_PT[36] |
+                                  TBL_VAL_STG_GATE_PT[37] | TBL_VAL_STG_GATE_PT[38] | TBL_VAL_STG_GATE_PT[39] | TBL_VAL_STG_GATE_PT[40] |
+                                  TBL_VAL_STG_GATE_PT[41] | TBL_VAL_STG_GATE_PT[42] | TBL_VAL_STG_GATE_PT[43] | TBL_VAL_STG_GATE_PT[44] |
                                   TBL_VAL_STG_GATE_PT[49] | TBL_VAL_STG_GATE_PT[50]);
 assign ex1_is_msgsnd           = (TBL_VAL_STG_GATE_PT[5]);
 assign dec_dcc_ex1_mbar_instr  = (TBL_VAL_STG_GATE_PT[7]);
@@ -1426,207 +1625,320 @@ assign dec_dcc_ex1_targ_gpr    = (TBL_VAL_STG_GATE_PT[2]  | TBL_VAL_STG_GATE_PT[
 assign dec_dcc_ex1_targ_axu    = (TBL_VAL_STG_GATE_PT[45] | TBL_VAL_STG_GATE_PT[48]);
 assign dec_dcc_ex1_targ_dp     = (TBL_VAL_STG_GATE_PT[11] | TBL_VAL_STG_GATE_PT[46]);
 
-assign ex1_cmd_act          = (TBL_VAL_STG_GATE_PT[1]  | TBL_VAL_STG_GATE_PT[5]  | TBL_VAL_STG_GATE_PT[6]  | TBL_VAL_STG_GATE_PT[7]  | 
-                               TBL_VAL_STG_GATE_PT[8]  | TBL_VAL_STG_GATE_PT[9]  | TBL_VAL_STG_GATE_PT[10] | TBL_VAL_STG_GATE_PT[11] | 
-                               TBL_VAL_STG_GATE_PT[12] | TBL_VAL_STG_GATE_PT[16] | TBL_VAL_STG_GATE_PT[18] | TBL_VAL_STG_GATE_PT[19] | 
-                               TBL_VAL_STG_GATE_PT[20] | TBL_VAL_STG_GATE_PT[22] | TBL_VAL_STG_GATE_PT[23] | TBL_VAL_STG_GATE_PT[24] | 
-                               TBL_VAL_STG_GATE_PT[25] | TBL_VAL_STG_GATE_PT[26] | TBL_VAL_STG_GATE_PT[27] | TBL_VAL_STG_GATE_PT[28] | 
-                               TBL_VAL_STG_GATE_PT[29] | TBL_VAL_STG_GATE_PT[30] | TBL_VAL_STG_GATE_PT[31] | TBL_VAL_STG_GATE_PT[32] | 
-                               TBL_VAL_STG_GATE_PT[33] | TBL_VAL_STG_GATE_PT[34] | TBL_VAL_STG_GATE_PT[35] | TBL_VAL_STG_GATE_PT[36] | 
-                               TBL_VAL_STG_GATE_PT[37] | TBL_VAL_STG_GATE_PT[38] | TBL_VAL_STG_GATE_PT[39] | TBL_VAL_STG_GATE_PT[40] | 
-                               TBL_VAL_STG_GATE_PT[41] | TBL_VAL_STG_GATE_PT[42] | TBL_VAL_STG_GATE_PT[43] | TBL_VAL_STG_GATE_PT[44] | 
-                               TBL_VAL_STG_GATE_PT[45] | TBL_VAL_STG_GATE_PT[46] | TBL_VAL_STG_GATE_PT[47] | TBL_VAL_STG_GATE_PT[48] | 
+assign ex1_cmd_act          = (TBL_VAL_STG_GATE_PT[1]  | TBL_VAL_STG_GATE_PT[5]  | TBL_VAL_STG_GATE_PT[6]  | TBL_VAL_STG_GATE_PT[7]  |
+                               TBL_VAL_STG_GATE_PT[8]  | TBL_VAL_STG_GATE_PT[9]  | TBL_VAL_STG_GATE_PT[10] | TBL_VAL_STG_GATE_PT[11] |
+                               TBL_VAL_STG_GATE_PT[12] | TBL_VAL_STG_GATE_PT[16] | TBL_VAL_STG_GATE_PT[18] | TBL_VAL_STG_GATE_PT[19] |
+                               TBL_VAL_STG_GATE_PT[20] | TBL_VAL_STG_GATE_PT[22] | TBL_VAL_STG_GATE_PT[23] | TBL_VAL_STG_GATE_PT[24] |
+                               TBL_VAL_STG_GATE_PT[25] | TBL_VAL_STG_GATE_PT[26] | TBL_VAL_STG_GATE_PT[27] | TBL_VAL_STG_GATE_PT[28] |
+                               TBL_VAL_STG_GATE_PT[29] | TBL_VAL_STG_GATE_PT[30] | TBL_VAL_STG_GATE_PT[31] | TBL_VAL_STG_GATE_PT[32] |
+                               TBL_VAL_STG_GATE_PT[33] | TBL_VAL_STG_GATE_PT[34] | TBL_VAL_STG_GATE_PT[35] | TBL_VAL_STG_GATE_PT[36] |
+                               TBL_VAL_STG_GATE_PT[37] | TBL_VAL_STG_GATE_PT[38] | TBL_VAL_STG_GATE_PT[39] | TBL_VAL_STG_GATE_PT[40] |
+                               TBL_VAL_STG_GATE_PT[41] | TBL_VAL_STG_GATE_PT[42] | TBL_VAL_STG_GATE_PT[43] | TBL_VAL_STG_GATE_PT[44] |
+                               TBL_VAL_STG_GATE_PT[45] | TBL_VAL_STG_GATE_PT[46] | TBL_VAL_STG_GATE_PT[47] | TBL_VAL_STG_GATE_PT[48] |
                                TBL_VAL_STG_GATE_PT[49] | TBL_VAL_STG_GATE_PT[50]);
-assign ctl_dat_ex1_data_act = (TBL_VAL_STG_GATE_PT[11] | TBL_VAL_STG_GATE_PT[12] | TBL_VAL_STG_GATE_PT[13] | TBL_VAL_STG_GATE_PT[14] | 
-                               TBL_VAL_STG_GATE_PT[15] | TBL_VAL_STG_GATE_PT[17] | TBL_VAL_STG_GATE_PT[24] | TBL_VAL_STG_GATE_PT[25] | 
-                               TBL_VAL_STG_GATE_PT[31] | TBL_VAL_STG_GATE_PT[36] | TBL_VAL_STG_GATE_PT[41] | TBL_VAL_STG_GATE_PT[43] | 
+assign ctl_dat_ex1_data_act = (TBL_VAL_STG_GATE_PT[11] | TBL_VAL_STG_GATE_PT[12] | TBL_VAL_STG_GATE_PT[13] | TBL_VAL_STG_GATE_PT[14] |
+                               TBL_VAL_STG_GATE_PT[15] | TBL_VAL_STG_GATE_PT[17] | TBL_VAL_STG_GATE_PT[24] | TBL_VAL_STG_GATE_PT[25] |
+                               TBL_VAL_STG_GATE_PT[31] | TBL_VAL_STG_GATE_PT[36] | TBL_VAL_STG_GATE_PT[41] | TBL_VAL_STG_GATE_PT[43] |
                                TBL_VAL_STG_GATE_PT[44]);
 assign ex1_mtspr_trace      = (TBL_VAL_STG_GATE_PT[1]);
-assign ex1_derat_act        = (TBL_VAL_STG_GATE_PT[16] | TBL_VAL_STG_GATE_PT[18] | TBL_VAL_STG_GATE_PT[19] | TBL_VAL_STG_GATE_PT[21] | 
-                               TBL_VAL_STG_GATE_PT[22] | TBL_VAL_STG_GATE_PT[23] | TBL_VAL_STG_GATE_PT[24] | TBL_VAL_STG_GATE_PT[25] | 
-                               TBL_VAL_STG_GATE_PT[26] | TBL_VAL_STG_GATE_PT[27] | TBL_VAL_STG_GATE_PT[28] | TBL_VAL_STG_GATE_PT[29] | 
-                               TBL_VAL_STG_GATE_PT[30] | TBL_VAL_STG_GATE_PT[31] | TBL_VAL_STG_GATE_PT[32] | TBL_VAL_STG_GATE_PT[33] | 
-                               TBL_VAL_STG_GATE_PT[34] | TBL_VAL_STG_GATE_PT[35] | TBL_VAL_STG_GATE_PT[36] | TBL_VAL_STG_GATE_PT[37] | 
-                               TBL_VAL_STG_GATE_PT[38] | TBL_VAL_STG_GATE_PT[39] | TBL_VAL_STG_GATE_PT[40] | TBL_VAL_STG_GATE_PT[41] | 
-                               TBL_VAL_STG_GATE_PT[42] | TBL_VAL_STG_GATE_PT[43] | TBL_VAL_STG_GATE_PT[44] | TBL_VAL_STG_GATE_PT[49] | 
+assign ex1_derat_act        = (TBL_VAL_STG_GATE_PT[16] | TBL_VAL_STG_GATE_PT[18] | TBL_VAL_STG_GATE_PT[19] | TBL_VAL_STG_GATE_PT[21] |
+                               TBL_VAL_STG_GATE_PT[22] | TBL_VAL_STG_GATE_PT[23] | TBL_VAL_STG_GATE_PT[24] | TBL_VAL_STG_GATE_PT[25] |
+                               TBL_VAL_STG_GATE_PT[26] | TBL_VAL_STG_GATE_PT[27] | TBL_VAL_STG_GATE_PT[28] | TBL_VAL_STG_GATE_PT[29] |
+                               TBL_VAL_STG_GATE_PT[30] | TBL_VAL_STG_GATE_PT[31] | TBL_VAL_STG_GATE_PT[32] | TBL_VAL_STG_GATE_PT[33] |
+                               TBL_VAL_STG_GATE_PT[34] | TBL_VAL_STG_GATE_PT[35] | TBL_VAL_STG_GATE_PT[36] | TBL_VAL_STG_GATE_PT[37] |
+                               TBL_VAL_STG_GATE_PT[38] | TBL_VAL_STG_GATE_PT[39] | TBL_VAL_STG_GATE_PT[40] | TBL_VAL_STG_GATE_PT[41] |
+                               TBL_VAL_STG_GATE_PT[42] | TBL_VAL_STG_GATE_PT[43] | TBL_VAL_STG_GATE_PT[44] | TBL_VAL_STG_GATE_PT[49] |
                                TBL_VAL_STG_GATE_PT[50]);
-assign ex1_dir_rd_act       = (TBL_VAL_STG_GATE_PT[4] |  TBL_VAL_STG_GATE_PT[13] | TBL_VAL_STG_GATE_PT[15] | TBL_VAL_STG_GATE_PT[17] | 
-                               TBL_VAL_STG_GATE_PT[19] | TBL_VAL_STG_GATE_PT[22] | TBL_VAL_STG_GATE_PT[23] | TBL_VAL_STG_GATE_PT[24] | 
-                               TBL_VAL_STG_GATE_PT[25] | TBL_VAL_STG_GATE_PT[28] | TBL_VAL_STG_GATE_PT[31] | TBL_VAL_STG_GATE_PT[36] | 
+assign ex1_dir_rd_act       = (TBL_VAL_STG_GATE_PT[4] |  TBL_VAL_STG_GATE_PT[13] | TBL_VAL_STG_GATE_PT[15] | TBL_VAL_STG_GATE_PT[17] |
+                               TBL_VAL_STG_GATE_PT[19] | TBL_VAL_STG_GATE_PT[22] | TBL_VAL_STG_GATE_PT[23] | TBL_VAL_STG_GATE_PT[24] |
+                               TBL_VAL_STG_GATE_PT[25] | TBL_VAL_STG_GATE_PT[28] | TBL_VAL_STG_GATE_PT[31] | TBL_VAL_STG_GATE_PT[36] |
                                TBL_VAL_STG_GATE_PT[41] | TBL_VAL_STG_GATE_PT[43] | TBL_VAL_STG_GATE_PT[44]);
 
-assign TBL_LD_ST_DEC_PT[1]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[09], 
-                                ex1_instr_q[21], ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], 
+//
+// Final Table Listing
+//      *INPUTS*===================================================*OUTPUTS*============================================*
+//      |                                                          |                                                    |
+//      | ex1_instr_q                                              |                                                    |
+//      | |      ex1_instr_q                                       |                                                    |
+//      | |      | ex1_instr_q                                     | ex1_derat_is_load                                  |
+//      | |      | |          ex1_instr_q                          | | ex1_derat_is_store                               |
+//      | |      | |          |  au_lq_ex1_ldst_v                  | | | ex1_load_instr                                 |
+//      | |      | |          |  | au_lq_ex1_ldst_size             | | | | dec_dcc_ex1_store_instr                      |
+//      | |      | |          |  | |      au_lq_ex1_mftgpr         | | | | | dec_dcc_ex1_algebraic                      |
+//      | |      | |          |  | |      | au_lq_ex1_mffgpr       | | | | | | dec_dcc_ex1_ldawx_instr                  |
+//      | |      | |          |  | |      | | au_lq_ex1_movedp     | | | | | | | dec_dcc_ex1_optype1                    |
+//      | |      | |          |  | |      | | | au_lq_ex1_st_v     | | | | | | | | dec_dcc_ex1_optype16                 |
+//      | |      | |          |  | |      | | | |                  | | | | | | | | | dec_dcc_ex1_optype2                |
+//      | |      | |          |  | |      | | | |                  | | | | | | | | | | dec_dcc_ex1_optype32             |
+//      | |      | |          |  | |      | | | |                  | | | | | | | | | | | dec_dcc_ex1_optype4            |
+//      | |      | |          |  | |      | | | |                  | | | | | | | | | | | | dec_dcc_ex1_optype8          |
+//      | |      | |          |  | |      | | | |                  | | | | | | | | | | | | | ex1_dcm_instr              |
+//      | |      | |          |  | |      | | | |                  | | | | | | | | | | | | | | dec_dcc_ex1_strg_index   |
+//      | |      | |          |  | |      | | | |                  | | | | | | | | | | | | | | | ex1_is_any_load_dac    |
+//      | |      | |          |  | |      | | | |                  | | | | | | | | | | | | | | | | ex1_is_any_store_dac |
+//      | |      | |          |  | |      | | | |                  | | | | | | | | | | | | | | | | | ex1_resv_instr     |
+//      | |      | |          |  | |      | | | |                  | | | | | | | | | | | | | | | | | |                  |
+//      | 000000 0 2222222223 33 | 000000 | | | |                  | | | | | | | | | | | | | | | | | |                  |
+//      | 012345 9 1234567890 01 | 012345 | | | |                  | | | | | | | | | | | | | | | | | |                  |
+//      *TYPE*=====================================================+====================================================+
+//      | PPPPPP P PPPPPPPPPP PP P PPPPPP P P P P                  | P P P P P P P P P P P P P P P P P                  |
+//      *POLARITY*------------------------------------------------>| + + + + + + + + + + + + + + + + +                  |
+//      *PHASE*--------------------------------------------------->| T T T T T T T T T T T T T T T T T                  |
+//      *TERMS*====================================================+====================================================+
+//    1 | 011111 1 1110100110 -- - ------ - - - -                  | 1 . . . . . . . . . . . . . 1 . .                  |
+//    2 | 011111 - 1110100110 -- - ------ - - - -                  | . . . . . . . . . . . . 1 . . . .                  |
+//    3 | 011111 - 1111111111 -- - ------ - - - -                  | . 1 . . . . . . . . . . 1 . . 1 .                  |
+//    4 | 011111 - 1110110110 -- - ------ - - - -                  | . 1 . . . . . . . . 1 . . . . . .                  |
+//    5 | 011111 - 1111011111 -- - ------ - - - -                  | 1 . . . . . . . . . . . 1 . 1 . .                  |
+//    6 | 011111 - 0100111111 -- - ------ - - - -                  | 1 . . . . . . . . . . . 1 . 1 . .                  |
+//    7 | 011111 - 10-0010101 -- - ------ - - - -                  | . . . . . . . . . . . . . 1 . . .                  |
+//    8 | 011111 - 0011111111 -- - ------ - - - -                  | . 1 . . . . . . . . . . 1 . . 1 .                  |
+//    9 | 011111 - 1111110110 -- - ------ - - - -                  | . 1 . . . . . . . . . . 1 . . 1 .                  |
+//   10 | 011111 - 01010101-1 -- - ------ - - - -                  | . . 1 . 1 . . . . . . . . . . . .                  |
+//   11 | 011111 - 0110000110 -- - ------ - - - -                  | 1 . . . . . . . . . . . 1 . 1 . .                  |
+//   12 | 011111 - 1000010100 -- - ------ - - - -                  | 1 . . . . . . . . . . 1 . . 1 . .                  |
+//   13 | 011111 - 0010000110 -- - ------ - - - -                  | . 1 . . . . . . . . . . 1 . . 1 .                  |
+//   14 | 011111 - 1111010110 -- - ------ - - - -                  | 1 . . . . . . . . . . . 1 . 1 . .                  |
+//   15 | 011111 - 0001110100 -- - ------ - - - -                  | 1 . 1 . . . . . 1 . . . . . 1 . 1                  |
+//   16 | 011111 - 1010010100 -- - ------ - - - -                  | . 1 . 1 . . . . . . . 1 . . . 1 .                  |
+//   17 | 011111 - 0111010110 -- - ------ - - - -                  | . 1 . . . . . . . . . . 1 . . 1 .                  |
+//   18 | 011111 - 0011110110 -- - ------ - - - -                  | . 1 . . . . . . . . . . 1 . . 1 .                  |
+//   19 | 011111 - 1100010110 -- - ------ - - - -                  | 1 . 1 . . . . . 1 . . . . . 1 . .                  |
+//   20 | 011111 - 1110010110 -- - ------ - - - -                  | . 1 . 1 . . . . 1 . . . . . . 1 .                  |
+//   21 | 011111 - 0000110100 -- - ------ - - - -                  | 1 . 1 . . . 1 . . . . . . . 1 . 1                  |
+//   22 | 011111 - 1010110110 -- - ------ - - - -                  | . 1 . 1 . . 1 . . . . . . . . 1 1                  |
+//   23 | 011111 - 0-11100110 -- - ------ - - - -                  | 1 . . . . . . . . . . . 1 . 1 . .                  |
+//   24 | 011111 - 0000110110 -- - ------ - - - -                  | 1 . . . . . . . . . . . 1 . . 1 .                  |
+//   25 | 011111 - 001-010110 -- - ------ - - - -                  | . . . . . . . . . . . . . . . . 1                  |
+//   26 | 011111 - 101-010101 -- - ------ - - - -                  | . 1 . . . . . . . . . . . . . 1 .                  |
+//   27 | 011111 - 0000010100 -- - ------ - - - -                  | 1 . . . . . . . . . 1 . . . 1 . 1                  |
+//   28 | 011111 - 0001010100 -- - ------ - - - -                  | 1 . 1 . . . . . . . . 1 . . 1 . 1                  |
+//   29 | 011111 - 100-010101 -- - ------ - - - -                  | 1 . . . . . . . . . . . . . 1 . .                  |
+//   30 | 011111 - 0011010100 -- - ------ - - - -                  | 1 . 1 . . 1 . . . . . 1 . . 1 . .                  |
+//   31 | 011111 - 000-111111 -- - ------ - - - -                  | 1 . . . . . . . . . . . 1 . . 1 .                  |
+//   32 | 011111 - 1011010110 -- - ------ - - - -                  | . 1 . 1 . . . . 1 . . . . . . 1 1                  |
+//   33 | 011111 - 0001010110 -- - ------ - - - -                  | 1 . . . . . . . . . . . 1 . . 1 .                  |
+//   34 | 011111 - 0101-10101 -- - ------ - - - -                  | 1 . . . . . . . . . 1 . . . 1 . .                  |
+//   35 | 011111 - 1000010110 -- - ------ - - - -                  | 1 . 1 . . . . . . . 1 . . . 1 . .                  |
+//   36 | 011111 - 001-100110 -- - ------ - - - -                  | 1 . . . . . . . . . . . 1 . 1 . .                  |
+//   37 | 011111 - -00001010- -- - ------ - - - -                  | . . 1 . . . . . . . . . . . . . .                  |
+//   38 | 011111 - 0011010110 -- - ------ - - - -                  | . 1 . 1 . . . . . . . 1 . . . 1 .                  |
+//   39 | 011111 - 00-0-10101 -- - ------ - - - -                  | . . . . . . . . . . . 1 . . . . .                  |
+//   40 | 011111 - 0-10010110 -- - ------ - - - -                  | . 1 . . . . . . . . 1 . . . . . .                  |
+//   41 | 011111 - 000001-101 -- - ------ - - - -                  | 1 . 1 . . . . . . . . 1 . . 1 . .                  |
+//   42 | 011111 - 001001-101 -- - ------ - - - -                  | . 1 . 1 . . . . . . . 1 . . . 1 .                  |
+//   43 | 011111 - 010001-111 -- - ------ - - - -                  | 1 . 1 . . . . . 1 . . . . . 1 . .                  |
+//   44 | 011111 - 0001-10111 -- - ------ - - - -                  | 1 . . . . . 1 . . . . . . . 1 . .                  |
+//   45 | 011111 - 011001-111 -- - ------ - - - -                  | . 1 . 1 . . . . 1 . . . . . . 1 .                  |
+//   46 | 011111 - 000101-111 -- - ------ - - - -                  | 1 . 1 . . . 1 . . . . . . . 1 . .                  |
+//   47 | 011111 - 001101-111 -- - ------ - - - -                  | . 1 . 1 . . 1 . . . . . . . . 1 .                  |
+//   48 | 011111 - 00-0-10111 -- - ------ - - - -                  | . . . . . . . . . . 1 . . . . . .                  |
+//   49 | 011111 - 0110-10111 -- - ------ - - - -                  | . 1 . 1 . . . . 1 . . . . . . 1 .                  |
+//   50 | 011111 - 0011-10111 -- - ------ - - - -                  | . 1 . 1 . . 1 . . . . . . . . 1 .                  |
+//   51 | 011111 - 0-00010110 -- - ------ - - - -                  | 1 . . . . . . . . . . . 1 . 1 . .                  |
+//   52 | 011111 - 000001-111 -- - ------ - - - -                  | 1 . 1 . . . . . . . 1 . . . 1 . .                  |
+//   53 | 011111 - 001001-111 -- - ------ - - - -                  | . 1 . 1 . . . . . . 1 . . . . 1 .                  |
+//   54 | 011111 - -010010110 -- - ------ - - - -                  | . 1 . 1 . . . . . . 1 . . . . 1 .                  |
+//   55 | 011111 - 0000-101-1 -- - ------ - - - -                  | 1 . . . . . . . . . . . . . 1 . .                  |
+//   56 | 011111 - 010--10111 -- - ------ - - - -                  | 1 . . . . . . . 1 . . . . . 1 . .                  |
+//   57 | 011111 - 0010-101-1 -- - ------ - - - -                  | . 1 . 1 . . . . . . . . . . . 1 .                  |
+//   58 | 111010 - ---------- 10 - ------ - - - -                  | 1 . . . 1 . . . . . 1 . . . 1 . .                  |
+//   59 | ------ - ---------- -- 1 ------ 0 0 0 1                  | . 1 . 1 . . . . . . . . . . . 1 .                  |
+//   60 | 101010 - ---------- -- - ------ - - - -                  | . . . . 1 . . . . . . . . . . . .                  |
+//   61 | ------ - ---------- -- 1 ------ 0 0 0 0                  | 1 . 1 . . . . . . . . . . . 1 . .                  |
+//   62 | 1-1010 - ---------- -0 - ------ - - - -                  | . . 1 . . . . . . . . . . . . . .                  |
+//   63 | 10000- - ---------- -- - ------ - - - -                  | 1 . . . . . . . . . 1 . . . 1 . .                  |
+//   64 | 10-0-0 - ---------- -- - ------ - - - -                  | . . 1 . . . . . . . . . . . . . .                  |
+//   65 | 111010 - ---------- 0- - ------ - - - -                  | 1 . . . . . . . . . . 1 . . 1 . .                  |
+//   66 | 10001- - ---------- -- - ------ - - - -                  | 1 . . . . . 1 . . . . . . . 1 . .                  |
+//   67 | 10010- - ---------- -- - ------ - - - -                  | . 1 . 1 . . . . . . 1 . . . . 1 .                  |
+//   68 | 111110 - ---------- 0- - ------ - - - -                  | . 1 . 1 . . . . . . . 1 . . . 1 .                  |
+//   69 | 101110 - ---------- -- - ------ - - - -                  | 1 . . . . . . . . . 1 . . . 1 . .                  |
+//   70 | 10011- - ---------- -- - ------ - - - -                  | . 1 . 1 . . 1 . . . . . . . . 1 .                  |
+//   71 | 10110- - ---------- -- - ------ - - - -                  | . 1 . 1 . . . . 1 . . . . . . 1 .                  |
+//   72 | ------ - ---------- -- 1 -1---- - - - -                  | . . . . . . . 1 . . . . . . . . .                  |
+//   73 | ------ - ---------- -- 1 1----- - - - -                  | . . . . . . . . . 1 . . . . . . .                  |
+//   74 | ------ - ---------- -- 1 -----1 - - - -                  | . . . . . . 1 . . . . . . . . . .                  |
+//   75 | 1010-- - ---------- -- - ------ - - - -                  | 1 . . . . . . . 1 . . . . . 1 . .                  |
+//   76 | ------ - ---------- -- 1 ----1- - - - -                  | . . . . . . . . 1 . . . . . . . .                  |
+//   77 | ------ - ---------- -- 1 --1--- - - - -                  | . . . . . . . . . . . 1 . . . . .                  |
+//   78 | ------ - ---------- -- 1 ---1-- - - - -                  | . . . . . . . . . . 1 . . . . . .                  |
+//   79 | 101111 - ---------- -- - ------ - - - -                  | . 1 . . . . . . . . 1 . . . . 1 .                  |
+//      *===============================================================================================================*
+//
+// Table TBL_LD_ST_DEC Signal Assignments for Product Terms
+assign TBL_LD_ST_DEC_PT[1]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[09],
+                                ex1_instr_q[21], ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27],
                                 ex1_instr_q[28], ex1_instr_q[29], ex1_instr_q[30]}) == 17'b01111111110100110;
-assign TBL_LD_ST_DEC_PT[2]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_LD_ST_DEC_PT[2]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111110100110;
-assign TBL_LD_ST_DEC_PT[3]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_LD_ST_DEC_PT[3]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111111111111;
-assign TBL_LD_ST_DEC_PT[4]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_LD_ST_DEC_PT[4]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111110110110;
-assign TBL_LD_ST_DEC_PT[5]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21], 
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[5]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111111011111;
-assign TBL_LD_ST_DEC_PT[6]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[6]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110100111111;
-assign TBL_LD_ST_DEC_PT[7]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[7]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111100010101;
-assign TBL_LD_ST_DEC_PT[8]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[8]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110011111111;
-assign TBL_LD_ST_DEC_PT[9]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[9]  = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111111110110;
-assign TBL_LD_ST_DEC_PT[10] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[10] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[30]}) == 15'b011111010101011;
-assign TBL_LD_ST_DEC_PT[11] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[11] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110110000110;
-assign TBL_LD_ST_DEC_PT[12] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[12] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111000010100;
-assign TBL_LD_ST_DEC_PT[13] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[13] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110010000110;
-assign TBL_LD_ST_DEC_PT[14] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[14] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111111010110;
-assign TBL_LD_ST_DEC_PT[15] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[15] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110001110100;
-assign TBL_LD_ST_DEC_PT[16] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[16] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111010010100;
-assign TBL_LD_ST_DEC_PT[17] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[17] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110111010110;
-assign TBL_LD_ST_DEC_PT[18] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[18] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110011110110;
-assign TBL_LD_ST_DEC_PT[19] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[19] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111100010110;
-assign TBL_LD_ST_DEC_PT[20] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[20] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111110010110;
-assign TBL_LD_ST_DEC_PT[21] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[21] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110000110100;
-assign TBL_LD_ST_DEC_PT[22] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[22] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111010110110;
-assign TBL_LD_ST_DEC_PT[23] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[23] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111011100110;
-assign TBL_LD_ST_DEC_PT[24] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[24] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110000110110;
-assign TBL_LD_ST_DEC_PT[25] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[25] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111001010110;
-assign TBL_LD_ST_DEC_PT[26] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[26] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111101010101;
-assign TBL_LD_ST_DEC_PT[27] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[27] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110000010100;
-assign TBL_LD_ST_DEC_PT[28] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[28] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110001010100;
-assign TBL_LD_ST_DEC_PT[29] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[29] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111100010101;
-assign TBL_LD_ST_DEC_PT[30] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[30] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110011010100;
-assign TBL_LD_ST_DEC_PT[31] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[31] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111000111111;
-assign TBL_LD_ST_DEC_PT[32] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[32] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111011010110;
-assign TBL_LD_ST_DEC_PT[33] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[33] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110001010110;
-assign TBL_LD_ST_DEC_PT[34] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[34] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111010110101;
-assign TBL_LD_ST_DEC_PT[35] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[35] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111111000010110;
-assign TBL_LD_ST_DEC_PT[36] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[36] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111001100110;
-assign TBL_LD_ST_DEC_PT[37] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[22],  
-                                ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_LD_ST_DEC_PT[37] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[22],
+                                ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29]}) == 14'b01111100001010;
-assign TBL_LD_ST_DEC_PT[38] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],  
+assign TBL_LD_ST_DEC_PT[38] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[29], ex1_instr_q[30]}) == 16'b0111110011010110;
-assign TBL_LD_ST_DEC_PT[39] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_LD_ST_DEC_PT[39] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 14'b01111100010101;
-assign TBL_LD_ST_DEC_PT[40] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[40] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111010010110;
-assign TBL_LD_ST_DEC_PT[41] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[41] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111000001101;
-assign TBL_LD_ST_DEC_PT[42] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[42] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111001001101;
-assign TBL_LD_ST_DEC_PT[43] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[43] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111010001111;
-assign TBL_LD_ST_DEC_PT[44] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[44] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111000110111;
-assign TBL_LD_ST_DEC_PT[45] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[45] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111011001111;
-assign TBL_LD_ST_DEC_PT[46] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[46] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111000101111;
-assign TBL_LD_ST_DEC_PT[47] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[47] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111001101111;
-assign TBL_LD_ST_DEC_PT[48] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_LD_ST_DEC_PT[48] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 14'b01111100010111;
-assign TBL_LD_ST_DEC_PT[49] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[49] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111011010111;
-assign TBL_LD_ST_DEC_PT[50] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[50] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111001110111;
-assign TBL_LD_ST_DEC_PT[51] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[51] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111000010110;
-assign TBL_LD_ST_DEC_PT[52] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[52] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111000001111;
-assign TBL_LD_ST_DEC_PT[53] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[53] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111001001111;
-assign TBL_LD_ST_DEC_PT[54] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[22],  
-                                ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],  
+assign TBL_LD_ST_DEC_PT[54] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[22],
+                                ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[25], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 15'b011111010010110;
-assign TBL_LD_ST_DEC_PT[55] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_LD_ST_DEC_PT[55] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[30]}) == 14'b01111100001011;
-assign TBL_LD_ST_DEC_PT[56] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29], 
+assign TBL_LD_ST_DEC_PT[56] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], ex1_instr_q[29],
                                 ex1_instr_q[30]}) == 14'b01111101010111;
-assign TBL_LD_ST_DEC_PT[57] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],  
-                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28], 
+assign TBL_LD_ST_DEC_PT[57] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[21],
+                                ex1_instr_q[22], ex1_instr_q[23], ex1_instr_q[24], ex1_instr_q[26], ex1_instr_q[27], ex1_instr_q[28],
                                 ex1_instr_q[30]}) == 14'b01111100101011;
-assign TBL_LD_ST_DEC_PT[58] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[30],  
+assign TBL_LD_ST_DEC_PT[58] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05], ex1_instr_q[30],
                                 ex1_instr_q[31]}) == 8'b11101010;
 assign TBL_LD_ST_DEC_PT[59] = ({au_lq_ex1_ldst_v, au_lq_ex1_mftgpr, au_lq_ex1_mffgpr, au_lq_ex1_movedp, au_lq_ex1_st_v}) == 5'b10001;
 assign TBL_LD_ST_DEC_PT[60] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05]}) == 6'b101010;
@@ -1650,77 +1962,79 @@ assign TBL_LD_ST_DEC_PT[77] = ({au_lq_ex1_ldst_v, au_lq_ex1_ldst_size[02]}) == 2
 assign TBL_LD_ST_DEC_PT[78] = ({au_lq_ex1_ldst_v, au_lq_ex1_ldst_size[03]}) == 2'b11;
 assign TBL_LD_ST_DEC_PT[79] = ({ex1_instr_q[00], ex1_instr_q[01], ex1_instr_q[02], ex1_instr_q[03], ex1_instr_q[04], ex1_instr_q[05]}) == 6'b101111;
 
-assign ex1_derat_is_load        = (TBL_LD_ST_DEC_PT[1]  | TBL_LD_ST_DEC_PT[5]  | TBL_LD_ST_DEC_PT[6]  | TBL_LD_ST_DEC_PT[11] | 
-                                   TBL_LD_ST_DEC_PT[12] | TBL_LD_ST_DEC_PT[14] | TBL_LD_ST_DEC_PT[15] | TBL_LD_ST_DEC_PT[19] |  
-                                   TBL_LD_ST_DEC_PT[21] | TBL_LD_ST_DEC_PT[23] | TBL_LD_ST_DEC_PT[24] | TBL_LD_ST_DEC_PT[27] |  
-                                   TBL_LD_ST_DEC_PT[28] | TBL_LD_ST_DEC_PT[29] | TBL_LD_ST_DEC_PT[30] | TBL_LD_ST_DEC_PT[31] |  
-                                   TBL_LD_ST_DEC_PT[33] | TBL_LD_ST_DEC_PT[34] | TBL_LD_ST_DEC_PT[35] | TBL_LD_ST_DEC_PT[36] |  
-                                   TBL_LD_ST_DEC_PT[41] | TBL_LD_ST_DEC_PT[43] | TBL_LD_ST_DEC_PT[44] | TBL_LD_ST_DEC_PT[46] |  
-                                   TBL_LD_ST_DEC_PT[51] | TBL_LD_ST_DEC_PT[52] | TBL_LD_ST_DEC_PT[55] | TBL_LD_ST_DEC_PT[56] |  
-                                   TBL_LD_ST_DEC_PT[58] | TBL_LD_ST_DEC_PT[61] | TBL_LD_ST_DEC_PT[63] | TBL_LD_ST_DEC_PT[65] |  
+// Table TBL_LD_ST_DEC Signal Assignments for Outputs
+assign ex1_derat_is_load        = (TBL_LD_ST_DEC_PT[1]  | TBL_LD_ST_DEC_PT[5]  | TBL_LD_ST_DEC_PT[6]  | TBL_LD_ST_DEC_PT[11] |
+                                   TBL_LD_ST_DEC_PT[12] | TBL_LD_ST_DEC_PT[14] | TBL_LD_ST_DEC_PT[15] | TBL_LD_ST_DEC_PT[19] |
+                                   TBL_LD_ST_DEC_PT[21] | TBL_LD_ST_DEC_PT[23] | TBL_LD_ST_DEC_PT[24] | TBL_LD_ST_DEC_PT[27] |
+                                   TBL_LD_ST_DEC_PT[28] | TBL_LD_ST_DEC_PT[29] | TBL_LD_ST_DEC_PT[30] | TBL_LD_ST_DEC_PT[31] |
+                                   TBL_LD_ST_DEC_PT[33] | TBL_LD_ST_DEC_PT[34] | TBL_LD_ST_DEC_PT[35] | TBL_LD_ST_DEC_PT[36] |
+                                   TBL_LD_ST_DEC_PT[41] | TBL_LD_ST_DEC_PT[43] | TBL_LD_ST_DEC_PT[44] | TBL_LD_ST_DEC_PT[46] |
+                                   TBL_LD_ST_DEC_PT[51] | TBL_LD_ST_DEC_PT[52] | TBL_LD_ST_DEC_PT[55] | TBL_LD_ST_DEC_PT[56] |
+                                   TBL_LD_ST_DEC_PT[58] | TBL_LD_ST_DEC_PT[61] | TBL_LD_ST_DEC_PT[63] | TBL_LD_ST_DEC_PT[65] |
                                    TBL_LD_ST_DEC_PT[66] | TBL_LD_ST_DEC_PT[69] | TBL_LD_ST_DEC_PT[75]);
-assign ex1_derat_is_store       = (TBL_LD_ST_DEC_PT[3]  | TBL_LD_ST_DEC_PT[4]  | TBL_LD_ST_DEC_PT[8]  | TBL_LD_ST_DEC_PT[9]  |  
-                                   TBL_LD_ST_DEC_PT[13] | TBL_LD_ST_DEC_PT[16] | TBL_LD_ST_DEC_PT[17] | TBL_LD_ST_DEC_PT[18] |  
-                                   TBL_LD_ST_DEC_PT[20] | TBL_LD_ST_DEC_PT[22] | TBL_LD_ST_DEC_PT[26] | TBL_LD_ST_DEC_PT[32] |  
-                                   TBL_LD_ST_DEC_PT[38] | TBL_LD_ST_DEC_PT[40] | TBL_LD_ST_DEC_PT[42] | TBL_LD_ST_DEC_PT[45] |  
-                                   TBL_LD_ST_DEC_PT[47] | TBL_LD_ST_DEC_PT[49] | TBL_LD_ST_DEC_PT[50] | TBL_LD_ST_DEC_PT[53] |  
-                                   TBL_LD_ST_DEC_PT[54] | TBL_LD_ST_DEC_PT[57] | TBL_LD_ST_DEC_PT[59] | TBL_LD_ST_DEC_PT[67] |  
+assign ex1_derat_is_store       = (TBL_LD_ST_DEC_PT[3]  | TBL_LD_ST_DEC_PT[4]  | TBL_LD_ST_DEC_PT[8]  | TBL_LD_ST_DEC_PT[9]  |
+                                   TBL_LD_ST_DEC_PT[13] | TBL_LD_ST_DEC_PT[16] | TBL_LD_ST_DEC_PT[17] | TBL_LD_ST_DEC_PT[18] |
+                                   TBL_LD_ST_DEC_PT[20] | TBL_LD_ST_DEC_PT[22] | TBL_LD_ST_DEC_PT[26] | TBL_LD_ST_DEC_PT[32] |
+                                   TBL_LD_ST_DEC_PT[38] | TBL_LD_ST_DEC_PT[40] | TBL_LD_ST_DEC_PT[42] | TBL_LD_ST_DEC_PT[45] |
+                                   TBL_LD_ST_DEC_PT[47] | TBL_LD_ST_DEC_PT[49] | TBL_LD_ST_DEC_PT[50] | TBL_LD_ST_DEC_PT[53] |
+                                   TBL_LD_ST_DEC_PT[54] | TBL_LD_ST_DEC_PT[57] | TBL_LD_ST_DEC_PT[59] | TBL_LD_ST_DEC_PT[67] |
                                    TBL_LD_ST_DEC_PT[68] | TBL_LD_ST_DEC_PT[70] | TBL_LD_ST_DEC_PT[71] | TBL_LD_ST_DEC_PT[79]);
-assign ex1_load_instr           = (TBL_LD_ST_DEC_PT[10] | TBL_LD_ST_DEC_PT[15] | TBL_LD_ST_DEC_PT[19] | TBL_LD_ST_DEC_PT[21] | 
-                                   TBL_LD_ST_DEC_PT[28] | TBL_LD_ST_DEC_PT[30] | TBL_LD_ST_DEC_PT[35] | TBL_LD_ST_DEC_PT[37] |  
-                                   TBL_LD_ST_DEC_PT[41] | TBL_LD_ST_DEC_PT[43] | TBL_LD_ST_DEC_PT[46] | TBL_LD_ST_DEC_PT[52] |  
+assign ex1_load_instr           = (TBL_LD_ST_DEC_PT[10] | TBL_LD_ST_DEC_PT[15] | TBL_LD_ST_DEC_PT[19] | TBL_LD_ST_DEC_PT[21] |
+                                   TBL_LD_ST_DEC_PT[28] | TBL_LD_ST_DEC_PT[30] | TBL_LD_ST_DEC_PT[35] | TBL_LD_ST_DEC_PT[37] |
+                                   TBL_LD_ST_DEC_PT[41] | TBL_LD_ST_DEC_PT[43] | TBL_LD_ST_DEC_PT[46] | TBL_LD_ST_DEC_PT[52] |
                                    TBL_LD_ST_DEC_PT[61] | TBL_LD_ST_DEC_PT[62] | TBL_LD_ST_DEC_PT[64]);
-assign dec_dcc_ex1_store_instr  = (TBL_LD_ST_DEC_PT[16] | TBL_LD_ST_DEC_PT[20] | TBL_LD_ST_DEC_PT[22] | TBL_LD_ST_DEC_PT[32] |  
-                                   TBL_LD_ST_DEC_PT[38] | TBL_LD_ST_DEC_PT[42] | TBL_LD_ST_DEC_PT[45] | TBL_LD_ST_DEC_PT[47] |  
-                                   TBL_LD_ST_DEC_PT[49] | TBL_LD_ST_DEC_PT[50] | TBL_LD_ST_DEC_PT[53] | TBL_LD_ST_DEC_PT[54] |  
-                                   TBL_LD_ST_DEC_PT[57] | TBL_LD_ST_DEC_PT[59] | TBL_LD_ST_DEC_PT[67] | TBL_LD_ST_DEC_PT[68] |  
+assign dec_dcc_ex1_store_instr  = (TBL_LD_ST_DEC_PT[16] | TBL_LD_ST_DEC_PT[20] | TBL_LD_ST_DEC_PT[22] | TBL_LD_ST_DEC_PT[32] |
+                                   TBL_LD_ST_DEC_PT[38] | TBL_LD_ST_DEC_PT[42] | TBL_LD_ST_DEC_PT[45] | TBL_LD_ST_DEC_PT[47] |
+                                   TBL_LD_ST_DEC_PT[49] | TBL_LD_ST_DEC_PT[50] | TBL_LD_ST_DEC_PT[53] | TBL_LD_ST_DEC_PT[54] |
+                                   TBL_LD_ST_DEC_PT[57] | TBL_LD_ST_DEC_PT[59] | TBL_LD_ST_DEC_PT[67] | TBL_LD_ST_DEC_PT[68] |
                                    TBL_LD_ST_DEC_PT[70] | TBL_LD_ST_DEC_PT[71]);
 assign dec_dcc_ex1_algebraic    = (TBL_LD_ST_DEC_PT[10] | TBL_LD_ST_DEC_PT[58] | TBL_LD_ST_DEC_PT[60]);
 assign dec_dcc_ex1_ldawx_instr  = (TBL_LD_ST_DEC_PT[30]);
-assign dec_dcc_ex1_optype1      = (TBL_LD_ST_DEC_PT[21] | TBL_LD_ST_DEC_PT[22] | TBL_LD_ST_DEC_PT[44] | TBL_LD_ST_DEC_PT[46] |  
-                                   TBL_LD_ST_DEC_PT[47] | TBL_LD_ST_DEC_PT[50] | TBL_LD_ST_DEC_PT[66] | TBL_LD_ST_DEC_PT[70] |  
+assign dec_dcc_ex1_optype1      = (TBL_LD_ST_DEC_PT[21] | TBL_LD_ST_DEC_PT[22] | TBL_LD_ST_DEC_PT[44] | TBL_LD_ST_DEC_PT[46] |
+                                   TBL_LD_ST_DEC_PT[47] | TBL_LD_ST_DEC_PT[50] | TBL_LD_ST_DEC_PT[66] | TBL_LD_ST_DEC_PT[70] |
                                    TBL_LD_ST_DEC_PT[74]);
 assign dec_dcc_ex1_optype16     = (TBL_LD_ST_DEC_PT[72]);
-assign dec_dcc_ex1_optype2      = (TBL_LD_ST_DEC_PT[15] | TBL_LD_ST_DEC_PT[19] | TBL_LD_ST_DEC_PT[20] | TBL_LD_ST_DEC_PT[32] |  
-                                   TBL_LD_ST_DEC_PT[43] | TBL_LD_ST_DEC_PT[45] | TBL_LD_ST_DEC_PT[49] | TBL_LD_ST_DEC_PT[56] |  
+assign dec_dcc_ex1_optype2      = (TBL_LD_ST_DEC_PT[15] | TBL_LD_ST_DEC_PT[19] | TBL_LD_ST_DEC_PT[20] | TBL_LD_ST_DEC_PT[32] |
+                                   TBL_LD_ST_DEC_PT[43] | TBL_LD_ST_DEC_PT[45] | TBL_LD_ST_DEC_PT[49] | TBL_LD_ST_DEC_PT[56] |
                                    TBL_LD_ST_DEC_PT[71] | TBL_LD_ST_DEC_PT[75] | TBL_LD_ST_DEC_PT[76]);
 assign dec_dcc_ex1_optype32     = (TBL_LD_ST_DEC_PT[73]);
-assign dec_dcc_ex1_optype4      = (TBL_LD_ST_DEC_PT[4]  | TBL_LD_ST_DEC_PT[27] | TBL_LD_ST_DEC_PT[34] | TBL_LD_ST_DEC_PT[35] |  
-                                   TBL_LD_ST_DEC_PT[40] | TBL_LD_ST_DEC_PT[48] | TBL_LD_ST_DEC_PT[52] | TBL_LD_ST_DEC_PT[53] |  
-                                   TBL_LD_ST_DEC_PT[54] | TBL_LD_ST_DEC_PT[58] | TBL_LD_ST_DEC_PT[63] | TBL_LD_ST_DEC_PT[67] |  
+assign dec_dcc_ex1_optype4      = (TBL_LD_ST_DEC_PT[4]  | TBL_LD_ST_DEC_PT[27] | TBL_LD_ST_DEC_PT[34] | TBL_LD_ST_DEC_PT[35] |
+                                   TBL_LD_ST_DEC_PT[40] | TBL_LD_ST_DEC_PT[48] | TBL_LD_ST_DEC_PT[52] | TBL_LD_ST_DEC_PT[53] |
+                                   TBL_LD_ST_DEC_PT[54] | TBL_LD_ST_DEC_PT[58] | TBL_LD_ST_DEC_PT[63] | TBL_LD_ST_DEC_PT[67] |
                                    TBL_LD_ST_DEC_PT[69] | TBL_LD_ST_DEC_PT[78] | TBL_LD_ST_DEC_PT[79]);
-assign dec_dcc_ex1_optype8      = (TBL_LD_ST_DEC_PT[12] | TBL_LD_ST_DEC_PT[16] | TBL_LD_ST_DEC_PT[28] | TBL_LD_ST_DEC_PT[30] |  
-                                   TBL_LD_ST_DEC_PT[38] | TBL_LD_ST_DEC_PT[39] | TBL_LD_ST_DEC_PT[41] | TBL_LD_ST_DEC_PT[42] |  
+assign dec_dcc_ex1_optype8      = (TBL_LD_ST_DEC_PT[12] | TBL_LD_ST_DEC_PT[16] | TBL_LD_ST_DEC_PT[28] | TBL_LD_ST_DEC_PT[30] |
+                                   TBL_LD_ST_DEC_PT[38] | TBL_LD_ST_DEC_PT[39] | TBL_LD_ST_DEC_PT[41] | TBL_LD_ST_DEC_PT[42] |
                                    TBL_LD_ST_DEC_PT[65] | TBL_LD_ST_DEC_PT[68] | TBL_LD_ST_DEC_PT[77]);
-assign ex1_dcm_instr            = (TBL_LD_ST_DEC_PT[2]  | TBL_LD_ST_DEC_PT[3]  | TBL_LD_ST_DEC_PT[5]  | TBL_LD_ST_DEC_PT[6]  |  
-                                   TBL_LD_ST_DEC_PT[8]  | TBL_LD_ST_DEC_PT[9]  | TBL_LD_ST_DEC_PT[11] | TBL_LD_ST_DEC_PT[13] |  
-                                   TBL_LD_ST_DEC_PT[14] | TBL_LD_ST_DEC_PT[17] | TBL_LD_ST_DEC_PT[18] | TBL_LD_ST_DEC_PT[23] |  
-                                   TBL_LD_ST_DEC_PT[24] | TBL_LD_ST_DEC_PT[31] | TBL_LD_ST_DEC_PT[33] | TBL_LD_ST_DEC_PT[36] |  
+assign ex1_dcm_instr            = (TBL_LD_ST_DEC_PT[2]  | TBL_LD_ST_DEC_PT[3]  | TBL_LD_ST_DEC_PT[5]  | TBL_LD_ST_DEC_PT[6]  |
+                                   TBL_LD_ST_DEC_PT[8]  | TBL_LD_ST_DEC_PT[9]  | TBL_LD_ST_DEC_PT[11] | TBL_LD_ST_DEC_PT[13] |
+                                   TBL_LD_ST_DEC_PT[14] | TBL_LD_ST_DEC_PT[17] | TBL_LD_ST_DEC_PT[18] | TBL_LD_ST_DEC_PT[23] |
+                                   TBL_LD_ST_DEC_PT[24] | TBL_LD_ST_DEC_PT[31] | TBL_LD_ST_DEC_PT[33] | TBL_LD_ST_DEC_PT[36] |
                                    TBL_LD_ST_DEC_PT[51]);
 assign dec_dcc_ex1_strg_index   = (TBL_LD_ST_DEC_PT[7]);
-assign ex1_is_any_load_dac      = (TBL_LD_ST_DEC_PT[1]  | TBL_LD_ST_DEC_PT[5]  | TBL_LD_ST_DEC_PT[6]  | TBL_LD_ST_DEC_PT[11] |  
-                                   TBL_LD_ST_DEC_PT[12] | TBL_LD_ST_DEC_PT[14] | TBL_LD_ST_DEC_PT[15] | TBL_LD_ST_DEC_PT[19] |  
-                                   TBL_LD_ST_DEC_PT[21] | TBL_LD_ST_DEC_PT[23] | TBL_LD_ST_DEC_PT[27] | TBL_LD_ST_DEC_PT[28] |  
-                                   TBL_LD_ST_DEC_PT[29] | TBL_LD_ST_DEC_PT[30] | TBL_LD_ST_DEC_PT[34] | TBL_LD_ST_DEC_PT[35] |  
-                                   TBL_LD_ST_DEC_PT[36] | TBL_LD_ST_DEC_PT[41] | TBL_LD_ST_DEC_PT[43] | TBL_LD_ST_DEC_PT[44] |  
-                                   TBL_LD_ST_DEC_PT[46] | TBL_LD_ST_DEC_PT[51] | TBL_LD_ST_DEC_PT[52] | TBL_LD_ST_DEC_PT[55] |  
-                                   TBL_LD_ST_DEC_PT[56] | TBL_LD_ST_DEC_PT[58] | TBL_LD_ST_DEC_PT[61] | TBL_LD_ST_DEC_PT[63] |  
+assign ex1_is_any_load_dac      = (TBL_LD_ST_DEC_PT[1]  | TBL_LD_ST_DEC_PT[5]  | TBL_LD_ST_DEC_PT[6]  | TBL_LD_ST_DEC_PT[11] |
+                                   TBL_LD_ST_DEC_PT[12] | TBL_LD_ST_DEC_PT[14] | TBL_LD_ST_DEC_PT[15] | TBL_LD_ST_DEC_PT[19] |
+                                   TBL_LD_ST_DEC_PT[21] | TBL_LD_ST_DEC_PT[23] | TBL_LD_ST_DEC_PT[27] | TBL_LD_ST_DEC_PT[28] |
+                                   TBL_LD_ST_DEC_PT[29] | TBL_LD_ST_DEC_PT[30] | TBL_LD_ST_DEC_PT[34] | TBL_LD_ST_DEC_PT[35] |
+                                   TBL_LD_ST_DEC_PT[36] | TBL_LD_ST_DEC_PT[41] | TBL_LD_ST_DEC_PT[43] | TBL_LD_ST_DEC_PT[44] |
+                                   TBL_LD_ST_DEC_PT[46] | TBL_LD_ST_DEC_PT[51] | TBL_LD_ST_DEC_PT[52] | TBL_LD_ST_DEC_PT[55] |
+                                   TBL_LD_ST_DEC_PT[56] | TBL_LD_ST_DEC_PT[58] | TBL_LD_ST_DEC_PT[61] | TBL_LD_ST_DEC_PT[63] |
                                    TBL_LD_ST_DEC_PT[65] | TBL_LD_ST_DEC_PT[66] | TBL_LD_ST_DEC_PT[69] | TBL_LD_ST_DEC_PT[75]);
-assign ex1_is_any_store_dac     = (TBL_LD_ST_DEC_PT[3]  | TBL_LD_ST_DEC_PT[8]  | TBL_LD_ST_DEC_PT[9]  | TBL_LD_ST_DEC_PT[13] |  
-                                   TBL_LD_ST_DEC_PT[16] | TBL_LD_ST_DEC_PT[17] | TBL_LD_ST_DEC_PT[18] | TBL_LD_ST_DEC_PT[20] |  
-                                   TBL_LD_ST_DEC_PT[22] | TBL_LD_ST_DEC_PT[24] | TBL_LD_ST_DEC_PT[26] | TBL_LD_ST_DEC_PT[31] |  
-                                   TBL_LD_ST_DEC_PT[32] | TBL_LD_ST_DEC_PT[33] | TBL_LD_ST_DEC_PT[38] | TBL_LD_ST_DEC_PT[42] |  
-                                   TBL_LD_ST_DEC_PT[45] | TBL_LD_ST_DEC_PT[47] | TBL_LD_ST_DEC_PT[49] | TBL_LD_ST_DEC_PT[50] |  
-                                   TBL_LD_ST_DEC_PT[53] | TBL_LD_ST_DEC_PT[54] | TBL_LD_ST_DEC_PT[57] | TBL_LD_ST_DEC_PT[59] |  
-                                   TBL_LD_ST_DEC_PT[67] | TBL_LD_ST_DEC_PT[68] | TBL_LD_ST_DEC_PT[70] | TBL_LD_ST_DEC_PT[71] |  
+assign ex1_is_any_store_dac     = (TBL_LD_ST_DEC_PT[3]  | TBL_LD_ST_DEC_PT[8]  | TBL_LD_ST_DEC_PT[9]  | TBL_LD_ST_DEC_PT[13] |
+                                   TBL_LD_ST_DEC_PT[16] | TBL_LD_ST_DEC_PT[17] | TBL_LD_ST_DEC_PT[18] | TBL_LD_ST_DEC_PT[20] |
+                                   TBL_LD_ST_DEC_PT[22] | TBL_LD_ST_DEC_PT[24] | TBL_LD_ST_DEC_PT[26] | TBL_LD_ST_DEC_PT[31] |
+                                   TBL_LD_ST_DEC_PT[32] | TBL_LD_ST_DEC_PT[33] | TBL_LD_ST_DEC_PT[38] | TBL_LD_ST_DEC_PT[42] |
+                                   TBL_LD_ST_DEC_PT[45] | TBL_LD_ST_DEC_PT[47] | TBL_LD_ST_DEC_PT[49] | TBL_LD_ST_DEC_PT[50] |
+                                   TBL_LD_ST_DEC_PT[53] | TBL_LD_ST_DEC_PT[54] | TBL_LD_ST_DEC_PT[57] | TBL_LD_ST_DEC_PT[59] |
+                                   TBL_LD_ST_DEC_PT[67] | TBL_LD_ST_DEC_PT[68] | TBL_LD_ST_DEC_PT[70] | TBL_LD_ST_DEC_PT[71] |
                                    TBL_LD_ST_DEC_PT[79]);
-assign ex1_resv_instr           = (TBL_LD_ST_DEC_PT[15] | TBL_LD_ST_DEC_PT[21] | TBL_LD_ST_DEC_PT[22] | TBL_LD_ST_DEC_PT[25] |  
+assign ex1_resv_instr           = (TBL_LD_ST_DEC_PT[15] | TBL_LD_ST_DEC_PT[21] | TBL_LD_ST_DEC_PT[22] | TBL_LD_ST_DEC_PT[25] |
                                    TBL_LD_ST_DEC_PT[27] | TBL_LD_ST_DEC_PT[28] | TBL_LD_ST_DEC_PT[32]);
 
 assign dec_derat_ex1_is_load    = ex1_derat_is_load;
 assign dec_derat_ex1_is_store   = ex1_derat_is_store;
 assign ex1_is_ditc              = ex1_is_mtdpx | ex1_is_mtdp | ex1_is_mfdpx | ex1_is_mfdp;
 
+// Need to decode these ops in ex0
 assign ex1_opcode_is_62 = ex1_instr_q[0:5] == 6'b111110;
 assign ex1_opcode_is_58 = ex1_instr_q[0:5] == 6'b111010;
 assign ex1_opcode_is_31 = ex1_instr_q[0:5] == 6'b011111;
@@ -1817,12 +2131,15 @@ assign ex0_is_stwepx    = (rv_lq_ex0_instr[0:5] == 6'b011111 & rv_lq_ex0_instr[2
 assign ex0_is_stdepx    = (rv_lq_ex0_instr[0:5] == 6'b011111 & rv_lq_ex0_instr[21:30] == 10'b0010011101);
 assign ex0_is_icswepx   = (rv_lq_ex0_instr[0:5] == 6'b011111 & rv_lq_ex0_instr[21:30] == 10'b1110110110);
 assign ex0_is_larx      = (rv_lq_ex0_instr[0:5] == 6'b011111) & (rv_lq_ex0_instr[21:23] == 3'b000) & (rv_lq_ex0_instr[26:30] == 5'b10100);
-assign ex0_is_stcx      = (rv_lq_ex0_instr[0:5] == 6'b011111) & (rv_lq_ex0_instr[26:30] == 5'b10110) & 
-                          ((rv_lq_ex0_instr[21:25] == 5'b10101) | (rv_lq_ex0_instr[21:25] == 5'b10110) | 
+assign ex0_is_stcx      = (rv_lq_ex0_instr[0:5] == 6'b011111) & (rv_lq_ex0_instr[26:30] == 5'b10110) &
+                          ((rv_lq_ex0_instr[21:25] == 5'b10101) | (rv_lq_ex0_instr[21:25] == 5'b10110) |
                            (rv_lq_ex0_instr[21:25] == 5'b00100) | (rv_lq_ex0_instr[21:25] == 5'b00110)) ;
 assign ex0_is_ldawx     = (rv_lq_ex0_instr[0:5] == 6'b011111) & (rv_lq_ex0_instr[21:30] == 10'b0011010100);
 assign ex0_is_icswxdot  = (rv_lq_ex0_instr[0:5] == 6'b011111) & (rv_lq_ex0_instr[22:24] == 3'b110) & (rv_lq_ex0_instr[26:31] == 6'b101101);
 
+//----------------------------------------------------------------------------------------------------------------------------------------
+// Latch Instances
+//----------------------------------------------------------------------------------------------------------------------------------------
 
 tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0), .NEEDS_SRESET(1)) spr_msr_gs_latch(
    .nclk(nclk),

@@ -8,13 +8,19 @@
 // license is available.
 
 
+//  Description:  XU ALU Compare
+//
+//*****************************************************************************
 `include "tri_a2o.vh"
 module xu_alu_cmp(
+   // Clocks
    input [0:`NCLK_WIDTH-1] nclk,
-   
+
+   // Power
    inout                   vdd,
    inout                   gnd,
-   
+
+   // Pervasive
    input                   d_mode_dc,
    input                   delay_lclkr_dc,
    input                   mpw1_dc_b,
@@ -24,42 +30,44 @@ module xu_alu_cmp(
    input                   sg_0,
    input                   scan_in,
    output                  scan_out,
-   
+
    input                   ex2_act,
-   
+
    input                   ex1_msb_64b_sel,
-   
+
    input [6:10]            ex2_instr,
    input                   ex2_sel_trap,
    input                   ex2_sel_cmpl,
    input                   ex2_sel_cmp,
-   
+
    input                   ex2_rs1_00,
    input                   ex2_rs1_32,
-   
+
    input                   ex2_rs2_00,
    input                   ex2_rs2_32,
-   
+
    input [64-`GPR_WIDTH:63] ex3_alu_rt,
    input                   ex3_add_ca,
-   
+
    output [0:2]            ex3_alu_cr,
-   
+
    output                  ex3_trap_val
 );
    localparam              msb = 64 - `GPR_WIDTH;
-   wire                    ex2_msb_64b_sel_q;		
-   wire                    ex3_msb_64b_sel_q;		
-   wire                    ex3_diff_sign_q;		
+   // Latches
+   wire                    ex2_msb_64b_sel_q;		// input=>ex1_msb_64b_sel           ,act=>1'b1
+   wire                    ex3_msb_64b_sel_q;		// input=>ex2_msb_64b_sel_q         ,act=>ex2_act
+   wire                    ex3_diff_sign_q;		// input=>ex2_diff_sign             ,act=>ex2_act
    wire                    ex2_diff_sign;
-   wire                    ex3_rs1_trm1_q;		
+   wire                    ex3_rs1_trm1_q;		// input=>ex2_rs1_trm1              ,act=>ex2_act
    wire                    ex2_rs1_trm1;
-   wire                    ex3_rs2_trm1_q;		
+   wire                    ex3_rs2_trm1_q;		// input=>ex2_rs2_trm1              ,act=>ex2_act
    wire                    ex2_rs2_trm1;
-   wire [6:10]             ex3_instr_q;		
-   wire                    ex3_sel_trap_q;		
-   wire                    ex3_sel_cmpl_q;		
-   wire                    ex3_sel_cmp_q;		
+   wire [6:10]             ex3_instr_q;		// input=>ex2_instr                 ,act=>ex2_act
+   wire                    ex3_sel_trap_q;		// input=>ex2_sel_trap              ,act=>ex2_act
+   wire                    ex3_sel_cmpl_q;		// input=>ex2_sel_cmpl              ,act=>ex2_act
+   wire                    ex3_sel_cmp_q;		// input=>ex2_sel_cmp               ,act=>ex2_act
+   // Scanchains
    localparam              ex2_msb_64b_sel_offset = 0;
    localparam              ex3_msb_64b_sel_offset = ex2_msb_64b_sel_offset + 1;
    localparam              ex3_diff_sign_offset = ex3_msb_64b_sel_offset + 1;
@@ -72,6 +80,7 @@ module xu_alu_cmp(
    localparam              scan_right = ex3_sel_cmp_offset + 1;
    wire [0:scan_right-1]   siv;
    wire [0:scan_right-1]   sov;
+   // Signals
    wire                    ex3_cmp0_hi;
    wire                    ex3_cmp0_lo;
    wire                    ex3_cmp0_eq;
@@ -100,33 +109,43 @@ module xu_alu_cmp(
 
    assign ex3_rt_msb  = (ex3_msb_64b_sel_q == 1'b1) ? ex3_alu_rt[msb] : ex3_alu_rt[32];
 
+   // If the signs are different, then we immediately know if one is bigger than the other.
+   //   but only look at this in case of compare instructions
    assign ex3_cmp0_eq = (ex3_msb_64b_sel_q == 1'b1) ? (ex3_cmp0_lo & ex3_cmp0_hi) : ex3_cmp0_lo;
-   
+
    assign ex2_diff_sign = (ex2_rs1_msb ^ ex2_rs2_msb) & (ex2_sel_cmpl | ex2_sel_cmp | ex2_sel_trap);
 
+   // In case the sigs are not different, we need some more logic
+   // Look at adder carry out for compares (need to be able to check over flow case)
+   // Look at sign bit for record forms (overflow is ignored, ie two positives equal a negative.)
 
    assign ex3_sign_cmp = ((ex3_sel_cmpl_q | ex3_sel_cmp_q | ex3_sel_trap_q) == 1'b1) ? ex3_add_ca : ex3_rt_msb;
    assign ex2_rs1_trm1 = ex2_rs1_msb & ex2_diff_sign;
    assign ex2_rs2_trm1 = ex2_rs2_msb & ex2_diff_sign;
 
-   assign ex3_rslt_gt_s = (ex3_rs2_trm1_q | (~ex3_sign_cmp & ~ex3_diff_sign_q));		
-   assign ex3_rslt_lt_s = (ex3_rs1_trm1_q | ( ex3_sign_cmp & ~ex3_diff_sign_q));		
-   assign ex3_rslt_gt_u = (ex3_rs1_trm1_q | (~ex3_sign_cmp & ~ex3_diff_sign_q));		
-   assign ex3_rslt_lt_u = (ex3_rs2_trm1_q | ( ex3_sign_cmp & ~ex3_diff_sign_q));		
+   // Signed compare
+   assign ex3_rslt_gt_s = (ex3_rs2_trm1_q | (~ex3_sign_cmp & ~ex3_diff_sign_q));		// RS2 < RS1
+   assign ex3_rslt_lt_s = (ex3_rs1_trm1_q | ( ex3_sign_cmp & ~ex3_diff_sign_q));		// RS2 > RS1
+   // Unsigned compare
+   assign ex3_rslt_gt_u = (ex3_rs1_trm1_q | (~ex3_sign_cmp & ~ex3_diff_sign_q));		// RS2 < RS1
+   assign ex3_rslt_lt_u = (ex3_rs2_trm1_q | ( ex3_sign_cmp & ~ex3_diff_sign_q));		// RS2 > RS1
 
    assign ex3_cmp_eq = ex3_cmp0_eq;
    assign ex3_cmp_gt = ((~ex3_sel_cmpl_q & ex3_rslt_gt_s) | (ex3_sel_cmpl_q & ex3_rslt_gt_u)) & (~ex3_cmp0_eq);
    assign ex3_cmp_lt = ((~ex3_sel_cmpl_q & ex3_rslt_lt_s) | (ex3_sel_cmpl_q & ex3_rslt_lt_u)) & (~ex3_cmp0_eq);
 
+   // CR Field for Add, Logical, Rotate
    assign ex3_alu_cr = {ex3_cmp_lt, ex3_cmp_gt, ex3_cmp_eq};
 
-   assign ex3_trap_val = ex3_sel_trap_q & 
+   // Trap logic
+   assign ex3_trap_val = ex3_sel_trap_q &
                         ((ex3_instr_q[6]  & (~ex3_cmp_eq) & ex3_rslt_lt_s) |
                          (ex3_instr_q[7]  & (~ex3_cmp_eq) & ex3_rslt_gt_s) |
                          (ex3_instr_q[8]  &   ex3_cmp_eq) |
                          (ex3_instr_q[9]  & (~ex3_cmp_eq) & ex3_rslt_lt_u) |
                          (ex3_instr_q[10] & (~ex3_cmp_eq) & ex3_rslt_gt_u));
 
+   // Latch Instances
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ex2_msb_64b_sel_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -291,5 +310,5 @@ module xu_alu_cmp(
 
    assign siv[0:scan_right-1] = {sov[1:scan_right-1], scan_in};
    assign scan_out = sov[0];
-      
+
 endmodule

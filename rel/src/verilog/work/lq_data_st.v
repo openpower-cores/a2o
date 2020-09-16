@@ -7,7 +7,16 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU LSU Store Data Rotator Wrapper
+//
+//*****************************************************************************
 
+// ##########################################################################################
+// VHDL Contents
+// 1) 16 Byte Unaligned Rotator
+// 2) Little Endian Support for 2,4,8,16 Byte Operations
+// 3) Byte Enable Generation
+// ##########################################################################################
 
 `include "tri_a2o.vh"
 
@@ -72,12 +81,20 @@ module lq_data_st(
    scan_out
 );
 
+//-------------------------------------------------------------------
+// Generics
+//-------------------------------------------------------------------
+//parameter                        EXPAND_TYPE = 2;		    // 0 = ibm (Umbra), 1 = non-ibm, 2 = ibm (MPG)
+//parameter                        GPR_WIDTH_ENC = 6;		   // Register Mode 5 = 32bit, 6 = 64bit
 
+// Load Address
 input                            ex2_stg_act;
 input [52:59]                    ctl_dat_ex2_eff_addr;
 
+// SPR
 input                            spr_xucr0_dcdis;
 
+//Store/Reload path
 input                            lsq_dat_stq1_stg_act;
 input                            lsq_dat_stq1_val;
 input                            lsq_dat_stq1_mftgpr_val;
@@ -91,6 +108,7 @@ input                            lsq_dat_rel1_data_val;
 input [57:59]                    lsq_dat_rel1_qw;
 input [0:143]                    lsq_dat_stq2_store_data;
 
+// Read-Modify-Write Path Read data
 input [0:143]                    stq6_rd_data_wa;
 input [0:143]                    stq6_rd_data_wb;
 input [0:143]                    stq6_rd_data_wc;
@@ -100,10 +118,13 @@ input [0:143]                    stq6_rd_data_wf;
 input [0:143]                    stq6_rd_data_wg;
 input [0:143]                    stq6_rd_data_wh;
 
+// Rotated Data
 output [(128-`STQ_DATA_SIZE):127] stq4_rot_data;
 
+// L2 Store Data
 output [0:127]                   dat_lsq_stq4_128data;
 
+// EX4 Load Bypass Data for Read/Write Collision detected in EX2
 output [0:3]                     stq7_byp_val_wabcd;
 output [0:3]                     stq7_byp_val_wefgh;
 output [0:143]                   stq7_byp_data_wabcd;
@@ -113,18 +134,21 @@ output [0:143]                   stq8_byp_data_wefgh;
 output [0:3]                     stq_byp_val_wabcd;
 output [0:3]                     stq_byp_val_wefgh;
 
-input                            stq4_dcarr_wren;     
-input [0:7]                      stq4_dcarr_way_en;   
+// D$ Array Write Control
+input                            stq4_dcarr_wren;     // D$ Array Write Enable
+input [0:7]                      stq4_dcarr_way_en;   // D$ Array Way Enable
 input [0:7]                      ctl_dat_stq5_way_perr_inval;
 
-output [0:7]                     dcarr_rd_stg_act;    
-output [52:59]                   dcarr_rd_addr;		   
-output [0:7]                     dcarr_wr_stg_act;    
-output [0:7]                     dcarr_wr_way;        
-output [52:59]                   dcarr_wr_addr;		   
-output [0:143]                   dcarr_wr_data_wabcd;	
-output [0:143]                   dcarr_wr_data_wefgh;	
+// D$ Array
+output [0:7]                     dcarr_rd_stg_act;    // D$ Array Read ACT
+output [52:59]                   dcarr_rd_addr;		   // D$ Array Read Address
+output [0:7]                     dcarr_wr_stg_act;    // D$ Array Write ACT
+output [0:7]                     dcarr_wr_way;        // D$ Array Write Way Write Enable
+output [52:59]                   dcarr_wr_addr;		   // D$ Array Write Address
+output [0:143]                   dcarr_wr_data_wabcd;	// D$ Array Write Data for Way A,B,C,D
+output [0:143]                   dcarr_wr_data_wefgh;	// D$ Array Write Data for Way E,F,G,H
 
+// Pervasive
 inout                            vdd;
 inout                            gnd;
 (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)
@@ -143,6 +167,9 @@ input                            scan_in;
 (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
 output                           scan_out;
 
+//--------------------------
+// constants
+//--------------------------
 parameter                        stq2_opsize_offset = 0;
 parameter                        stq3_opsize_offset = stq2_opsize_offset + 5;
 parameter                        stq4_rot_data_offset = stq3_opsize_offset + 5;
@@ -151,7 +178,7 @@ parameter                        stq2_mftgpr_val_offset = stq2_le_mode_offset + 
 parameter                        stq2_upd_val_offset = stq2_mftgpr_val_offset + 1;
 parameter                        stq3_upd_val_offset = stq2_upd_val_offset + 1;
 parameter                        stq4_upd_val_offset = stq3_upd_val_offset + 1;
-parameter                        stq5_arr_wren_offset = stq4_upd_val_offset + 1;   
+parameter                        stq5_arr_wren_offset = stq4_upd_val_offset + 1;
 parameter                        stq3_blk_req_offset = stq5_arr_wren_offset + 1;
 parameter                        stq2_rot_addr_offset = stq3_blk_req_offset + 1;
 parameter                        stq2_addr_offset = stq2_rot_addr_offset + 5;
@@ -166,6 +193,7 @@ parameter                        stq3_stg_act_offset = stq2_stg_act_offset + 1;
 parameter                        stq4_stg_act_offset = stq3_stg_act_offset + 1;
 parameter                        stq5_stg_act_offset = stq4_stg_act_offset + 1;
 
+// start non-scan
 parameter                        stq5_arr_way_en_offset = stq5_stg_act_offset + 1;
 parameter                        stq3_rot_sel1_offset = stq5_arr_way_en_offset + 8;
 parameter                        stq3_rot_sel2_offset = stq3_rot_sel1_offset + 8;
@@ -181,6 +209,9 @@ parameter                        scan_right = stq5_byte_en_offset + 16 - 1;
 
 parameter [0:4]                  rot_max_size = 5'b10000;
 
+//--------------------------
+// signals
+//--------------------------
 wire [0:127]                     stq3_rot_data;
 wire [0:4]                       stq2_opsize_d;
 wire [0:4]                       stq2_opsize_q;
@@ -282,6 +313,9 @@ wire                             unused;
 
 assign unused = rot_sel_le[0] | rot_sel_non_le[0] | |stq3_swzl_data[0:63];
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// ACT's
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 assign stq1_stg_act = lsq_dat_stq1_stg_act;
 assign stq2_stg_act_d = stq1_stg_act;
@@ -289,13 +323,17 @@ assign stq3_stg_act_d = stq2_stg_act_q;
 assign stq4_stg_act_d = stq3_stg_act_q;
 assign stq5_stg_act_d = stq4_stg_act_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Inputs
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign tiup = 1'b1;
 
-assign stq1_op_size = (lsq_dat_stq1_op_size == 3'b110) ? 5'b10000 : 		
-                      (lsq_dat_stq1_op_size == 3'b101) ? 5'b01000 : 		
-                      (lsq_dat_stq1_op_size == 3'b100) ? 5'b00100 : 		
-                      (lsq_dat_stq1_op_size == 3'b010) ? 5'b00010 : 		
-                      (lsq_dat_stq1_op_size == 3'b001) ? 5'b00001 : 		
+// This signals are not muxed latched, need to latch them only
+assign stq1_op_size = (lsq_dat_stq1_op_size == 3'b110) ? 5'b10000 : 		// 16Bytes
+                      (lsq_dat_stq1_op_size == 3'b101) ? 5'b01000 : 		// 8Bytes
+                      (lsq_dat_stq1_op_size == 3'b100) ? 5'b00100 : 		// 4Bytes
+                      (lsq_dat_stq1_op_size == 3'b010) ? 5'b00010 : 		// 2Bytes
+                      (lsq_dat_stq1_op_size == 3'b001) ? 5'b00001 : 		// 1Bytes
                                                          5'b00000;
 
 assign stq2_opsize_d = stq1_op_size;
@@ -323,44 +361,63 @@ assign stq5_byte_en_d = stq4_byte_en_q;
 assign stq3_blk_req_d = lsq_dat_stq2_blk_req;
 assign rel2_data_val_d = lsq_dat_rel1_data_val;
 
+// #############################################################################################
+// Select between different Operations
+// #############################################################################################
 assign ex2_stq4_rd_addr    = ~stq4_upd_val_q ? ctl_dat_ex2_eff_addr : stq4_addr_q;
 assign ex2_stq4_rd_stg_act = (ex2_stg_act | stq4_upd_val_q) & ~spr_xucr0_dcdis;
 
+// #############################################################################################
+// Create Rotate Select
+// #############################################################################################
 
+// Store/Reload Pipe Rotator Control Calculations
 assign rot_size = stq2_rot_addr_q + stq2_opsize_q;
 assign rot_max_size_le = rot_max_size | stq2_opsize_q;
 assign rot_sel_le = rot_max_size_le - rot_size;
 assign rot_sel_non_le = rot_max_size - rot_size;
 
+// STORE PATH LITTLE ENDIAN ROTATOR SELECT CALCULATION
+// st_rot_size = rot_addr + op_size
+// st_rot_sel = (rot_max_size or le_op_size) - rot_size
 
-assign st_rot_sel = (stq2_le_mode_q == 1'b1) ? rot_sel_le[1:4] : 
+// Little Endian Support Store Data Rotate Select
+assign st_rot_sel = (stq2_le_mode_q == 1'b1) ? rot_sel_le[1:4] :
                                                rot_sel_non_le[1:4];
 
+// #############################################################################################
+// 1-hot Rotate Select
+// #############################################################################################
 
 assign lvl1_sel = stq2_le_mode_q & (~(stq2_mftgpr_val_q | rel2_data_val_q));
 assign lvl2_sel = st_rot_sel[0:1] & {2{~(stq2_mftgpr_val_q | rel2_data_val_q)}};
 assign lvl3_sel = st_rot_sel[2:3] & {2{~(stq2_mftgpr_val_q | rel2_data_val_q)}};
 
-assign rotate_sel1 = (lvl1_sel == 1'b0) ? 2'b10 : 
+assign rotate_sel1 = (lvl1_sel == 1'b0) ? 2'b10 :
                                           2'b01;
 
-assign rotate_sel2 = (lvl2_sel == 2'b00) ? 4'b1000 : 
-                     (lvl2_sel == 2'b01) ? 4'b0100 : 
-                     (lvl2_sel == 2'b10) ? 4'b0010 : 
+assign rotate_sel2 = (lvl2_sel == 2'b00) ? 4'b1000 :
+                     (lvl2_sel == 2'b01) ? 4'b0100 :
+                     (lvl2_sel == 2'b10) ? 4'b0010 :
                                            4'b0001;
 
-assign rotate_sel3 = (lvl3_sel == 2'b00) ? 4'b1000 : 
-                     (lvl3_sel == 2'b01) ? 4'b0100 : 
-                     (lvl3_sel == 2'b10) ? 4'b0010 : 
+assign rotate_sel3 = (lvl3_sel == 2'b00) ? 4'b1000 :
+                     (lvl3_sel == 2'b01) ? 4'b0100 :
+                     (lvl3_sel == 2'b10) ? 4'b0010 :
                                            4'b0001;
 
 assign stq3_rot_sel1_d = {rotate_sel1, rotate_sel1, rotate_sel1, rotate_sel1};
 assign stq3_rot_sel2_d = {rotate_sel2, rotate_sel2};
 assign stq3_rot_sel3_d = {rotate_sel3, rotate_sel3};
 
+// #############################################################################################
+// Select Between Reload Critical Quadword and Store Data Path
+// #############################################################################################
 
+// Parity Bits
 assign stq3_store_rel_par_d = lsq_dat_stq2_store_data[128:143];
 
+// Swizzle Rotate Data
 generate begin : swzlSTData
   genvar                           t;
   for (t = 0; t <= 7; t = t + 1) begin : swzlSTData
@@ -384,19 +441,26 @@ generate begin : swzlSTData
 end
 endgenerate
 
+// #############################################################################################
+// 16 Byte Store Rotator
+// #############################################################################################
 
+// Store Data Rotate
 generate begin : l1dcrotl
    genvar bit;
-   for (bit = 0; bit <= 7; bit = bit + 1) begin : l1dcrotl      
+   for (bit = 0; bit <= 7; bit = bit + 1) begin : l1dcrotl
       tri_rot16_lu drotl(
-         
+
+         // Rotator Controls and Data
          .rot_sel1(stq3_rot_sel1_q),
          .rot_sel2(stq3_rot_sel2_q),
          .rot_sel3(stq3_rot_sel3_q),
          .rot_data(stq3_store_rel_data_q[bit * 16:(bit * 16) + 15]),
-         
+
+         // Rotated Data
          .data_rot(stq3_rot_data[bit * 16:(bit * 16) + 15]),
-         
+
+         // Pervasive
          .vdd(vdd),
          .gnd(gnd)
       );
@@ -404,27 +468,35 @@ generate begin : l1dcrotl
 end
 endgenerate
 
+// Parity Rotate
 
 tri_rot16_lu protl(
-   
+
+   // Rotator Controls and Data
    .rot_sel1(stq3_rot_sel1_q),
    .rot_sel2(stq3_rot_sel2_q),
    .rot_sel3(stq3_rot_sel3_q),
    .rot_data(stq3_store_rel_par_q),
-   
+
+   // Rotated Data
    .data_rot(stq3_rot_parity),
-   
+
+   // Pervasive
    .vdd(vdd),
    .gnd(gnd)
 );
 
-
-
-assign stq4_dcarr_data_d = stq3_rot_data; 
+// Mux removed since we are gating the rotator controls when operation is a reload
+// this causes the data to be passed through
+// Data written to D$ Array
+assign stq4_dcarr_data_d = stq3_rot_data;
 assign stq4_dcarr_par_d = stq3_rot_parity;
 assign stq4_dcarr_wrt_data = {stq4_dcarr_data_q, stq4_dcarr_par_q};
 assign stq5_dcarr_wrt_data_d = stq4_dcarr_wrt_data;
 
+// #############################################################################################
+// Read Modify Write
+// #############################################################################################
 tri_lq_rmw rmw(
    .ex2_stq4_rd_stg_act(ex2_stq4_rd_stg_act),
    .ex2_stq4_rd_addr(ex2_stq4_rd_addr),
@@ -470,9 +542,13 @@ tri_lq_rmw rmw(
    .scan_out(rmw_scan_out)
 );
 
+// #############################################################################################
+// Op Size Mask Generation for Reloads
+// #############################################################################################
 
-assign bittype_mask = (16'h0001 & {16{stq3_opsize_q[4]}}) | (16'h0003 & {16{stq3_opsize_q[3]}}) | 
-                      (16'h000F & {16{stq3_opsize_q[2]}}) | (16'h00FF & {16{stq3_opsize_q[1]}}) | 
+// STQ Bit Mask Generation
+assign bittype_mask = (16'h0001 & {16{stq3_opsize_q[4]}}) | (16'h0003 & {16{stq3_opsize_q[3]}}) |
+                      (16'h000F & {16{stq3_opsize_q[2]}}) | (16'h00FF & {16{stq3_opsize_q[1]}}) |
                       (16'hFFFF & {16{stq3_opsize_q[0]}});
 
 generate begin : maskGen
@@ -486,6 +562,7 @@ endgenerate
 
 assign stq3_msk_data = stq3_rot_data & stq3_optype_mask;
 
+// Swizzle Data to a proper format
 generate begin : swzlData
   genvar t;
   for (t = 0; t <= 15; t = t + 1)
@@ -500,9 +577,9 @@ generate begin : swzlData
                                                  stq3_msk_data[t + 112]};
 
      assign stq4_128data[t * 8:(t * 8) + 7] = {stq4_dcarr_data_q[t],
-                                               stq4_dcarr_data_q[t + 16], 
-                                               stq4_dcarr_data_q[t + 32], 
-                                               stq4_dcarr_data_q[t + 48], 
+                                               stq4_dcarr_data_q[t + 16],
+                                               stq4_dcarr_data_q[t + 32],
+                                               stq4_dcarr_data_q[t + 48],
                                                stq4_dcarr_data_q[t + 64],
                                                stq4_dcarr_data_q[t + 80],
                                                stq4_dcarr_data_q[t + 96],
@@ -513,11 +590,17 @@ endgenerate
 
 assign stq4_rot_data_d = stq3_swzl_data[(128 - `STQ_DATA_SIZE):127];
 
+// #############################################################################################
+// Outputs
+// #############################################################################################
 
 assign dcarr_rd_addr = ex2_stq4_rd_addr;
 assign dat_lsq_stq4_128data = stq4_128data;
 assign stq4_rot_data = stq4_rot_data_q;
 
+// #############################################################################################
+// Registers
+// #############################################################################################
 tri_rlmreg_p #(.WIDTH(5), .INIT(0), .NEEDS_SRESET(1)) stq2_opsize_reg(
    .vd(vdd),
    .gd(gnd),
@@ -1040,6 +1123,9 @@ tri_regk #(.WIDTH(16), .INIT(0), .NEEDS_SRESET(1)) stq5_byte_en_reg(
    .dout(stq5_byte_en_q)
 );
 
+//------------------------------------
+//              ACTs
+//------------------------------------
 
 
 tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) stq2_stg_act_latch(
@@ -1118,7 +1204,5 @@ tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) stq5_stg_act_latch(
 assign rmw_scan_in = scan_in;
 assign siv[0:scan_right] = {sov[1:scan_right], rmw_scan_out};
 assign scan_out = sov[0];
-   
+
 endmodule
-
-

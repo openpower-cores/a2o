@@ -9,8 +9,9 @@
 
 `timescale 1 ns / 1 ns
 
-
-
+//
+//  Description:  XU LSU Store Data Mux
+//*****************************************************************************
 
 
 module lq_stq_rot(
@@ -24,12 +25,10 @@ module lq_stq_rot(
    input [0:3]  mask;
    input        se_b;
    input [0:7]  rot_data;
-   
-   
+
+
    output [0:7] data_rot;
-   
-   
-   
+
    wire [0:5]   se1;
    wire [0:7]   mx1_d0;
    wire [0:7]   mx1_d1;
@@ -43,38 +42,43 @@ module lq_stq_rot(
    wire [0:7]   mx1_1_b;
    wire [0:7]   mx1;
    wire [0:7]   mask_exp;
-   
-   
+
+   //--------------------------------------------------------------------------------------
+   // Muxing <0,2,4,6 bytes>
+   //--------------------------------------------------------------------------------------
    assign mx1_s0[0:7] = {8{rot_sel[0]}};
    assign mx1_s1[0:7] = {8{rot_sel[1]}};
    assign mx1_s2[0:7] = {8{rot_sel[2]}};
    assign mx1_s3[0:7] = {8{rot_sel[3]}};
-   
-   assign mask_exp[0] = mask[0];		                        
-   assign mask_exp[1] = mask[0];		                        
-   assign mask_exp[2] = mask[0];		                        
-   assign mask_exp[3] = mask[0];		                        
-   assign mask_exp[4] = mask[0] | mask[1];		                
-   assign mask_exp[5] = mask[0] | mask[1];		                
-   assign mask_exp[6] = mask[0] | mask[1] | mask[2];		    
-   assign mask_exp[7] = mask[0] | mask[1] | mask[2] | mask[3];  
-   
+
+   // Generate a Mask that is dependent on the size of the operation
+   assign mask_exp[0] = mask[0];		                        // 8B
+   assign mask_exp[1] = mask[0];		                        // 8B
+   assign mask_exp[2] = mask[0];		                        // 8B
+   assign mask_exp[3] = mask[0];		                        // 8B
+   assign mask_exp[4] = mask[0] | mask[1];		                // 8B/4B
+   assign mask_exp[5] = mask[0] | mask[1];		                // 8B/4B
+   assign mask_exp[6] = mask[0] | mask[1] | mask[2];		    // 8B/4B/2B
+   assign mask_exp[7] = mask[0] | mask[1] | mask[2] | mask[3];  // 8B/4B/2B/1B
+
    assign se1[0:3] = {4{((~se_b))}};
    assign se1[4:5] = {2{(((~se_b)) & mask[2])}};
-   
+
    assign mx1_d0 = (rot_data[0:7]) & mask_exp;
    assign mx1_d1 = ({2'b0, rot_data[0:5]}) & mask_exp;
    assign mx1_d2 = ({4'b0, rot_data[0:3]}) & mask_exp;
    assign mx1_d3 = ({6'b0, rot_data[0:1]}) & mask_exp;
-   
-   
-   tri_aoi22 #(.WIDTH(8)) mx1_0_b_0 (.y(mx1_0_b[0:7]), .a0(mx1_s0[0:7]), .a1(mx1_d0[0:7]), .b0(mx1_s1[0:7]), .b1(mx1_d1[0:7]));   
-   
-   tri_aoi22 #(.WIDTH(8)) mx1_1_b_0 (.y(mx1_1_b[0:7]), .a0(mx1_s2[0:7]), .a1(mx1_d2[0:7]), .b0(mx1_s3[0:7]), .b1(mx1_d3[0:7]));
-   
-   tri_nand2 #(.WIDTH(8)) mx1_0 (.y(mx1[0:7]), .a(mx1_0_b[0:7]), .b(mx1_1_b[0:7]));
-   
-   assign data_rot = {(mx1[0:5] | se1[0:5]), mx1[6:7]};
-      
-endmodule
 
+
+   //assign mx1_0_b[0:7] = (~((mx1_s0[0:7] & mx1_d0[0:7]) | (mx1_s1[0:7] & mx1_d1[0:7])));
+   tri_aoi22 #(.WIDTH(8)) mx1_0_b_0 (.y(mx1_0_b[0:7]), .a0(mx1_s0[0:7]), .a1(mx1_d0[0:7]), .b0(mx1_s1[0:7]), .b1(mx1_d1[0:7]));
+
+   //assign mx1_1_b[0:7] = (~((mx1_s2[0:7] & mx1_d2[0:7]) | (mx1_s3[0:7] & mx1_d3[0:7])));
+   tri_aoi22 #(.WIDTH(8)) mx1_1_b_0 (.y(mx1_1_b[0:7]), .a0(mx1_s2[0:7]), .a1(mx1_d2[0:7]), .b0(mx1_s3[0:7]), .b1(mx1_d3[0:7]));
+
+   //assign mx1[0:7] = (~(mx1_0_b[0:7] & mx1_1_b[0:7]));
+   tri_nand2 #(.WIDTH(8)) mx1_0 (.y(mx1[0:7]), .a(mx1_0_b[0:7]), .b(mx1_1_b[0:7]));
+
+   assign data_rot = {(mx1[0:5] | se1[0:5]), mx1[6:7]};
+
+endmodule

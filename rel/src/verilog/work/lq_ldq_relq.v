@@ -9,10 +9,12 @@
 
 `timescale 1 ns / 1 ns
 
-
+//
+//  Description:  Reload Data Arbiter Control
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
-
 
 module lq_ldq_relq(
    ldq_rel0_stg_act,
@@ -99,41 +101,48 @@ module lq_ldq_relq(
    repr_scan_out
 );
 
-input                                                       ldq_rel0_stg_act;           
-input                                                       ldq_rel1_stg_act;           
-input [0:`LMQ_ENTRIES-1]                                    ldqe_ctrl_act;              
+// ACT's
+input                                                       ldq_rel0_stg_act;           // Rel0 Stage ACT
+input                                                       ldq_rel1_stg_act;           // Rel0 Stage ACT
+input [0:`LMQ_ENTRIES-1]                                    ldqe_ctrl_act;              // Reload Queue Entry ACT
 
-input [0:`LMQ_ENTRIES-1]                                    ldq_rel0_arb_sent;          
-input [0:7]                                                 ldq_rel0_beat_upd;          
-input                                                       ldq_rel0_arr_wren;          
-input [0:2]                                                 ldq_rel0_rdat_qw;           
-input [0:3]                                                 ldq_rel1_cTag;              
-input [0:`LMQ_ENTRIES-1]                                    ldq_rel1_dbeat_val;         
-input [0:`LMQ_ENTRIES-1]                                    ldq_rel1_beats_home;        
-input [0:`LMQ_ENTRIES-1]                                    ldq_rel2_entrySent;         
-input                                                       ldq_rel2_blk_req;           
-input [0:`LMQ_ENTRIES-1]                                    ldq_rel2_sentL1;            
-input [0:`LMQ_ENTRIES-1]                                    ldq_rel2_sentL1_blk;        
-input [0:`LMQ_ENTRIES-1]                                    ldqe_rel_eccdet;            
-input [0:`LMQ_ENTRIES-1]                                    ldqe_rst_eccdet;            
+//Reload Data Beats Control
+input [0:`LMQ_ENTRIES-1]                                    ldq_rel0_arb_sent;          // Reload Arbiter Sent Request
+input [0:7]                                                 ldq_rel0_beat_upd;          // 1-hot Reload Data Beat is Valid
+input                                                       ldq_rel0_arr_wren;          // Reload Data Array Write Enable
+input [0:2]                                                 ldq_rel0_rdat_qw;           // Reload Data Array Write Address
+input [0:3]                                                 ldq_rel1_cTag;              // Reload Core Tag
+input [0:`LMQ_ENTRIES-1]                                    ldq_rel1_dbeat_val;         // Reload Queue Entry Data is Valid
+input [0:`LMQ_ENTRIES-1]                                    ldq_rel1_beats_home;        // All data beats have been sent by the L2
+input [0:`LMQ_ENTRIES-1]                                    ldq_rel2_entrySent;         // Load Queue Entry attempted to update L1 Data Cache
+input                                                       ldq_rel2_blk_req;           // Reload Attempt was blocked
+input [0:`LMQ_ENTRIES-1]                                    ldq_rel2_sentL1;            // Reload Queue Entry was not restarted
+input [0:`LMQ_ENTRIES-1]                                    ldq_rel2_sentL1_blk;        // Reload Queue Entry was restarted
+input [0:`LMQ_ENTRIES-1]                                    ldqe_rel_eccdet;            // Load Queue Entry detected an ECC error
+input [0:`LMQ_ENTRIES-1]                                    ldqe_rst_eccdet;            // Load Queue Entry reset error conditions
 
+// Reload Data Select Valid
 input                                                       ldq_rel0_rdat_sel;
-input [0:143]                                               arb_ldq_rel2_wrt_data;      
+input [0:143]                                               arb_ldq_rel2_wrt_data;      // Reload Interface Data
 
-output                                                      ldq_rel0_arb_val;           
-output [0:2]                                                ldq_rel0_arb_qw;            
-output [0:3]                                                ldq_rel0_arb_cTag;          
-output                                                      ldq_rel0_arb_thresh;        
-output                                                      ldq_rel2_rdat_perr;         
-output                                                      ldq_rel3_rdat_par_err;      
-output [0:`LMQ_ENTRIES-1]                                   ldqe_rel_rdat_perr;         
+// Reload Arbiter Control Outputs
+output                                                      ldq_rel0_arb_val;           // Reload Arbiter is attempting to update L1 Data Cache
+output [0:2]                                                ldq_rel0_arb_qw;            // Reload Arbiter quadword
+output [0:3]                                                ldq_rel0_arb_cTag;          // Reload Arbiter core tag
+output                                                      ldq_rel0_arb_thresh;        // Reload Arbiter threshold met
+output                                                      ldq_rel2_rdat_perr;         // Reload Data Array contained a parity error
+output                                                      ldq_rel3_rdat_par_err;      // Reload Data Array contained a parity error FIR report
+output [0:`LMQ_ENTRIES-1]                                   ldqe_rel_rdat_perr;         // Reload Queue Entry had a reload data array parity error
 
-output                                                      ldq_arb_rel2_rdat_sel;      
-output [0:143]                                              ldq_arb_rel2_rd_data;       
+// RELOAD Data Queue Control
+output                                                      ldq_arb_rel2_rdat_sel;      // Reload Data Array Select Data
+output [0:143]                                              ldq_arb_rel2_rd_data;       // Reload Data Array Read
 
-input                                                       pc_lq_inj_relq_parity;      
-input [0:2]                                                 spr_lsucr0_lca_ovrd;        
+// SPR
+input                                                       pc_lq_inj_relq_parity;      // Inject Reload Data Array Parity Error
+input [0:2]                                                 spr_lsucr0_lca_ovrd;        // LSUCR0[LCA]
 
+// Array Pervasive Controls
 input                                                       bo_enable_2;
 input                                                       clkoff_dc_b;
 input                                                       g8t_clkoff_dc_b;
@@ -164,6 +173,7 @@ input [8:9]                                                 pc_lq_bo_select;
 output [8:9]                                                lq_pc_bo_fail;
 output [8:9]                                                lq_pc_bo_diagout;
 
+// Pervasive
 inout                                                       vcs;
 inout                                                       vdd;
 inout                                                       gnd;
@@ -199,7 +209,13 @@ output                                                      time_scan_out;
 (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
 output                                                      repr_scan_out;
 
+//--------------------------
+// components
+//--------------------------
 
+//--------------------------
+// signals
+//--------------------------
 parameter                                                   numGrps = ((((`LMQ_ENTRIES-1)/4)+1)*4);
 
 wire [0:7]                                                  ldqe_rel_datSet[0:`LMQ_ENTRIES-1];
@@ -269,7 +285,7 @@ wire [0:6]                                                  ldq_rel2_arr_waddr;
 wire [0:6]                                                  ldq_rel2_arr_waddr_d;
 wire [0:6]                                                  ldq_rel2_arr_waddr_q;
 wire                                                        ldq_rel0_arr_rd_act;
-wire [0:6]                                                  ldq_rel0_arr_raddr;	
+wire [0:6]                                                  ldq_rel0_arr_raddr;
 wire [0:143]                                                rdat_rel2_rd_data;
 wire [0:143]                                                rel2_rd_data;
 wire [0:15]                                                 rel2_rdat_par_byte;
@@ -277,6 +293,9 @@ wire                                                        rel2_rdat_par_err;
 wire                                                        inj_relq_parity_d;
 wire                                                        inj_relq_parity_q;
 
+//--------------------------
+// constants
+//--------------------------
 parameter                                                  ldqe_rel_datRet_offset = 0;
 parameter                                                  ldq_rel1_beat_upd_offset = ldqe_rel_datRet_offset + 8 * `LMQ_ENTRIES;
 parameter                                                  ldq_rel2_beat_upd_offset = ldq_rel1_beat_upd_offset + 8;
@@ -313,21 +332,27 @@ assign tiup = 1'b1;
 assign tidn = 1'b0;
 assign unused = tidn | ldq_rel2_arr_waddr[0] | ldq_rel0_arr_raddr[0];
 
+// Load Queue Reload Handling
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// Reload Quadword Beat that is trying to update
 assign ldq_rel1_beat_upd_d = ldq_rel0_beat_upd;
 assign ldq_rel2_beat_upd_d = ldq_rel1_beat_upd_q;
 
+// One of the Loadmiss Queues has data available to be sent to the L1
 assign ldq_rel0_arb_val_d = |(ldqe_relBeats_val & ~ldqe_rel_eccdet);
 
+// Reload Data Queue Control
 assign ldq_rel1_rdat_sel_d = ldq_rel0_rdat_sel;
 assign ldq_rel2_rdat_sel_d = ldq_rel1_rdat_sel_q;
 
 generate begin : relQ
    genvar                                                  ldq;
    for (ldq=0; ldq<`LMQ_ENTRIES; ldq=ldq+1) begin : relQ
-      
+
+      // Reload Data Beat Home
       assign ldqe_rel_datSet[ldq] = ldq_rel1_beat_upd_q & {8{ldq_rel1_dbeat_val[ldq]}};
-      
+
       begin : relDatRetQ
          genvar                                                  beat;
          for (beat=0; beat<8; beat=beat+1) begin : relDatRetQ
@@ -335,56 +360,70 @@ generate begin : relQ
             assign ldqe_rel_datRet_d[ldq][beat] = ldqe_rel_datSet[ldq][beat] | (ldqe_rel_datRet_q[ldq][beat] & (~ldqe_rel_datClr[ldq][beat]));
          end
       end
-               
+
+      // Reload Attempts from Arbiter
       assign ldqe_relAttempts_ctrl[ldq] = {ldq_rel2_sentL1[ldq], (ldq_rel2_sentL1_blk[ldq] & (~ldqe_relAttempts_done[ldq]))};
       assign ldqe_relAttempts_decr[ldq] = ldqe_relAttempts_q[ldq] - 3'b001;
-      
-      assign ldqe_relAttempts_d[ldq] = (ldqe_relAttempts_ctrl[ldq] == 2'b00) ? ldqe_relAttempts_q[ldq] : 
-                                       (ldqe_relAttempts_ctrl[ldq] == 2'b01) ? ldqe_relAttempts_decr[ldq] : 
+
+      assign ldqe_relAttempts_d[ldq] = (ldqe_relAttempts_ctrl[ldq] == 2'b00) ? ldqe_relAttempts_q[ldq] :
+                                       (ldqe_relAttempts_ctrl[ldq] == 2'b01) ? ldqe_relAttempts_decr[ldq] :
                                        spr_lsucr0_lca_ovrd;
-      
+
+      // Reload Update L1D$ attempts threshold met
+      // need to HOLD RV until reload is complete
       assign ldqe_relAttempts_done[ldq] = ~(|ldqe_relAttempts_q[ldq]);
       assign ldqe_relThreshold_met[ldq] = ldqe_relAttempts_done[ldq] & ldqe_relBeats_val[ldq] & ldq_rel1_beats_home[ldq];
-      
+
+      // Reload Arbiter sent reload for reload queue entry
       assign ldq_rel1_arb_sent_d[ldq] = ldq_rel0_arb_sent[ldq];
 
+      // Beats Available in Reload Arbiters to be sent to L1
       assign ldq_rel0_arb_beats[ldq]  = ldq_rel0_beat_upd   & {8{ldq_rel0_arb_sent[ldq]}};
       assign ldq_rel1_arb_beats[ldq]  = ldq_rel1_beat_upd_q & {8{ldq_rel1_arb_sent_q[ldq]}};
-      assign ldq_rel2_arb_beats[ldq]  = ldq_rel2_beat_upd_q & {8{ldq_rel2_entrySent[ldq]}};		
+      assign ldq_rel2_arb_beats[ldq]  = ldq_rel2_beat_upd_q & {8{ldq_rel2_entrySent[ldq]}};		// Merged results of Reload and Arbiter
       assign ldqe_relBeats_avail[ldq] = ldqe_rel_datRet_q[ldq] & (~(ldq_rel0_arb_beats[ldq] | ldq_rel1_arb_beats[ldq] | ldq_rel2_arb_beats[ldq]));
       assign ldqe_relBeats_val[ldq]   = |(ldqe_relBeats_avail[ldq]);
-      
+
+      // Select Beat from Available beats in Reload Arbiters
       assign ldqe_relBeats_nxt[ldq][0] = ldqe_relBeats_avail[ldq][0];
-      
+
       begin : relSel genvar                                                  beat;
          for (beat=1; beat<8; beat=beat+1) begin : relSel
             assign ldqe_relBeats_nxt[ldq][beat] = &(~ldqe_relBeats_avail[ldq][0:beat-1]) & ldqe_relBeats_avail[ldq][beat];
          end
       end
-      
+
+      // Convert Beat Selected into an Array Index
       always @(*) begin: relBeatEntry
          reg [0:2]                                               entry;
-         
+
          (* analysis_not_referenced="true" *)
-         
+
          integer                                              beat;
          entry = 3'b000;
          for (beat=0; beat<8; beat=beat+1)
             entry = (beat[2:0] & {3{ldqe_relBeats_nxt[ldq][beat]}}) | entry;
          ldqe_relBeats[ldq] <= entry;
       end
-      
+
+      // Reload Data Queue Parity Error
+      // REL2 Entry Sent is from the Reload Data Queue Arbiter
       assign ldq_rel2_arb_sent[ldq]      = ldq_rel2_entrySent[ldq] & ldq_rel2_rdat_sel_q;
       assign ldqe_rel_rdat_perr_sel[ldq] = {ldq_rel2_arb_sent[ldq], ldqe_rst_eccdet[ldq]};
 
-      assign ldqe_rel_rdat_perr_d[ldq] = (ldqe_rel_rdat_perr_sel[ldq] == 2'b10) ? (ldqe_rel_rdat_perr_q[ldq] | ldq_rel2_rdat_par_err) : 
-                                         (ldqe_rel_rdat_perr_sel[ldq] == 2'b00) ? ldqe_rel_rdat_perr_q[ldq] : 
-                                         1'b0;                 
+      assign ldqe_rel_rdat_perr_d[ldq] = (ldqe_rel_rdat_perr_sel[ldq] == 2'b10) ? (ldqe_rel_rdat_perr_q[ldq] | ldq_rel2_rdat_par_err) :
+                                         (ldqe_rel_rdat_perr_sel[ldq] == 2'b00) ? ldqe_rel_rdat_perr_q[ldq] :
+                                         1'b0;
    end
 end
 endgenerate
 
+// Reload Data Array Arbiter
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Doing a Round Robin Scheme within each 4 entries (called Groups)
+// followed by a Round Robin Scheme within each Group
 
+// Expand LDQ to max supported
 generate begin : relExp
    genvar                                                grp;
    genvar                                                bit;
@@ -401,42 +440,46 @@ generate begin : relExp
 end
 endgenerate
 
+// Entry Select within Group
+// Round Robin Scheme within each 4 entries in a Group
 generate begin : relGrpEntry
    genvar                                                  grp;
    for (grp=0; grp<=(`LMQ_ENTRIES-1)/4; grp=grp+1) begin : relGrpEntry
-      assign rel_grpEntry_val[grp]    = {ldq_rel_arb_entry[4*grp+0], ldq_rel_arb_entry[4*grp+1], ldq_rel_arb_entry[4*grp+2], ldq_rel_arb_entry[4*grp+3]};         
-      assign rel_grpEntry_sel[grp][0] = (rel_grpEntry_last_sel_q[grp][0] & ~(|rel_grpEntry_val[grp][1:3]) & rel_grpEntry_val[grp][0]) | 
-                                        (rel_grpEntry_last_sel_q[grp][1] & ~(|rel_grpEntry_val[grp][2:3]) & rel_grpEntry_val[grp][0]) | 
-                                        (rel_grpEntry_last_sel_q[grp][2] &   ~rel_grpEntry_val[grp][3]    & rel_grpEntry_val[grp][0]) | 
+      assign rel_grpEntry_val[grp]    = {ldq_rel_arb_entry[4*grp+0], ldq_rel_arb_entry[4*grp+1], ldq_rel_arb_entry[4*grp+2], ldq_rel_arb_entry[4*grp+3]};
+      assign rel_grpEntry_sel[grp][0] = (rel_grpEntry_last_sel_q[grp][0] & ~(|rel_grpEntry_val[grp][1:3]) & rel_grpEntry_val[grp][0]) |
+                                        (rel_grpEntry_last_sel_q[grp][1] & ~(|rel_grpEntry_val[grp][2:3]) & rel_grpEntry_val[grp][0]) |
+                                        (rel_grpEntry_last_sel_q[grp][2] &   ~rel_grpEntry_val[grp][3]    & rel_grpEntry_val[grp][0]) |
                                         (rel_grpEntry_last_sel_q[grp][3] &                                  rel_grpEntry_val[grp][0]);
-      
-      assign rel_grpEntry_sel[grp][1] = (rel_grpEntry_last_sel_q[grp][0] &                                                               rel_grpEntry_val[grp][1]) | 
-                                        (rel_grpEntry_last_sel_q[grp][1] & ~(|{rel_grpEntry_val[grp][0], rel_grpEntry_val[grp][2:3]})  & rel_grpEntry_val[grp][1]) | 
-                                        (rel_grpEntry_last_sel_q[grp][2] & ~(|{rel_grpEntry_val[grp][0], rel_grpEntry_val[grp][3]})    & rel_grpEntry_val[grp][1]) | 
+
+      assign rel_grpEntry_sel[grp][1] = (rel_grpEntry_last_sel_q[grp][0] &                                                               rel_grpEntry_val[grp][1]) |
+                                        (rel_grpEntry_last_sel_q[grp][1] & ~(|{rel_grpEntry_val[grp][0], rel_grpEntry_val[grp][2:3]})  & rel_grpEntry_val[grp][1]) |
+                                        (rel_grpEntry_last_sel_q[grp][2] & ~(|{rel_grpEntry_val[grp][0], rel_grpEntry_val[grp][3]})    & rel_grpEntry_val[grp][1]) |
                                         (rel_grpEntry_last_sel_q[grp][3] &    ~rel_grpEntry_val[grp][0]                                & rel_grpEntry_val[grp][1]);
-      
-      assign rel_grpEntry_sel[grp][2] = (rel_grpEntry_last_sel_q[grp][0] &    ~rel_grpEntry_val[grp][1]                               & rel_grpEntry_val[grp][2]) | 
-                                        (rel_grpEntry_last_sel_q[grp][1] &                                                              rel_grpEntry_val[grp][2]) | 
-                                        (rel_grpEntry_last_sel_q[grp][2] & ~(|{rel_grpEntry_val[grp][0:1], rel_grpEntry_val[grp][3]}) & rel_grpEntry_val[grp][2]) | 
+
+      assign rel_grpEntry_sel[grp][2] = (rel_grpEntry_last_sel_q[grp][0] &    ~rel_grpEntry_val[grp][1]                               & rel_grpEntry_val[grp][2]) |
+                                        (rel_grpEntry_last_sel_q[grp][1] &                                                              rel_grpEntry_val[grp][2]) |
+                                        (rel_grpEntry_last_sel_q[grp][2] & ~(|{rel_grpEntry_val[grp][0:1], rel_grpEntry_val[grp][3]}) & rel_grpEntry_val[grp][2]) |
                                         (rel_grpEntry_last_sel_q[grp][3] &  ~(|rel_grpEntry_val[grp][0:1])                            & rel_grpEntry_val[grp][2]);
-      
-      assign rel_grpEntry_sel[grp][3] = (rel_grpEntry_last_sel_q[grp][0] & ~(|rel_grpEntry_val[grp][1:2]) & rel_grpEntry_val[grp][3]) | 
-                                        (rel_grpEntry_last_sel_q[grp][1] &    ~rel_grpEntry_val[grp][2]   & rel_grpEntry_val[grp][3]) | 
-                                        (rel_grpEntry_last_sel_q[grp][2] &                                  rel_grpEntry_val[grp][3]) | 
+
+      assign rel_grpEntry_sel[grp][3] = (rel_grpEntry_last_sel_q[grp][0] & ~(|rel_grpEntry_val[grp][1:2]) & rel_grpEntry_val[grp][3]) |
+                                        (rel_grpEntry_last_sel_q[grp][1] &    ~rel_grpEntry_val[grp][2]   & rel_grpEntry_val[grp][3]) |
+                                        (rel_grpEntry_last_sel_q[grp][2] &                                  rel_grpEntry_val[grp][3]) |
                                         (rel_grpEntry_last_sel_q[grp][3] & ~(|rel_grpEntry_val[grp][0:2]) & rel_grpEntry_val[grp][3]);
-      
+
+      // Load Queue Group Selected
       assign rel_grpEntry_sent[grp]       = rel_group_sel[grp] & ldq_rel0_arb_val_d;
       assign rel_grpEntry_last_sel_d[grp] = rel_grpEntry_sent[grp] ? rel_grpEntry_sel[grp] : rel_grpEntry_last_sel_q[grp];
-      
+
+      // Mux Load Queue Entry within a Group
       always @(*) begin: relMux
          reg [0:2]                                               qw;
-         reg                                                     thresh;            
-         (* analysis_not_referenced="true" *)         
+         reg                                                     thresh;
+         (* analysis_not_referenced="true" *)
          integer                                                 ldq;
 
          qw     = {3{1'b0}};
          thresh = 1'b0;
-         for (ldq=0; ldq<=3; ldq=ldq+1) begin : ldqExst    
+         for (ldq=0; ldq<=3; ldq=ldq+1) begin : ldqExst
             if ((grp*4)+ldq < `LMQ_ENTRIES) begin : ldqExst
                qw     = (ldqe_relBeats[(grp*4)+ldq]         & {3{rel_grpEntry_sel[grp][ldq]}}) | qw;
                thresh = (ldqe_relThreshold_met[(grp*4)+ldq] &    rel_grpEntry_sel[grp][ldq])   | thresh;
@@ -449,6 +492,8 @@ generate begin : relGrpEntry
 end
 endgenerate
 
+// Group Select Between all Groups
+// Round Robin Scheme within Groups
 generate begin : relGrp
    genvar                                                  grp;
    for (grp=0; grp<=3; grp=grp+1) begin : relGrp
@@ -462,26 +507,27 @@ generate begin : relGrp
 end
 endgenerate
 
-assign rel_group_sel[0] = (rel_group_last_sel_q[0] & ~(|rel_group_val[1:3]) & rel_group_val[0]) | 
-                          (rel_group_last_sel_q[1] & ~(|rel_group_val[2:3]) & rel_group_val[0]) | 
-                          (rel_group_last_sel_q[2] &   ~rel_group_val[3]    & rel_group_val[0]) | 
+assign rel_group_sel[0] = (rel_group_last_sel_q[0] & ~(|rel_group_val[1:3]) & rel_group_val[0]) |
+                          (rel_group_last_sel_q[1] & ~(|rel_group_val[2:3]) & rel_group_val[0]) |
+                          (rel_group_last_sel_q[2] &   ~rel_group_val[3]    & rel_group_val[0]) |
                           (rel_group_last_sel_q[3] &                          rel_group_val[0]);
 
-assign rel_group_sel[1] = (rel_group_last_sel_q[0] &                                              rel_group_val[1]) | 
-                          (rel_group_last_sel_q[1] & ~(|{rel_group_val[0], rel_group_val[2:3]}) & rel_group_val[1]) | 
-                          (rel_group_last_sel_q[2] & ~(|{rel_group_val[0], rel_group_val[3]})   & rel_group_val[1]) | 
+assign rel_group_sel[1] = (rel_group_last_sel_q[0] &                                              rel_group_val[1]) |
+                          (rel_group_last_sel_q[1] & ~(|{rel_group_val[0], rel_group_val[2:3]}) & rel_group_val[1]) |
+                          (rel_group_last_sel_q[2] & ~(|{rel_group_val[0], rel_group_val[3]})   & rel_group_val[1]) |
                           (rel_group_last_sel_q[3] &    ~rel_group_val[0]                       & rel_group_val[1]);
 
-assign rel_group_sel[2] = (rel_group_last_sel_q[0] &   (~rel_group_val[1])                      & rel_group_val[2]) | 
-                          (rel_group_last_sel_q[1] &                                              rel_group_val[2]) | 
-                          (rel_group_last_sel_q[2] & ~(|{rel_group_val[0:1], rel_group_val[3]}) & rel_group_val[2]) | 
+assign rel_group_sel[2] = (rel_group_last_sel_q[0] &   (~rel_group_val[1])                      & rel_group_val[2]) |
+                          (rel_group_last_sel_q[1] &                                              rel_group_val[2]) |
+                          (rel_group_last_sel_q[2] & ~(|{rel_group_val[0:1], rel_group_val[3]}) & rel_group_val[2]) |
                           (rel_group_last_sel_q[3] &  ~(|rel_group_val[0:1])                    & rel_group_val[2]);
 
-assign rel_group_sel[3] = (rel_group_last_sel_q[0] & ~(|rel_group_val[1:2]) & rel_group_val[3]) | 
-                          (rel_group_last_sel_q[1] &   ~rel_group_val[2]    & rel_group_val[3]) | 
-                          (rel_group_last_sel_q[2] &                          rel_group_val[3]) | 
+assign rel_group_sel[3] = (rel_group_last_sel_q[0] & ~(|rel_group_val[1:2]) & rel_group_val[3]) |
+                          (rel_group_last_sel_q[1] &   ~rel_group_val[2]    & rel_group_val[3]) |
+                          (rel_group_last_sel_q[2] &                          rel_group_val[3]) |
                           (rel_group_last_sel_q[3] & ~(|rel_group_val[0:2]) & rel_group_val[3]);
 
+// Reload Queue Entry Sent
 generate begin : relSent
    genvar                                                  grp;
    for (grp=0; grp<=(`LMQ_ENTRIES-1)/4; grp=grp+1) begin : relSent
@@ -496,11 +542,12 @@ endgenerate
 assign rel_arb_sentL1       = |(ldqe_rel_sel);
 assign rel_group_last_sel_d = rel_arb_sentL1 ? rel_group_sel : rel_group_last_sel_q;
 
+// Mux Load Queue Entry between Groups
 always @(*) begin: relGrpLqMux
    reg [0:2]                                               qw;
    reg                                                     thresh;
-   
-   (* analysis_not_referenced="true" *)   
+
+   (* analysis_not_referenced="true" *)
    integer                                                 grp;
 
    qw     = {3{1'b0}};
@@ -515,10 +562,11 @@ always @(*) begin: relGrpLqMux
    ldq_rel0_arb_thresh_d <= thresh;
 end
 
+// Generate Reload Core Tag
 always @(*) begin: relcTag
    reg [0:3]                                               cTag;
-   
-   (* analysis_not_referenced="true" *)   
+
+   (* analysis_not_referenced="true" *)
    integer                                              ldq;
 
    cTag = 4'b0000;
@@ -527,15 +575,20 @@ always @(*) begin: relcTag
    ldq_rel0_arb_cTag_d <= cTag;
 end
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Reload Data Array
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 generate begin : relq
    genvar byte;
    if (`RELQ_INCLUDE == 1) begin
-      tri_64x144_1r1w  rdat(		
+      tri_64x144_1r1w  rdat(
 
+         // POWER PINS
          .vcs(vcs),
          .vdd(vdd),
          .gnd(gnd),
 
+         // CLOCK AND CLOCKCONTROL PORTS
          .nclk(nclk),
          .rd_act(ldq_rel0_arr_rd_act),
          .wr_act(ldq_rel2_arr_wren),
@@ -559,6 +612,7 @@ generate begin : relq
          .mpw2_dc_b(mpw2_dc_b),
          .delay_lclkr_dc(delay_lclkr_dc),
 
+         // ABIST
          .wr_abst_act(pc_lq_abist_g8t_wenb),
          .rd0_abst_act(pc_lq_abist_g8t1p_renb_0),
          .abist_di(pc_lq_abist_di_0),
@@ -572,6 +626,7 @@ generate begin : relq
          .abist_raw_dc_b(pc_lq_abist_raw_dc_b),
          .obs0_abist_cmp(pc_lq_abist_g8t_dcomp),
 
+         // SCAN PORTS
          .abst_scan_in(abst_scan_in),
          .time_scan_in(time_scan_in),
          .repr_scan_in(repr_scan_in),
@@ -581,6 +636,7 @@ generate begin : relq
          .repr_scan_out(repr_scan_out),
          .func_scan_out(rdat_scan_out),
 
+         // BOLT-ON
          .lcb_bolt_sl_thold_0(bolt_sl_thold_0),
          .pc_bo_enable_2(bo_enable_2),
          .pc_bo_reset(pc_lq_bo_reset),
@@ -596,14 +652,20 @@ generate begin : relq
          .tri_lcb_clkoff_dc_b(clkoff_dc_b),
          .tri_lcb_act_dis_dc(tidn),
 
+         // Write Ports
          .write_enable(ldq_rel2_arr_wren),
          .addr_wr(ldq_rel2_arr_waddr[1:6]),
          .data_in(arb_ldq_rel2_wrt_data),
 
+         // Read Ports
          .addr_rd(ldq_rel0_arr_raddr[1:6]),
          .data_out(rdat_rel2_rd_data)
       );
 
+      // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      // Reload Queue Parity Error Detection
+      // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      // Inject a Parity Error on the Reload Data Queue Access
       assign inj_relq_parity_d = pc_lq_inj_relq_parity;
       assign rel2_rd_data      = {(rdat_rel2_rd_data[0] ^ inj_relq_parity_q), rdat_rel2_rd_data[1:143]};
 
@@ -613,6 +675,10 @@ generate begin : relq
 
       assign rel2_rdat_par_err = |(rel2_rdat_par_byte);
 
+      // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      // Reload Queue Control
+      // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      // Update Reload Array
       assign ldq_rel1_rdat_qw_d   = ldq_rel0_rdat_qw;
       assign ldq_rel1_arr_wren_d  = ldq_rel0_arr_wren;
       assign ldq_rel2_arr_wren_d  = ldq_rel1_arr_wren_q;
@@ -623,9 +689,14 @@ generate begin : relq
       assign ldq_rel2_arr_wren   = ldq_rel2_arr_wren_q & ldq_rel2_blk_req;
       assign ldq_rel2_arr_waddr  = ldq_rel2_arr_waddr_q;
 
+      // Reload Data Queue Parity Error
       assign ldq_rel2_rdat_par_err   = rel2_rdat_par_err & ldq_rel2_rdat_sel_q & ~ldq_rel2_blk_req;
       assign ldq_rel3_rdat_par_err_d = ldq_rel2_rdat_par_err;
    end else begin
+      // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      // Reload Queue Parity Error Detection
+      // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      // Inject a Parity Error on the Reload Data Queue Access
       assign inj_relq_parity_d = pc_lq_inj_relq_parity;
       assign rdat_rel2_rd_data = 144'b0;
       assign rel2_rd_data      = {(rdat_rel2_rd_data[0] ^ inj_relq_parity_q), rdat_rel2_rd_data[1:143]};
@@ -636,6 +707,10 @@ generate begin : relq
 
       assign rel2_rdat_par_err = 1'b0;
 
+      // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      // Reload Queue Control
+      // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      // Update Reload Array
       assign ldq_rel1_rdat_qw_d   = 3'b0;
       assign ldq_rel1_arr_wren_d  = 1'b0;
       assign ldq_rel2_arr_wren_d  = ldq_rel1_arr_wren_q;
@@ -646,6 +721,7 @@ generate begin : relq
       assign ldq_rel2_arr_wren   = 1'b0;
       assign ldq_rel2_arr_waddr  = ldq_rel2_arr_waddr_q;
 
+      // Reload Data Queue Parity Error
       assign ldq_rel2_rdat_par_err   = 1'b0;
       assign ldq_rel3_rdat_par_err_d = ldq_rel2_rdat_par_err;
 
@@ -658,7 +734,11 @@ generate begin : relq
    end
 end endgenerate
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// OUTPUTS
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// Reload Data Arbiter Control
 assign ldq_rel0_arb_val      = ldq_rel0_arb_val_q;
 assign ldq_rel0_arb_qw       = ldq_rel0_arb_qw_q;
 assign ldq_rel0_arb_cTag     = ldq_rel0_arb_cTag_q;
@@ -667,9 +747,13 @@ assign ldq_rel2_rdat_perr    = |(ldqe_rel_rdat_perr_q & ldq_rel2_entrySent) | ld
 assign ldq_rel3_rdat_par_err = ldq_rel3_rdat_par_err_q;
 assign ldqe_rel_rdat_perr    = ldqe_rel_rdat_perr_q;
 
+// Reload Data Array Control
 assign ldq_arb_rel2_rdat_sel = ldq_rel2_rdat_sel_q;
 assign ldq_arb_rel2_rd_data  = rel2_rd_data;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// REGISTERS
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 generate begin : ldqe_rel_datRet
    genvar                                                  ldq;
    for (ldq=0; ldq<`LMQ_ENTRIES; ldq=ldq+1) begin : ldqe_rel_datRet
@@ -1053,5 +1137,3 @@ assign siv[0:scan_right] = {sov[1:scan_right], rdat_scan_out};
 assign scan_out = sov[0];
 
 endmodule
-
-

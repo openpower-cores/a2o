@@ -9,15 +9,23 @@
 
 `timescale 1 ns / 1 ns
 
+//-----------------------------------------------------------------------------------------------------
+// Title:   rv_fx0_rvs.vhdl
+// Desc:    LQ Reservation Station
+//
+//-----------------------------------------------------------------------------------------------------
 
 module rv_fx0_rvs(
 `include "tri_a2o.vh"
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Instructions from RV_DEP
+   //------------------------------------------------------------------------------------------------------------
    input [0:`THREADS-1]            rv0_instr_i0_vld,
    input 			   rv0_instr_i0_rte_fx0,
    input [0:`THREADS-1] 	   rv0_instr_i1_vld,
    input 			   rv0_instr_i1_rte_fx0,
-   
+
    input [0:31] 		   rv0_instr_i0_instr,
    input [62-`EFF_IFAR_WIDTH:61]   rv0_instr_i0_ifar,
    input [0:2] 			   rv0_instr_i0_ucode,
@@ -48,7 +56,7 @@ module rv_fx0_rvs(
    input 			   rv0_instr_i0_is_brick,
    input [0:2] 			   rv0_instr_i0_brick,
    input [0:`G_BRANCH_LEN-1] 	   rv0_instr_i0_branch,
-   
+
    input [0:31] 		   rv0_instr_i1_instr,
    input [62-`EFF_IFAR_WIDTH:61]   rv0_instr_i1_ifar,
    input [0:2] 			   rv0_instr_i1_ucode,
@@ -79,26 +87,35 @@ module rv_fx0_rvs(
    input 			   rv0_instr_i1_is_brick,
    input [0:2] 			   rv0_instr_i1_brick,
    input [0:`G_BRANCH_LEN-1] 	   rv0_instr_i1_branch,
-   
+
    input 			   rv0_instr_i0_s1_dep_hit,
    input [0:`ITAG_SIZE_ENC-1] 	   rv0_instr_i0_s1_itag,
    input 			   rv0_instr_i0_s2_dep_hit,
    input [0:`ITAG_SIZE_ENC-1] 	   rv0_instr_i0_s2_itag,
    input 			   rv0_instr_i0_s3_dep_hit,
    input [0:`ITAG_SIZE_ENC-1] 	   rv0_instr_i0_s3_itag,
-   
+
    input 			   rv0_instr_i1_s1_dep_hit,
    input [0:`ITAG_SIZE_ENC-1] 	   rv0_instr_i1_s1_itag,
    input 			   rv0_instr_i1_s2_dep_hit,
    input [0:`ITAG_SIZE_ENC-1] 	   rv0_instr_i1_s2_itag,
    input 			   rv0_instr_i1_s3_dep_hit,
    input [0:`ITAG_SIZE_ENC-1] 	   rv0_instr_i1_s3_itag,
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Credit Interface with IU
+   //------------------------------------------------------------------------------------------------------------
    output [0:`THREADS-1] 	   rv_iu_fx0_credit_free,
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Machine zap interface
+   //------------------------------------------------------------------------------------------------------------
    input [0:`THREADS-1] 	   cp_flush,
    input [0:`THREADS*`ITAG_SIZE_ENC-1] 	   cp_next_itag,
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Interface to FX0
+   //------------------------------------------------------------------------------------------------------------
    output [0:`THREADS-1] 	   rv_byp_fx0_vld,
    output [0:`ITAG_SIZE_ENC-1] 	   rv_byp_fx0_itag,
    output 			   rv_byp_fx0_ord,
@@ -112,7 +129,7 @@ module rv_fx0_rvs(
    output [0:2] 		   rv_byp_fx0_s2_t,
    output [0:2] 		   rv_byp_fx0_s3_t,
    output [0:3] 		   rv_byp_fx0_ilat,
-   
+
    output [0:`THREADS-1] 	   rv_fx0_vld,
    output 			   rv_fx0_s1_v,
    output [0:`GPR_POOL_ENC-1] 	   rv_fx0_s1_p,
@@ -120,7 +137,7 @@ module rv_fx0_rvs(
    output [0:`GPR_POOL_ENC-1] 	   rv_fx0_s2_p,
    output 			   rv_fx0_s3_v,
    output [0:`GPR_POOL_ENC-1] 	   rv_fx0_s3_p,
-   
+
    output [0:`ITAG_SIZE_ENC-1] 	   rv_fx0_ex0_itag,
    output [0:31] 		   rv_fx0_ex0_instr,
    output [62-`EFF_IFAR_WIDTH:61]  rv_fx0_ex0_ifar,
@@ -142,17 +159,20 @@ module rv_fx0_rvs(
    output 			   rv_fx0_ex0_s3_v,
    output [0:2] 		   rv_fx0_ex0_s3_t,
    output [0:`G_BRANCH_LEN-1] 	   rv_fx0_ex0_branch,
-   
+
    output [0:`ITAG_SIZE_ENC-1] 	   rv_byp_fx0_s1_itag,
    output [0:`ITAG_SIZE_ENC-1] 	   rv_byp_fx0_s2_itag,
    output [0:`ITAG_SIZE_ENC-1] 	   rv_byp_fx0_s3_itag,
    output                          rv_byp_fx0_ex0_is_brick,
-   
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // RV Release bus
+   //------------------------------------------------------------------------------------------------------------
+
    input                           fx0_rv_ex2_s1_abort,
    input                           fx0_rv_ex2_s2_abort,
    input                           fx0_rv_ex2_s3_abort,
-		  
+
 
    input 			   fx0_rv_itag_abort,
    input 			   fx1_rv_itag_abort,
@@ -163,48 +183,51 @@ module rv_fx0_rvs(
 
    input [0:`THREADS-1] 	   fx0_rv_itag_vld,
    input [0:`ITAG_SIZE_ENC-1] 	   fx0_rv_itag,
-   
+
    input [0:`THREADS-1] 	   fx1_rv_itag_vld,
    input [0:`ITAG_SIZE_ENC-1] 	   fx1_rv_itag,
-   
+
    input [0:`THREADS-1] 	   axu0_rv_ext_itag_vld,
    input [0:`ITAG_SIZE_ENC-1] 	   axu0_rv_ext_itag,
-   
+
    input [0:`THREADS-1] 	   axu1_rv_ext_itag_vld,
    input [0:`ITAG_SIZE_ENC-1] 	   axu1_rv_ext_itag,
-   
+
    input [0:`THREADS-1] 	   lq_rv_ext_itag0_vld,
    input [0:`ITAG_SIZE_ENC-1] 	   lq_rv_ext_itag0,
-   
+
    input [0:`THREADS-1] 	   lq_rv_itag1_vld,
    input [0:`ITAG_SIZE_ENC-1] 	   lq_rv_itag1,
    input 			   lq_rv_itag1_restart,
    input 			   lq_rv_itag1_hold,
    input [0:`THREADS-1] 	   lq_rv_ext_itag1_vld,
    input [0:`ITAG_SIZE_ENC-1] 	   lq_rv_ext_itag1,
-   
+
    input [0:`THREADS-1] 	   lq_rv_ext_itag2_vld,
    input [0:`ITAG_SIZE_ENC-1] 	   lq_rv_ext_itag2,
-   
+
    input [0:`THREADS-1] 	   lq_rv_clr_hold,
-   
+
    input [0:`THREADS-1] 	   fx0_rv_ord_complete,
    input 			   fx0_rv_hold_all,
    output [0:`THREADS-1] 	   fx0_rv_ord_tid,
-   
+
    output [0:`THREADS-1] 	   rv_byp_fx0_ilat0_vld,
    output [0:`THREADS-1] 	   rv_byp_fx0_ilat1_vld,
-   
+
    input [0:`THREADS-1] 	   rv1_fx1_ilat0_vld,
    input [0:`ITAG_SIZE_ENC-1] 	   rv1_fx1_ilat0_itag,
    output [0:`THREADS-1] 	   rv1_fx0_ilat0_vld,
    output [0:`ITAG_SIZE_ENC-1] 	   rv1_fx0_ilat0_itag,
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Pervasive
+   //------------------------------------------------------------------------------------------------------------
    output [0:8*`THREADS-1]         fx0_rvs_perf_bus,
    output [0:31]                   fx0_rvs_dbg_bus,
    inout 			   vdd,
    inout 			   gnd,
-   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) 
+   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) // nclk
    input [0:`NCLK_WIDTH-1] 	   nclk,
    input 			   func_sl_thold_1,
    input 			   sg_1,
@@ -216,15 +239,18 @@ module rv_fx0_rvs(
    input 			   mpw1_b,
    input 			   mpw2_b,
    input 			   scan_in,
-   
+
    output 			   scan_out
 
 
 		  );
 
    parameter                      num_itag_busses_g = 7;
-   
-   
+
+
+   //------------------------------------------------------------------------------------------------------------
+   // RV FX0 RVS INSTR ISSUE
+   //------------------------------------------------------------------------------------------------------------
    parameter              rvfx0_ex0_start = 0;
    parameter              rvfx0_instr_start = rvfx0_ex0_start;
    parameter              rvfx0_instr_stop = (rvfx0_instr_start + (32)) - 1;
@@ -250,7 +276,7 @@ module rv_fx0_rvs(
    parameter              rvfx0_ex0_size = rvfx0_ex0_end + 1;
 
 
-   parameter              rvfx0_start = 0;   
+   parameter              rvfx0_start = 0;
    parameter              rvfx0_t1_v_start = rvfx0_start;
    parameter              rvfx0_t1_v_stop = (rvfx0_t1_v_start + (1)) - 1;
    parameter              rvfx0_t1_t_start = rvfx0_t1_v_stop + 1;
@@ -286,18 +312,27 @@ module rv_fx0_rvs(
 
    parameter              rvfx0_size = rvfx0_end + 1;
 
-   
+   //------------------------------------------------------------------------------------------------------------
+   // Pervasive
+   //------------------------------------------------------------------------------------------------------------
+
 
    wire 			   tiup;
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // RV1
+   //------------------------------------------------------------------------------------------------------------
    wire [rvfx0_start:rvfx0_end]    rv0_instr_i0_dat;
    wire [rvfx0_start:rvfx0_end]    rv0_instr_i1_dat;
    wire [rvfx0_ex0_start:rvfx0_ex0_end]    rv0_instr_i0_dat_ex0;
    wire [rvfx0_ex0_start:rvfx0_ex0_end]    rv0_instr_i1_dat_ex0;
-   
+
    wire 			   rv0_instr_i0_spec;
    wire 			   rv0_instr_i1_spec;
 
+   //------------------------------------------------------------------------------------------------------------
+   // RV2
+   //------------------------------------------------------------------------------------------------------------
    wire [rvfx0_start:rvfx0_end]    rv1_instr_dat;
    wire [0:`THREADS-1] 		   rv1_instr_v;
    wire 			   rv1_instr_ord;
@@ -312,12 +347,15 @@ module rv_fx0_rvs(
    wire [0:`ITAG_SIZE_ENC-1] 	   rv1_instr_s3_itag;
    wire                            rv1_instr_is_brick;
    wire [0:`THREADS-1] 		   ex1_credit_free;
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // EX0
+   //------------------------------------------------------------------------------------------------------------
    wire 			   rv_ex0_act;
 
    (* analysis_not_referenced="<140:143>true" *)
    wire [rvfx0_ex0_start:rvfx0_ex0_end]    ex0_instr_dat;
-     
+
    wire [0:`ITAG_SIZE_ENC-1] 	   ex0_itag_d;
    wire 			   ex0_ord_d;
    wire 			   ex0_is_brick_d;
@@ -332,7 +370,7 @@ module rv_fx0_rvs(
    wire [0:2] 			   ex0_s2_t_d;
    wire 			   ex0_s3_v_d;
    wire [0:2] 			   ex0_s3_t_d;
-   
+
    wire [0:`ITAG_SIZE_ENC-1] 	   ex0_itag_q;
    wire 			   ex0_ord_q;
    wire 			   ex0_is_brick_q;
@@ -347,16 +385,22 @@ module rv_fx0_rvs(
    wire [0:2] 			   ex0_s2_t_q;
    wire 			   ex0_s3_v_q;
    wire [0:2] 			   ex0_s3_t_q;
-   
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Itag busses and shadow
+   //------------------------------------------------------------------------------------------------------------
+
    wire [0:`THREADS-1] 		   lq_rv_itag1_rst_vld;
    wire [0:`ITAG_SIZE_ENC-1] 	   lq_rv_itag1_rst;
-      
+
    wire [0:`THREADS*`ITAG_SIZE_ENC-1] 		   cp_next_itag_q;
- 				   
+
    (* analysis_not_referenced="true" *)
    wire                            rvs_empty;
 
+   //------------------------------------------------------------------------------------------------------------
+   // Scan Chains
+   //------------------------------------------------------------------------------------------------------------
    parameter                      rvs_offset = 0 + 0;
    parameter                      ex0_is_brick_offset = rvs_offset + 1;
    parameter                      ex0_itag_offset = ex0_is_brick_offset + 1;
@@ -374,27 +418,34 @@ module rv_fx0_rvs(
    parameter                      ex0_s3_t_offset = ex0_s3_v_offset + 1;
 
    parameter                      cp_next_itag_offset = ex0_s3_t_offset + 3;
-   
+
    parameter                      scan_right = cp_next_itag_offset + `THREADS * `ITAG_SIZE_ENC;
    wire [0:scan_right-1] 	   siv;
    wire [0:scan_right-1] 	   sov;
-   
+
    wire 			   func_sl_thold_0;
    wire 			   func_sl_thold_0_b;
    wire 			   sg_0;
    wire 			   force_t;
-   
-   
+
+   //!! Bugspray Include: rv_fx0_rvs;
+
+   //------------------------------------------------------------------------------------------------------------
+   // Pervasive
+   //------------------------------------------------------------------------------------------------------------
    assign tiup = 1'b1;
 
-   
-   
-   
+
+
+   //------------------------------------------------------------------------------------------------------------
+   // RV Entry
+   //------------------------------------------------------------------------------------------------------------
+
 
    assign rv0_instr_i0_dat = {
 			      rv0_instr_i0_t1_v,
 			      rv0_instr_i0_t1_t,
-			      rv0_instr_i0_t2_v, 
+			      rv0_instr_i0_t2_v,
 			      rv0_instr_i0_t2_t,
 			      rv0_instr_i0_t3_v,
 			      rv0_instr_i0_t3_t,
@@ -404,17 +455,17 @@ module rv_fx0_rvs(
 			      rv0_instr_i0_s2_v,
 			      rv0_instr_i0_s2_p,
 			      rv0_instr_i0_s2_t,
-			      rv0_instr_i0_s3_v, 
+			      rv0_instr_i0_s3_v,
 			      rv0_instr_i0_s3_p,
 			      rv0_instr_i0_s3_t };
 
    assign rv0_instr_i0_dat_ex0 = {
-				  rv0_instr_i0_instr, 
+				  rv0_instr_i0_instr,
 				  rv0_instr_i0_ifar,
 				  rv0_instr_i0_ucode,
 				  rv0_instr_i0_ucode_cnt,
 				  rv0_instr_i0_t1_p,
-				  rv0_instr_i0_t2_p, 
+				  rv0_instr_i0_t2_p,
 				  rv0_instr_i0_t3_p,
 				  rv0_instr_i0_branch,
 				  rv0_instr_i0_spare};
@@ -422,7 +473,7 @@ module rv_fx0_rvs(
    assign rv0_instr_i1_dat = {
 			      rv0_instr_i1_t1_v,
 			      rv0_instr_i1_t1_t,
-			      rv0_instr_i1_t2_v, 
+			      rv0_instr_i1_t2_v,
 			      rv0_instr_i1_t2_t,
 			      rv0_instr_i1_t3_v,
 			      rv0_instr_i1_t3_t,
@@ -432,46 +483,47 @@ module rv_fx0_rvs(
 			      rv0_instr_i1_s2_v,
 			      rv0_instr_i1_s2_p,
 			      rv0_instr_i1_s2_t,
-			      rv0_instr_i1_s3_v, 
+			      rv0_instr_i1_s3_v,
 			      rv0_instr_i1_s3_p,
 			      rv0_instr_i1_s3_t };
 
    assign rv0_instr_i1_dat_ex0 = {
-				  rv0_instr_i1_instr, 
+				  rv0_instr_i1_instr,
 				  rv0_instr_i1_ifar,
 				  rv0_instr_i1_ucode,
 				  rv0_instr_i1_ucode_cnt,
 				  rv0_instr_i1_t1_p,
-				  rv0_instr_i1_t2_p, 
+				  rv0_instr_i1_t2_p,
 				  rv0_instr_i1_t3_p,
 				  rv0_instr_i1_branch,
 				  rv0_instr_i1_spare};
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // FX0 Reservation Stations
+   //------------------------------------------------------------------------------------------------------------
    assign rv0_instr_i0_spec = 1'b0;
    assign rv0_instr_i1_spec = 1'b0;
-   
+
    assign lq_rv_itag1_cord = 1'b0;
-   
-   
-   
-   rv_station #( .q_dat_width_g(rvfx0_size), .q_dat_ex0_width_g(rvfx0_ex0_size), .q_num_entries_g(`RV_FX0_ENTRIES), .q_itag_busses_g(num_itag_busses_g) ) 
+
+   rv_station #( .q_dat_width_g(rvfx0_size), .q_dat_ex0_width_g(rvfx0_ex0_size), .q_num_entries_g(`RV_FX0_ENTRIES), .q_itag_busses_g(num_itag_busses_g) )
    rvs(
        .cp_flush(cp_flush),
        .cp_next_itag(cp_next_itag_q),
-      
+
        .rv0_instr_i0_vld(rv0_instr_i0_vld),
        .rv0_instr_i0_rte(rv0_instr_i0_rte_fx0),
        .rv0_instr_i1_vld(rv0_instr_i1_vld),
        .rv0_instr_i1_rte(rv0_instr_i1_rte_fx0),
-      
+
        .rv0_instr_i0_dat(rv0_instr_i0_dat),
        .rv0_instr_i0_dat_ex0(rv0_instr_i0_dat_ex0),
        .rv0_instr_i0_itag(rv0_instr_i0_itag),
        .rv0_instr_i0_ord(rv0_instr_i0_ord),
        .rv0_instr_i0_cord(rv0_instr_i0_cord),
        .rv0_instr_i0_spec(rv0_instr_i0_spec),
-       .rv0_instr_i0_s1_dep_hit(rv0_instr_i0_s1_dep_hit),		
-       .rv0_instr_i0_s1_itag(rv0_instr_i0_s1_itag),		
+       .rv0_instr_i0_s1_dep_hit(rv0_instr_i0_s1_dep_hit),		//swap
+       .rv0_instr_i0_s1_itag(rv0_instr_i0_s1_itag),		//swap
        .rv0_instr_i0_s2_dep_hit(rv0_instr_i0_s2_dep_hit),
        .rv0_instr_i0_s2_itag(rv0_instr_i0_s2_itag),
        .rv0_instr_i0_s3_dep_hit(rv0_instr_i0_s3_dep_hit),
@@ -479,18 +531,18 @@ module rv_fx0_rvs(
        .rv0_instr_i0_is_brick(rv0_instr_i0_is_brick),
        .rv0_instr_i0_brick(rv0_instr_i0_brick),
        .rv0_instr_i0_ilat(rv0_instr_i0_ilat),
-       .rv0_instr_i0_s1_v(rv0_instr_i0_s1_v),		
+       .rv0_instr_i0_s1_v(rv0_instr_i0_s1_v),		//swap
        .rv0_instr_i0_s2_v(rv0_instr_i0_s2_v),
        .rv0_instr_i0_s3_v(rv0_instr_i0_s3_v),
-       
+
        .rv0_instr_i1_dat(rv0_instr_i1_dat),
        .rv0_instr_i1_dat_ex0(rv0_instr_i1_dat_ex0),
        .rv0_instr_i1_itag(rv0_instr_i1_itag),
        .rv0_instr_i1_ord(rv0_instr_i1_ord),
        .rv0_instr_i1_cord(rv0_instr_i1_cord),
        .rv0_instr_i1_spec(rv0_instr_i1_spec),
-       .rv0_instr_i1_s1_dep_hit(rv0_instr_i1_s1_dep_hit),		
-       .rv0_instr_i1_s1_itag(rv0_instr_i1_s1_itag),		
+       .rv0_instr_i1_s1_dep_hit(rv0_instr_i1_s1_dep_hit),		//swap
+       .rv0_instr_i1_s1_itag(rv0_instr_i1_s1_itag),		//swap
        .rv0_instr_i1_s2_dep_hit(rv0_instr_i1_s2_dep_hit),
        .rv0_instr_i1_s2_itag(rv0_instr_i1_s2_itag),
        .rv0_instr_i1_s3_dep_hit(rv0_instr_i1_s3_dep_hit),
@@ -498,10 +550,10 @@ module rv_fx0_rvs(
        .rv0_instr_i1_is_brick(rv0_instr_i1_is_brick),
        .rv0_instr_i1_brick(rv0_instr_i1_brick),
        .rv0_instr_i1_ilat(rv0_instr_i1_ilat),
-       .rv0_instr_i1_s1_v(rv0_instr_i1_s1_v),		
+       .rv0_instr_i1_s1_v(rv0_instr_i1_s1_v),		//swap
        .rv0_instr_i1_s2_v(rv0_instr_i1_s2_v),
        .rv0_instr_i1_s3_v(rv0_instr_i1_s3_v),
-      
+
        .rv1_instr_vld(rv1_instr_v),
        .rv1_instr_dat(rv1_instr_dat),
        .rv1_instr_ord(rv1_instr_ord),
@@ -516,12 +568,12 @@ module rv_fx0_rvs(
        .rv1_instr_is_brick(rv1_instr_is_brick),
        .ex0_instr_dat(ex0_instr_dat),
        .ex1_credit_free(ex1_credit_free),
-      
+
        .rv1_other_ilat0_vld(rv1_fx1_ilat0_vld),
        .rv1_other_ilat0_itag(rv1_fx1_ilat0_itag),
        .rv1_other_ilat0_vld_out(rv1_fx0_ilat0_vld),
        .rv1_other_ilat0_itag_out(rv1_fx0_ilat0_itag),
-      
+
        .q_hold_all(fx0_rv_hold_all),
        .q_ord_complete(fx0_rv_ord_complete),
        .q_ord_tid(fx0_rv_ord_tid),
@@ -550,18 +602,18 @@ module rv_fx0_rvs(
        .xx_rv_ex2_s1_abort(fx0_rv_ex2_s1_abort),
        .xx_rv_ex2_s2_abort(fx0_rv_ex2_s2_abort),
        .xx_rv_ex2_s3_abort(fx0_rv_ex2_s3_abort),
-       
+
        .lq_rv_itag1_restart(lq_rv_itag1_restart),
        .lq_rv_itag1_hold(lq_rv_itag1_hold),
        .lq_rv_itag1_cord(lq_rv_itag1_cord),
        .lq_rv_itag1_rst_vld(lq_rv_itag1_rst_vld),
        .lq_rv_itag1_rst(lq_rv_itag1_rst),
        .lq_rv_clr_hold(lq_rv_clr_hold),
-      
+
        .rvs_perf_bus(fx0_rvs_perf_bus),
        .rvs_dbg_bus(fx0_rvs_dbg_bus),
        .rvs_empty(rvs_empty),
-       
+
        .vdd(vdd),
        .gnd(gnd),
        .nclk(nclk),
@@ -577,9 +629,9 @@ module rv_fx0_rvs(
        .scan_in(siv[rvs_offset]),
        .scan_out(sov[rvs_offset])
        );
-   
+
    assign rv_iu_fx0_credit_free = ex1_credit_free;
-   
+
    assign rv_fx0_vld = rv1_instr_v;
    assign rv_fx0_s1_v = rv1_instr_dat[rvfx0_s1_v_start];
    assign rv_fx0_s1_p = rv1_instr_dat[rvfx0_s1_p_start:rvfx0_s1_p_stop];
@@ -587,16 +639,18 @@ module rv_fx0_rvs(
    assign rv_fx0_s2_p = rv1_instr_dat[rvfx0_s2_p_start:rvfx0_s2_p_stop];
    assign rv_fx0_s3_v = rv1_instr_dat[rvfx0_s3_v_start];
    assign rv_fx0_s3_p = rv1_instr_dat[rvfx0_s3_p_start:rvfx0_s3_p_stop];
-   
+
    assign rv_byp_fx0_vld = rv1_instr_v;
-   
+
+   //RV2 Outputs
    assign rv_byp_fx0_ord = rv1_instr_ord;
    assign rv_byp_fx0_itag = rv1_instr_itag;
    assign rv_byp_fx0_ilat = rv1_instr_ilat;
    assign rv_byp_fx0_s1_itag = rv1_instr_s1_itag;
    assign rv_byp_fx0_s2_itag = rv1_instr_s2_itag;
    assign rv_byp_fx0_s3_itag = rv1_instr_s3_itag;
-   
+
+   //RV2 to Bypass
    assign rv_byp_fx0_t1_v = rv1_instr_dat[rvfx0_t1_v_start];
    assign rv_byp_fx0_t1_t = rv1_instr_dat[rvfx0_t1_t_start:rvfx0_t1_t_stop];
    assign rv_byp_fx0_t2_v = rv1_instr_dat[rvfx0_t2_v_start];
@@ -608,11 +662,12 @@ module rv_fx0_rvs(
    assign rv_byp_fx0_s3_t = rv1_instr_dat[rvfx0_s3_t_start:rvfx0_s3_t_stop];
    assign rv_byp_fx0_ilat0_vld = rv1_instr_ilat0_vld;
    assign rv_byp_fx0_ilat1_vld = rv1_instr_ilat1_vld;
-   
+
+   //EX0 Outputs
    assign ex0_ord_d = rv1_instr_ord;
    assign ex0_itag_d = rv1_instr_itag;
    assign ex0_is_brick_d = rv1_instr_is_brick;
-   
+
    assign ex0_t1_v_d = rv1_instr_dat[rvfx0_t1_v_start];
    assign ex0_t1_t_d = rv1_instr_dat[rvfx0_t1_t_start:rvfx0_t1_t_stop];
    assign ex0_t2_v_d = rv1_instr_dat[rvfx0_t2_v_start];
@@ -624,9 +679,9 @@ module rv_fx0_rvs(
    assign ex0_s2_t_d = rv1_instr_dat[rvfx0_s2_t_start:rvfx0_s2_t_stop];
    assign ex0_s3_v_d = rv1_instr_dat[rvfx0_s3_v_start];
    assign ex0_s3_t_d = rv1_instr_dat[rvfx0_s3_t_start:rvfx0_s3_t_stop];
-   
+
    assign rv_ex0_act = |(rv1_instr_v);
-   
+
    assign rv_fx0_ex0_instr = ex0_instr_dat[rvfx0_instr_start:rvfx0_instr_stop];
    assign rv_fx0_ex0_ifar = ex0_instr_dat[rvfx0_ifar_start:rvfx0_ifar_stop];
    assign rv_fx0_ex0_ucode = ex0_instr_dat[rvfx0_ucode_start:rvfx0_ucode_stop];
@@ -635,7 +690,7 @@ module rv_fx0_rvs(
    assign rv_fx0_ex0_t2_p = ex0_instr_dat[rvfx0_t2_p_start:rvfx0_t2_p_stop];
    assign rv_fx0_ex0_t3_p = ex0_instr_dat[rvfx0_t3_p_start:rvfx0_t3_p_stop];
    assign rv_fx0_ex0_branch = ex0_instr_dat[rvfx0_branch_start:rvfx0_branch_stop];
-      
+
    assign rv_fx0_ex0_ord = ex0_ord_q;
    assign rv_fx0_ex0_itag = ex0_itag_q;
    assign rv_fx0_ex0_t1_v = ex0_t1_v_q;
@@ -650,14 +705,21 @@ module rv_fx0_rvs(
    assign rv_fx0_ex0_s3_v = ex0_s3_v_q;
    assign rv_fx0_ex0_s3_t = ex0_s3_t_q;
    assign rv_byp_fx0_ex0_is_brick = ex0_is_brick_q;
-   
 
-      
+   //------------------------------------------------------------------------------------------------------------
+   // Itag busses
+   //------------------------------------------------------------------------------------------------------------
+
+
+   // Restart Itag and Valid from LQ.  This is separate because it could be early (not latched)
    assign lq_rv_itag1_rst_vld = lq_rv_itag1_vld;
    assign lq_rv_itag1_rst = lq_rv_itag1;
-   
-   
-   tri_rlmlatch_p #(.INIT(0) ) 
+
+   //------------------------------------------------------------------------------------------------------------
+   // Pipeline Latches
+   //------------------------------------------------------------------------------------------------------------
+
+   tri_rlmlatch_p #(.INIT(0) )
    ex0_is_brick_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -675,9 +737,9 @@ module rv_fx0_rvs(
 		.din(ex0_is_brick_d),
 		.dout(ex0_is_brick_q)
 		);
-   
-   
-   tri_rlmreg_p #(.WIDTH(`ITAG_SIZE_ENC), .INIT(0) ) 
+
+
+   tri_rlmreg_p #(.WIDTH(`ITAG_SIZE_ENC), .INIT(0) )
    ex0_itag_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -695,8 +757,8 @@ module rv_fx0_rvs(
 		.din(ex0_itag_d),
 		.dout(ex0_itag_q)
 		);
-      
-   
+
+
    tri_rlmlatch_p #(.INIT(0))
    ex0_ord_reg(
 	       .vd(vdd),
@@ -715,8 +777,8 @@ module rv_fx0_rvs(
 	       .din(ex0_ord_d),
 	       .dout(ex0_ord_q)
 	       );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0))
    ex0_t1_v_reg(
 		.vd(vdd),
@@ -735,10 +797,10 @@ module rv_fx0_rvs(
 		.din(ex0_t1_v_d),
 		.dout(ex0_t1_v_q)
 		);
-   
-   
-   
-   
+
+
+
+
    tri_rlmreg_p #(.WIDTH(3), .INIT(0))
    ex0_t1_t_reg(
 		.vd(vdd),
@@ -757,9 +819,9 @@ module rv_fx0_rvs(
 		.din(ex0_t1_t_d),
 		.dout(ex0_t1_t_q)
 		);
-   
-   
-   tri_rlmlatch_p #(.INIT(0)) 
+
+
+   tri_rlmlatch_p #(.INIT(0))
    ex0_t2_v_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -777,9 +839,9 @@ module rv_fx0_rvs(
 		.din(ex0_t2_v_d),
 		.dout(ex0_t2_v_q)
 		);
-   
-   
-   tri_rlmreg_p #(.WIDTH(3), .INIT(0)) 
+
+
+   tri_rlmreg_p #(.WIDTH(3), .INIT(0))
    ex0_t2_t_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -797,9 +859,9 @@ module rv_fx0_rvs(
 		.din(ex0_t2_t_d),
 		.dout(ex0_t2_t_q)
 		);
-   
-   
-   tri_rlmlatch_p #(.INIT(0)) 
+
+
+   tri_rlmlatch_p #(.INIT(0))
    ex0_t3_v_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -817,9 +879,9 @@ module rv_fx0_rvs(
 		.din(ex0_t3_v_d),
 		.dout(ex0_t3_v_q)
 		);
-      
-   
-   tri_rlmreg_p #(.WIDTH(3), .INIT(0)) 
+
+
+   tri_rlmreg_p #(.WIDTH(3), .INIT(0))
    ex0_t3_t_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -837,9 +899,9 @@ module rv_fx0_rvs(
 		.din(ex0_t3_t_d),
 		.dout(ex0_t3_t_q)
 		);
-   
-   
-   tri_rlmlatch_p #(.INIT(0)) 
+
+
+   tri_rlmlatch_p #(.INIT(0))
    ex0_s1_v_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -857,9 +919,9 @@ module rv_fx0_rvs(
 		.din(ex0_s1_v_d),
 		.dout(ex0_s1_v_q)
 		);
-   
-   
-   tri_rlmlatch_p #(.INIT(0)) 
+
+
+   tri_rlmlatch_p #(.INIT(0))
    ex0_s2_v_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -877,9 +939,9 @@ module rv_fx0_rvs(
 		.din(ex0_s2_v_d),
 		.dout(ex0_s2_v_q)
 		);
-   
-   
-   tri_rlmreg_p #(.WIDTH(3), .INIT(0)) 
+
+
+   tri_rlmreg_p #(.WIDTH(3), .INIT(0))
    ex0_s2_t_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -897,7 +959,7 @@ module rv_fx0_rvs(
 		.din(ex0_s2_t_d),
 		.dout(ex0_s2_t_q)
 		);
-   
+
 
    tri_rlmlatch_p #(.INIT(0))
    ex0_s3_v_reg(
@@ -917,9 +979,9 @@ module rv_fx0_rvs(
 		.din(ex0_s3_v_d),
 		.dout(ex0_s3_v_q)
 		);
-   
-   
-   tri_rlmreg_p #(.WIDTH(3), .INIT(0)) 
+
+
+   tri_rlmreg_p #(.WIDTH(3), .INIT(0))
    ex0_s3_t_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -937,10 +999,10 @@ module rv_fx0_rvs(
 		.din(ex0_s3_t_d),
 		.dout(ex0_s3_t_q)
 		);
-   
-         
-   
-   tri_rlmreg_p #(.WIDTH(`THREADS*`ITAG_SIZE_ENC), .INIT(0)) 
+
+
+
+   tri_rlmreg_p #(.WIDTH(`THREADS*`ITAG_SIZE_ENC), .INIT(0))
    cp_next_itag_reg(
 		    .vd(vdd),
 		    .gd(gnd),
@@ -958,14 +1020,20 @@ module rv_fx0_rvs(
 		    .din(cp_next_itag),
 		    .dout(cp_next_itag_q)
 		    );
-   
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Scan Connections
+   //------------------------------------------------------------------------------------------------------------
+
    assign siv[0:scan_right-1] = {sov[1:scan_right-1], scan_in};
    assign scan_out = sov[0];
-   
-   
-   
-   tri_plat #(.WIDTH(2)) 
+
+   //-----------------------------------------------
+   // pervasive
+   //-----------------------------------------------
+
+
+   tri_plat #(.WIDTH(2))
    perv_1to0_reg(
 		 .vd(vdd),
 		 .gd(gnd),
@@ -974,8 +1042,8 @@ module rv_fx0_rvs(
 		 .din({func_sl_thold_1, sg_1}),
                  .q({func_sl_thold_0, sg_0})
 		 );
-   
-   
+
+
    tri_lcbor
      perv_lcbor(
 		.clkoff_b(clkoff_b),
@@ -987,4 +1055,3 @@ module rv_fx0_rvs(
 		);
 
 endmodule
-

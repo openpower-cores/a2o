@@ -7,15 +7,27 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//********************************************************************
+//*
+//* TITLE:
+//*
+//* NAME: c.v
+//*
+//*********************************************************************
 
+// For RLMs & Top-level only
 (* recursive_synthesis="0" *)
 
 module c(
 `include "tri_a2o.vh"
+//	 inout                                                  vcs,
+//	 inout                                                  vdd,
+//	 inout                                                  gnd,
 	 input[0:`NCLK_WIDTH-1] nclk,
 	 input                                                  scan_in,
 	 output                                                 scan_out,
 
+	 // Pervasive clock control
 	 input                                                  an_ac_rtim_sl_thold_8,
 	 input                                                  an_ac_func_sl_thold_8,
 	 input                                                  an_ac_func_nsl_thold_8,
@@ -24,15 +36,18 @@ module c(
 	 input                                                  an_ac_fce_8,
 	 input [0:7]                                            an_ac_abst_scan_in,
 
+	 // L2 STCX complete
 	 input [0:`THREADS-1]                                   an_ac_stcx_complete,
 	 input [0:`THREADS-1]                                   an_ac_stcx_pass,
 
+	 // ICBI ACK Interface
 	 input                                                  an_ac_icbi_ack,
 	 input [0:1]                                            an_ac_icbi_ack_thread,
 
+	 // Back invalidate interface
 	 input                                                  an_ac_back_inv,
 	 input [64-`REAL_IFAR_WIDTH:63]                         an_ac_back_inv_addr,
-	 input [0:4]                                            an_ac_back_inv_target,		
+	 input [0:4]                                            an_ac_back_inv_target,		// connect to bit(0)
 	 input                                                  an_ac_back_inv_local,
 	 input                                                  an_ac_back_inv_lbit,
 	 input                                                  an_ac_back_inv_gs,
@@ -41,30 +56,34 @@ module c(
 	 output                                                 ac_an_back_inv_reject,
 	 output [0:7]                                           ac_an_lpar_id,
 
-	 input                                                  an_ac_reld_data_vld,		
-	 input [0:4]                                            an_ac_reld_core_tag,		
-	 input [0:127]                                          an_ac_reld_data,		
-	 input [58:59]                                          an_ac_reld_qw,		
-	 input                                                  an_ac_reld_ecc_err,		
-	 input                                                  an_ac_reld_ecc_err_ue,		
+	 // L2 Reload Inputs
+	 input                                                  an_ac_reld_data_vld,		// reload data is coming next cycle
+	 input [0:4]                                            an_ac_reld_core_tag,		// reload data destinatoin tag (which load queue)
+	 input [0:127]                                          an_ac_reld_data,		// Reload Data
+	 input [58:59]                                          an_ac_reld_qw,		// quadword address of reload data beat
+	 input                                                  an_ac_reld_ecc_err,		// Reload Data contains a Correctable ECC error
+	 input                                                  an_ac_reld_ecc_err_ue,		// Reload Data contains an Uncorrectable ECC error
 	 input                                                  an_ac_reld_data_coming,
 	 input                                                  an_ac_reld_ditc,
 	 input                                                  an_ac_reld_crit_qw,
 	 input                                                  an_ac_reld_l1_dump,
-	 input [0:3]                                            an_ac_req_spare_ctrl_a1,		
+	 input [0:3]                                            an_ac_req_spare_ctrl_a1,		// spare control bits from L2
 
-	 input                                                  an_ac_flh2l2_gate,		
-	 input                                                  an_ac_req_ld_pop,		
-	 input                                                  an_ac_req_st_pop,		
-	 input                                                  an_ac_req_st_gather,		
+	 // load/store credit control
+	 input                                                  an_ac_flh2l2_gate,		// Gate L1 Hit forwarding SPR config bit
+	 input                                                  an_ac_req_ld_pop,		// credit for a load (L2 can take a load command)
+	 input                                                  an_ac_req_st_pop,		// credit for a store (L2 can take a store command)
+	 input                                                  an_ac_req_st_gather,		// credit for a store due to L2 gathering of store commands
 	 input [0:`THREADS-1]                                   an_ac_sync_ack,
 
+	 //SCOM Satellite
 	 input [0:3]                                            an_ac_scom_sat_id,
 	 input                                                  an_ac_scom_dch,
 	 input                                                  an_ac_scom_cch,
 	 output                                                 ac_an_scom_dch,
 	 output                                                 ac_an_scom_cch,
 
+	 // FIR and Error Signals
 	 output [0:`THREADS-1]                                  ac_an_special_attn,
 	 output [0:2]                                           ac_an_checkstop,
 	 output [0:2]                                           ac_an_local_checkstop,
@@ -74,20 +93,24 @@ module c(
 	 input                                                  an_ac_checkstop,
 	 input [0:`THREADS-1]                                   an_ac_external_mchk,
 
+	 // Perfmon Event Bus
 	 output [0:4*`THREADS-1]                                ac_an_event_bus0,
 	 output [0:4*`THREADS-1]                                ac_an_event_bus1,
 
+	 // Reset related
 	 input                                                  an_ac_reset_1_complete,
 	 input                                                  an_ac_reset_2_complete,
 	 input                                                  an_ac_reset_3_complete,
 	 input                                                  an_ac_reset_wd_complete,
 
+	 // Power Management
 	 output [0:`THREADS-1]                                  ac_an_pm_thread_running,
 	 input [0:`THREADS-1]                                   an_ac_pm_thread_stop,
 	 input [0:`THREADS-1]                                   an_ac_pm_fetch_halt,
 	 output                                                 ac_an_power_managed,
 	 output                                                 ac_an_rvwinkle_mode,
 
+	 // Clock, Test, and LCB Controls
 	 input                                                  an_ac_gsd_test_enable_dc,
 	 input                                                  an_ac_gsd_test_acmode_dc,
 	 input                                                  an_ac_ccflush_dc,
@@ -98,8 +121,10 @@ module c(
 	 input                                                  an_ac_scan_diag_dc,
 	 input                                                  an_ac_scan_dis_dc_b,
 
+	 //Thold input to clock control macro
 	 input [0:8]                                            an_ac_scan_type_dc,
 
+	 // Pervasive
 	 output                                                 ac_an_reset_1_request,
 	 output                                                 ac_an_reset_2_request,
 	 output                                                 ac_an_reset_3_request,
@@ -120,33 +145,36 @@ module c(
 	 output [0:`THREADS-1]                                  ac_an_debug_trigger,
 	 input [0:`THREADS-1]                                   an_ac_uncond_dbg_event,
 	 output [0:31]                                   	ac_an_debug_bus,
-	 output                                                 ac_an_coretrace_first_valid,	
-	 output							ac_an_coretrace_valid,		
-	 output	[0:1]						ac_an_coretrace_type,		
+	 output                                                 ac_an_coretrace_first_valid,	// coretrace_ctrls[0]
+	 output							ac_an_coretrace_valid,		// coretrace_ctrls[1]
+	 output	[0:1]						ac_an_coretrace_type,		// coretrace_ctrls[2:3]
 
-	 output                                                 ac_an_req_pwr_token,		
-	 output                                                 ac_an_req,		
-	 output [64-`REAL_IFAR_WIDTH:63]                        ac_an_req_ra,		
-	 output [0:5]                                           ac_an_req_ttype,		
-	 output [0:2]                                           ac_an_req_thread,		
-	 output                                                 ac_an_req_wimg_w,		
-	 output                                                 ac_an_req_wimg_i,		
-	 output                                                 ac_an_req_wimg_m,		
-	 output                                                 ac_an_req_wimg_g,		
-	 output [0:3]                                           ac_an_req_user_defined,		
-	 output [0:3]                                           ac_an_req_spare_ctrl_a0,		
-	 output [0:4]                                           ac_an_req_ld_core_tag,		
-	 output [0:2]                                           ac_an_req_ld_xfr_len,		
-	 output [0:31]                                          ac_an_st_byte_enbl,		
-	 output [0:255]                                         ac_an_st_data,		
-	 output                                                 ac_an_req_endian,		
-	 output                                                 ac_an_st_data_pwr_token		
+	 // L2 Outputs
+	 output                                                 ac_an_req_pwr_token,		// power token for command coming next cycle
+	 output                                                 ac_an_req,		// command request valid
+	 output [64-`REAL_IFAR_WIDTH:63]                        ac_an_req_ra,		// real address for request
+	 output [0:5]                                           ac_an_req_ttype,		// command (transaction) type
+	 output [0:2]                                           ac_an_req_thread,		// encoded thread ID
+	 output                                                 ac_an_req_wimg_w,		// write-through
+	 output                                                 ac_an_req_wimg_i,		// cache-inhibited
+	 output                                                 ac_an_req_wimg_m,		// memory coherence required
+	 output                                                 ac_an_req_wimg_g,		// guarded memory
+	 output [0:3]                                           ac_an_req_user_defined,		// User Defined Bits
+	 output [0:3]                                           ac_an_req_spare_ctrl_a0,		// Spare bits
+	 output [0:4]                                           ac_an_req_ld_core_tag,		// load command tag (which load Q)
+	 output [0:2]                                           ac_an_req_ld_xfr_len,		// transfer length for non-cacheable load
+	 output [0:31]                                          ac_an_st_byte_enbl,		// byte enables for store data
+	 output [0:255]                                         ac_an_st_data,		// store data
+	 output                                                 ac_an_req_endian,		// endian mode (0=big endian, 1=little endian)
+	 output                                                 ac_an_st_data_pwr_token		// store data power token
 
 	 );
-   
-   
+
+
    parameter                                              float_type = 1;
-   
+
+   // I$
+   // Cache inject
    wire 							iu_pc_err_icache_parity;
    wire 							iu_pc_err_icachedir_parity;
    wire 							iu_pc_err_icachedir_multihit;
@@ -155,6 +183,7 @@ module c(
    wire 							pc_iu_inj_icache_parity;
    wire 							pc_iu_inj_icachedir_parity;
    wire 							pc_iu_init_reset;
+   // spr ring
    wire 							iu_slowspr_val_out;
    wire 							iu_slowspr_rw_out;
    wire [0:1] 							iu_slowspr_etid_out;
@@ -226,9 +255,11 @@ module c(
    wire [0:9] 							mm_slowspr_addr_in;
    wire [64-`GPR_WIDTH:63] 					mm_slowspr_data_in;
    wire 							mm_slowspr_done_in;
-   
+
+   // XU-IU interface
    wire 							xu_iu_hid_mmu_mode;
-   
+
+   // IU-ERAT interface
    wire 							iu_mm_ierat_req;
    wire 							iu_mm_ierat_req_nonspec;
    wire [0:51] 							iu_mm_ierat_epn;
@@ -265,11 +296,12 @@ module c(
    wire [0:`THREADS-1] 						iu_mm_bus_snoop_hold_ack;
    wire [0:`THREADS-1] 						mm_iu_bus_snoop_hold_req;
    wire [0:`THREADS-1] 						mm_iu_bus_snoop_hold_done;
-   wire [0:`THREADS-1] 						mm_iu_tlbi_complete; 						
+   wire [0:`THREADS-1] 						mm_iu_tlbi_complete;
    wire [0:`THREADS-1] 						mm_iu_hold_req;
    wire [0:`THREADS-1] 						mm_iu_hold_done;
    wire [0:`THREADS-1] 						mm_iu_flush_req;
-   
+
+   // IU-LQ interface
    wire [0:`THREADS-1] 						iu_lq_request;
    wire [0:1] 							iu_lq_cTag;
    wire [64-`REAL_IFAR_WIDTH:59] 				iu_lq_ra;
@@ -279,6 +311,7 @@ module c(
    wire [64-`REAL_IFAR_WIDTH:57] 				lq_iu_icbi_addr;
    wire [0:`THREADS-1] 						iu_lq_icbi_complete;
    wire 							lq_iu_ici_val;
+   // IU-RV interface
    wire 							iu_rv_iu6_t0_i0_vld;
    wire 							iu_rv_iu6_t0_i0_act;
    wire 							iu_rv_iu6_t0_i0_rte_lq;
@@ -482,12 +515,14 @@ module c(
    wire [0:`ITAG_SIZE_ENC-1] 					iu_rv_iu6_t1_i1_s3_itag;
 
 `endif
-   
+
+   // Credit Interface with IU
    wire [0:`THREADS-1] 						rv_iu_fx0_credit_free;
    wire [0:`THREADS-1] 						rv_iu_fx1_credit_free;
    wire [0:`THREADS-1] 						rv_iu_axu0_credit_free;
    wire [0:`THREADS-1] 						rv_iu_axu1_credit_free;
-   
+
+   // LQ Instruction Executed
    wire [0:`THREADS-1] 						lq0_iu_execute_vld;
    wire [0:`ITAG_SIZE_ENC-1] 					lq0_iu_itag;
    wire 							lq0_iu_n_flush;
@@ -514,27 +549,31 @@ module c(
    wire [0:`THREADS-1] 						lq_iu_credit_free;
    wire [0:`THREADS-1] 						sq_iu_credit_free;
    wire 							pc_lq_init_reset;
-   
+
+   // BR Instruction Executed
    wire [0:`THREADS-1] 						br_iu_execute_vld;
    wire [0:`ITAG_SIZE_ENC-1] 					br_iu_itag;
    wire [62-`EFF_IFAR_ARCH:61] 					br_iu_bta;
    wire 							br_iu_taken;
    wire [0:`THREADS-1] 						br_iu_redirect;
    wire [0:3]							br_iu_perf_events;
-   
+
+   //br unit repairs
    wire [0:17] 							br_iu_gshare;
    wire [0:2] 							br_iu_ls_ptr;
    wire [62-`EFF_IFAR_WIDTH:61] 				br_iu_ls_data;
    wire 							br_iu_ls_update;
-   
+
+   // AXU Instruction Executed
    wire [0:`THREADS-1] 						axu0_rv_itag_vld;
    wire [0:`ITAG_SIZE_ENC-1] 					axu0_rv_itag;
    wire [0:`THREADS-1] 						axu1_rv_itag_vld;
    wire [0:`ITAG_SIZE_ENC-1] 					axu1_rv_itag;
    wire                                                         axu0_rv_hold_all;
-   wire                                                         axu1_rv_hold_all;       
-	
-   
+   wire                                                         axu1_rv_hold_all;
+
+
+   // Abort
    wire 							lq_rv_ex2_s1_abort;
    wire 							lq_rv_ex2_s2_abort;
    wire 							fx0_rv_ex2_s1_abort;
@@ -547,9 +586,10 @@ module c(
    wire 							axu0_rv_ex2_s2_abort;
    wire 							axu0_rv_ex2_s3_abort;
    wire   							fu_lq_ex3_abort;
-  
 
-   
+
+
+   // XU Instruction Executed
    wire [0:`THREADS-1] 						xu_iu_ucode_xer_val;
    wire [`XER_WIDTH-7:`XER_WIDTH-1] 				xu_iu_ucode_xer;
    wire [0:`THREADS-1] 						xu_iu_execute_vld;
@@ -574,7 +614,7 @@ module c(
    wire 							xu_iu_is_erativax;
    wire [0:1] 							xu_iu_ws;
    wire [0:2] 							xu_iu_t;
-   wire [0:8] 							xu_iu_rs_is;		
+   wire [0:8] 							xu_iu_rs_is;		// Never see this used in IERAT
    wire [0:3] 							xu_iu_ra_entry;
    wire [64-`GPR_WIDTH:51] 					xu_iu_rb;
    wire [64-`GPR_WIDTH:63] 					xu_iu_rs_data;
@@ -593,8 +633,8 @@ module c(
    wire                                mm_xu_local_snoop_reject;
    wire [0:`ITAG_SIZE_ENC-1] 					mm_xu_itag;
    wire 							xu_mm_ord_ready;
-   wire [0:`THREADS-1] 						mm_xu_cr0_eq;		
-   wire [0:`THREADS-1] 						mm_xu_cr0_eq_valid;		
+   wire [0:`THREADS-1] 						mm_xu_cr0_eq;		// for record forms
+   wire [0:`THREADS-1] 						mm_xu_cr0_eq_valid;		// for record forms
    wire [0:`THREADS-1] 						mm_xu_tlb_miss;
    wire [0:`THREADS-1] 						mm_xu_lrat_miss;
    wire [0:`THREADS-1] 						mm_xu_tlb_inelig;
@@ -611,8 +651,8 @@ module c(
    wire 							mm_xu_pt_fault_ored;
    wire 							mm_xu_hv_priv_ored;
    wire 							mm_xu_illeg_instr_ored;
-   wire 							mm_xu_cr0_eq_ored;		
-   wire 							mm_xu_cr0_eq_valid_ored;		
+   wire 							mm_xu_cr0_eq_ored;		// for record forms
+   wire 							mm_xu_cr0_eq_valid_ored;		// for record forms
    wire 							mm_xu_ord_n_flush_req_ored;
    wire 							mm_xu_ord_np1_flush_req_ored;
    wire 							mm_xu_ord_read_done_ored;
@@ -621,7 +661,7 @@ module c(
    wire 							mm_pc_tlb_par_err_ored;
    wire 							mm_pc_lru_par_err_ored;
    wire 							mm_pc_local_snoop_reject_ored;
-   
+
    wire [0:`THREADS-1] 						mm_tlb_multihit_err;
    wire [0:`THREADS-1] 						mm_tlb_par_err;
    wire [0:`THREADS-1] 						mm_lru_par_err;
@@ -635,7 +675,7 @@ module c(
    wire 							xu_lq_is_eratilx;
    wire [0:1] 							xu_lq_ws;
    wire [0:2] 							xu_lq_t;
-   wire [0:8] 							xu_lq_rs_is;		
+   wire [0:8] 							xu_lq_rs_is;		// Never see this used in IERAT
    wire [0:4] 							xu_lq_ra_entry;
    wire [64-`GPR_WIDTH:51] 					xu_lq_rb;
    wire [64-`GPR_WIDTH:63] 					xu_lq_rs_data;
@@ -665,6 +705,7 @@ module c(
    wire 							lq_xu_spr_xucr0_clo;
    wire 							lq_xu_spr_xucr0_cul;
    wire [0:`THREADS-1] 		lq_iu_spr_dbcr3_ivc;
+   // FU Instruction Executed
    wire [0:`THREADS-1] 		axu0_iu_execute_vld;
    wire [0:`ITAG_SIZE_ENC-1] axu0_iu_itag;
    wire 							axu0_iu_n_flush;
@@ -676,7 +717,7 @@ module c(
    wire [0:3] 					axu0_iu_exception;
    wire [0:`THREADS-1] 		axu0_iu_async_fex;
    wire [0:3]              axu0_iu_perf_events;
-   
+
    wire [0:`THREADS-1] 		axu1_iu_execute_vld;
    wire [0:`ITAG_SIZE_ENC-1] axu1_iu_itag;
    wire 							axu1_iu_n_flush;
@@ -709,7 +750,7 @@ module c(
 
    wire 							cp_is_isync;
    wire 							cp_is_csync;
-   
+
    wire [64-`GPR_WIDTH:63+`GPR_WIDTH/8] 			gpr_xu0_ex1_r0d;
    wire [64-`GPR_WIDTH:63+`GPR_WIDTH/8] 			gpr_xu0_ex1_r1d;
    wire [64-`GPR_WIDTH:63+`GPR_WIDTH/8] 			gpr_xu0_ex1_r2d;
@@ -736,7 +777,7 @@ module c(
    wire 							lq_xu_gpr_rel_we;
    wire [0:`AXU_SPARE_ENC+`GPR_WIDTH_ENC+`THREADS_POOL_ENC-1] 	lq_xu_gpr_rel_wa;
    wire [64-`GPR_WIDTH:63+`GPR_WIDTH/8] 			lq_xu_gpr_rel_wd;
-   
+
    wire 							lq_xu_cr_ex5_we;
    wire [0:`CR_POOL_ENC+`THREADS_POOL_ENC-1] 			lq_xu_cr_ex5_wa;
    wire 							lq_xu_cr_l2_we;
@@ -747,7 +788,8 @@ module c(
    wire [0:`XER_POOL_ENC-1] 					iu_rf_t1_xer_p;
 `endif
    wire [0:`THREADS-1] 						xu_lq_xer_cp_rd;
-   
+
+   // Interface to FX0
    wire [0:`THREADS-1] 						rv_fx0_vld;
    wire 							rv_fx0_s1_v;
    wire [0:`GPR_POOL_ENC-1] 					rv_fx0_s1_p;
@@ -791,7 +833,8 @@ module c(
    wire 							fx0_rv_hold_all;
    wire [0:`ITAG_SIZE_ENC-1] 					fx0_rv_ord_itag;
    wire 							fx0_rv_ord_complete;
-   
+
+   // Interface to FX1
    wire [0:`THREADS-1] 						rv_fx1_vld;
    wire 							rv_fx1_s1_v;
    wire [0:`GPR_POOL_ENC-1] 					rv_fx1_s1_p;
@@ -814,13 +857,16 @@ module c(
    wire 							rv_fx1_ex0_s1_v;
    wire [0:2] 							rv_fx1_ex0_s3_t;
    wire 							rv_fx1_ex0_isStore;
-   
+
    wire [0:`THREADS-1] 						rv_fx1_ex0_spec_flush;
    wire [0:`THREADS-1] 						rv_fx1_ex1_spec_flush;
    wire [0:`THREADS-1] 						rv_fx1_ex2_spec_flush;
    wire 							fx1_rv_hold_all;
    wire 							fx1_rv_hold_ordered;
-   
+
+   //------------------------------------------------------------------
+   // AXU Pass Thru Interface
+   //------------------------------------------------------------------
    wire [59:63] 						lq_xu_axu_ex4_addr;
    wire 							lq_xu_axu_ex5_we;
    wire 							lq_xu_axu_ex5_le;
@@ -842,12 +888,13 @@ module c(
    wire [0:`ITAG_SIZE_ENC-1] 					xu_lq_axu_ex_stq_itag;
    wire [128-`STQ_DATA_SIZE:127] 				xu_lq_axu_exp1_stq_data;
    wire 							axu_xu_lq_exp1_sto_parity_err;
-      
+
+   // Interface to LQ
    wire [0:`THREADS-1] 						rv_lq_rvs_empty;
    wire [0:`THREADS-1] 						rv_lq_vld;
    wire [0:`ITAG_SIZE_ENC-1] 					rv_lq_ex0_itag;
    wire 							rv_lq_isLoad;
-   
+
    wire [0:`THREADS-1] 						rv_lq_rv1_i0_vld;
    wire 							rv_lq_rv1_i0_ucode_preissue;
    wire 							rv_lq_rv1_i0_2ucode;
@@ -859,7 +906,7 @@ module c(
    wire 							rv_lq_rv1_i0_rte_lq;
    wire 							rv_lq_rv1_i0_rte_sq;
    wire [61-`PF_IAR_BITS+1:61] 					rv_lq_rv1_i0_ifar;
-   
+
    wire [0:`THREADS-1] 						rv_lq_rv1_i1_vld;
    wire 							rv_lq_rv1_i1_ucode_preissue;
    wire 							rv_lq_rv1_i1_2ucode;
@@ -870,7 +917,7 @@ module c(
    wire [0:`ITAG_SIZE_ENC-1] 					rv_lq_rv1_i1_itag;
    wire 							rv_lq_rv1_i1_rte_lq;
    wire 							rv_lq_rv1_i1_rte_sq;
-   wire [61-`PF_IAR_BITS+1:61] 					rv_lq_rv1_i1_ifar;   
+   wire [61-`PF_IAR_BITS+1:61] 					rv_lq_rv1_i1_ifar;
    wire [0:31] 							rv_lq_ex0_instr;
    wire [0:2] 							rv_lq_ex0_ucode;
    wire [0:`UCODE_ENTRIES_ENC-1] 				rv_lq_ex0_ucode_cnt;
@@ -881,7 +928,7 @@ module c(
    wire 							rv_lq_ex0_s1_v;
    wire 							rv_lq_ex0_s2_v;
    wire [0:2] 							rv_lq_ex0_s2_t;
-   
+
    wire 							lq_rv_hold_all;
    wire [0:`THREADS-1] 						lq_rv_itag0_vld;
    wire [0:`ITAG_SIZE_ENC-1] 					lq_rv_itag0;
@@ -897,9 +944,9 @@ module c(
    wire 							lq_rv_itag1_cord;
    wire [0:`THREADS-1] 						lq_rv_clr_hold;
    wire 							lq_rv_ord_complete;
-   
+
    wire [0:`GPR_POOL_ENC-1] 					rv_sq_s3_p;
-   
+
    wire [0:`THREADS-1] 						rv_axu0_vld;
    wire 							rv_axu0_s1_v;
    wire [0:`GPR_POOL_ENC-1] 					rv_axu0_s1_p;
@@ -916,7 +963,7 @@ module c(
    wire [0:`ITAG_SIZE_ENC-1] 					rv_axu0_s2_itag;
    wire 							rv_axu0_s3_spec;
    wire [0:`ITAG_SIZE_ENC-1] 					rv_axu0_s3_itag;
-   
+
    wire [0:`ITAG_SIZE_ENC-1] 					rv_axu0_ex0_itag;
    wire [0:31] 							rv_axu0_ex0_instr;
    wire [0:2] 							rv_axu0_ex0_ucode;
@@ -925,9 +972,9 @@ module c(
    wire [0:`GPR_POOL_ENC-1] 					rv_axu0_ex0_t2_p;
    wire [0:`GPR_POOL_ENC-1] 					rv_axu0_ex0_t3_p;
 
-   
+
    wire 							axu0_rv_ord_complete;
-   
+
    wire 							sq_rv_itag0_vld;
    wire [0:`ITAG_SIZE_ENC-1] 					sq_rv_itag0;
    wire [0:`THREADS-1] 						iu_lq_i0_completed;
@@ -937,7 +984,7 @@ module c(
 `ifndef THREADS1
    wire [0:`ITAG_SIZE_ENC-1] 					iu_lq_t1_i0_completed_itag;
    wire [0:`ITAG_SIZE_ENC-1] 					iu_lq_t1_i1_completed_itag;
-`endif   
+`endif
    wire [0:`THREADS-1] 						iu_lq_recirc_val;
    wire [64-(2**`GPR_WIDTH_ENC):63] 				iu_lq_ls5_tlb_data;
    wire [0:`THREADS-1] 						fu_lq_ex2_store_data_val;
@@ -996,11 +1043,14 @@ module c(
    wire [0:4] 							lq_mm_derat_mmucr1;
    wire [0:`THREADS-1]						lq_mm_derat_mmucr1_we;
    wire 							lq_mm_lmq_stq_empty;
+   // Interface to BR
+   // Interface to AXU
    wire [59:63] 						lq_fu_ex4_eff_addr;
    wire 							lq_fu_ex5_load_val;
    wire 							lq_fu_ex5_load_le;
    wire [(128-`STQ_DATA_SIZE):127] 				lq_fu_ex5_load_data;
-   
+
+   // Ram interface
    wire [0:31] 							pc_iu_ram_instr;
    wire [0:3] 							pc_iu_ram_instr_ext;
    wire [0:`THREADS-1] 						pc_iu_ram_active;
@@ -1021,6 +1071,7 @@ module c(
    wire [0:`THREADS-1] 						pc_lq_ram_active;
    wire 							lq_pc_ram_data_val;
    wire [64-(2**`GPR_WIDTH_ENC):63] 				lq_pc_ram_data;
+   // PC control
    wire [0:`THREADS-1] 						pc_iu_stop;
    wire [0:`THREADS-1] 						pc_iu_step;
    wire [0:`THREADS-1] 						iu_pc_step_done;
@@ -1029,7 +1080,7 @@ module c(
    wire [0:2] 							pc_iu_t0_dbg_action;
 `ifndef THREADS1
    wire [0:2] 							pc_iu_t1_dbg_action;
-`endif   
+`endif
    wire [0:3*`THREADS-1] 					pc_iu_dbg_action_int;
    wire 							pc_xu_extirpts_dis_on_stop;
    wire 							pc_xu_timebase_dis_on_stop;
@@ -1037,7 +1088,8 @@ module c(
    wire 							ac_an_power_managed_int;
    wire [0:`THREADS-1] 						pc_xu_spr_dbcr0_edm;
    wire [0:`THREADS-1] 						pc_iu_spr_dbcr0_edm;
-   
+
+   // MSR connections
    wire [0:`THREADS-1] 						spr_msr_ucle;
    wire [0:`THREADS-1] 						spr_msr_spv;
    wire [0:`THREADS-1] 						spr_msr_fp;
@@ -1098,7 +1150,7 @@ module c(
    wire 							spr_xucr0_wlk;
    wire [0:3] 							spr_xucr0_trace_um;
    wire 							spr_cpcr2_lsu_inorder;
-   
+
    wire [0:`THREADS-1] 						xu_iu_epcr_extgs;
    wire [0:`THREADS-1] 						xu_iu_epcr_dtlbgs;
    wire [0:`THREADS-1] 						xu_iu_epcr_itlbgs;
@@ -1110,7 +1162,12 @@ module c(
    wire [0:`THREADS-1] 						xu_iu_epcr_gicm;
    wire [0:`THREADS-1] 						xu_mm_spr_epcr_dmiuh;
    wire 							iu_lq_spr_iucr0_icbi_ack;
-   
+
+   //-------------------------------------------------------------------
+   // Interface from bypass to units
+   //-------------------------------------------------------------------
+   // Interface with FXU0
+   //-------------------------------------------------------------------
    wire [1:11] 							rv_fx0_ex0_s1_fx0_sel;
    wire [1:11] 							rv_fx0_ex0_s2_fx0_sel;
    wire [1:11] 							rv_fx0_ex0_s3_fx0_sel;
@@ -1120,14 +1177,20 @@ module c(
    wire [1:6] 							rv_fx0_ex0_s1_fx1_sel;
    wire [1:6] 							rv_fx0_ex0_s2_fx1_sel;
    wire [1:6] 							rv_fx0_ex0_s3_fx1_sel;
-   
+
+   //-------------------------------------------------------------------
+   // Interface with LQ
+   //-------------------------------------------------------------------
    wire [2:12] 							rv_lq_ex0_s1_fx0_sel;
    wire [2:12] 							rv_lq_ex0_s2_fx0_sel;
    wire [4:8] 							rv_lq_ex0_s1_lq_sel;
    wire [4:8] 							rv_lq_ex0_s2_lq_sel;
    wire [2:7] 							rv_lq_ex0_s1_fx1_sel;
    wire [2:7] 							rv_lq_ex0_s2_fx1_sel;
-   
+
+   //-------------------------------------------------------------------
+   // Interface with FXU1
+   //-------------------------------------------------------------------
    wire [1:11] 							rv_fx1_ex0_s1_fx0_sel;
    wire [1:11] 							rv_fx1_ex0_s2_fx0_sel;
    wire [1:11] 							rv_fx1_ex0_s3_fx0_sel;
@@ -1137,7 +1200,7 @@ module c(
    wire [1:6] 							rv_fx1_ex0_s1_fx1_sel;
    wire [1:6] 							rv_fx1_ex0_s2_fx1_sel;
    wire [1:6] 							rv_fx1_ex0_s3_fx1_sel;
-   
+
    wire [2:3] 							rv_fx0_ex0_s1_rel_sel;
    wire [2:3] 							rv_fx0_ex0_s2_rel_sel;
    wire [2:3] 							rv_fx0_ex0_s3_rel_sel;
@@ -1147,7 +1210,7 @@ module c(
    wire [2:3] 							rv_fx1_ex0_s2_rel_sel;
    wire [2:3] 							rv_fx1_ex0_s3_rel_sel;
 
-   
+
 
    wire [0:3] 							lq_xu_ex5_cr;
    wire [64-`GPR_WIDTH:63] 					fxu0_fxu1_ex3_rt;
@@ -1172,12 +1235,13 @@ module c(
    wire [1:4] 							xu1_lq_ex2_stq_size;
    wire [(64-`GPR_WIDTH)/8:7] 					xu1_lq_ex2_stq_dvc1_cmp;
    wire [(64-`GPR_WIDTH)/8:7] 					xu1_lq_ex2_stq_dvc2_cmp;
-   
+
    wire 							        lq_xu_ex5_act;
    wire [64-`GPR_WIDTH:63] 					lq_xu_ex5_rt;
    wire                                     lq_xu_ex5_abort;
    wire                                      xu_axu_lq_ex5_abort;
-   
+
+   // REMOVE THESE AS REAL CONNECTIONS COME IN
    wire [0:`CR_POOL_ENC-1] 					cr_r3a;
    wire [0:3] 							cr_r3d;
    wire 							axu0_cr_w4e;
@@ -1195,7 +1259,8 @@ module c(
    wire [0:9] 							xer_r5d;
    wire [0:`XER_POOL_ENC-1] 					xer_r6a;
    wire [0:9] 							xer_r6d;
-   
+
+   // Scan connections
    wire 							scan_in_ic;
    wire 							scan_out_ic;
    wire 							scan_in_rv;
@@ -1218,7 +1283,8 @@ module c(
    wire 							scan_out_br;
    wire 							scan_in_rv_byp;
    wire 							scan_out_rv_byp;
-   
+
+   // Need to think about where these go
    wire [0:`THREADS-1] 						iu_xu_icache_quiesce;
    wire [0:`THREADS-1] 						iu_pc_icache_quiesce;
    wire 							iu_mm_lmq_empty;
@@ -1245,13 +1311,13 @@ module c(
    wire [0:16] 							iu_xu_t0_esr;
    wire [0:14]     						iu_xu_t0_mcsr;
    wire [0:18] 							iu_xu_t0_dbsr;
-   wire [64-`GPR_WIDTH:63] 					iu_xu_t0_dear; 
+   wire [64-`GPR_WIDTH:63] 					iu_xu_t0_dear;
 `ifndef THREADS1
    wire [62-`EFF_IFAR_ARCH:61] 				       	iu_xu_t1_nia;
    wire [0:16] 							iu_xu_t1_esr;
    wire [0:14]     						iu_xu_t1_mcsr;
    wire [0:18] 							iu_xu_t1_dbsr;
-   wire [64-`GPR_WIDTH:63] 					iu_xu_t1_dear; 
+   wire [64-`GPR_WIDTH:63] 					iu_xu_t1_dear;
 `endif
    wire [0:`THREADS-1] 						iu_xu_dear_update;
    wire [0:`THREADS-1] 						iu_xu_dbsr_update;
@@ -1265,7 +1331,7 @@ module c(
    wire [0:`THREADS-1] 						iu_xu_gmcdbell_taken;
    wire [0:`THREADS-1] 						xu_iu_dbsr_ide;
    wire [0:`THREADS-1] 						iu_xu_instr_cpl;
-   
+
    wire [0:`THREADS-1] 						xu_iu_external_mchk;
    wire [0:`THREADS-1] 						xu_iu_ext_interrupt;
    wire [0:`THREADS-1] 						xu_iu_dec_interrupt;
@@ -1285,7 +1351,7 @@ module c(
    wire [62-`EFF_IFAR_ARCH:61]					xu_iu_t0_rest_ifar;
 `ifndef THREADS1
    wire [62-`EFF_IFAR_ARCH:61]					xu_iu_t1_rest_ifar;
-`endif   
+`endif
    wire [0:`THREADS-1] 						lq_xu_quiesce;
    wire [0:`THREADS-1] 						mm_xu_quiesce;
    wire [0:`THREADS-1] 						mm_pc_tlb_req_quiesce;
@@ -1296,11 +1362,13 @@ module c(
    wire [0:`THREADS-1]						lq_pc_ldq_quiesce;
    wire [0:`THREADS-1]						lq_pc_stq_quiesce;
    wire [0:`THREADS-1]						lq_pc_pfetch_quiesce;
-   
+
+   // PCQ Signals
    wire 							rp_pc_scom_dch_q;
    wire 							rp_pc_scom_cch_q;
    wire 							pc_rp_scom_dch;
    wire 							pc_rp_scom_cch;
+   // pcq error related and FIRs
    wire [0:`THREADS-1] 						pc_rp_special_attn;
    wire [0:2] 							pc_rp_checkstop;
    wire [0:2] 							pc_rp_local_checkstop;
@@ -1351,6 +1419,7 @@ module c(
    wire [0:`THREADS-1] 						pc_xu_inj_llbust_attempt;
    wire [0:`THREADS-1] 						pc_xu_inj_llbust_failed;
    wire [0:`THREADS-1]     					pc_iu_inj_cpArray_parity;
+   // pcq power management + resets
    wire [0:`THREADS-1] 						rp_pc_pm_thread_stop_q;
    wire [0:`THREADS-1] 						rp_pc_pm_fetch_halt_q;
    wire [0:1] 							xu_pc_spr_ccr0_pme;
@@ -1360,6 +1429,7 @@ module c(
    wire 							pc_rp_power_managed;
    wire 							pc_rp_rvwinkle_mode;
    wire 							pc_xu_pm_hold_thread;
+   // pcq debug + perf events
    wire 							rp_pc_debug_stop_q;
    wire 							pc_iu_trace_bus_enable;
    wire 							pc_rv_trace_bus_enable;
@@ -1390,7 +1460,7 @@ module c(
 
    wire [0:39] 							pc_rv_event_mux_ctrls;
    wire [0:7] 							rv_rp_event_bus;
-   
+
    wire 							pc_iu_instr_trace_mode;
    wire [0:1] 							pc_iu_instr_trace_tid;
    wire 							pc_lq_instr_trace_mode;
@@ -1399,6 +1469,7 @@ module c(
    wire [0:1] 							pc_xu_instr_trace_tid;
    wire 							pc_lq_event_bus_seldbghi;
    wire 							pc_lq_event_bus_seldbglo;
+   // pcq clock + scan controls
    wire 							rp_pc_rtim_sl_thold_7;
    wire 							rp_pc_func_sl_thold_7;
    wire 							rp_pc_func_nsl_thold_7;
@@ -1519,6 +1590,7 @@ module c(
    wire [16:19] 						spr_pvr_revision_minor_dc;
    wire 							spr_xucr4_mmu_mchk;
    wire 							spr_xucr4_mddmh;
+   // Unit Trace bus signals
    wire [0:31] 							fu_debug_bus_in;
    wire [0:31] 							fu_debug_bus_out;
    wire [0:3] 							fu_coretrace_ctrls_in;
@@ -1547,6 +1619,7 @@ module c(
    wire [0:31] 							pc_debug_bus_out;
    wire [0:3] 							pc_coretrace_ctrls_in;
    wire [0:3] 							pc_coretrace_ctrls_out;
+   // Unit Event bus signals
    wire [0:4*`THREADS-1]         				fu_event_bus_in;
    wire [0:4*`THREADS-1]         				fu_event_bus_out;
    wire [0:4*`THREADS-1]         				mm_event_bus_in;
@@ -1570,48 +1643,53 @@ module c(
    wire [0:`THREADS-1]						iu_pc_sq_credit_ok;
 
 
-   
+
    wire [0:`THREADS-1] 						xu_mm_val;
    wire [0:`ITAG_SIZE_ENC-1] 					xu_mm_itag;
-   
-   wire [0:`THREADS-1] 						bx_xu_quiesce;		
-   
+
+   wire [0:`THREADS-1] 						bx_xu_quiesce;		// inbox and outbox are empty
+
    wire 							func_sl_thold_0_b;
-   
+
    wire [0:63] 							tidn;
    wire [0:63] 							tiup;
-   
+
+   // Temporary because of 2D arrays
    wire [62-`EFF_IFAR_ARCH : 61-`EFF_IFAR_WIDTH] 		iu_br_t0_flush_ifar;
 `ifndef THREADS1
    wire [62-`EFF_IFAR_ARCH : 61-`EFF_IFAR_WIDTH] 		iu_br_t1_flush_ifar;
 `endif
-   
+
    assign tidn = {64{1'b0}};
    assign tiup = {64{1'b1}};
    assign spr_pvr_version_dc = 8'h4c;
    assign spr_pvr_revision_dc = 4'h1;
    assign spr_pvr_revision_minor_dc = 4'h0;
 
-   
-   
    assign ac_an_power_managed = ac_an_power_managed_int;
-   
-   assign xu_iu_hid_mmu_mode = 1'b1;
-   
-   assign force_xhdl0 = 1'b0;
-   
-   
-   assign lq_rv_itag0_spec		= 1'b0;
 
-   
+   // XU-IU interface
+   assign xu_iu_hid_mmu_mode = 1'b1;
+
+   assign force_xhdl0 = 1'b0;
+
+
+   // TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP
+   assign lq_rv_itag0_spec		= 1'b0;
+   // TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP
+
+
+   // LQ
    assign bx_xu_quiesce = {`THREADS{1'b1}};
    assign iu_lq_ls5_tlb_data = {(63-(64 - (2 ** `GPR_WIDTH_ENC))+1){1'b0}};
    assign lq_xu_ord_n_flush_req = 1'b0;
-   
+
+   // PC
    assign TEMP_rp_mm_func_sl_thold_3 = {2{rp_mm_func_sl_thold_3}};
    assign TEMP_rp_mm_func_slp_sl_thold_3 = {2{rp_mm_func_slp_sl_thold_3}};
    assign TEMP_rp_mm_sg_3 = {2{rp_mm_sg_3}};
-   
+
+   // Slow SPR ring connections
    assign lq_slowspr_val_in = xu_slowspr_val_out;
    assign lq_slowspr_rw_in = xu_slowspr_rw_out;
    assign lq_slowspr_etid_in = xu_slowspr_etid_out;
@@ -1648,7 +1726,8 @@ module c(
    assign xu_slowspr_addr_in = fu_slowspr_addr_out;
    assign xu_slowspr_data_in = fu_slowspr_data_out;
    assign xu_slowspr_done_in = fu_slowspr_done_out;
- 
+
+    // Trace bus connections
    assign mm_debug_bus_in	= {64{1'b0}};
    assign fu_debug_bus_in	= mm_debug_bus_out;
    assign pc_debug_bus_in	= fu_debug_bus_out;
@@ -1669,43 +1748,49 @@ module c(
    assign ac_an_coretrace_valid = lq_coretrace_ctrls_out[1];
    assign ac_an_coretrace_type	= lq_coretrace_ctrls_out[2:3];
 
+    // Performance Event bus connections
    assign mm_event_bus_in	= {4*`THREADS{1'b0}};
    assign fu_event_bus_in	= mm_event_bus_out;
    assign rv_event_bus_in	= fu_event_bus_out;
    assign xu_event_bus_in	= rv_event_bus_out;
    assign lq_event_bus_in	= xu_event_bus_out;
-   assign iu_event_bus_in	= lq_event_bus_out;					    
+   assign iu_event_bus_in	= lq_event_bus_out;
    assign ac_an_event_bus0	= iu_event_bus0_out;
    assign ac_an_event_bus1	= iu_event_bus1_out;
-   
+
+   // TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP
    assign iu_event_bus1_out	= {4*`THREADS{1'b0}};
-   
-   					    
+   // TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP
+
+
+   // PC errors
    assign xu_pc_err_regfile_parity = {`THREADS{1'b0}};
    assign xu_pc_err_regfile_ue = {`THREADS{1'b0}};
    assign lq_pc_err_regfile_parity = {`THREADS{1'b0}};
    assign lq_pc_err_regfile_ue = {`THREADS{1'b0}};
    assign iu_pc_err_cpArray_parity = 1'b0;
 
-   
-   
+
+
+   // Ties
    assign fx1_rv_hold_all = 1'b0;
 
    assign mm_xu_local_snoop_reject = |mm_iu_local_snoop_reject;
-   
+
    assign pc_iu_t0_dbg_action = pc_iu_dbg_action_int[0:2];
    assign mm_xu_t0_mmucr0_tlbsel = mm_lq_t0_derat_mmucr0[4:5];
    assign iu_br_t0_flush_ifar = cp_t0_flush_ifar[62 - `EFF_IFAR_ARCH:61 - `EFF_IFAR_WIDTH];
-`ifndef THREADS1   
+`ifndef THREADS1
    assign pc_iu_t1_dbg_action = pc_iu_dbg_action_int[3:5];
    assign mm_xu_t1_mmucr0_tlbsel = mm_lq_t1_derat_mmucr0[4:5];
    assign iu_br_t1_flush_ifar = cp_t1_flush_ifar[62 - `EFF_IFAR_ARCH:61 - `EFF_IFAR_WIDTH];
 `endif
-   
-   
-   
-   iuq 
+
+   iuq
    iuq0(
+	//.vcs(vcs),
+	//.vdd(vdd),
+	//.gnd(gnd),
 	.nclk(nclk),
 	.pc_iu_sg_3(rp_iu_sg_3),
 	.pc_iu_fce_3(rp_iu_fce_3),
@@ -1733,7 +1818,7 @@ module c(
 	.mpw2_b(1'b0),
 	.scan_in(scan_in_ic),
 	.scan_out(scan_out_ic),
-      
+
 	.pc_iu_abist_dcomp_g6t_2r({4{1'b0}}),
 	.pc_iu_abist_di_0({4{1'b0}}),
 	.pc_iu_abist_di_g6t_2r({4{1'b0}}),
@@ -1754,7 +1839,7 @@ module c(
 	.an_ac_lbist_en_dc(an_ac_lbist_en_dc),
 	.an_ac_atpg_en_dc(1'b0),
 	.an_ac_grffence_en_dc(1'b0),
-      
+
 	.pc_iu_bo_enable_3(1'b0),
 	.pc_iu_bo_reset(1'b0),
 	.pc_iu_bo_unload(1'b0),
@@ -1763,9 +1848,10 @@ module c(
 	.pc_iu_bo_select({5{1'b0}}),
 	.iu_pc_bo_fail(),
 	.iu_pc_bo_diagout(),
-      
+
 	.iu_pc_err_ucode_illegal(iu_pc_err_ucode_illegal),
-      
+
+	// Cache inject
 	.iu_pc_err_icache_parity(iu_pc_err_icache_parity),
 	.iu_pc_err_icachedir_parity(iu_pc_err_icachedir_parity),
 	.iu_pc_err_icachedir_multihit(iu_pc_err_icachedir_multihit),
@@ -1775,7 +1861,8 @@ module c(
 	.pc_iu_inj_icachedir_parity(pc_iu_inj_icachedir_parity),
 	.pc_iu_inj_icachedir_multihit(pc_iu_inj_icachedir_multihit),
 	.pc_iu_init_reset(pc_iu_init_reset),
-      
+
+	// spr ring
 	.iu_slowspr_val_in(iu_slowspr_val_in),
 	.iu_slowspr_rw_in(iu_slowspr_rw_in),
 	.iu_slowspr_etid_in(iu_slowspr_etid_in),
@@ -1788,7 +1875,7 @@ module c(
 	.iu_slowspr_addr_out(iu_slowspr_addr_out),
 	.iu_slowspr_data_out(iu_slowspr_data_out),
 	.iu_slowspr_done_out(iu_slowspr_done_out),
-      
+
 	.xu_iu_msr_ucle(spr_msr_ucle),
 	.xu_iu_msr_de(spr_msr_de),
 	.xu_iu_msr_pr(spr_msr_pr),
@@ -1836,7 +1923,7 @@ module c(
 	.xu_iu_spr_ccr2_ifratsc(spr_ccr2_ifratsc),
 	.xu_iu_spr_ccr2_ucode_dis(spr_ccr2_ucode_dis),
 	.xu_iu_xucr4_mmu_mchk(spr_xucr4_mmu_mchk),
-      
+
 	.iu_mm_ierat_req(iu_mm_ierat_req),
 	.iu_mm_ierat_req_nonspec(iu_mm_ierat_req_nonspec),
 	.iu_mm_ierat_epn(iu_mm_ierat_epn),
@@ -1845,7 +1932,7 @@ module c(
 	.iu_mm_ierat_state(iu_mm_ierat_state),
 	.iu_mm_ierat_tid(iu_mm_ierat_tid),
 	.iu_mm_ierat_flush(iu_mm_ierat_flush),
-      
+
 	.mm_iu_ierat_rel_val(mm_iu_ierat_rel_val),
 	.mm_iu_ierat_rel_data(mm_iu_ierat_rel_data),
 	.mm_iu_ierat_pt_fault(mm_xu_pt_fault),
@@ -1855,19 +1942,19 @@ module c(
 	.mm_iu_tlb_par_err(mm_tlb_par_err),
 	.mm_iu_lru_par_err(mm_lru_par_err),
         .mm_iu_tlb_miss(mm_xu_tlb_miss),
-      
+
 	.mm_iu_t0_ierat_pid(mm_iu_t0_ierat_pid),
 	.mm_iu_t0_ierat_mmucr0(mm_iu_t0_ierat_mmucr0),
 `ifndef THREADS1
 	.mm_iu_t1_ierat_pid(mm_iu_t1_ierat_pid),
 	.mm_iu_t1_ierat_mmucr0(mm_iu_t1_ierat_mmucr0),
-`endif	
+`endif
 	.iu_mm_ierat_mmucr0(iu_mm_ierat_mmucr0),
 	.iu_mm_ierat_mmucr0_we(iu_mm_ierat_mmucr0_we),
 	.mm_iu_ierat_mmucr1(mm_iu_ierat_mmucr1),
 	.iu_mm_ierat_mmucr1(iu_mm_ierat_mmucr1),
 	.iu_mm_ierat_mmucr1_we(iu_mm_ierat_mmucr1_we),
-      
+
 	.mm_iu_ierat_snoop_coming(mm_iu_ierat_snoop_coming),
 	.mm_iu_ierat_snoop_val(mm_iu_ierat_snoop_val),
 	.mm_iu_ierat_snoop_attr(mm_iu_ierat_snoop_attr),
@@ -1891,26 +1978,27 @@ module c(
 	.an_ac_back_inv(an_ac_back_inv),
 	.an_ac_back_inv_addr(an_ac_back_inv_addr[64 - `REAL_IFAR_WIDTH:57]),
 	.an_ac_back_inv_target(an_ac_back_inv_target[0]),
-      
+
 	.iu_lq_request(iu_lq_request),
 	.iu_lq_ctag(iu_lq_cTag),
 	.iu_lq_ra(iu_lq_ra),
 	.iu_lq_wimge(iu_lq_wimge),
 	.iu_lq_userdef(iu_lq_userdef),
-      
+
 	.an_ac_reld_data_vld(an_ac_reld_data_vld),
 	.an_ac_reld_core_tag(an_ac_reld_core_tag),
 	.an_ac_reld_qw(an_ac_reld_qw),
 	.an_ac_reld_data(an_ac_reld_data),
 	.an_ac_reld_ecc_err(an_ac_reld_ecc_err),
 	.an_ac_reld_ecc_err_ue(an_ac_reld_ecc_err_ue),
-      
+
         .iu_mm_lmq_empty(iu_mm_lmq_empty),
 	.iu_xu_icache_quiesce(iu_xu_icache_quiesce),
 	.iu_pc_icache_quiesce(iu_pc_icache_quiesce),
         .iu_pc_err_btb_parity(iu_pc_err_btb_parity),
 
-      
+
+	// Interface to reservation stations
 	 .iu_rv_iu6_t0_i0_vld(iu_rv_iu6_t0_i0_vld),
 	 .iu_rv_iu6_t0_i0_act(iu_rv_iu6_t0_i0_act),
 	 .iu_rv_iu6_t0_i0_rte_lq(iu_rv_iu6_t0_i0_rte_lq),
@@ -1959,7 +2047,7 @@ module c(
 	 .iu_rv_iu6_t0_i0_ls_ptr(iu_rv_iu6_t0_i0_ls_ptr),
 	 .iu_rv_iu6_t0_i0_bh_update(iu_rv_iu6_t0_i0_bh_update),
 	 .iu_rv_iu6_t0_i0_gshare(iu_rv_iu6_t0_i0_gshare),
-	 
+
 	 .iu_rv_iu6_t0_i1_vld(iu_rv_iu6_t0_i1_vld),
 	 .iu_rv_iu6_t0_i1_act(iu_rv_iu6_t0_i1_act),
 	 .iu_rv_iu6_t0_i1_rte_lq(iu_rv_iu6_t0_i1_rte_lq),
@@ -2059,7 +2147,7 @@ module c(
 	 .iu_rv_iu6_t1_i0_ls_ptr(iu_rv_iu6_t1_i0_ls_ptr),
 	 .iu_rv_iu6_t1_i0_bh_update(iu_rv_iu6_t1_i0_bh_update),
 	 .iu_rv_iu6_t1_i0_gshare(iu_rv_iu6_t1_i0_gshare),
-	 
+
 	 .iu_rv_iu6_t1_i1_vld(iu_rv_iu6_t1_i1_vld),
 	 .iu_rv_iu6_t1_i1_act(iu_rv_iu6_t1_i1_act),
 	 .iu_rv_iu6_t1_i1_rte_lq(iu_rv_iu6_t1_i1_rte_lq),
@@ -2112,16 +2200,19 @@ module c(
 	 .iu_rv_iu6_t1_i1_gshare(iu_rv_iu6_t1_i1_gshare),
 
 `endif
-      
+
+	// XER read bus to RF for store conditionals
 	.iu_rf_t0_xer_p(iu_rf_t0_xer_p),
 `ifndef THREADS1
 	.iu_rf_t1_xer_p(iu_rf_t1_xer_p),
 `endif
+	// Credit Interface with IU
 	.rv_iu_fx0_credit_free(rv_iu_fx0_credit_free),
 	.rv_iu_fx1_credit_free(rv_iu_fx1_credit_free),
 	.axu0_iu_credit_free(rv_iu_axu0_credit_free),
 	.axu1_iu_credit_free(rv_iu_axu1_credit_free),
-      
+
+	// LQ Instruction Executed
 	.lq0_iu_execute_vld(lq0_iu_execute_vld),
 	.lq0_iu_itag(lq0_iu_itag),
 	.lq0_iu_n_flush(lq0_iu_n_flush),
@@ -2136,7 +2227,7 @@ module c(
 	.lq0_iu_flush2ucode_type(lq0_iu_flush2ucode_type),
 	.lq0_iu_recirc_val(lq0_iu_recirc_val),
 	.lq0_iu_dear_val(lq0_iu_dear_val),
-      
+
 	.lq1_iu_execute_vld(lq1_iu_execute_vld),
 	.lq1_iu_itag(lq1_iu_itag),
 	.lq1_iu_n_flush(lq1_iu_n_flush),
@@ -2146,13 +2237,15 @@ module c(
 	.lq1_iu_dacr_type(lq1_iu_dacr_type),
 	.lq1_iu_dacrw(lq1_iu_dacrw),
 	.lq1_iu_perf_events(lq1_iu_perf_events),
-      
+
 	.lq_iu_credit_free(lq_iu_credit_free),
 	.sq_iu_credit_free(sq_iu_credit_free),
-      
+
+	// Interface IU ucode
 	.xu_iu_ucode_xer_val(xu_iu_ucode_xer_val),
 	.xu_iu_ucode_xer(xu_iu_ucode_xer),
-      
+
+	// Complete iTag
 	.iu_lq_i0_completed(iu_lq_i0_completed),
 	.iu_lq_i1_completed(iu_lq_i1_completed),
 	.iu_lq_t0_i0_completed_itag(iu_lq_t0_i0_completed_itag),
@@ -2160,27 +2253,30 @@ module c(
 `ifndef THREADS1
 	.iu_lq_t1_i0_completed_itag(iu_lq_t1_i0_completed_itag),
 	.iu_lq_t1_i1_completed_itag(iu_lq_t1_i1_completed_itag),
-`endif      
+`endif
 	.iu_lq_recirc_val(iu_lq_recirc_val),
-      
+
+	// ICBI Interface to IU
 	.lq_iu_icbi_val(lq_iu_icbi_val),
 	.lq_iu_icbi_addr(lq_iu_icbi_addr),
 	.iu_lq_icbi_complete(iu_lq_icbi_complete),
 	.lq_iu_ici_val(lq_iu_ici_val),
 	.iu_lq_spr_iucr0_icbi_ack(iu_lq_spr_iucr0_icbi_ack),
-      
+
+	// BR Instruction Executed
 	.br_iu_execute_vld(br_iu_execute_vld),
 	.br_iu_itag(br_iu_itag),
 	.br_iu_bta(br_iu_bta),
 	.br_iu_taken(br_iu_taken),
 	.br_iu_redirect(br_iu_redirect),
 	.br_iu_perf_events(br_iu_perf_events),
-      
+
 	.br_iu_gshare(br_iu_gshare),
 	.br_iu_ls_ptr(br_iu_ls_ptr),
 	.br_iu_ls_data(br_iu_ls_data),
 	.br_iu_ls_update(br_iu_ls_update),
-      
+
+	// XU0 Instruction Executed
 	.xu_iu_execute_vld(xu_iu_execute_vld),
 	.xu_iu_itag(xu_iu_itag),
 	.xu_iu_n_flush(xu_iu_n_flush),
@@ -2191,10 +2287,12 @@ module c(
 	.xu_iu_mtiar(xu_iu_mtiar),
 	.xu_iu_bta(xu_iu_bta),
    .xu_iu_perf_events(xu0_iu_perf_events),
-      
+
+	// XU1 Instruction Executed
 	.xu1_iu_execute_vld(xu1_iu_execute_vld),
 	.xu1_iu_itag(xu1_iu_itag),
-      
+
+	// XU IERAT interface
 	.xu_iu_val(xu_iu_val),
 	.xu_iu_pri_val(xu_iu_pri_val),
 	.xu_iu_pri(xu_iu_pri),
@@ -2211,7 +2309,8 @@ module c(
 	.iu_xu_ord_par_err(iu_xu_ord_par_err),
 	.iu_xu_ord_n_flush_req(iu_xu_ord_n_flush_req),
 	.iu_xu_ex5_data(iu_xu_ex5_data),
-	
+
+	// AXU0 Instruction Executed
 	.axu0_iu_execute_vld(axu0_iu_execute_vld),
 	.axu0_iu_itag(axu0_iu_itag),
 	.axu0_iu_n_flush(axu0_iu_n_flush),
@@ -2223,7 +2322,8 @@ module c(
 	.axu0_iu_exception(axu0_iu_exception),
 	.axu0_iu_async_fex(axu0_iu_async_fex),
 	.axu0_iu_perf_events(axu0_iu_perf_events),
-	
+
+	// AXU1 Instruction Executed
 	.axu1_iu_execute_vld(axu1_iu_execute_vld),
 	.axu1_iu_itag(axu1_iu_itag),
 	.axu1_iu_n_flush(axu1_iu_n_flush),
@@ -2233,7 +2333,9 @@ module c(
 	.axu1_iu_exception_val(axu1_iu_exception_val),
 	.axu1_iu_exception(axu1_iu_exception),
 	.axu1_iu_perf_events(axu1_iu_perf_events),
-	
+
+	// Completion and XU
+	// Run State
 	.iu_xu_stop(iu_xu_stop),
 	.xu_iu_run_thread(xu_iu_run_thread),
         .iu_xu_credits_returned(iu_xu_credits_returned),
@@ -2241,6 +2343,7 @@ module c(
    .xu_iu_raise_iss_pri(xu_iu_raise_iss_pri),
 	.iu_xu_quiesce(iu_xu_quiesce),
 	.iu_pc_quiesce(iu_pc_quiesce),
+	// Interrupt Interface
 	.iu_xu_rfi(iu_xu_rfi),
 	.iu_xu_rfgi(iu_xu_rfgi),
 	.iu_xu_rfci(iu_xu_rfci),
@@ -2260,7 +2363,7 @@ module c(
 	.iu_xu_t1_mcsr(iu_xu_t1_mcsr),
 	.iu_xu_t1_dbsr(iu_xu_t1_dbsr),
 	.iu_xu_t1_dear(iu_xu_t1_dear),
-`endif	
+`endif
 	.iu_xu_dear_update(iu_xu_dear_update),
 	.iu_xu_dbsr_update(iu_xu_dbsr_update),
 	.iu_xu_dbsr_ude(iu_xu_dbsr_ude),
@@ -2275,7 +2378,8 @@ module c(
 	.iu_xu_instr_cpl(iu_xu_instr_cpl),
 	.xu_iu_np1_async_flush(xu_iu_np1_async_flush),
 	.iu_xu_async_complete(iu_xu_async_complete),
-	
+
+	// Interrupts
 	.an_ac_uncond_dbg_event(an_ac_uncond_dbg_event),
 	.xu_iu_external_mchk(xu_iu_external_mchk),
 	.xu_iu_ext_interrupt(xu_iu_ext_interrupt),
@@ -2298,15 +2402,16 @@ module c(
 `ifndef THREADS1
 	.xu_iu_t1_rest_ifar(xu_iu_t1_rest_ifar),
 `endif
-	
+
         .pc_iu_pm_fetch_halt(pc_iu_pm_fetch_halt),
+	//Ram interface
 	.pc_iu_ram_instr(pc_iu_ram_instr),
 	.pc_iu_ram_instr_ext(pc_iu_ram_instr_ext),
 	.pc_iu_ram_issue(pc_iu_ram_issue),
 	.iu_pc_ram_done(iu_pc_ram_done),
 	.iu_pc_ram_interrupt(iu_pc_ram_interrupt),
 	.iu_pc_ram_unsupported(iu_pc_ram_unsupported),
-	
+
 	.pc_iu_ram_active(pc_iu_ram_active),
 	.pc_iu_ram_flush_thread(pc_iu_ram_flush_thread),
 	.xu_iu_msrovride_enab(xu_iu_msrovride_enab),
@@ -2322,22 +2427,23 @@ module c(
 	.iu_pc_attention_instr(iu_pc_err_attention_instr),
 	.iu_pc_err_mchk_disabled(iu_pc_err_mchk_disabled),
 	.ac_an_debug_trigger(ac_an_debug_trigger),
-	
+
 	.cp_axu_i0_t1_v(cp_axu_i0_t1_v),
 	.cp_axu_i1_t1_v(cp_axu_i1_t1_v),
 	.cp_axu_t0_i0_t1_t(cp_axu_t0_i0_t1_t),
 	.cp_axu_t0_i0_t1_p(cp_axu_t0_i0_t1_p),
 	.cp_axu_t0_i1_t1_t(cp_axu_t0_i1_t1_t),
 	.cp_axu_t0_i1_t1_p(cp_axu_t0_i1_t1_p),
-`ifndef THREADS1	
+`ifndef THREADS1
 	.cp_axu_t1_i0_t1_t(cp_axu_t1_i0_t1_t),
 	.cp_axu_t1_i0_t1_p(cp_axu_t1_i0_t1_p),
 	.cp_axu_t1_i1_t1_t(cp_axu_t1_i1_t1_t),
 	.cp_axu_t1_i1_t1_p(cp_axu_t1_i1_t1_p),
-`endif	
+`endif
 	.cp_is_isync(cp_is_isync),
 	.cp_is_csync(cp_is_csync),
-	
+
+	// Completion flush
 	.cp_t0_next_itag(cp_t0_next_itag),
 	.cp_t0_flush_itag(cp_t0_flush_itag),
 	.cp_t0_flush_ifar(cp_t0_flush_ifar),
@@ -2348,6 +2454,7 @@ module c(
 `endif
 	.cp_flush(cp_flush),
 
+        // Performance
         .pc_iu_event_bus_enable(pc_iu_event_bus_enable),
         .pc_iu_event_count_mode(pc_iu_event_count_mode),
         .iu_event_bus_in(iu_event_bus_in),
@@ -2361,6 +2468,7 @@ module c(
         .iu_pc_axu1_credit_ok(iu_pc_axu1_credit_ok),
 
 
+        // Debug Trace
         .pc_iu_trace_bus_enable(pc_iu_trace_bus_enable),
         .pc_iu_debug_mux1_ctrls(pc_iu_debug_mux1_ctrls),
         .pc_iu_debug_mux2_ctrls(pc_iu_debug_mux2_ctrls),
@@ -2369,17 +2477,26 @@ module c(
         .coretrace_ctrls_in(iu_coretrace_ctrls_in),
         .coretrace_ctrls_out(iu_coretrace_ctrls_out)
 	);
-  
-   
+
+
    assign func_sl_thold_0_b = (~rp_xu_func_sl_thold_3);
    assign func_slp_sl_thold_0_b = (~rp_xu_func_slp_sl_thold_3);
-   
 
- 
+
+
    xu
     xu0(
+       //-------------------------------------------------------------------
+       // Clocks & Power
+       //-------------------------------------------------------------------
        .nclk(nclk),
-      
+//       .vcs(vcs),
+//       .vdd(vdd),
+//       .gnd(gnd),
+
+       //-------------------------------------------------------------------
+       // Pervasive
+       //-------------------------------------------------------------------
        .pc_xu_ccflush_dc(rp_xu_ccflush_dc),
        .clkoff_dc_b(1'b1),
        .d_mode_dc(1'b0),
@@ -2393,17 +2510,23 @@ module c(
        .fce_0(rp_xu_fce_3),
        .scan_in(1'b0),
        .scan_out(),
-      
+
        .xu_pc_ram_done(xu_pc_ram_data_val),
        .xu_pc_ram_data(xu_pc_ram_data),
-      
+
+       //-------------------------------------------------------------------
+       // Interface with CP
+       //-------------------------------------------------------------------
        .cp_flush(cp_flush),
        .iu_br_t0_flush_ifar(iu_br_t0_flush_ifar),
        .cp_next_itag_t0(cp_t0_next_itag),
 `ifndef THREADS1
        .iu_br_t1_flush_ifar(iu_br_t1_flush_ifar),
        .cp_next_itag_t1(cp_t1_next_itag),
-`endif      
+`endif
+       //-------------------------------------------------------------------
+       // BR's Interface with CP
+       //-------------------------------------------------------------------
        .br_iu_execute_vld(br_iu_execute_vld),
        .br_iu_itag(br_iu_itag),
        .br_iu_taken(br_iu_taken),
@@ -2414,14 +2537,17 @@ module c(
        .br_iu_ls_update(br_iu_ls_update),
        .br_iu_redirect(br_iu_redirect),
        .br_iu_perf_events(br_iu_perf_events),
-      
+
+       //-------------------------------------------------------------------
+       // Interface with RV
+       //-------------------------------------------------------------------
        .rv_xu0_s1_v(rv_fx0_s1_v),
        .rv_xu0_s1_p(rv_fx0_s1_p),
        .rv_xu0_s2_v(rv_fx0_s2_v),
        .rv_xu0_s2_p(rv_fx0_s2_p),
        .rv_xu0_s3_v(rv_fx0_s3_v),
        .rv_xu0_s3_p(rv_fx0_s3_p),
-      
+
        .rv_xu0_vld(rv_fx0_vld),
        .rv_xu0_ex0_ord(rv_fx0_ex0_ord),
        .rv_xu0_ex0_fusion(rv_fx0_ex0_fusion),
@@ -2469,13 +2595,19 @@ module c(
        .xu0_rv_ex2_s1_abort(fx0_rv_ex2_s1_abort),
        .xu0_rv_ex2_s2_abort(fx0_rv_ex2_s2_abort),
        .xu0_rv_ex2_s3_abort(fx0_rv_ex2_s3_abort),
+       //-------------------------------------------------------------------
+       // Bypass Inputs
+       //-------------------------------------------------------------------
        .lq_xu_ex5_act(lq_xu_ex5_act),
        .lq_xu_ex5_rt(lq_xu_ex5_rt),
        .lq_xu_ex5_abort(lq_xu_ex5_abort),
        .lq_xu_ex5_data(lq_xu_ex5_data),
        .iu_xu_ex5_data(iu_xu_ex5_data),
        .lq_xu_ex5_cr(lq_xu_ex5_cr),
-      
+
+       //-------------------------------------------------------------------
+       // Interface with MMU / ERATs
+       //-------------------------------------------------------------------
        .xu_iu_ord_ready(xu_iu_ord_ready),
        .xu_iu_val(xu_iu_val),
        .xu_iu_is_eratre(xu_iu_is_eratre),
@@ -2493,7 +2625,7 @@ module c(
        .iu_xu_ord_write_done(iu_xu_ord_write_done),
        .iu_xu_ord_n_flush_req(iu_xu_ord_n_flush_req),
        .iu_xu_ord_par_err(iu_xu_ord_par_err),
-      
+
        .xu_lq_ord_ready(xu_lq_ord_ready),
        .xu_lq_act(xu_lq_act),
        .xu_lq_val(xu_lq_val),
@@ -2512,7 +2644,7 @@ module c(
        .lq_xu_ord_write_done(lq_xu_ord_write_done),
        .lq_xu_ord_n_flush_req(lq_xu_ord_n_flush_req),
        .lq_xu_ord_par_err(lq_xu_ord_par_err),
-      
+
        .xu_mm_ord_ready(xu_mm_ord_ready),
        .xu_mm_val(xu_mm_val),
        .xu_mm_itag(xu_mm_itag),
@@ -2526,7 +2658,7 @@ module c(
        .xu_mm_ra_entry(xu_mm_ra_entry),
        .xu_mm_rb(xu_mm_rb),
        .mm_xu_itag(mm_xu_itag),
-      
+
        .mm_xu_ord_n_flush_req(mm_xu_ord_n_flush_req_ored),
        .mm_xu_ord_read_done(mm_xu_ord_read_done_ored),
        .mm_xu_ord_write_done(mm_xu_ord_write_done_ored),
@@ -2545,16 +2677,22 @@ module c(
        .mm_xu_mmucr0_tlbsel_t1(mm_xu_t1_mmucr0_tlbsel),
 `endif
        .mm_xu_tlbwe_binv(mm_iu_tlbwe_binv),
-       .mm_xu_cr0_eq(mm_xu_cr0_eq_ored),		
-       .mm_xu_cr0_eq_valid(mm_xu_cr0_eq_valid_ored),		
-      
+       .mm_xu_cr0_eq(mm_xu_cr0_eq_ored),		// for record forms
+       .mm_xu_cr0_eq_valid(mm_xu_cr0_eq_valid_ored),		// for record forms
+
+       //-------------------------------------------------------------------
+       // Bypass Outputs
+       //-------------------------------------------------------------------
        .xu0_lq_ex3_act(xu0_lq_ex3_act),
        .xu0_lq_ex3_abort(xu0_lq_ex3_abort),
        .xu0_lq_ex3_rt(xu0_lq_ex3_rt),
        .xu0_lq_ex4_rt(xu0_lq_ex4_rt),
        .xu0_lq_ex6_rt(xu0_lq_ex6_rt),
        .xu0_lq_ex6_act(xu0_lq_ex6_act),
-      
+
+       //-------------------------------------------------------------------
+       // Interface with IU
+       //-------------------------------------------------------------------
        .xu0_iu_execute_vld(xu_iu_execute_vld),
        .xu0_iu_itag(xu_iu_itag),
        .xu0_iu_mtiar(xu_iu_mtiar),
@@ -2570,22 +2708,29 @@ module c(
        .xu_iu_ucode_xer_val(xu_iu_ucode_xer_val),
        .xu_iu_ucode_xer(xu_iu_ucode_xer),
 
+       // Abort
        .xu1_rv_ex2_s1_abort(fx1_rv_ex2_s1_abort),
        .xu1_rv_ex2_s2_abort(fx1_rv_ex2_s2_abort),
-       .xu1_rv_ex2_s3_abort(fx1_rv_ex2_s3_abort),             
-       .xu1_lq_ex3_abort(xu1_lq_ex3_abort),      
+       .xu1_rv_ex2_s3_abort(fx1_rv_ex2_s3_abort),
+       .xu1_lq_ex3_abort(xu1_lq_ex3_abort),
+       //-------------------------------------------------------------------
+       // SlowSPRs
+       //-------------------------------------------------------------------
        .xu_slowspr_val_in(xu_slowspr_val_in),
        .xu_slowspr_rw_in(xu_slowspr_rw_in),
        .xu_slowspr_data_in(xu_slowspr_data_in),
        .xu_slowspr_done_in(xu_slowspr_done_in),
-      
+
+       //-------------------------------------------------------------------
+       // Interface with RV
+       //-------------------------------------------------------------------
        .rv_xu1_s1_v(rv_fx1_s1_v),
        .rv_xu1_s1_p(rv_fx1_s1_p),
        .rv_xu1_s2_v(rv_fx1_s2_v),
        .rv_xu1_s2_p(rv_fx1_s2_p),
        .rv_xu1_s3_v(rv_fx1_s3_v),
        .rv_xu1_s3_p(rv_fx1_s3_p),
-      
+
        .rv_xu1_vld(rv_fx1_vld),
        .rv_xu1_ex0_instr(rv_fx1_ex0_instr),
        .rv_xu1_ex0_itag(rv_fx1_ex0_itag),
@@ -2602,7 +2747,10 @@ module c(
        .rv_xu1_ex0_spec_flush(rv_fx1_ex0_spec_flush),
        .rv_xu1_ex1_spec_flush(rv_fx1_ex1_spec_flush),
        .rv_xu1_ex2_spec_flush(rv_fx1_ex2_spec_flush),
-      
+
+       //-------------------------------------------------------------------
+       // Interface with Bypass Controller
+       //-------------------------------------------------------------------
        .rv_xu1_s1_fxu0_sel(rv_fx1_ex0_s1_fx0_sel),
        .rv_xu1_s2_fxu0_sel(rv_fx1_ex0_s2_fx0_sel),
        .rv_xu1_s3_fxu0_sel(rv_fx1_ex0_s3_fx0_sel[2:11]),
@@ -2614,7 +2762,10 @@ module c(
        .rv_xu1_s3_lq_sel(rv_fx1_ex0_s3_lq_sel),
        .rv_xu1_s1_rel_sel(rv_fx1_ex0_s1_rel_sel),
        .rv_xu1_s2_rel_sel(rv_fx1_ex0_s2_rel_sel),
-      
+
+       //-------------------------------------------------------------------
+       // Interface with LQ
+       //-------------------------------------------------------------------
        .xu1_lq_ex2_stq_val(xu1_lq_ex2_stq_val),
        .xu1_lq_ex2_stq_itag(xu1_lq_ex2_stq_itag),
        .xu1_lq_ex2_stq_size(xu1_lq_ex2_stq_size),
@@ -2622,26 +2773,35 @@ module c(
        .xu1_lq_ex3_strg_noop(xu1_lq_ex3_strg_noop),
        .xu1_lq_ex2_stq_dvc1_cmp(xu1_lq_ex2_stq_dvc1_cmp),
        .xu1_lq_ex2_stq_dvc2_cmp(xu1_lq_ex2_stq_dvc2_cmp),
-      
+
+       //-------------------------------------------------------------------
+       // Interface with IU
+       //-------------------------------------------------------------------
        .xu1_iu_execute_vld(xu1_iu_execute_vld),
        .xu1_iu_itag(xu1_iu_itag),
-      
+
+       //-------------------------------------------------------------------
+       // Bypass Outputs
+       //-------------------------------------------------------------------
        .xu1_lq_ex3_act(xu1_lq_ex3_act),
        .xu1_lq_ex3_rt(xu1_lq_ex3_rt),
-      
+
+       //-------------------------------------------------------------------
+       // Unit Write Ports
+       //-------------------------------------------------------------------
        .xu0_gpr_ex6_we(xu0_gpr_ex6_we),
        .xu0_gpr_ex6_wa(xu0_gpr_ex6_wa),
        .xu0_gpr_ex6_wd(xu0_gpr_ex6_wd),
        .xu1_gpr_ex3_we(xu1_gpr_ex3_we),
        .xu1_gpr_ex3_wa(xu1_gpr_ex3_wa),
        .xu1_gpr_ex3_wd(xu1_gpr_ex3_wd),
-      
+
        .lq_xu_gpr_ex5_we(lq_xu_gpr_ex5_we),
        .lq_xu_gpr_ex5_wa(lq_xu_gpr_ex5_wa),
        .lq_xu_gpr_rel_we(lq_xu_gpr_rel_we),
        .lq_xu_gpr_rel_wa(lq_xu_gpr_rel_wa),
        .lq_xu_gpr_rel_wd(lq_xu_gpr_rel_wd),
-      
+
        .lq_xu_cr_l2_we(lq_xu_cr_l2_we),
        .lq_xu_cr_l2_wa(lq_xu_cr_l2_wa),
        .lq_xu_cr_l2_wd(lq_xu_cr_l2_wd),
@@ -2650,13 +2810,16 @@ module c(
        .axu_xu_cr_w0e(axu0_cr_w4e),
        .axu_xu_cr_w0a(axu0_cr_w4a),
        .axu_xu_cr_w0d(axu0_cr_w4d),
-      
+
        .iu_rf_xer_p_t0(iu_rf_t0_xer_p),
 `ifndef THREADS1
        .iu_rf_xer_p_t1(iu_rf_t1_xer_p),
 `endif
        .xer_lq_cp_rd(xu_lq_xer_cp_rd),
-      
+
+       //-------------------------------------------------------------------
+       // AXU Pass Thru Interface
+       //-------------------------------------------------------------------
        .lq_xu_axu_ex4_addr(lq_xu_axu_ex4_addr),
        .lq_xu_axu_ex5_we(lq_xu_axu_ex5_we),
        .lq_xu_axu_ex5_le(lq_xu_axu_ex5_le),
@@ -2666,25 +2829,30 @@ module c(
        .xu_axu_lq_ex5_wa(xu_axu_lq_ex5_wa),
        .xu_axu_lq_ex5_wd(xu_axu_lq_ex5_wd),
        .xu_axu_lq_ex5_abort(xu_axu_lq_ex5_abort),
-       
+
        .lq_xu_axu_rel_we(lq_xu_axu_rel_we),
        .lq_xu_axu_rel_le(lq_xu_axu_rel_le),
        .xu_axu_lq_rel_we(xu_axu_lq_rel_we),
        .xu_axu_lq_rel_le(xu_axu_lq_rel_le),
        .xu_axu_lq_rel_wa(xu_axu_lq_rel_wa),
        .xu_axu_lq_rel_wd(xu_axu_lq_rel_wd),
-       
+
        .axu_xu_lq_ex_stq_val(axu_xu_lq_ex_stq_val),
        .axu_xu_lq_ex_stq_itag(axu_xu_lq_ex_stq_itag),
        .axu_xu_lq_exp1_stq_data(axu_xu_lq_exp1_stq_data),
        .xu_lq_axu_ex_stq_val(xu_lq_axu_ex_stq_val),
        .xu_lq_axu_ex_stq_itag(xu_lq_axu_ex_stq_itag),
        .xu_lq_axu_exp1_stq_data(xu_lq_axu_exp1_stq_data),
-       
+
+       //-------------------------------------------------------------------
+       // SPR
+       //-------------------------------------------------------------------
+       // PERF
       .pc_xu_event_count_mode(pc_xu_event_count_mode),
       .pc_xu_event_bus_enable(pc_xu_event_bus_enable),
       .xu_event_bus_in(xu_event_bus_in),
       .xu_event_bus_out(xu_event_bus_out),
+       // Debug
       .pc_xu_debug_mux_ctrls(pc_xu_debug_mux_ctrls),
       .xu_debug_bus_in(xu_debug_bus_in),
       .xu_debug_bus_out(xu_debug_bus_out),
@@ -2708,10 +2876,11 @@ module c(
        .an_ac_external_mchk(an_ac_external_mchk),
        .pc_xu_instr_trace_mode(pc_xu_instr_trace_mode),
        .pc_xu_instr_trace_tid(pc_xu_instr_trace_tid),
-       
+
        .an_ac_scan_dis_dc_b(an_ac_scan_dis_dc_b),
        .an_ac_scan_diag_dc(an_ac_scan_diag_dc),
-       
+
+       // Interrupt Interface
        .iu_xu_rfi(iu_xu_rfi),
        .iu_xu_rfgi(iu_xu_rfgi),
        .iu_xu_rfci(iu_xu_rfci),
@@ -2741,7 +2910,8 @@ module c(
        .iu_xu_mcsr_t1(iu_xu_t1_mcsr),
        .iu_xu_dbsr_t1(iu_xu_t1_dbsr),
        .iu_xu_dear_t1(iu_xu_t1_dear),
-`endif       
+`endif
+       // Async Interrupt Req Interface
        .xu_iu_external_mchk(xu_iu_external_mchk),
        .xu_iu_ext_interrupt(xu_iu_ext_interrupt),
        .xu_iu_dec_interrupt(xu_iu_dec_interrupt),
@@ -2763,20 +2933,24 @@ module c(
        .iu_xu_gdbell_taken(iu_xu_gdbell_taken),
        .iu_xu_gcdbell_taken(iu_xu_gcdbell_taken),
        .iu_xu_gmcdbell_taken(iu_xu_gmcdbell_taken),
-       
+
+       // DBELL Int
        .lq_xu_dbell_val(lq_xu_dbell_val),
        .lq_xu_dbell_type(lq_xu_dbell_type),
        .lq_xu_dbell_brdcast(lq_xu_dbell_brdcast),
        .lq_xu_dbell_lpid_match(lq_xu_dbell_lpid_match),
        .lq_xu_dbell_pirtag(lq_xu_dbell_pirtag),
-       
+
+       // Slow SPR Bus
        .xu_slowspr_val_out(xu_slowspr_val_out),
        .xu_slowspr_rw_out(xu_slowspr_rw_out),
        .xu_slowspr_etid_out(xu_slowspr_etid_out),
        .xu_slowspr_addr_out(xu_slowspr_addr_out),
        .xu_slowspr_data_out(xu_slowspr_data_out),
-       
+
+       // Trap
        .xu_iu_fp_precise(),
+       // Run State
        .pc_xu_pm_hold_thread(pc_xu_pm_hold_thread),
        .iu_xu_stop(iu_xu_stop),
        .xu_pc_running(xu_pc_running),
@@ -2788,30 +2962,36 @@ module c(
        .iu_xu_credits_returned(iu_xu_credits_returned),
        .xu_pc_spr_ccr0_we(xu_pc_spr_ccr0_we),
        .xu_pc_stop_dnh_instr(xu_pc_stop_dnh_instr),
-       
+
+       // Quiesce
 	    .iu_xu_icache_quiesce(iu_xu_icache_quiesce),
        .iu_xu_quiesce(iu_xu_quiesce),
        .lq_xu_quiesce(lq_xu_quiesce),
        .mm_xu_quiesce(mm_xu_quiesce),
        .bx_xu_quiesce(bx_xu_quiesce),
-       
+
+       // PCCR0
        .pc_xu_extirpts_dis_on_stop(pc_xu_extirpts_dis_on_stop),
        .pc_xu_timebase_dis_on_stop(pc_xu_timebase_dis_on_stop),
        .pc_xu_decrem_dis_on_stop(pc_xu_decrem_dis_on_stop),
-       
+
+       // MSR Override
        .pc_xu_ram_active(pc_xu_ram_active),
        .pc_xu_msrovride_enab(pc_xu_msrovride_enab),
        .xu_iu_msrovride_enab(xu_iu_msrovride_enab),
        .pc_xu_msrovride_pr(pc_xu_msrovride_pr),
        .pc_xu_msrovride_gs(pc_xu_msrovride_gs),
        .pc_xu_msrovride_de(pc_xu_msrovride_de),
+       // SIAR
        .pc_xu_spr_cesr1_pmae(pc_xu_spr_cesr1_pmae),
        .xu_pc_perfmon_alert(xu_pc_perfmon_alert),
-       
+
+       // LiveLock
        .iu_xu_instr_cpl(iu_xu_instr_cpl),
        .xu_pc_err_llbust_attempt(xu_pc_err_llbust_attempt),
        .xu_pc_err_llbust_failed(xu_pc_err_llbust_failed),
 
+       // Resets
        .pc_xu_reset_wd_complete(an_ac_reset_wd_complete),
        .pc_xu_reset_1_complete(an_ac_reset_1_complete),
        .pc_xu_reset_2_complete(an_ac_reset_2_complete),
@@ -2820,16 +3000,19 @@ module c(
        .ac_tc_reset_2_request(ac_an_reset_2_request),
        .ac_tc_reset_3_request(ac_an_reset_3_request),
        .ac_tc_reset_wd_request(ac_an_reset_wd_request),
-       
+
+       // Err Inject
        .pc_xu_inj_llbust_attempt(pc_xu_inj_llbust_attempt),
        .pc_xu_inj_llbust_failed(pc_xu_inj_llbust_failed),
        .pc_xu_inj_wdt_reset({`THREADS{1'b0}}),
        .xu_pc_err_wdt_reset(xu_pc_err_wdt_reset),
-       
+
+       // Parity
        .pc_xu_inj_sprg_ecc(pc_xu_inj_sprg_ecc),
        .xu_pc_err_sprg_ecc(xu_pc_err_sprg_ecc),
        .xu_pc_err_sprg_ue(xu_pc_err_sprg_ue),
-       
+
+       // SPRs
        .spr_dbcr0_edm(pc_xu_spr_dbcr0_edm),
        .spr_xucr0_clkg_ctl(),
        .xu_iu_iac1_en(xu_iu_iac1_en),
@@ -2910,15 +3093,17 @@ module c(
 
        .xu_iu_act(),
        .xu_mm_act(),
-	
-       .bo_enable_2(1'b0),		
-       .pc_xu_bo_reset(1'b0),		
-       .pc_xu_bo_unload(1'b0),		
-       .pc_xu_bo_repair(1'b0),		
-       .pc_xu_bo_shdata(1'b0),		
-       .pc_xu_bo_select(1'b0),		
-       .xu_pc_bo_fail(),		
+
+       // BOLT-ON
+       .bo_enable_2(1'b0),		// general bolt-on enable
+       .pc_xu_bo_reset(1'b0),		// reset
+       .pc_xu_bo_unload(1'b0),		// unload sticky bits
+       .pc_xu_bo_repair(1'b0),		// execute sticky bit decode
+       .pc_xu_bo_shdata(1'b0),		// shift data for timing write and diag loop
+       .pc_xu_bo_select(1'b0),		// select for mask and hier writes
+       .xu_pc_bo_fail(),		// fail/no-fix reg
        .xu_pc_bo_diagout(),
+       // ABIST
        .an_ac_lbist_ary_wrt_thru_dc(an_ac_lbist_ary_wrt_thru_dc),
        .pc_xu_abist_ena_dc(1'b0),
        .pc_xu_abist_g8t_wenb(1'b0),
@@ -2931,12 +3116,12 @@ module c(
        .pc_xu_abist_g8t_dcomp({4{1'b0}}),
        .pc_xu_abist_g8t_bw_1(1'b0),
        .pc_xu_abist_g8t_bw_0(1'b0),
-       
+
        .pc_xu_trace_bus_enable(pc_xu_trace_bus_enable)
        );
-  
 
- 
+
+
    assign lq_rv_ord_complete = 1'b0;
    assign rv_fx0_ex0_spec_flush = {`THREADS{1'b0}};
    assign rv_fx0_ex1_spec_flush = {`THREADS{1'b0}};
@@ -2945,11 +3130,14 @@ module c(
    assign rv_fx1_ex1_spec_flush = {`THREADS{1'b0}};
    assign rv_fx1_ex2_spec_flush = {`THREADS{1'b0}};
 
-   
-   
+
+
    rv
      rv0(
-     
+
+	 //-------------------------------------------------------------------
+	 // Instructions from IU
+	 //-------------------------------------------------------------------
 	 .iu_rv_iu6_t0_i0_vld(iu_rv_iu6_t0_i0_vld),
 	 .iu_rv_iu6_t0_i0_rte_lq(iu_rv_iu6_t0_i0_rte_lq),
 	 .iu_rv_iu6_t0_i0_rte_sq(iu_rv_iu6_t0_i0_rte_sq),
@@ -2998,7 +3186,7 @@ module c(
 	 .iu_rv_iu6_t0_i0_ls_ptr(iu_rv_iu6_t0_i0_ls_ptr),
 	 .iu_rv_iu6_t0_i0_bh_update(iu_rv_iu6_t0_i0_bh_update),
 	 .iu_rv_iu6_t0_i0_gshare(iu_rv_iu6_t0_i0_gshare),
-	 
+
 	 .iu_rv_iu6_t0_i1_vld(iu_rv_iu6_t0_i1_vld),
 	 .iu_rv_iu6_t0_i1_rte_lq(iu_rv_iu6_t0_i1_rte_lq),
 	 .iu_rv_iu6_t0_i1_rte_sq(iu_rv_iu6_t0_i1_rte_sq),
@@ -3098,7 +3286,7 @@ module c(
 	 .iu_rv_iu6_t1_i0_ls_ptr(iu_rv_iu6_t1_i0_ls_ptr),
 	 .iu_rv_iu6_t1_i0_bh_update(iu_rv_iu6_t1_i0_bh_update),
 	 .iu_rv_iu6_t1_i0_gshare(iu_rv_iu6_t1_i0_gshare),
-	 
+
 	 .iu_rv_iu6_t1_i1_vld(iu_rv_iu6_t1_i1_vld),
 	 .iu_rv_iu6_t1_i1_rte_lq(iu_rv_iu6_t1_i1_rte_lq),
 	 .iu_rv_iu6_t1_i1_rte_sq(iu_rv_iu6_t1_i1_rte_sq),
@@ -3154,15 +3342,21 @@ module c(
 `endif
 
 	 .cp_t0_next_itag(cp_t0_next_itag),
-     
+
 	 .rv_iu_lq_credit_free(),
 	 .rv_iu_fx0_credit_free(rv_iu_fx0_credit_free),
 	 .rv_iu_fx1_credit_free(rv_iu_fx1_credit_free),
 	 .rv_iu_axu0_credit_free(rv_iu_axu0_credit_free),
 	 .rv_iu_axu1_credit_free(rv_iu_axu1_credit_free),
-     
+
+	 //-------------------------------------------------------------------
+	 // Machine zap interface
+	 //-------------------------------------------------------------------
 	 .cp_flush(cp_flush),
 
+	 //-------------------------------------------------------------------
+	 // Interface to FX0
+	 //-------------------------------------------------------------------
 	 .rv_fx0_vld(rv_fx0_vld),
 	 .rv_fx0_s1_v(rv_fx0_s1_v),
 	 .rv_fx0_s1_p(rv_fx0_s1_p),
@@ -3170,7 +3364,7 @@ module c(
 	 .rv_fx0_s2_p(rv_fx0_s2_p),
 	 .rv_fx0_s3_v(rv_fx0_s3_v),
 	 .rv_fx0_s3_p(rv_fx0_s3_p),
-	 
+
 	 .rv_fx0_ex0_instr(rv_fx0_ex0_instr),
 	 .rv_fx0_ex0_ifar(rv_fx0_ex0_ifar),
 	 .rv_fx0_ex0_itag(rv_fx0_ex0_itag),
@@ -3198,11 +3392,14 @@ module c(
 	 .rv_fx0_ex0_ls_ptr(rv_fx0_ex0_ls_ptr),
 	 .rv_fx0_ex0_gshare(rv_fx0_ex0_gshare),
 	 .rv_fx0_ex0_bh_update(rv_fx0_ex0_bh_update),
-	 
+
 	 .fx0_rv_ord_itag(fx0_rv_ord_itag),
 	 .fx0_rv_ord_complete(fx0_rv_ord_complete),
 	 .fx0_rv_hold_all(fx0_rv_hold_all),
-	 
+
+	 //-------------------------------------------------------------------
+	 // Interface to FX1
+	 //-------------------------------------------------------------------
 	 .rv_fx1_vld(rv_fx1_vld),
 	 .rv_fx1_s1_v(rv_fx1_s1_v),
 	 .rv_fx1_s1_p(rv_fx1_s1_p),
@@ -3210,7 +3407,7 @@ module c(
 	 .rv_fx1_s2_p(rv_fx1_s2_p),
 	 .rv_fx1_s3_v(rv_fx1_s3_v),
 	 .rv_fx1_s3_p(rv_fx1_s3_p),
-	 
+
 	 .rv_fx1_ex0_instr(rv_fx1_ex0_instr),
 	 .rv_fx1_ex0_itag(rv_fx1_ex0_itag),
 	 .rv_fx1_ex0_ucode(rv_fx1_ex0_ucode),
@@ -3223,11 +3420,14 @@ module c(
 	 .rv_fx1_ex0_s1_v(rv_fx1_ex0_s1_v),
 	 .rv_fx1_ex0_s3_t(rv_fx1_ex0_s3_t),
 	 .rv_fx1_ex0_isStore(rv_fx1_ex0_isStore),
-	 	 
+
 	 .fx1_rv_hold_all(fx1_rv_hold_all),
-	 
+
+	 //-------------------------------------------------------------------
+	 // Interface to LQ
+	 //-------------------------------------------------------------------
 	 .rv_lq_vld(rv_lq_vld),
-	 .rv_lq_isLoad(rv_lq_isLoad),	 
+	 .rv_lq_isLoad(rv_lq_isLoad),
 	 .rv_lq_ex0_itag(rv_lq_ex0_itag),
 	 .rv_lq_ex0_instr(rv_lq_ex0_instr),
 	 .rv_lq_ex0_ucode(rv_lq_ex0_ucode),
@@ -3240,25 +3440,26 @@ module c(
 	 .rv_lq_ex0_s2_v(rv_lq_ex0_s2_v),
 	 .rv_lq_ex0_s2_t(rv_lq_ex0_s2_t),
 	 .rv_lq_rvs_empty(rv_lq_rvs_empty),
-	 
+
+	 // LQ Release Interface
 	 .lq_rv_itag0_vld(lq_rv_itag0_vld),
 	 .lq_rv_itag0(lq_rv_itag0),
 	 .lq_rv_itag0_abort(lq_rv_itag0_abort),
-	 
+
 	 .lq_rv_itag1_vld(lq_rv_itag1_vld),
 	 .lq_rv_itag1(lq_rv_itag1),
 	 .lq_rv_itag1_restart(lq_rv_itag1_restart),
 	 .lq_rv_itag1_abort(lq_rv_itag1_abort),
 	 .lq_rv_itag1_hold(lq_rv_itag1_hold),
 	 .lq_rv_itag1_cord(lq_rv_itag1_cord),
-	 
+
 	 .lq_rv_itag2_vld(lq_rv_itag2_vld),
 	 .lq_rv_itag2(lq_rv_itag2),
-	 
+
 	 .lq_rv_clr_hold(lq_rv_clr_hold),
 	 .lq_rv_ord_complete(lq_rv_ord_complete),
 	 .lq_rv_hold_all(lq_rv_hold_all),
-	 
+
 	 .rv_lq_rv1_i0_vld(rv_lq_rv1_i0_vld),
 	 .rv_lq_rv1_i0_ucode_preissue(rv_lq_rv1_i0_ucode_preissue),
 	 .rv_lq_rv1_i0_ucode_cnt(rv_lq_rv1_i0_ucode_cnt),
@@ -3270,7 +3471,7 @@ module c(
 	 .rv_lq_rv1_i0_rte_lq(rv_lq_rv1_i0_rte_lq),
 	 .rv_lq_rv1_i0_rte_sq(rv_lq_rv1_i0_rte_sq),
 	 .rv_lq_rv1_i0_ifar(rv_lq_rv1_i0_ifar),
-	 
+
 	 .rv_lq_rv1_i1_vld(rv_lq_rv1_i1_vld),
 	 .rv_lq_rv1_i1_ucode_preissue(rv_lq_rv1_i1_ucode_preissue),
 	 .rv_lq_rv1_i1_ucode_cnt(rv_lq_rv1_i1_ucode_cnt),
@@ -3282,7 +3483,10 @@ module c(
 	 .rv_lq_rv1_i1_rte_lq(rv_lq_rv1_i1_rte_lq),
 	 .rv_lq_rv1_i1_rte_sq(rv_lq_rv1_i1_rte_sq),
 	 .rv_lq_rv1_i1_ifar(rv_lq_rv1_i1_ifar),
-	 
+
+	 //-------------------------------------------------------------------
+	 // Interface to AXU0
+	 //-------------------------------------------------------------------
 	 .rv_axu0_vld(rv_axu0_vld),
 	 .rv_axu0_s1_v(rv_axu0_s1_v),
 	 .rv_axu0_s1_p(rv_axu0_s1_p),
@@ -3290,7 +3494,7 @@ module c(
 	 .rv_axu0_s2_p(rv_axu0_s2_p),
 	 .rv_axu0_s3_v(rv_axu0_s3_v),
 	 .rv_axu0_s3_p(rv_axu0_s3_p),
-	 
+
 	 .rv_axu0_ex0_itag(rv_axu0_ex0_itag),
 	 .rv_axu0_ex0_instr(rv_axu0_ex0_instr),
 	 .rv_axu0_ex0_ucode(rv_axu0_ex0_ucode),
@@ -3298,8 +3502,11 @@ module c(
 	 .rv_axu0_ex0_t1_p(rv_axu0_ex0_t1_p),
 	 .rv_axu0_ex0_t2_p(rv_axu0_ex0_t2_p),
 	 .rv_axu0_ex0_t3_p(rv_axu0_ex0_t3_p),
-	 
+
 	 .axu0_rv_ord_complete(axu0_rv_ord_complete),
+	 //-------------------------------------------------------------------
+	 // Interface to AXU
+	 //-------------------------------------------------------------------
 	 .axu0_rv_itag_vld(axu0_rv_itag_vld),
 	 .axu0_rv_itag(axu0_rv_itag),
 	 .axu0_rv_itag_abort(axu0_rv_itag_abort),
@@ -3308,6 +3515,9 @@ module c(
 	 .axu1_rv_itag(axu1_rv_itag),
 	 .axu1_rv_itag_abort(axu1_rv_itag_abort),
          .axu1_rv_hold_all(axu1_rv_hold_all),
+	 //-------------------------------------------------------------------
+	 // Abort
+	 //-------------------------------------------------------------------
 	 .lq_rv_ex2_s1_abort(lq_rv_ex2_s1_abort) ,
 	 .lq_rv_ex2_s2_abort(lq_rv_ex2_s2_abort) ,
 	 .fx0_rv_ex2_s1_abort(fx0_rv_ex2_s1_abort) ,
@@ -3320,7 +3530,10 @@ module c(
 	 .axu0_rv_ex2_s2_abort(axu0_rv_ex2_s2_abort) ,
 	 .axu0_rv_ex2_s3_abort(axu0_rv_ex2_s3_abort) ,
 
-	 
+
+	 //-------------------------------------------------------------------
+	 // Bypass
+	 //-------------------------------------------------------------------
 	 .rv_fx0_ex0_s1_fx0_sel(rv_fx0_ex0_s1_fx0_sel),
 	 .rv_fx0_ex0_s2_fx0_sel(rv_fx0_ex0_s2_fx0_sel),
 	 .rv_fx0_ex0_s3_fx0_sel(rv_fx0_ex0_s3_fx0_sel),
@@ -3353,25 +3566,31 @@ module c(
 	 .rv_fx1_ex0_s1_rel_sel(rv_fx1_ex0_s1_rel_sel),
 	 .rv_fx1_ex0_s2_rel_sel(rv_fx1_ex0_s2_rel_sel),
 	 .rv_fx1_ex0_s3_rel_sel(rv_fx1_ex0_s3_rel_sel),
-	 
+
+	 //-------------------------------------------------------------------
+	 // LQ Regfile
+	 //-------------------------------------------------------------------
 	 .xu0_gpr_ex6_we(xu0_gpr_ex6_we),
 	 .xu0_gpr_ex6_wa(xu0_gpr_ex6_wa),
 	 .xu0_gpr_ex6_wd(xu0_gpr_ex6_wd),
 	 .xu1_gpr_ex3_we(xu1_gpr_ex3_we),
 	 .xu1_gpr_ex3_wa(xu1_gpr_ex3_wa),
 	 .xu1_gpr_ex3_wd(xu1_gpr_ex3_wd),
-	 
+
 	 .lq_rv_gpr_ex6_we(lq_rv_gpr_ex6_we),
 	 .lq_rv_gpr_ex6_wa(lq_rv_gpr_ex6_wa),
 	 .lq_rv_gpr_ex6_wd(lq_rv_gpr_ex6_wd),
-	 
+
 	 .lq_rv_gpr_rel_we(lq_rv_gpr_rel_we),
 	 .lq_rv_gpr_rel_wa(lq_rv_gpr_rel_wa),
 	 .lq_rv_gpr_rel_wd(lq_rv_gpr_rel_wd),
-	 
+
 	 .rv_lq_gpr_ex1_r0d(rv_lq_gpr_ex1_r0d),
 	 .rv_lq_gpr_ex1_r1d(rv_lq_gpr_ex1_r1d),
-	 
+
+	 //-------------------------------------------------------------------
+	 // Debug and perf
+	 //-------------------------------------------------------------------
 	 .pc_rv_trace_bus_enable(pc_rv_trace_bus_enable),
 	 .pc_rv_debug_mux_ctrls(pc_rv_debug_mux_ctrls),
 	 .pc_rv_event_bus_enable(pc_rv_event_bus_enable),
@@ -3382,14 +3601,19 @@ module c(
 
 	 .rv_event_bus_in(rv_event_bus_in),
 	 .rv_event_bus_out(rv_event_bus_out),
-	 
+
 	 .debug_bus_out(rv_debug_bus_out),
 	 .coretrace_ctrls_out(rv_coretrace_ctrls_out),
 	 .debug_bus_in(rv_debug_bus_in),
 	 .coretrace_ctrls_in(rv_coretrace_ctrls_in),
-	 
+
+	 //-------------------------------------------------------------------
+	 // Pervasive
+	 //-------------------------------------------------------------------
+	 //.vdd(vdd),
+	 //.gnd(gnd),
 	 .nclk(nclk),
-	 
+
 	 .rp_rv_ccflush_dc(rp_rv_ccflush_dc),
 	 .rp_rv_func_sl_thold_3(rp_rv_func_sl_thold_3),
 	 .rp_rv_gptr_sl_thold_3(rp_rv_gptr_sl_thold_3),
@@ -3397,14 +3621,17 @@ module c(
 	 .rp_rv_fce_3(rp_rv_fce_3),
 	 .an_ac_scan_dis_dc_b(an_ac_scan_dis_dc_b),
 	 .an_ac_scan_diag_dc(an_ac_scan_diag_dc),
-	 
+
 	 .scan_in(scan_in_rv),
 	 .scan_out(scan_out_rv)
 	 );
-   
 
-   lq 
+
+   lq
    lq0(
+       //--------------------------------------------------------------
+       // SPR Interface
+       //--------------------------------------------------------------
        .xu_lq_spr_ccr2_en_trace(spr_ccr2_en_trace),
        .xu_lq_spr_ccr2_en_pc(spr_ccr2_en_pc),
        .xu_lq_spr_ccr2_en_ditc(spr_ccr2_en_ditc),
@@ -3462,7 +3689,10 @@ module c(
        .slowspr_addr_out(lq_slowspr_addr_out),
        .slowspr_data_out(lq_slowspr_data_out),
        .slowspr_done_out(lq_slowspr_done_out),
-       
+
+       //--------------------------------------------------------------
+       // CP Interface
+       //--------------------------------------------------------------
        .iu_lq_cp_flush(cp_flush),
        .iu_lq_recirc_val(iu_lq_recirc_val),
        .iu_lq_cp_next_itag_t0(cp_t0_next_itag),
@@ -3522,10 +3752,10 @@ module c(
        .iu_lq_i1_completed(iu_lq_i1_completed),
        .iu_lq_i0_completed_itag_t0(iu_lq_t0_i0_completed_itag),
        .iu_lq_i1_completed_itag_t0(iu_lq_t0_i1_completed_itag),
-`ifndef THREADS1       
+`ifndef THREADS1
        .iu_lq_i0_completed_itag_t1(iu_lq_t1_i0_completed_itag),
        .iu_lq_i1_completed_itag_t1(iu_lq_t1_i1_completed_itag),
-`endif       
+`endif
        .iu_lq_request(iu_lq_request),
        .iu_lq_cTag(iu_lq_cTag),
        .iu_lq_ra(iu_lq_ra),
@@ -3535,7 +3765,10 @@ module c(
        .lq_iu_icbi_addr(lq_iu_icbi_addr),
        .iu_lq_icbi_complete(iu_lq_icbi_complete),
        .lq_iu_ici_val(lq_iu_ici_val),
-       
+
+       //--------------------------------------------------------------
+       // Interface with XU DERAT
+       //--------------------------------------------------------------
        .xu_lq_act(xu_lq_act),
        .xu_lq_val(xu_lq_val),
        .xu_lq_is_eratre(xu_lq_is_eratre),
@@ -3547,16 +3780,22 @@ module c(
        .xu_lq_rs_data(xu_lq_rs_data),
        .xu_lq_hold_req(xu_lq_hold_req),
        .lq_xu_ex5_data(lq_xu_ex5_data),
-       .lq_xu_ord_par_err(lq_xu_ord_par_err),   
+       .lq_xu_ord_par_err(lq_xu_ord_par_err),
        .lq_xu_ord_read_done(lq_xu_ord_read_done),
        .lq_xu_ord_write_done(lq_xu_ord_write_done),
-       
+
+       //--------------------------------------------------------------
+       // Doorbell Interface with XU
+       //--------------------------------------------------------------
        .lq_xu_dbell_val(lq_xu_dbell_val),
        .lq_xu_dbell_type(lq_xu_dbell_type),
        .lq_xu_dbell_brdcast(lq_xu_dbell_brdcast),
        .lq_xu_dbell_lpid_match(lq_xu_dbell_lpid_match),
        .lq_xu_dbell_pirtag(lq_xu_dbell_pirtag),
-       
+
+       //--------------------------------------------------------------
+       // Interface with RV
+       //--------------------------------------------------------------
        .rv_lq_rvs_empty(rv_lq_rvs_empty),
        .rv_lq_vld(rv_lq_vld),
        .rv_lq_ex0_itag(rv_lq_ex0_itag),
@@ -3569,7 +3808,7 @@ module c(
        .rv_lq_ex0_t3_p(rv_lq_ex0_t3_p),
        .rv_lq_ex0_s1_v(rv_lq_ex0_s1_v),
        .rv_lq_ex0_s2_v(rv_lq_ex0_s2_v),
-       
+
        .lq_rv_itag0(lq_rv_itag0),
        .lq_rv_itag0_vld(lq_rv_itag0_vld),
        .lq_rv_itag0_abort(lq_rv_itag0_abort),
@@ -3585,7 +3824,10 @@ module c(
        .lq_rv_itag2_vld(lq_rv_itag2_vld),
        .lq_rv_itag2(lq_rv_itag2),
        .lq_rv_clr_hold(lq_rv_clr_hold),
-       
+
+       //-------------------------------------------------------------------
+       // Interface with Bypass Controller
+       //-------------------------------------------------------------------
        .rv_lq_ex0_s1_xu0_sel(rv_lq_ex0_s1_fx0_sel),
        .rv_lq_ex0_s2_xu0_sel(rv_lq_ex0_s2_fx0_sel),
        .rv_lq_ex0_s1_xu1_sel(rv_lq_ex0_s1_fx1_sel),
@@ -3594,7 +3836,10 @@ module c(
        .rv_lq_ex0_s2_lq_sel(rv_lq_ex0_s2_lq_sel),
        .rv_lq_ex0_s1_rel_sel(rv_lq_ex0_s1_rel_sel),
        .rv_lq_ex0_s2_rel_sel(rv_lq_ex0_s2_rel_sel),
-       
+
+       //--------------------------------------------------------------
+       // Interface with Regfiles
+       //--------------------------------------------------------------
        .xu_lq_xer_cp_rd(xu_lq_xer_cp_rd),
        .rv_lq_gpr_ex1_r0d(rv_lq_gpr_ex1_r0d[64 - `GPR_WIDTH:63]),
        .rv_lq_gpr_ex1_r1d(rv_lq_gpr_ex1_r1d[64 - `GPR_WIDTH:63]),
@@ -3616,7 +3861,10 @@ module c(
        .lq_xu_cr_l2_wd(lq_xu_cr_l2_wd),
        .lq_xu_cr_ex5_we(lq_xu_cr_ex5_we),
        .lq_xu_cr_ex5_wa(lq_xu_cr_ex5_wa),
-       
+
+       //-------------------------------------------------------------------
+       // Interface with FXU0
+       //-------------------------------------------------------------------
        .xu0_lq_ex3_act(xu0_lq_ex3_act),
        .xu0_lq_ex3_abort(xu0_lq_ex3_abort),
        .xu0_lq_ex3_rt(xu0_lq_ex3_rt),
@@ -3627,7 +3875,10 @@ module c(
        .lq_xu_ex5_cr(lq_xu_ex5_cr),
        .lq_xu_ex5_rt(lq_xu_ex5_rt),
        .lq_xu_ex5_abort(lq_xu_ex5_abort),
-       
+
+       //-------------------------------------------------------------------
+       // Interface with FXU1
+       //-------------------------------------------------------------------
        .xu1_lq_ex3_act(xu1_lq_ex3_act),
        .xu1_lq_ex3_abort(xu1_lq_ex3_abort),
        .xu1_lq_ex3_rt(xu1_lq_ex3_rt),
@@ -3638,14 +3889,20 @@ module c(
        .xu1_lq_ex2_stq_dvc2_cmp(xu1_lq_ex2_stq_dvc2_cmp),
        .xu1_lq_ex3_illeg_lswx(xu1_lq_ex3_illeg_lswx),
        .xu1_lq_ex3_strg_noop(xu1_lq_ex3_strg_noop),
-       
+
+       //--------------------------------------------------------------
+       // Interface with FU
+       //--------------------------------------------------------------
        .xu_lq_axu_ex_stq_val(xu_lq_axu_ex_stq_val),
        .xu_lq_axu_ex_stq_itag(xu_lq_axu_ex_stq_itag),
        .xu_lq_axu_exp1_stq_data(xu_lq_axu_exp1_stq_data),
        .lq_xu_axu_ex4_addr(lq_xu_axu_ex4_addr),
        .lq_xu_axu_ex5_we(lq_xu_axu_ex5_we),
        .lq_xu_axu_ex5_le(lq_xu_axu_ex5_le),
-       
+
+       //--------------------------------------------------------------
+       // Interface with MMU
+       //--------------------------------------------------------------
        .mm_lq_lsu_req(mm_lq_lsu_req),
        .mm_lq_lsu_ttype(mm_lq_lsu_ttype),
        .mm_lq_lsu_wimge(mm_lq_lsu_wimge),
@@ -3702,7 +3959,10 @@ module c(
        .lq_pc_ldq_quiesce(lq_pc_ldq_quiesce),
        .lq_pc_stq_quiesce(lq_pc_stq_quiesce),
        .lq_pc_pfetch_quiesce(lq_pc_pfetch_quiesce),
-       
+
+       //--------------------------------------------------------------
+       // Interface with PC
+       //--------------------------------------------------------------
        .pc_lq_inj_dcachedir_ldp_parity(pc_lq_inj_dcachedir_ldp_parity),
        .pc_lq_inj_dcachedir_ldp_multihit(pc_lq_inj_dcachedir_ldp_multihit),
        .pc_lq_inj_dcachedir_stp_parity(pc_lq_inj_dcachedir_stp_parity),
@@ -3727,23 +3987,34 @@ module c(
        .pc_lq_inj_prefetcher_parity(pc_lq_inj_prefetcher_parity),
        .lq_pc_err_prefetcher_parity(lq_pc_err_prefetcher_parity),
 
+        //--------------------------------------------------------------
+        // Debug Bus Control
+        //--------------------------------------------------------------
+        // Pervasive Debug Control
         .pc_lq_trace_bus_enable(pc_lq_trace_bus_enable),
         .pc_lq_debug_mux1_ctrls(pc_lq_debug_mux1_ctrls),
         .pc_lq_debug_mux2_ctrls(pc_lq_debug_mux2_ctrls),
         .pc_lq_instr_trace_mode(pc_lq_instr_trace_mode),
         .pc_lq_instr_trace_tid(pc_lq_instr_trace_tid),
-        
+
+        // Pass Thru Debug Trace Bus
         .debug_bus_in(lq_debug_bus_in),
         .coretrace_ctrls_in(lq_coretrace_ctrls_in),
-        
+
         .debug_bus_out(lq_debug_bus_out),
         .coretrace_ctrls_out(lq_coretrace_ctrls_out),
-        
+
+        //--------------------------------------------------------------
+        // Performance Event Control
+        //--------------------------------------------------------------
         .pc_lq_event_bus_enable(pc_lq_event_bus_enable),
         .pc_lq_event_count_mode(pc_lq_event_count_mode),
         .event_bus_in(lq_event_bus_in),
         .event_bus_out(lq_event_bus_out),
-       
+
+       //--------------------------------------------------------------
+       // Interface with L2
+       //--------------------------------------------------------------
        .an_ac_coreid(an_ac_coreid[6:7]),
        .an_ac_sync_ack(an_ac_sync_ack),
        .an_ac_stcx_complete(an_ac_stcx_complete),
@@ -3787,9 +4058,14 @@ module c(
        .ac_an_st_data(ac_an_st_data),
        .ac_an_req_endian(ac_an_req_endian),
        .ac_an_st_data_pwr_token(ac_an_st_data_pwr_token),
-       
+
+       // Pervasive
+       //.vcs(vcs),
+       //.vdd(vdd),
+       //.gnd(gnd),
        .nclk(nclk),
-       
+
+       //--Thold inputs
        .pc_lq_init_reset(pc_lq_init_reset),
        .pc_lq_ccflush_dc(rp_lq_ccflush_dc),
        .pc_lq_gptr_sl_thold_3(rp_lq_gptr_sl_thold_3),
@@ -3809,7 +4085,8 @@ module c(
        .pc_lq_ary_slp_nsl_thold_3(rp_lq_ary_slp_nsl_thold_3),
        .pc_lq_sg_3(rp_lq_sg_3),
        .pc_lq_fce_3(rp_lq_fce_3),
-       
+
+       // G8T ABIST Control
        .pc_lq_abist_wl64_comp_ena(1'b0),
        .pc_lq_abist_g8t_wenb(1'b0),
        .pc_lq_abist_g8t1p_renb_0(1'b0),
@@ -3818,7 +4095,8 @@ module c(
        .pc_lq_abist_g8t_bw_0(1'b0),
        .pc_lq_abist_di_0({4{1'b0}}),
        .pc_lq_abist_waddr_0({8{1'b0}}),
-       
+
+       // G6T ABIST Control
        .pc_lq_abist_ena_dc(1'b0),
        .pc_lq_abist_raw_dc_b(1'b0),
        .pc_lq_abist_g6t_bw({2{1'b0}}),
@@ -3827,7 +4105,7 @@ module c(
        .pc_lq_abist_dcomp_g6t_2r({4{1'b0}}),
        .pc_lq_abist_raddr_0({8{1'b0}}),
        .pc_lq_abist_g6t_r_wb(1'b0),
-       
+
        .pc_lq_bo_enable_3(1'b0),
        .pc_lq_bo_unload(1'b0),
        .pc_lq_bo_repair(1'b0),
@@ -3836,7 +4114,8 @@ module c(
        .pc_lq_bo_select({14{1'b0}}),
        .lq_pc_bo_fail(),
        .lq_pc_bo_diagout(),
-       
+
+       // Core Level Signals
        .an_ac_lbist_ary_wrt_thru_dc(an_ac_lbist_ary_wrt_thru_dc),
        .an_ac_scan_dis_dc_b(an_ac_scan_dis_dc_b),
        .an_ac_scan_diag_dc(an_ac_scan_diag_dc),
@@ -3844,7 +4123,8 @@ module c(
        .an_ac_atpg_en_dc(1'b0),
        .an_ac_grffence_en_dc(1'b0),
 
-       
+
+       // SCAN
        .gptr_scan_in(1'b0),
        .gptr_scan_out(),
        .abst_scan_in({6{1'b0}}),
@@ -3860,15 +4140,15 @@ module c(
        .func_scan_in(scan_in_lq),
        .func_scan_out(scan_out_lq)
        );
-   
-     
-   
-   
-  
-   mmq 
-   mmu0(		
+
+   // 6=64-bit model, 5=32-bit model
+   mmq
+   mmu0(
+//			.vcs(vcs),
+//			.vdd(vdd),
+//			.gnd(gnd),
 			.nclk(nclk),
-      
+
 			.tc_ac_ccflush_dc(rp_mm_ccflush_dc),
 			.tc_ac_scan_dis_dc_b(an_ac_scan_dis_dc_b),
 			.tc_ac_scan_diag_dc(an_ac_scan_diag_dc),
@@ -3890,9 +4170,9 @@ module c(
 			.pc_mm_fce_3(rp_mm_fce_3),
 			.debug_bus_in(mm_debug_bus_in),
 			.debug_bus_out(mm_debug_bus_out),
-                        .coretrace_ctrls_in(mm_coretrace_ctrls_in),                      
-                        .coretrace_ctrls_out(mm_coretrace_ctrls_out),               
-                        
+                        .coretrace_ctrls_in(mm_coretrace_ctrls_in),
+                        .coretrace_ctrls_out(mm_coretrace_ctrls_out),
+
 			.pc_mm_debug_mux1_ctrls(pc_mm_debug_mux_ctrls),
 			.pc_mm_trace_bus_enable(pc_mm_trace_bus_enable),
 			.pc_mm_event_count_mode(pc_mm_event_count_mode),
@@ -3939,10 +4219,10 @@ module c(
 			.iu_mm_ierat_snoop_ack(iu_mm_ierat_snoop_ack),
 			.mm_iu_t0_ierat_pid(mm_iu_t0_ierat_pid),
 			.mm_iu_t0_ierat_mmucr0(mm_iu_t0_ierat_mmucr0),
-`ifndef THREADS1			
+`ifndef THREADS1
 			.mm_iu_t1_ierat_pid(mm_iu_t1_ierat_pid),
 			.mm_iu_t1_ierat_mmucr0(mm_iu_t1_ierat_mmucr0),
-`endif			
+`endif
 			.iu_mm_ierat_mmucr0(iu_mm_ierat_mmucr0),
 			.iu_mm_ierat_mmucr0_we(iu_mm_ierat_mmucr0_we),
 			.mm_iu_ierat_mmucr1(mm_iu_ierat_mmucr1),
@@ -4005,7 +4285,7 @@ module c(
 			.xu_mm_xucr4_mmu_mchk(spr_xucr4_mmu_mchk),
 			.xu_mm_lmq_stq_empty(lq_mm_lmq_stq_empty),
 			.iu_mm_lmq_empty(iu_mm_lmq_empty),
-      
+
 			.xu_rf1_flush(cp_flush),
 			.xu_ex1_flush(cp_flush),
 			.xu_ex2_flush(cp_flush),
@@ -4014,7 +4294,7 @@ module c(
 			.xu_ex5_flush(cp_flush),
 			.xu_mm_ex4_flush(cp_flush),
 			.xu_mm_ex5_flush(cp_flush),
-      
+
 			.xu_mm_ierat_miss({`THREADS{1'b1}}),
 			.xu_mm_ierat_flush({`THREADS{1'b0}}),
 			.iu_mm_perf_itlb(iu_mm_perf_itlb),
@@ -4028,7 +4308,7 @@ module c(
 			.mm_xu_pt_fault(mm_xu_pt_fault),
 			.mm_xu_hv_priv(mm_xu_hv_priv),
 			.mm_xu_illeg_instr(mm_xu_illeg_instr),
-      
+
 			.mm_xu_tlb_miss_ored(mm_xu_tlb_miss_ored),
 			.mm_xu_lrat_miss_ored(mm_xu_lrat_miss_ored),
 			.mm_xu_tlb_inelig_ored(mm_xu_tlb_inelig_ored),
@@ -4036,7 +4316,7 @@ module c(
 			.mm_xu_hv_priv_ored(mm_xu_hv_priv_ored),
 			.mm_xu_cr0_eq_ored(mm_xu_cr0_eq_ored),
 			.mm_xu_cr0_eq_valid_ored(mm_xu_cr0_eq_valid_ored),
-      
+
 			.mm_xu_esr_pt(),
 			.mm_xu_esr_data(),
 			.mm_xu_esr_epid(),
@@ -4059,12 +4339,12 @@ module c(
 			.mm_xu_ord_tlb_par_err(mm_xu_ord_tlb_par_err),
 			.mm_xu_ord_lru_par_err(mm_xu_ord_lru_par_err),
 			.mm_xu_local_snoop_reject(mm_iu_local_snoop_reject),
-      
+
 			.mm_pc_tlb_multihit_err_ored(mm_pc_tlb_multihit_err_ored),
 			.mm_pc_tlb_par_err_ored(mm_pc_tlb_par_err_ored),
 			.mm_pc_lru_par_err_ored(mm_pc_lru_par_err_ored),
 			.mm_pc_local_snoop_reject_ored(mm_pc_local_snoop_reject_ored),
-      
+
 			.mm_xu_ex3_flush_req(),
 			.mm_xu_lsu_req(mm_lq_lsu_req),
 			.mm_xu_lsu_ttype(mm_lq_lsu_ttype),
@@ -4089,7 +4369,7 @@ module c(
 			.slowspr_addr_out(mm_slowspr_addr_out),
 			.slowspr_data_out(mm_slowspr_data_out),
 			.slowspr_done_out(mm_slowspr_done_out),
-      
+
 			.gptr_scan_in(1'b0),
 			.time_scan_in(1'b0),
 			.repr_scan_in(1'b0),
@@ -4106,7 +4386,7 @@ module c(
 			.bcfg_scan_out(),
 			.ccfg_scan_out(),
 			.dcfg_scan_out(),
-      
+
 			.ac_an_power_managed_imm(ac_an_power_managed_int),
 			.an_ac_back_inv(an_ac_back_inv),
 			.an_ac_back_inv_target(an_ac_back_inv_target[2]),
@@ -4126,7 +4406,8 @@ module c(
 			.an_ac_reld_qw(an_ac_reld_qw),
 			.an_ac_reld_ditc(an_ac_reld_ditc),
 			.an_ac_reld_crit_qw(an_ac_reld_crit_qw),
-      
+
+			// some new a2o mmu sigs
 			.xu_mm_rf1_itag(xu_mm_itag),
 			.mm_xu_ord_n_flush_req(mm_xu_ord_n_flush_req),
 			.mm_xu_ord_np1_flush_req(mm_xu_ord_np1_flush_req),
@@ -4142,25 +4423,27 @@ module c(
 			.mm_iu_tlbi_complete(mm_iu_tlbi_complete),
 			.mm_xu_illeg_instr_ored(mm_xu_illeg_instr_ored),
 			.mm_xu_ord_n_flush_req_ored(mm_xu_ord_n_flush_req_ored),
-			.mm_xu_ord_np1_flush_req_ored(mm_xu_ord_np1_flush_req_ored),		
+			.mm_xu_ord_np1_flush_req_ored(mm_xu_ord_np1_flush_req_ored),		// out std_ulogic_vector(0 to thdid_width-1);
 			.mm_xu_ord_read_done_ored(mm_xu_ord_read_done_ored),
 			.mm_xu_ord_write_done_ored(mm_xu_ord_write_done_ored),
-			
+
 			.mm_xu_itag(mm_xu_itag)
 
 			);
 
 
    c_fu_pc  #(.float_type(float_type))
-     fupc( 
+     fupc(
+		// .vdd(vdd),
+		// .gnd(gnd),
 		.nclk(nclk),
-      
+
 		.fu_debug_bus_in(fu_debug_bus_in),
  		.fu_debug_bus_out(fu_debug_bus_out),
       		.fu_coretrace_ctrls_in(fu_coretrace_ctrls_in),
-      		.fu_coretrace_ctrls_out(fu_coretrace_ctrls_out),  
+      		.fu_coretrace_ctrls_out(fu_coretrace_ctrls_out),
    	        .fu_event_bus_in(fu_event_bus_in),
-   	        .fu_event_bus_out(fu_event_bus_out),		 
+   	        .fu_event_bus_out(fu_event_bus_out),
 
 		.pc_debug_bus_in(pc_debug_bus_in),
  		.pc_debug_bus_out(pc_debug_bus_out),
@@ -4222,6 +4505,7 @@ module c(
 		.pc_slowspr_rw_out(pc_slowspr_rw_out),
 		.pc_slowspr_val_out(pc_slowspr_val_out),
 
+		// FU Interface
 		.cp_t0_next_itag(cp_t0_next_itag),
 		.cp_t1_next_itag(cp_t1_next_itag),
 		.cp_axu_i0_t1_v(cp_axu_i0_t1_v),
@@ -4267,7 +4551,7 @@ module c(
 		.lq_gpr_rel_we(xu_axu_lq_rel_we),
 		.lq_gpr_rel_le(xu_axu_lq_rel_le),
 		.lq_gpr_rel_wa(xu_axu_lq_rel_wa),
-		.lq_gpr_rel_wd(xu_axu_lq_rel_wd[64:127]),		
+		.lq_gpr_rel_wd(xu_axu_lq_rel_wd[64:127]),		// Fix me
 		.lq_rv_itag0(lq_rv_itag0),
 		.lq_rv_itag0_vld(lq_rv_itag0_vld[0]),
 		.lq_rv_itag0_spec(lq_rv_itag0_spec),
@@ -4275,12 +4559,12 @@ module c(
 		.fu_lq_ex2_store_data_val(axu_xu_lq_ex_stq_val),
 		.fu_lq_ex2_store_itag(axu_xu_lq_ex_stq_itag),
 		.fu_lq_ex3_store_data(axu_xu_lq_exp1_stq_data),
-		.fu_lq_ex3_sto_parity_err(axu_xu_lq_exp1_sto_parity_err),		 
+		.fu_lq_ex3_sto_parity_err(axu_xu_lq_exp1_sto_parity_err),
       	        .fu_lq_ex3_abort(fu_lq_ex3_abort),
 
 		.rv_axu0_vld(rv_axu0_vld),
 		.rv_axu0_ex0_instr(rv_axu0_ex0_instr),
-       	        .rv_axu0_ex0_itag(rv_axu0_ex0_itag),		 
+       	        .rv_axu0_ex0_itag(rv_axu0_ex0_itag),
 		.rv_axu0_ex0_ucode(rv_axu0_ex0_ucode),
 		.rv_axu0_ex0_t1_v(rv_axu0_ex0_t1_v),
 		.rv_axu0_ex0_t1_p(rv_axu0_ex0_t1_p),
@@ -4306,7 +4590,7 @@ module c(
 		.axu1_rv_itag(axu1_rv_itag),
 		.axu1_rv_itag_vld(axu1_rv_itag_vld),
 		.axu1_rv_itag_abort(axu1_rv_itag_abort),
-	        .axu1_rv_hold_all(axu1_rv_hold_all),  
+	        .axu1_rv_hold_all(axu1_rv_hold_all),
 
 		.pc_fu_abist_di_0({4{1'b0}}),
 		.pc_fu_abist_di_1({4{1'b0}}),
@@ -4332,11 +4616,14 @@ module c(
 		.axu0_cr_w4d(axu0_cr_w4d),
 
 
+		// PC Interface
+		// SCOM Satellite
 		.an_ac_scom_sat_id(an_ac_scom_sat_id),
 		.an_ac_scom_dch(rp_pc_scom_dch_q),
 		.an_ac_scom_cch(rp_pc_scom_cch_q),
 		.ac_an_scom_dch(pc_rp_scom_dch),
 		.ac_an_scom_cch(pc_rp_scom_cch),
+		// FIR and Error Signals
 		.ac_an_special_attn(pc_rp_special_attn),
 		.ac_an_checkstop(pc_rp_checkstop),
 		.ac_an_local_checkstop(pc_rp_local_checkstop),
@@ -4398,6 +4685,7 @@ module c(
 		.pc_xu_inj_sprg_ecc(pc_xu_inj_sprg_ecc),
 		.pc_xu_inj_llbust_attempt(pc_xu_inj_llbust_attempt),
 		.pc_xu_inj_llbust_failed(pc_xu_inj_llbust_failed),
+      		// Unit quiesce and credit status bits
       		.iu_pc_quiesce(iu_pc_quiesce),
      		.iu_pc_icache_quiesce(iu_pc_icache_quiesce),
       		.lq_pc_ldq_quiesce(lq_pc_ldq_quiesce),
@@ -4413,6 +4701,7 @@ module c(
       		.iu_pc_axu1_credit_ok(iu_pc_axu1_credit_ok),
       		.iu_pc_lq_credit_ok(iu_pc_lq_credit_ok),
       		.iu_pc_sq_credit_ok(iu_pc_sq_credit_ok),
+		// RAM Command/Data
 		.pc_iu_ram_instr(pc_iu_ram_instr),
 		.pc_iu_ram_instr_ext(pc_iu_ram_instr_ext),
 		.pc_iu_ram_active(pc_iu_ram_active),
@@ -4432,6 +4721,7 @@ module c(
 		.pc_xu_msrovride_de(pc_xu_msrovride_de),
 		.pc_iu_ram_force_cmplt(),
 		.pc_iu_ram_flush_thread(pc_iu_ram_flush_thread),
+		// THRCTL + PCCR0 Registers
 		.an_ac_debug_stop(rp_pc_debug_stop_q),
 		.xu_pc_running(xu_pc_running),
 		.iu_pc_stop_dbg_event(iu_pc_stop_dbg_event),
@@ -4445,6 +4735,7 @@ module c(
 		.pc_iu_dbg_action(pc_iu_dbg_action_int),
 		.pc_iu_spr_dbcr0_edm(pc_iu_spr_dbcr0_edm),
 		.pc_xu_spr_dbcr0_edm(pc_xu_spr_dbcr0_edm),
+		// Debug Bus Controls
 		.pc_iu_trace_bus_enable(pc_iu_trace_bus_enable),
 		.pc_rv_trace_bus_enable(pc_rv_trace_bus_enable),
 		.pc_mm_trace_bus_enable(pc_mm_trace_bus_enable),
@@ -4457,6 +4748,7 @@ module c(
 		.pc_xu_debug_mux_ctrls(pc_xu_debug_mux_ctrls),
 		.pc_lq_debug_mux1_ctrls(pc_lq_debug_mux1_ctrls),
 		.pc_lq_debug_mux2_ctrls(pc_lq_debug_mux2_ctrls),
+ 		// Event Bus Controls
 		.pc_rv_event_mux_ctrls(pc_rv_event_mux_ctrls),
 		.pc_iu_event_bus_enable(pc_iu_event_bus_enable),
 		.pc_rv_event_bus_enable(pc_rv_event_bus_enable),
@@ -4469,17 +4761,19 @@ module c(
 		.pc_xu_event_count_mode(pc_xu_event_count_mode),
 		.pc_lq_event_count_mode(pc_lq_event_count_mode),
 		.pc_iu_instr_trace_mode(pc_iu_instr_trace_mode),
-		.pc_iu_instr_trace_tid(pc_iu_instr_trace_tid[0]),	
+		.pc_iu_instr_trace_tid(pc_iu_instr_trace_tid[0]),
 		.pc_lq_instr_trace_mode(pc_lq_instr_trace_mode),
-		.pc_lq_instr_trace_tid(pc_lq_instr_trace_tid[0]),	
+		.pc_lq_instr_trace_tid(pc_lq_instr_trace_tid[0]),
 		.pc_xu_instr_trace_mode(pc_xu_instr_trace_mode),
-		.pc_xu_instr_trace_tid(pc_xu_instr_trace_tid[0]),	
-		.xu_pc_perfmon_alert(xu_pc_perfmon_alert),		
-		.pc_xu_spr_cesr1_pmae(pc_xu_spr_cesr1_pmae),		
+		.pc_xu_instr_trace_tid(pc_xu_instr_trace_tid[0]),
+		.xu_pc_perfmon_alert(xu_pc_perfmon_alert),
+		.pc_xu_spr_cesr1_pmae(pc_xu_spr_cesr1_pmae),
 		.pc_lq_event_bus_seldbghi(pc_lq_event_bus_seldbghi),
 		.pc_lq_event_bus_seldbglo(pc_lq_event_bus_seldbglo),
+		// Reset related
 		.pc_lq_init_reset(pc_lq_init_reset),
 		.pc_iu_init_reset(pc_iu_init_reset),
+		// Power Management
 		.ac_an_pm_thread_running(pc_rp_pm_thread_running),
 		.an_ac_pm_thread_stop(rp_pc_pm_thread_stop_q),
 		.an_ac_pm_fetch_halt(rp_pc_pm_fetch_halt_q),
@@ -4489,6 +4783,7 @@ module c(
 		.pc_xu_pm_hold_thread(pc_xu_pm_hold_thread),
 		.xu_pc_spr_ccr0_pme(xu_pc_spr_ccr0_pme),
 		.xu_pc_spr_ccr0_we(xu_pc_spr_ccr0_we),
+		// Clock, Test, and LCB Controls
 		.an_ac_gsd_test_enable_dc(an_ac_gsd_test_enable_dc),
 		.an_ac_gsd_test_acmode_dc(an_ac_gsd_test_acmode_dc),
 		.an_ac_ccflush_dc(an_ac_ccflush_dc),
@@ -4505,6 +4800,7 @@ module c(
 		.an_ac_sg_7(rp_pc_sg_7),
 		.an_ac_fce_7(rp_pc_fce_7),
 		.an_ac_scan_type_dc(an_ac_scan_type_dc),
+		// Thold outputs to clock staging
 		.pc_rp_ccflush_out_dc(pc_rp_ccflush_out_dc),
 		.pc_rp_gptr_sl_thold_4(pc_rp_gptr_sl_thold_4),
 		.pc_rp_time_sl_thold_4(pc_rp_time_sl_thold_4),
@@ -4526,11 +4822,16 @@ module c(
 		.pc_rp_fce_4(pc_rp_fce_4)
 		);
 
-  
+ //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
    c_perv_rp
    perv_rp(
+//	   .vdd(vdd),
+//	   .gnd(gnd),
 	   .nclk(nclk),
-      
+
+	   //CLOCK CONTROLS
+	   //Top level clock controls
 	   .an_ac_ccflush_dc(an_ac_ccflush_dc),
 	   .rtim_sl_thold_8(an_ac_rtim_sl_thold_8),
 	   .func_sl_thold_8(an_ac_func_sl_thold_8),
@@ -4544,6 +4845,7 @@ module c(
 	   .ary_nsl_thold_7(rp_pc_ary_nsl_thold_7),
 	   .sg_7(rp_pc_sg_7),
 	   .fce_7(rp_pc_fce_7),
+	   //Thold inputs from pcq clock controls
 	   .pc_rp_ccflush_out_dc(pc_rp_ccflush_out_dc),
 	   .pc_rp_gptr_sl_thold_4(pc_rp_gptr_sl_thold_4),
 	   .pc_rp_time_sl_thold_4(pc_rp_time_sl_thold_4),
@@ -4563,6 +4865,7 @@ module c(
 	   .pc_rp_rtim_sl_thold_4(pc_rp_rtim_sl_thold_4),
 	   .pc_rp_sg_4(pc_rp_sg_4),
 	   .pc_rp_fce_4(pc_rp_fce_4),
+	   //Thold outputs to the units
 	   .rp_iu_ccflush_dc(rp_iu_ccflush_dc),
 	   .rp_iu_gptr_sl_thold_3(rp_iu_gptr_sl_thold_3),
 	   .rp_iu_time_sl_thold_3(rp_iu_time_sl_thold_3),
@@ -4580,6 +4883,7 @@ module c(
 	   .rp_iu_ary_slp_nsl_thold_3(rp_iu_ary_slp_nsl_thold_3),
 	   .rp_iu_sg_3(rp_iu_sg_3),
 	   .rp_iu_fce_3(rp_iu_fce_3),
+	   //
 	   .rp_rv_ccflush_dc(rp_rv_ccflush_dc),
 	   .rp_rv_gptr_sl_thold_3(rp_rv_gptr_sl_thold_3),
 	   .rp_rv_time_sl_thold_3(rp_rv_time_sl_thold_3),
@@ -4596,6 +4900,7 @@ module c(
 	   .rp_rv_ary_slp_nsl_thold_3(rp_rv_ary_slp_nsl_thold_3),
 	   .rp_rv_sg_3(rp_rv_sg_3),
 	   .rp_rv_fce_3(rp_rv_fce_3),
+	   //
 	   .rp_xu_ccflush_dc(rp_xu_ccflush_dc),
 	   .rp_xu_gptr_sl_thold_3(rp_xu_gptr_sl_thold_3),
 	   .rp_xu_time_sl_thold_3(rp_xu_time_sl_thold_3),
@@ -4613,6 +4918,7 @@ module c(
 	   .rp_xu_ary_slp_nsl_thold_3(rp_xu_ary_slp_nsl_thold_3),
 	   .rp_xu_sg_3(rp_xu_sg_3),
 	   .rp_xu_fce_3(rp_xu_fce_3),
+	   //
 	   .rp_lq_ccflush_dc(rp_lq_ccflush_dc),
 	   .rp_lq_gptr_sl_thold_3(rp_lq_gptr_sl_thold_3),
 	   .rp_lq_time_sl_thold_3(rp_lq_time_sl_thold_3),
@@ -4630,6 +4936,7 @@ module c(
 	   .rp_lq_ary_slp_nsl_thold_3(rp_lq_ary_slp_nsl_thold_3),
 	   .rp_lq_sg_3(rp_lq_sg_3),
 	   .rp_lq_fce_3(rp_lq_fce_3),
+	   //
 	   .rp_mm_ccflush_dc(rp_mm_ccflush_dc),
 	   .rp_mm_gptr_sl_thold_3(rp_mm_gptr_sl_thold_3),
 	   .rp_mm_time_sl_thold_3(rp_mm_time_sl_thold_3),
@@ -4646,7 +4953,8 @@ module c(
 	   .rp_mm_ary_slp_nsl_thold_3(rp_mm_ary_slp_nsl_thold_3),
 	   .rp_mm_sg_3(rp_mm_sg_3),
 	   .rp_mm_fce_3(rp_mm_fce_3),
-      
+
+	   //SCANRING REPOWERING
 	   .pc_bcfg_scan_in(1'b0),
 	   .pc_bcfg_scan_in_q(),
 	   .pc_dcfg_scan_in(1'b0),
@@ -4661,6 +4969,7 @@ module c(
 	   .pc_func_scan_in_q(),
 	   .pc_func_scan_out(2'b00),
 	   .pc_func_scan_out_q(),
+	   //
 	   .fu_abst_scan_in(1'b0),
 	   .fu_abst_scan_in_q(),
 	   .fu_abst_scan_out(1'b0),
@@ -4675,19 +4984,23 @@ module c(
 	   .fu_func_scan_in_q(),
 	   .fu_func_scan_out(4'b0000),
 	   .fu_func_scan_out_q(),
-      
+
+	   //MISCELLANEOUS FUNCTIONAL SIGNALS
+	   // node inputs going to pcq
 	   .an_ac_scom_dch(an_ac_scom_dch),
 	   .an_ac_scom_cch(an_ac_scom_cch),
 	   .an_ac_checkstop(an_ac_checkstop),
 	   .an_ac_debug_stop(an_ac_debug_stop),
 	   .an_ac_pm_thread_stop(an_ac_pm_thread_stop),
 	   .an_ac_pm_fetch_halt(an_ac_pm_fetch_halt),
+	   //
 	   .rp_pc_scom_dch_q(rp_pc_scom_dch_q),
 	   .rp_pc_scom_cch_q(rp_pc_scom_cch_q),
 	   .rp_pc_checkstop_q(rp_pc_checkstop_q),
 	   .rp_pc_debug_stop_q(rp_pc_debug_stop_q),
 	   .rp_pc_pm_thread_stop_q(rp_pc_pm_thread_stop_q),
 	   .rp_pc_pm_fetch_halt_q(rp_pc_pm_fetch_halt_q),
+	   // pcq outputs going to node
 	   .pc_rp_scom_dch(pc_rp_scom_dch),
 	   .pc_rp_scom_cch(pc_rp_scom_cch),
 	   .pc_rp_special_attn(pc_rp_special_attn),
@@ -4699,6 +5012,7 @@ module c(
 	   .pc_rp_power_managed(pc_rp_power_managed),
 	   .pc_rp_rvwinkle_mode(pc_rp_rvwinkle_mode),
       	   .pc_rp_livelock_active(pc_rp_livelock_active),
+	   //
 	   .ac_an_scom_dch_q(ac_an_scom_dch),
 	   .ac_an_scom_cch_q(ac_an_scom_cch),
 	   .ac_an_special_attn_q(ac_an_special_attn),
@@ -4710,7 +5024,8 @@ module c(
 	   .ac_an_power_managed_q(ac_an_power_managed_int),
 	   .ac_an_rvwinkle_mode_q(ac_an_rvwinkle_mode),
       	   .ac_an_livelock_active_q(ac_an_livelock_active),
-      
+
+	   // SCAN CHAINS
 	   .scan_diag_dc(an_ac_scan_diag_dc),
 	   .scan_dis_dc_b(an_ac_scan_dis_dc_b),
 	   .func_scan_in(1'b0),
@@ -4718,6 +5033,5 @@ module c(
 	   .func_scan_out(),
 	   .gptr_scan_out()
 	   );
-   
-endmodule
 
+endmodule

@@ -7,7 +7,9 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
-
+//  Description:  XU LSU L1 Data Cache Control
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
 
@@ -483,8 +485,22 @@ module lq_dcc(
    scan_out
 );
 
-parameter                                               PARBITS = 4;			
+//-------------------------------------------------------------------
+// Generics
+//-------------------------------------------------------------------
+//parameter                                               ITAG_SIZE_ENC = 7;		// Instruction Tag Size
+//parameter                                               CR_POOL_ENC = 5;		// Encode of CR rename pool size
+//parameter                                               GPR_POOL_ENC = 6;
+//parameter                                               THREADS_POOL_ENC = 1;
+//parameter                                               UCODE_ENTRIES_ENC = 3;
+//parameter                                               REAL_IFAR_WIDTH = 42;		// 42 bit real address
+//parameter                                               DC_SIZE = 15;			// 2^15 = 32768 Bytes L1 D$
+//parameter                                               AXU_SPARE_ENC = 3;
+//parameter                                               GPR_WIDTH_ENC = 6;		// 5 = 32bit mode, 6 = 64bit mode
+//parameter                                               `CR_WIDTH = 4;
+parameter                                               PARBITS = 4;			// Number of Parity Bits
 
+// IU Dispatch
 input [0:`THREADS-1]                                    rv_lq_rv1_i0_vld;
 input                                                   rv_lq_rv1_i0_ucode_preissue;
 input                                                   rv_lq_rv1_i0_2ucode;
@@ -494,37 +510,38 @@ input                                                   rv_lq_rv1_i1_ucode_preis
 input                                                   rv_lq_rv1_i1_2ucode;
 input [0:`UCODE_ENTRIES_ENC-1]                          rv_lq_rv1_i1_ucode_cnt;
 
-input                                                   dec_dcc_ex0_act;		
-input                                                   dec_dcc_ex1_cmd_act;		
-input                                                   dec_dcc_ex1_ucode_val;		
+// Execution Pipe Inputs
+input                                                   dec_dcc_ex0_act;		// ACT
+input                                                   dec_dcc_ex1_cmd_act;		// ACT
+input                                                   dec_dcc_ex1_ucode_val;		// PreIssue of Ucode operation is valid
 input [0:`UCODE_ENTRIES_ENC-1]                          dec_dcc_ex1_ucode_cnt;
 input                                                   dec_dcc_ex1_ucode_op;
-input                                                   dec_dcc_ex1_sfx_val;		
-input                                                   dec_dcc_ex1_axu_op_val;		
-input                                                   dec_dcc_ex1_axu_falign;		
-input                                                   dec_dcc_ex1_axu_fexcpt;		
+input                                                   dec_dcc_ex1_sfx_val;		// Simple FXU operation is valid
+input                                                   dec_dcc_ex1_axu_op_val;		// Operation is from the AXU
+input                                                   dec_dcc_ex1_axu_falign;		// AXU force alignment indicator
+input                                                   dec_dcc_ex1_axu_fexcpt;		// AXU force alignment exception on misaligned access
 input [0:2]                                             dec_dcc_ex1_axu_instr_type;
-input                                                   dec_dcc_ex1_cache_acc;		
+input                                                   dec_dcc_ex1_cache_acc;		// Cache Access is Valid, Op that touches directory
 input [0:`THREADS-1]                                    dec_dcc_ex1_thrd_id;
 input [0:31]                                            dec_dcc_ex1_instr;
-input                                                   dec_dcc_ex1_optype1;		
-input                                                   dec_dcc_ex1_optype2;		
-input                                                   dec_dcc_ex1_optype4;		
-input                                                   dec_dcc_ex1_optype8;		
-input                                                   dec_dcc_ex1_optype16;		
-input [0:`AXU_SPARE_ENC+`GPR_POOL_ENC+`THREADS_POOL_ENC-1]  dec_dcc_ex1_target_gpr;	
-input                                                   dec_dcc_ex1_mtspr_trace;	
-input                                                   dec_dcc_ex1_load_instr;		
-input                                                   dec_dcc_ex1_store_instr;	
-input                                                   dec_dcc_ex1_dcbf_instr;		
-input                                                   dec_dcc_ex1_sync_instr;		
-input [0:1]                                             dec_dcc_ex1_l_fld;		
-input                                                   dec_dcc_ex1_dcbi_instr;		
-input                                                   dec_dcc_ex1_dcbz_instr;		
-input                                                   dec_dcc_ex1_dcbt_instr;		
-input                                                   dec_dcc_ex1_pfetch_val;		
-input                                                   dec_dcc_ex1_dcbtst_instr;	
-input [0:4]                                             dec_dcc_ex1_th_fld;		
+input                                                   dec_dcc_ex1_optype1;		// 1 Byte Load/Store
+input                                                   dec_dcc_ex1_optype2;		// 2 Byte Load/Store
+input                                                   dec_dcc_ex1_optype4;		// 4 Byte Load/Store
+input                                                   dec_dcc_ex1_optype8;		// 8 Byte Load/Store
+input                                                   dec_dcc_ex1_optype16;		// 16 Byte Load/Store
+input [0:`AXU_SPARE_ENC+`GPR_POOL_ENC+`THREADS_POOL_ENC-1]  dec_dcc_ex1_target_gpr;	// Target GPR, needed for reloads
+input                                                   dec_dcc_ex1_mtspr_trace;	// Operation is a mtspr trace instruction
+input                                                   dec_dcc_ex1_load_instr;		// Operation is a Load instruction
+input                                                   dec_dcc_ex1_store_instr;	// Operation is a Store instruction
+input                                                   dec_dcc_ex1_dcbf_instr;		// Operation is a DCBF instruction
+input                                                   dec_dcc_ex1_sync_instr;		// Operation is a SYNC instruction
+input [0:1]                                             dec_dcc_ex1_l_fld;		// DCBF/SYNC L Field
+input                                                   dec_dcc_ex1_dcbi_instr;		// Operation is a DCBI instruction
+input                                                   dec_dcc_ex1_dcbz_instr;		// Operation is a DCBZ instruction
+input                                                   dec_dcc_ex1_dcbt_instr;		// Operation is a DCBT instruction
+input                                                   dec_dcc_ex1_pfetch_val;		// Operation is a prefetch
+input                                                   dec_dcc_ex1_dcbtst_instr;	// Operation is a DCBTST instruction
+input [0:4]                                             dec_dcc_ex1_th_fld;		// TH/CT Field for Cache Management instructions
 input                                                   dec_dcc_ex1_dcbtls_instr;
 input                                                   dec_dcc_ex1_dcbtstls_instr;
 input                                                   dec_dcc_ex1_dcblc_instr;
@@ -540,22 +557,22 @@ input                                                   dec_dcc_ex1_tlbsync_inst
 input                                                   dec_dcc_ex1_ldawx_instr;
 input                                                   dec_dcc_ex1_wclr_instr;
 input                                                   dec_dcc_ex1_wchk_instr;
-input                                                   dec_dcc_ex1_resv_instr;		
-input                                                   dec_dcc_ex1_mutex_hint;		
-input                                                   dec_dcc_ex1_mbar_instr;		
+input                                                   dec_dcc_ex1_resv_instr;		// Operation is a resv instruction
+input                                                   dec_dcc_ex1_mutex_hint;		// Mutex Hint For larx instructions
+input                                                   dec_dcc_ex1_mbar_instr;		// Operation is an MBAR instruction
 input                                                   dec_dcc_ex1_makeitso_instr;
 input                                                   dec_dcc_ex1_is_msgsnd;
 input                                                   dec_dcc_ex1_dci_instr;
 input                                                   dec_dcc_ex1_ici_instr;
-input                                                   dec_dcc_ex1_mword_instr;	
-input                                                   dec_dcc_ex1_algebraic;		
-input                                                   dec_dcc_ex1_strg_index;		
-input                                                   dec_dcc_ex1_src_gpr;		
-input                                                   dec_dcc_ex1_src_axu;		
-input                                                   dec_dcc_ex1_src_dp;		
-input                                                   dec_dcc_ex1_targ_gpr;		
-input                                                   dec_dcc_ex1_targ_axu;		
-input                                                   dec_dcc_ex1_targ_dp;		
+input                                                   dec_dcc_ex1_mword_instr;	// load/store multiple word instruction
+input                                                   dec_dcc_ex1_algebraic;		// Operation is an Algebraic Load instruction
+input                                                   dec_dcc_ex1_strg_index;		// String Indexed Form
+input                                                   dec_dcc_ex1_src_gpr;		// Source is the GPR's for mfloat and mDCR ops
+input                                                   dec_dcc_ex1_src_axu;		// Source is the AXU's for mfloat and mDCR ops
+input                                                   dec_dcc_ex1_src_dp;		// Source is the BOX's for mfloat and mDCR ops
+input                                                   dec_dcc_ex1_targ_gpr;		// Target is the GPR's for mfloat and mDCR ops
+input                                                   dec_dcc_ex1_targ_axu;		// Target is the AXU's for mfloat and mDCR ops
+input                                                   dec_dcc_ex1_targ_dp;		// Target is the BOX's for mfloat and mDCR ops
 input                                                   dec_dcc_ex1_upd_form;
 input [0:`ITAG_SIZE_ENC-1]                              dec_dcc_ex1_itag;
 input [0:`CR_POOL_ENC-1]                                dec_dcc_ex1_cr_fld;
@@ -571,10 +588,13 @@ input                                                   dec_dcc_ex5_req_abort_rp
 input                                                   dec_dcc_ex5_axu_abort_rpt;
 input [64-(2**`GPR_WIDTH_ENC):63]                       dir_dcc_ex2_eff_addr;
 
-input                                                   lsq_ctl_rv0_back_inv;		
+// Directory Back-Invalidate
+input                                                   lsq_ctl_rv0_back_inv;		// L2 Back-Invalidate is Valid
 
+// Derat Snoop-Invalidate
 input                                                   derat_rv1_snoop_val;
 
+// Directory Read Operation
 input [64-`REAL_IFAR_WIDTH:63-(`DC_SIZE-3)]             dir_dcc_ex4_way_tag_a;
 input [64-`REAL_IFAR_WIDTH:63-(`DC_SIZE-3)]             dir_dcc_ex4_way_tag_b;
 input [64-`REAL_IFAR_WIDTH:63-(`DC_SIZE-3)]             dir_dcc_ex4_way_tag_c;
@@ -603,9 +623,9 @@ input [0:6]                                             dir_dcc_ex5_dir_lru;
 
 input                                                   derat_dcc_ex3_wimge_e;
 input                                                   derat_dcc_ex3_itagHit;
-input [0:4]                                             derat_dcc_ex4_wimge;		
-input [0:3]                                             derat_dcc_ex4_usr_bits;		
-input [0:1]                                             derat_dcc_ex4_wlc;		    
+input [0:4]                                             derat_dcc_ex4_wimge;		// Memory Attribute I Bit from ERAT
+input [0:3]                                             derat_dcc_ex4_usr_bits;		// User Defined Bits from ERAT
+input [0:1]                                             derat_dcc_ex4_wlc;		    // ClassID
 input [64-`REAL_IFAR_WIDTH:51]                          derat_dcc_ex4_p_addr;
 input                                                   derat_dcc_ex4_noop_touch;
 input                                                   derat_dcc_ex4_miss;
@@ -615,7 +635,7 @@ input                                                   derat_dcc_ex4_vf;
 input                                                   derat_dcc_ex4_multihit_err_det;
 input                                                   derat_dcc_ex4_par_err_det;
 input                                                   derat_dcc_ex4_multihit_err_flush;
-input                                                   derat_dcc_ex4_par_err_flush; 
+input                                                   derat_dcc_ex4_par_err_flush;
 input                                                   derat_dcc_ex4_tlb_inelig;
 input                                                   derat_dcc_ex4_pt_fault;
 input                                                   derat_dcc_ex4_lrat_miss;
@@ -626,11 +646,14 @@ input                                                   derat_dcc_ex4_restart;
 input							derat_fir_par_err;
 input							derat_fir_multihit;
 
+// SetHold and ClrHold for itag
 input                                                   derat_dcc_ex4_setHold;
 input [0:`THREADS-1]                                    derat_dcc_clr_hold;
 
+// EMQ Idle indicator
 input [0:`THREADS-1]                                    derat_dcc_emq_idle;
 
+// DEBUG Address Compare Exception
 input                                                   spr_dcc_ex4_dvc1_en;
 input                                                   spr_dcc_ex4_dvc2_en;
 input                                                   spr_dcc_ex4_dacrw1_cmpr;
@@ -639,100 +662,111 @@ input                                                   spr_dcc_ex4_dacrw3_cmpr;
 input                                                   spr_dcc_ex4_dacrw4_cmpr;
 input [0:47]                                            spr_dcc_spr_lesr;
 
-input                                                   dir_dcc_ex4_hit;		    
-input                                                   dir_dcc_ex4_miss;		    
-input                                                   dir_dcc_ex4_set_rel_coll;	
-input                                                   dir_dcc_ex4_byp_restart;	
-input                                                   dir_dcc_ex5_dir_perr_det;	
-input                                                   dir_dcc_ex5_dc_perr_det;	
-input                                                   dir_dcc_ex5_dir_perr_flush;	
-input                                                   dir_dcc_ex5_dc_perr_flush;	
-input                                                   dir_dcc_ex5_multihit_det;	
-input                                                   dir_dcc_ex5_multihit_flush;	
-input                                                   dir_dcc_stq4_dir_perr_det;	
-input                                                   dir_dcc_stq4_multihit_det;	
-input                                                   dir_dcc_ex5_stp_flush;      
+input                                                   dir_dcc_ex4_hit;		    // ex4 Load/Store Hit
+input                                                   dir_dcc_ex4_miss;		    // ex4 Load/Store Miss
+input                                                   dir_dcc_ex4_set_rel_coll;	// Resource Conflict, should cause a reject
+input                                                   dir_dcc_ex4_byp_restart;	// Directory Bypassed stage that was restarted
+input                                                   dir_dcc_ex5_dir_perr_det;	// Data Directory Parity Error Detected
+input                                                   dir_dcc_ex5_dc_perr_det;	// Data Cache Parity Error Detected
+input                                                   dir_dcc_ex5_dir_perr_flush;	// Data Directory Parity Error Flush
+input                                                   dir_dcc_ex5_dc_perr_flush;	// Data Cache Parity Error Flush
+input                                                   dir_dcc_ex5_multihit_det;	// Directory Multihit Detected
+input                                                   dir_dcc_ex5_multihit_flush;	// Directory Multihit Flush
+input                                                   dir_dcc_stq4_dir_perr_det;	// Data Cache Parity Error Detected on the STQ Commit Pipeline
+input                                                   dir_dcc_stq4_multihit_det;	// Directory Multihit Detected on the STQ Commit Pipeline
+input                                                   dir_dcc_ex5_stp_flush;      // Directory Error detected on the STQ Commit Pipeline with EX5 LDP valid
 
-input [0:`THREADS-1]                                    iu_lq_cp_flush;			
-input [0:`THREADS-1]                                    iu_lq_recirc_val;		
-input [0:`THREADS*`ITAG_SIZE_ENC-1]                     iu_lq_cp_next_itag;		
+// Completion Inputs
+input [0:`THREADS-1]                                    iu_lq_cp_flush;			// Completion Flush Report
+input [0:`THREADS-1]                                    iu_lq_recirc_val;		// Next Itag Completion Report
+input [0:`THREADS*`ITAG_SIZE_ENC-1]                     iu_lq_cp_next_itag;		// Next Itag Completion Itag
 
+// XER[SO] Read for CP_NEXT instructions (stcx./icswx./ldawx.)
 input [0:`THREADS-1]                                    xu_lq_xer_cp_rd;
 
-output                                                  fgen_ex1_stg_flush;		
-output                                                  fgen_ex2_stg_flush;		
-output                                                  fgen_ex3_stg_flush;		
-output                                                  fgen_ex4_cp_flush;      
-output                                                  fgen_ex4_stg_flush;		
-output                                                  fgen_ex5_stg_flush;		
+// Stage Flush
+output                                                  fgen_ex1_stg_flush;		// ex1 Stage Flush
+output                                                  fgen_ex2_stg_flush;		// ex2 Stage Flush
+output                                                  fgen_ex3_stg_flush;		// ex3 Stage Flush
+output                                                  fgen_ex4_cp_flush;      // ex4 CP Flush
+output                                                  fgen_ex4_stg_flush;		// ex4 Stage Flush
+output                                                  fgen_ex5_stg_flush;		// ex5 Stage Flush
 
-input                                                   dir_dcc_rel3_dcarr_upd;		
+input                                                   dir_dcc_rel3_dcarr_upd;		// Reload Data Array Update Valid
 
-input                                                   xu_lq_spr_ccr2_en_trace;	
-input                                                   xu_lq_spr_ccr2_dfrat;		
-input                                                   xu_lq_spr_ccr2_ap;		
-input                                                   xu_lq_spr_ccr2_ucode_dis;	
-input                                                   xu_lq_spr_ccr2_notlb;		
-input                                                   xu_lq_spr_xucr0_clkg_ctl;	
-input                                                   xu_lq_spr_xucr0_wlk;		
-input                                                   xu_lq_spr_xucr0_mbar_ack;	
-input                                                   xu_lq_spr_xucr0_tlbsync;	
-input                                                   xu_lq_spr_xucr0_dcdis;		
-input                                                   xu_lq_spr_xucr0_aflsta;		
-input                                                   xu_lq_spr_xucr0_flsta;		
-input [0:`THREADS-1]                                    xu_lq_spr_xucr0_trace_um;	
-input                                                   xu_lq_spr_xucr0_mddp;		
-input                                                   xu_lq_spr_xucr0_mdcp;		
-input                                                   xu_lq_spr_xucr4_mmu_mchk;	
-input                                                   xu_lq_spr_xucr4_mddmh;		
+// Data Cache Config
+input                                                   xu_lq_spr_ccr2_en_trace;	// MTSPR Trace is Enabled
+input                                                   xu_lq_spr_ccr2_dfrat;		// Force Real Address Translation
+input                                                   xu_lq_spr_ccr2_ap;		// AP Available
+input                                                   xu_lq_spr_ccr2_ucode_dis;	// Ucode Disabled
+input                                                   xu_lq_spr_ccr2_notlb;		// MMU is disabled
+input                                                   xu_lq_spr_xucr0_clkg_ctl;	// Clock Gating Override
+input                                                   xu_lq_spr_xucr0_wlk;		// Data Cache Way Locking Enable
+input                                                   xu_lq_spr_xucr0_mbar_ack;	// L2 ACK of membar and lwsync
+input                                                   xu_lq_spr_xucr0_tlbsync;	// L2 ACK of tlbsync
+input                                                   xu_lq_spr_xucr0_dcdis;		// Data Cache Disable
+input                                                   xu_lq_spr_xucr0_aflsta;		// AXU Force Load/Store Alignment interrupt
+input                                                   xu_lq_spr_xucr0_flsta;		// FX Force Load/Store Alignment interrupt
+input [0:`THREADS-1]                                    xu_lq_spr_xucr0_trace_um;	// TRACE SPR is Enabled in user mode
+input                                                   xu_lq_spr_xucr0_mddp;		// Machine Check on Data Cache Directory Parity Error
+input                                                   xu_lq_spr_xucr0_mdcp;		// Machine Check on Data Cache Parity Error
+input                                                   xu_lq_spr_xucr4_mmu_mchk;	// Machine Check on a Data ERAT Parity or Multihit Error
+input                                                   xu_lq_spr_xucr4_mddmh;		// Machine Check on Data Cache Directory Multihit Error
 
-input [0:`THREADS-1]                                    xu_lq_spr_msr_cm;		
-input [0:`THREADS-1]                                    xu_lq_spr_msr_fp;		
-input [0:`THREADS-1]                                    xu_lq_spr_msr_spv;		
-input [0:`THREADS-1]                                    xu_lq_spr_msr_de;		
-input [0:`THREADS-1]                                    xu_lq_spr_dbcr0_idm;		
-input [0:`THREADS-1]                                    xu_lq_spr_epcr_duvd;		
+input [0:`THREADS-1]                                    xu_lq_spr_msr_cm;		// 64bit mode enable
+input [0:`THREADS-1]                                    xu_lq_spr_msr_fp;		// FP Available
+input [0:`THREADS-1]                                    xu_lq_spr_msr_spv;		// VEC Available
+input [0:`THREADS-1]                                    xu_lq_spr_msr_de;		// Debug Interrupt Enable
+input [0:`THREADS-1]                                    xu_lq_spr_dbcr0_idm;		// Internal Debug Mode Enable
+input [0:`THREADS-1]                                    xu_lq_spr_epcr_duvd;		// Disable Hypervisor Debug
 
-input [0:`THREADS-1]                                    xu_lq_spr_msr_gs;		
-input [0:`THREADS-1]                                    xu_lq_spr_msr_pr;		
-input [0:`THREADS-1]                                    xu_lq_spr_msr_ds;		
-input [0:7]                                             mm_lq_lsu_lpidr;		
+// MSR[GS,PR] bits, indicates which state we are running in
+input [0:`THREADS-1]                                    xu_lq_spr_msr_gs;		// (MSR.GS)
+input [0:`THREADS-1]                                    xu_lq_spr_msr_pr;		// Problem State (MSR.PR)
+input [0:`THREADS-1]                                    xu_lq_spr_msr_ds;		// Data Address Space (MSR.DS)
+input [0:7]                                             mm_lq_lsu_lpidr;		// the LPIDR register
 input [0:14*`THREADS-1]                                 mm_lq_pid;
 
-input                                                   lsq_ctl_ex5_ldq_restart;	
-input                                                   lsq_ctl_ex5_stq_restart;	
+// RESTART indicator
+input                                                   lsq_ctl_ex5_ldq_restart;	// Loadmiss Queue Report
+input                                                   lsq_ctl_ex5_stq_restart;	// Store Queue Report
 input                                                   lsq_ctl_ex5_stq_restart_miss;
 
+// Store Data Forward
 input                                                   lsq_ctl_ex5_fwd_val;
 
 input                                                   lsq_ctl_sync_in_stq;
 
+// Hold RV Indicator
 input                                                   lsq_ctl_rv_hold_all;
 
+// Reservation station set barrier indicator
 input                                                   lsq_ctl_rv_set_hold;
 input [0:`THREADS-1]                                    lsq_ctl_rv_clr_hold;
 
+// Reload/Commit Pipe
 input                                                   lsq_ctl_stq1_stg_act;
 input                                                   lsq_ctl_stq1_val;
 input [0:`THREADS-1]                                    lsq_ctl_stq1_thrd_id;
-input                                                   lsq_ctl_stq1_store_val;		
-input                                                   lsq_ctl_stq1_watch_clr;	    
-input [0:1]                                             lsq_ctl_stq1_l_fld;		    
+input                                                   lsq_ctl_stq1_store_val;		// Store Commit instruction
+input                                                   lsq_ctl_stq1_watch_clr;	    // Recirc Watch Clear instruction
+input [0:1]                                             lsq_ctl_stq1_l_fld;		    // Recirc Watch Clear L-Field
 input                                                   lsq_ctl_stq1_resv;
 input                                                   lsq_ctl_stq1_ci;
-input                                                   lsq_ctl_stq1_axu_val;		
+input                                                   lsq_ctl_stq1_axu_val;		// Reload is for a Vector Register
 input                                                   lsq_ctl_stq1_epid_val;
-input                                                   lsq_ctl_stq1_mftgpr_val;	
-input                                                   lsq_ctl_stq1_mfdpf_val;		
-input                                                   lsq_ctl_stq1_mfdpa_val;		
-input                                                   lsq_ctl_stq2_blk_req;		
+input                                                   lsq_ctl_stq1_mftgpr_val;	// MFTGPR instruction Valid
+input                                                   lsq_ctl_stq1_mfdpf_val;		// MFDP to the Fixed Point Unit instruction Valid
+input                                                   lsq_ctl_stq1_mfdpa_val;		// MFDP to the Auxilary Unit instruction Valid
+input                                                   lsq_ctl_stq2_blk_req;		// Block Store due to RV issue
 input                                                   lsq_ctl_stq4_xucr0_cul;
 input [0:`ITAG_SIZE_ENC-1]                              lsq_ctl_stq5_itag;
 input [0:`AXU_SPARE_ENC+`GPR_POOL_ENC+`THREADS_POOL_ENC-1]  lsq_ctl_stq5_tgpr;
 input                                                   lsq_ctl_rel1_gpr_val;
 input [0:`AXU_SPARE_ENC+`GPR_POOL_ENC+`THREADS_POOL_ENC-1]  lsq_ctl_rel1_ta_gpr;
-input                                                   lsq_ctl_rel1_upd_gpr;		
+input                                                   lsq_ctl_rel1_upd_gpr;		// Reload data should be written to GPR (DCB ops don't write to GPRs)
 
+// Store Queue Completion Report
 input                                                   lsq_ctl_stq_cpl_ready;
 input [0:`ITAG_SIZE_ENC-1]                              lsq_ctl_stq_cpl_ready_itag;
 input [0:`THREADS-1]                                    lsq_ctl_stq_cpl_ready_tid;
@@ -743,16 +777,19 @@ input [0:5]                                             lsq_ctl_stq_exception;
 input [0:3]                                             lsq_ctl_stq_dacrw;
 output                                                  ctl_lsq_stq_cpl_blk;
 
-input                                                   lsq_ctl_ex3_strg_val;		
-input                                                   lsq_ctl_ex3_strg_noop;		
-input                                                   lsq_ctl_ex3_illeg_lswx;		
-input                                                   lsq_ctl_ex3_ct_val;		    
-input [0:5]                                             lsq_ctl_ex3_be_ct;		    
-input [0:5]                                             lsq_ctl_ex3_le_ct;		    
+// Illegal LSWX has been determined
+input                                                   lsq_ctl_ex3_strg_val;		// STQ has checked XER valid
+input                                                   lsq_ctl_ex3_strg_noop;		// STQ detected a noop of LSWX/STSWX
+input                                                   lsq_ctl_ex3_illeg_lswx;		// STQ detected illegal form of LSWX
+input                                                   lsq_ctl_ex3_ct_val;		    // ICSWX Data is valid
+input [0:5]                                             lsq_ctl_ex3_be_ct;		    // Big Endian Coprocessor Type Select
+input [0:5]                                             lsq_ctl_ex3_le_ct;		    // Little Endian Coprocessor Type Select
 
+// Directory Results Input
 input                                                   dir_dcc_stq3_hit;
 input                                                   dir_dcc_ex5_cr_rslt;
 
+// EX2 Execution Pipe Outputs
 output                                                  dcc_dir_ex2_frc_align2;
 output                                                  dcc_dir_ex2_frc_align4;
 output                                                  dcc_dir_ex2_frc_align8;
@@ -760,18 +797,19 @@ output                                                  dcc_dir_ex2_frc_align16;
 output                                                  dcc_dir_ex2_64bit_agen;
 output [0:`THREADS-1]                                   dcc_dir_ex2_thrd_id;
 output                                                  dcc_derat_ex3_strg_noop;
-output                                                  dcc_derat_ex5_blk_tlb_req;	
-output [0:`THREADS-1]                                   dcc_derat_ex6_cplt;		    
-output [0:`ITAG_SIZE_ENC-1]                             dcc_derat_ex6_cplt_itag;	
+output                                                  dcc_derat_ex5_blk_tlb_req;	// Higher Priority Interrupt detected, block ERAT miss request from going to MMU
+output [0:`THREADS-1]                                   dcc_derat_ex6_cplt;		    // Completion report was sent for EMQ detected interrupts, EMQ entry can be freed
+output [0:`ITAG_SIZE_ENC-1]                             dcc_derat_ex6_cplt_itag;	// Completion report ITAG for EMQ detected interrupt
 
+// EX3 Execution Pipe Outputs
 output                                                  dcc_dir_ex3_lru_upd;
-output                                                  dcc_dir_ex3_cache_acc;		
+output                                                  dcc_dir_ex3_cache_acc;		// Cache Access is Valid
 output                                                  dcc_dir_ex3_pfetch_val;
-output                                                  dcc_dir_ex3_lock_set;		
-output                                                  dcc_dir_ex3_th_c;		    
-output                                                  dcc_dir_ex3_watch_set;		
-output                                                  dcc_dir_ex3_larx_val;		
-output                                                  dcc_dir_ex3_watch_chk;		
+output                                                  dcc_dir_ex3_lock_set;		// DCBT[ST]LS Operation is valid
+output                                                  dcc_dir_ex3_th_c;		    // DCBT[ST]LS Operation is targeting the L1 Data Cache
+output                                                  dcc_dir_ex3_watch_set;		// LDAWX Operation is valid
+output                                                  dcc_dir_ex3_larx_val;		// LARX Operation is valid, the directory should be invalidated if hit
+output                                                  dcc_dir_ex3_watch_chk;		// WCHK Operation is valid
 output                                                  dcc_dir_ex3_ddir_acc;
 output                                                  dcc_dir_ex4_load_val;
 output                                                  dcc_spr_ex3_data_val;
@@ -784,6 +822,7 @@ output [0:3]                                            ctl_dat_ex3_be_ld_rotsel
 output                                                  ctl_dat_ex3_algebraic;
 output [0:3]                                            ctl_dat_ex3_le_alg_rotsel;
 
+// EX4 Execution Pipe Outputs
 output                                                  dcc_byp_rel2_stg_act;
 output                                                  dcc_byp_rel3_stg_act;
 output                                                  dcc_byp_ram_act;
@@ -800,6 +839,7 @@ output [0:3]                                            dcc_byp_ex6_dacr_cmpr;
 output [64-`REAL_IFAR_WIDTH:63-(`DC_SIZE-3)]            dcc_dir_ex4_p_addr;
 output                                                  dcc_dir_stq6_store_val;
 
+// Execution Pipe Outputs
 output [0:`THREADS-1]                                   ctl_lsq_ex2_streq_val;
 output [0:`ITAG_SIZE_ENC-1]                             ctl_lsq_ex2_itag;
 output [0:`THREADS-1]                                   ctl_lsq_ex2_thrd_id;
@@ -839,12 +879,12 @@ output                                                  ctl_lsq_ex5_lock_clr;
 output                                                  ctl_lsq_ex5_lock_set;
 output                                                  ctl_lsq_ex5_watch_set;
 output [0:`AXU_SPARE_ENC+`GPR_POOL_ENC+`THREADS_POOL_ENC-1] ctl_lsq_ex5_tgpr;
-output                                                  ctl_lsq_ex5_axu_val;		
+output                                                  ctl_lsq_ex5_axu_val;		// XU,AXU type operation
 output                                                  ctl_lsq_ex5_is_epid;
 output [0:3]                                            ctl_lsq_ex5_usr_def;
-output                                                  ctl_lsq_ex5_drop_rel;		
-output                                                  ctl_lsq_ex5_flush_req;		
-output                                                  ctl_lsq_ex5_flush_pfetch;   
+output                                                  ctl_lsq_ex5_drop_rel;		// L2 only instructions
+output                                                  ctl_lsq_ex5_flush_req;		// Flush request from LDQ/STQ
+output                                                  ctl_lsq_ex5_flush_pfetch;   // Flush Prefetch in EX5
 output [0:10]                                           ctl_lsq_ex5_cmmt_events;
 output                                                  ctl_lsq_ex5_perf_val0;
 output [0:3]                                            ctl_lsq_ex5_perf_sel0;
@@ -861,45 +901,51 @@ output [0:3]                                            ctl_lsq_ex5_dacrw;
 output [0:5]                                            ctl_lsq_ex5_ttype;
 output [0:1]                                            ctl_lsq_ex5_l_fld;
 output                                                  ctl_lsq_ex5_load_hit;
-input  [0:3]                                            lsq_ctl_ex6_ldq_events;     
-input  [0:1]                                            lsq_ctl_ex6_stq_events;     
+input  [0:3]                                            lsq_ctl_ex6_ldq_events;     // LDQ Pipeline Performance Events
+input  [0:1]                                            lsq_ctl_ex6_stq_events;     // LDQ Pipeline Performance Events
 output [0:26]                                           ctl_lsq_stq3_icswx_data;
 output [0:`THREADS-1]                                   ctl_lsq_dbg_int_en;
 output [0:`THREADS-1]                                   ctl_lsq_ldp_idle;
 
+// SPR Directory Read Valid
 output                                                  ctl_lsq_rv1_dir_rd_val;
 
+// Directory Read interface
 output                                                  dcc_dec_arr_rd_rv1_val;
 output [0:5]                                            dcc_dec_arr_rd_congr_cl;
 
+// MFTGPR instruction
 output                                                  dcc_dec_stq3_mftgpr_val;
 output                                                  dcc_dec_stq5_mftgpr_val;
 
-output                                                  lq_xu_spr_xucr0_cul;		
+// SPR status
+output                                                  lq_xu_spr_xucr0_cul;		// Cache Lock unable to lock
 output [0:31]                                           dcc_dir_spr_xucr2_rmt;
-input                                                   spr_dcc_spr_xudbg0_exec;	
-input [0:`THREADS-1]                                    spr_dcc_spr_xudbg0_tid;	    
-input [0:2]                                             spr_dcc_spr_xudbg0_way;		
-input [0:5]                                             spr_dcc_spr_xudbg0_row;		
-output                                                  dcc_spr_spr_xudbg0_done;	
-output                                                  dcc_spr_spr_xudbg1_valid;	
-output [0:3]                                            dcc_spr_spr_xudbg1_watch;	
-output [0:3]                                            dcc_spr_spr_xudbg1_parity;	
-output [0:6]                                            dcc_spr_spr_xudbg1_lru;		
-output                                                  dcc_spr_spr_xudbg1_lock;	
-output [33:63]                                          dcc_spr_spr_xudbg2_tag;		
-input [32:63]                                           spr_dcc_spr_xucr2_rmt;		
-input                                                   spr_dcc_spr_lsucr0_clchk;	
-input [0:(32*`THREADS)-1]                               spr_dcc_spr_acop_ct;		
-input [0:(32*`THREADS)-1]                               spr_dcc_spr_hacop_ct;		
+input                                                   spr_dcc_spr_xudbg0_exec;	// Execute Directory Read
+input [0:`THREADS-1]                                    spr_dcc_spr_xudbg0_tid;	    // Directory Read Initiated by Thread
+input [0:2]                                             spr_dcc_spr_xudbg0_way;		// Directory Read Way
+input [0:5]                                             spr_dcc_spr_xudbg0_row;		// Directory Read Congruence Class
+output                                                  dcc_spr_spr_xudbg0_done;	// Directory Read Done
+output                                                  dcc_spr_spr_xudbg1_valid;	// Directory Valid State
+output [0:3]                                            dcc_spr_spr_xudbg1_watch;	// Directory Watch State
+output [0:3]                                            dcc_spr_spr_xudbg1_parity;	// Directory Parity
+output [0:6]                                            dcc_spr_spr_xudbg1_lru;		// Directory LRU
+output                                                  dcc_spr_spr_xudbg1_lock;	// Directory Lock State
+output [33:63]                                          dcc_spr_spr_xudbg2_tag;		// Directory Tag
+input [32:63]                                           spr_dcc_spr_xucr2_rmt;		// RMT Table
+input                                                   spr_dcc_spr_lsucr0_clchk;	// Cacheline Check Enabled
+input [0:(32*`THREADS)-1]                               spr_dcc_spr_acop_ct;		// ACOP register for icswx
+input [0:(32*`THREADS)-1]                               spr_dcc_spr_hacop_ct;		// HACOP register for icswx
 input [0:`THREADS-1]                                    spr_dcc_epsc_epr;
 input [0:`THREADS-1]                                    spr_dcc_epsc_eas;
 input [0:`THREADS-1]                                    spr_dcc_epsc_egs;
 input [0:(8*`THREADS)-1]                                spr_dcc_epsc_elpid;
 input [0:(14*`THREADS)-1]                               spr_dcc_epsc_epid;
 
+// Back-invalidate
 output                                                  dcc_dir_ex2_binv_val;
 
+// Update Data Array Valid
 output                                                  stq4_dcarr_wren;
 
 output                                                  dcc_byp_ram_sel;
@@ -917,10 +963,12 @@ output                                                  lq_xu_cr_ex5_we;
 output [0:`CR_POOL_ENC+`THREADS_POOL_ENC-1]             lq_xu_cr_ex5_wa;
 output [0:`CR_WIDTH-1]                                  lq_xu_ex5_cr;
 
+// Interface with AXU PassThru with XU
 output [59:63]                                          lq_xu_axu_ex4_addr;
 output                                                  lq_xu_axu_ex5_we;
 output                                                  lq_xu_axu_ex5_le;
 
+// Outputs to Reservation Station
 output [0:`THREADS-1]                                   lq_rv_itag1_vld;
 output [0:`ITAG_SIZE_ENC-1]                             lq_rv_itag1;
 output                                                  lq_rv_itag1_restart;
@@ -930,6 +978,7 @@ output                                                  lq_rv_itag1_cord;
 output [0:`THREADS-1]                                   lq_rv_clr_hold;
 output                                                  dcc_dec_hold_all;
 
+// Completion Report
 output [0:`THREADS-1]                                   lq0_iu_execute_vld;
 output [0:`THREADS-1]                                   lq0_iu_recirc_val;
 output [0:`ITAG_SIZE_ENC-1]                             lq0_iu_itag;
@@ -945,6 +994,7 @@ output [0:3]                                            lq0_iu_dacrw;
 output [0:31]                                           lq0_iu_instr;
 output [64-(2**`GPR_WIDTH_ENC):63]                      lq0_iu_eff_addr;
 
+// outputs to prefetch
 output [64-(2**`GPR_WIDTH_ENC):59]                      dcc_pf_ex5_eff_addr;
 output                                                  dcc_pf_ex5_req_val_4pf;
 output                                                  dcc_pf_ex5_act;
@@ -952,6 +1002,7 @@ output [0:`THREADS-1]                                   dcc_pf_ex5_thrd_id;
 output                                                  dcc_pf_ex5_loadmiss;
 output [0:`ITAG_SIZE_ENC-1]                             dcc_pf_ex5_itag;
 
+// Error Reporting
 output                                                  lq_pc_err_derat_parity;
 output                                                  lq_pc_err_dir_ldp_parity;
 output                                                  lq_pc_err_dir_stp_parity;
@@ -960,12 +1011,15 @@ output                                                  lq_pc_err_derat_multihit
 output                                                  lq_pc_err_dir_ldp_multihit;
 output                                                  lq_pc_err_dir_stp_multihit;
 
+// Ram Mode Control
 input [0:`THREADS-1]                                    pc_lq_ram_active;
 output                                                  lq_pc_ram_data_val;
 
+// LQ Pervasive
 output [0:18+`THREADS-1]                                ctl_perv_ex6_perf_events;
 output [0:6+`THREADS-1]                                 ctl_perv_stq4_perf_events;
 
+// ACT's
 output                                                  dcc_dir_ex2_stg_act;
 output                                                  dcc_dir_ex3_stg_act;
 output                                                  dcc_dir_ex4_stg_act;
@@ -981,8 +1035,9 @@ output                                                  dcc_dir_binv4_ex4_stg_ac
 output                                                  dcc_dir_binv5_ex5_stg_act;
 output                                                  dcc_dir_binv6_ex6_stg_act;
 
+// Pervasive
 
-                       
+
 inout                                                   vdd;
 
 
@@ -1013,12 +1068,21 @@ input                                                   scan_in;
 
 output                                                  scan_out;
 
+//--------------------------
+// constants
+//--------------------------
 parameter                                               TAGSIZE = ((63-(`DC_SIZE-3))-(64-`REAL_IFAR_WIDTH))+1;
 parameter                                               AXU_TARGET_ENC = `AXU_SPARE_ENC+`GPR_POOL_ENC+`THREADS_POOL_ENC;
 
+//--------------------------
+// components
+//--------------------------
 
-parameter [0:4]                                         rot_max_size = 5'b10000; 
+parameter [0:4]                                         rot_max_size = 5'b10000;
 
+//--------------------------
+// signals
+//--------------------------
 wire [0:`THREADS-1]                                     iu_lq_recirc_val_d;
 wire [0:`THREADS-1]                                     iu_lq_recirc_val_q;
 wire [0:`ITAG_SIZE_ENC-1]                               iu_lq_cp_next_itag_q[0:`THREADS-1];
@@ -2138,6 +2202,9 @@ wire                                                    fgen_ex5_cp_flush;
 wire                                                    fgen_scan_in;
 wire                                                    fgen_scan_out;
 
+//--------------------------
+// register constants
+//--------------------------
 parameter                                               iu_lq_recirc_val_offset = 0;
 parameter                                               iu_lq_cp_next_itag_offset = iu_lq_recirc_val_offset + `THREADS;
 parameter                                               iu_lq_cp_flush_offset = iu_lq_cp_next_itag_offset + (`THREADS*`ITAG_SIZE_ENC);
@@ -2579,15 +2646,18 @@ wire [0:scan_right]                                     siv;
 wire [0:scan_right]                                     sov;
 
 
-(* analysis_not_referenced="true" *)  
+(* analysis_not_referenced="true" *)
 wire                                                    unused;
-
 
 assign tiup = 1;
 assign tidn = 0;
 assign unused = ex3_rot_sel_non_le[0] | ex3_alg_bit_le_sel[0] | (|hypervisor_state) | (|ex4_p_addr[58:63]) | tidn | (|spr_dcc_spr_lesr);
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Act Signals going to all Latches
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// Execution Pipe ACT
 assign ex1_stg_act_d = dec_dcc_ex0_act | clkg_ctl_override_q;
 assign ex1_stg_act = dec_dcc_ex1_cmd_act | clkg_ctl_override_q;
 assign ex2_stg_act_d = ex1_stg_act;
@@ -2597,6 +2667,7 @@ assign ex5_stg_act_d = ex4_stg_act_q;
 assign ex6_stg_act_d = ex5_stg_act_q;
 assign ex1_instr_act = ex1_stg_act_q | dec_dcc_ex1_pfetch_val;
 
+// Back-Invalidate PIPE ACT
 assign binv1_stg_act = ex1_binv_val_q | clkg_ctl_override_q;
 assign binv2_stg_act_d = binv1_stg_act;
 assign binv3_stg_act_d = binv2_stg_act_q;
@@ -2609,23 +2680,33 @@ assign ex4_binv4_stg_act = ex4_stg_act_q | binv4_stg_act_q;
 assign ex5_binv5_stg_act = ex5_stg_act_q | binv5_stg_act_q;
 assign ex6_binv6_stg_act = ex6_stg_act_q | binv6_stg_act_q;
 
+// XUDBG PIPE ACT
 assign ex4_darr_rd_act = dir_arr_rd_ex4_done_q;
 assign ex5_darr_rd_act = dir_arr_rd_ex5_done_q;
 
+// LQ0 Interface Report ACT
 assign lq0_iu_act = ex5_stg_act_q | lsq_ctl_stq_cpl_ready;
 
+// REL/STQ Pipe ACT
 assign stq1_stg_act = lsq_ctl_stq1_stg_act | clkg_ctl_override_q;
 assign stq2_stg_act_d = stq1_stg_act;
 assign stq3_stg_act_d = stq2_stg_act_q;
 assign stq4_stg_act_d = stq3_stg_act_q;
 assign stq5_stg_act_d = stq4_stg_act_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Completion Inputs
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 assign iu_lq_recirc_val_d = iu_lq_recirc_val;
 assign iu_lq_cp_flush_d = iu_lq_cp_flush;
 
+// XER[SO] bit for CP_NEXT CR update instructions (stcx./icswx./ldawx.)
 assign xer_lq_cp_rd_so_d = xu_lq_xer_cp_rd;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// IU Dispatch Inputs
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 assign ex0_i0_vld_d = rv_lq_rv1_i0_vld;
 assign ex0_i0_ucode_preissue_d = rv_lq_rv1_i0_ucode_preissue;
@@ -2636,65 +2717,142 @@ assign ex0_i1_ucode_preissue_d = rv_lq_rv1_i1_ucode_preissue;
 assign ex0_i1_2ucode_d = rv_lq_rv1_i1_2ucode;
 assign ex0_i1_ucode_cnt_d = rv_lq_rv1_i1_ucode_cnt;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// LSU Config Bits
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// CCR2[AP] Auxilary Processor Available
+// 1 => Auxilary Processor Available
+// 0 => Auxilary Processor Unavailable
 assign spr_ccr2_ap_d = xu_lq_spr_ccr2_ap;
 
+// CCR2[EN_TRACE] MTSPR TRACE Enabled
+// 1 => MTSPR Trace is enabled
+// 0 => MTSPR Trace is disabled
 assign spr_ccr2_en_trace_d = xu_lq_spr_ccr2_en_trace;
 
+// CCR2[UCODE_DIS] Ucode Disabled
+// 1 => Ucode Disabled
+// 0 => Ucode Enabled
 assign spr_ccr2_ucode_dis_d = xu_lq_spr_ccr2_ucode_dis;
 
+// CCR2[NOTLB] MMU Disabled
+// 1 => MMU Disabled
+// 0 => MMU Enabled
 assign spr_ccr2_notlb_d = xu_lq_spr_ccr2_notlb;
 
+// XUCR0[TRACE_UM] Enable MTSPR TRACE in user mode
+// 1 => Enable MTSPR TRACE in user mode
+// 0 => Disable MTSPR TRACE in user mode
 assign spr_xucr0_en_trace_um_d = xu_lq_spr_xucr0_trace_um;
 assign ex4_mtspr_trace_tid_en = |(spr_xucr0_en_trace_um_q & ex4_thrd_id_q);
 assign ex4_mtspr_trace_en = ex4_mtspr_trace_q & spr_ccr2_en_trace_q & (ex4_mtspr_trace_tid_en | ~ex4_spr_msr_pr);
 assign ex4_mtspr_trace_dis = ex4_mtspr_trace_q & ~(spr_ccr2_en_trace_q & (ex4_mtspr_trace_tid_en | ~ex4_spr_msr_pr));
 
+// XUCR0[CLKG] Clock Gating Override
+// 1 => Override Clock ACT's controls
+// 0 => Use Clock Gating controls
 assign clkg_ctl_override_d = xu_lq_spr_xucr0_clkg_ctl;
 
+// XUCR0[WLK] Way Locking Enabled
+// 1 => Way Locking Enabled
+// 0 => Way Locking Disabled
 assign spr_xucr0_wlk_d = xu_lq_spr_xucr0_wlk & ~xu_lq_spr_ccr2_dfrat;
 
-assign way_lck_rmt = ~spr_xucr0_wlk_q ? 32'hFFFFFFFF : spr_dcc_spr_xucr2_rmt; 
+assign way_lck_rmt = ~spr_xucr0_wlk_q ? 32'hFFFFFFFF : spr_dcc_spr_xucr2_rmt;
 
+// XUCR0[MBAR_ACK]
+// 1 => Wait for L2 Ack of mbar and lwsync
+// 0 => Dont wait for L2 Ack of mbar and lwsync
 assign spr_xucr0_mbar_ack_d = xu_lq_spr_xucr0_mbar_ack;
 
+// XUCR0[TLBSYNC]
+// 1 => Wait for L2 Ack of tlbsync
+// 0 => Dont wait for L2 Ack of tlbsync
 assign spr_xucr0_tlbsync_d = xu_lq_spr_xucr0_tlbsync;
 
+// XUCR0[DC_DIS] Data Cache Disabled
+// 1 => L1 Data Cache Disabled
+// 0 => L1 Data Cache Enabled
 assign spr_xucr0_dcdis_d = xu_lq_spr_xucr0_dcdis;
 
+// XUCR0[AFLSTA] AXU Force Load/Store Alignment Interrupt
+// 1 => Force alingment interrupt if misaligned access
+// 0 => Dont force alingment interrupt if misaligned access
 assign spr_xucr0_aflsta_d = xu_lq_spr_xucr0_aflsta;
 
+// XUCR0[FLSTA] FX Force Load/Store Alignment Interrupt
+// 1 => Force alingment interrupt if misaligned access
+// 0 => Dont force alingment interrupt if misaligned access
 assign spr_xucr0_flsta_d = xu_lq_spr_xucr0_flsta;
 
+// XUCR0[MDDP] Machine Check on Data Cache Directory Parity Error
+// 1 => Cause a machine check on data cache directory parity error
+// 0 => Dont cause a machine check on data cache directory parity error, generate an N-Flush
 assign spr_xucr0_mddp_d = xu_lq_spr_xucr0_mddp;
 
+// XUCR0[MDCP] Machine Check on Data Cache Parity Error
+// 1 => Cause a machine check on data cache parity error
+// 0 => Dont cause a machine check on data cache parity error, generate an N-Flush
 assign spr_xucr0_mdcp_d = xu_lq_spr_xucr0_mdcp;
 
+// XUCR4[MMU_MCHK] Machine Check on Data ERAT Parity or Multihit Error
+// 1 => Cause a machine check on data ERAT parity or multihit error
+// 0 => Dont cause a machine check on data ERAT parity or multihit error, generate an N-Flush
 assign spr_xucr4_mmu_mchk_d = xu_lq_spr_xucr4_mmu_mchk;
 
+// XUCR4[MDDMH] Machine Check on Data Cache Directory Multihit Error
+// 1 => Cause a machine check on data cache directory multihit error
+// 0 => Dont cause a machine check on data cache directory multihit error, generate an N-Flush
 assign spr_xucr4_mddmh_d = xu_lq_spr_xucr4_mddmh;
 
+// MSR[FP] Floating Point Processor Available
+// 1 => Floating Point Processor Available
+// 0 => Floating Point Processor Unavailable
 assign spr_msr_fp_d = xu_lq_spr_msr_fp;
 assign spr_msr_fp = |(spr_msr_fp_q & ex3_thrd_id_q);
 
+// MSR[SPV] Vector Processor Available
+// 1 => Vector Processor Available
+// 0 => Vector Processor Unavailable
 assign spr_msr_spv_d = xu_lq_spr_msr_spv;
 assign spr_msr_spv = |(spr_msr_spv_q & ex3_thrd_id_q);
 
+// MSR[GS] Guest State
+// 1 => Processor is in Guest State
+// 0 => Processor is in Hypervisor State
 assign spr_msr_gs_d = xu_lq_spr_msr_gs;
 
+// MSR[PR] Problem State
+// 1 => Processor is in User Mode
+// 0 => Processor is in Supervisor Mode
 assign spr_msr_pr_d = xu_lq_spr_msr_pr;
 assign ex4_spr_msr_pr = |(spr_msr_pr_q & ex4_thrd_id_q);
 
+// MSR[DS] Data Address Space
+// 1 => Processor directs all data storage accesses to address space 1
+// 0 => Processor directs all data storage accesses to address space 0
 assign spr_msr_ds_d = xu_lq_spr_msr_ds;
 
+// MSR[DE] Debug Interrupt Enable
+// 1 => Processor is allowed to take a debug interrupt
+// 0 => Processor is not allowed to take a debug interrupt
 assign spr_msr_de_d = xu_lq_spr_msr_de;
 
+// DBCR0[IDM] Internal Debug Mode Enable
+// 1 => Enable internal debug mode
+// 0 => Disable internal debug mode
 assign spr_dbcr0_idm_d = xu_lq_spr_dbcr0_idm;
 
+// EPCR[DUVD] Disable Hypervisor Debug
+// 1 => Debug events are suppressed in the hypervisor state
+// 0 => Debug events can occur in the hypervisor state
 assign spr_epcr_duvd_d = xu_lq_spr_epcr_duvd;
 
+// Logical Partition ID
 assign spr_lpidr_d = mm_lq_lsu_lpidr;
 
+// Threaded Registers
 generate begin : tidPid
       genvar tid;
       for (tid=0; tid<`THREADS; tid=tid+1) begin : tidPid
@@ -2705,17 +2863,32 @@ generate begin : tidPid
    end
 endgenerate
 
+// Determine threads in hypervisor state
+// MSR[GS]      | MSR[PR]       | Mode
+//------------------------------------------------
+// 0            | 0             | Hypervisor
+// 0            | 1             | User
+// 1            | 0             | Guest Supervisor
+// 1            | 1             | Guest User
 assign hypervisor_state = ~(spr_msr_gs_q | spr_msr_pr_q);
 
+// Determine if a Debug Interrupt Should Occur
 assign dbg_int_en_d = spr_msr_de_q & spr_dbcr0_idm_q & ~(spr_epcr_duvd_q & ~spr_msr_gs_q & ~spr_msr_pr_q);
 
+// 64Bit mode Select
 assign ex1_lsu_64bit_mode_d = xu_lq_spr_msr_cm;
 assign ex1_lsu_64bit_mode = |(ex1_lsu_64bit_mode_q & dec_dcc_ex1_thrd_id);
 assign ex2_lsu_64bit_agen_d = ex1_lsu_64bit_mode | ex1_binv_val_q | ex1_derat_snoop_val_q;
 assign ex3_lsu_64bit_agen_d = ex2_lsu_64bit_agen_q;
 assign ex4_lsu_64bit_agen_d = ex3_lsu_64bit_agen_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Back-Invalidate Pipe
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// Back-Invalidate Address comes from ALU
+// it is provided in rv1 and muxed into bypass in ex1
+// it is then added with 0 and bypasses the erat translation
 assign rv1_binv_val_d = lsq_ctl_rv0_back_inv;
 assign ex0_binv_val_d = rv1_binv_val_q;
 assign ex1_binv_val_d = ex0_binv_val_q;
@@ -2723,10 +2896,19 @@ assign ex2_binv_val_d = ex1_binv_val_q;
 assign ex3_binv_val_d = ex2_binv_val_q;
 assign ex4_binv_val_d = ex3_binv_val_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Snoop-Invalidate Pipe
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// Snoop-Invalidate Address comes from ALU
+// it is provided in rv1 and muxed into bypass in ex1
+// it is then added with 0 and goes directly to the erat
 assign ex0_derat_snoop_val_d = derat_rv1_snoop_val;
 assign ex1_derat_snoop_val_d = ex0_derat_snoop_val_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Execution Instruction Decode Staging
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 assign ex2_itag_d = dec_dcc_ex1_itag;
 assign ex3_itag_d = ex2_itag_q;
@@ -2775,7 +2957,7 @@ assign ex2_cache_acc_d = dec_dcc_ex1_cache_acc & ~fgen_ex1_stg_flush_int;
 assign ex3_cache_acc_d = ex2_cache_acc_q & ~fgen_ex2_stg_flush_int;
 assign ex4_cache_acc_d = ex3_cache_acc_q & ~fgen_ex3_stg_flush_int;
 assign ex5_cache_acc_d = ex4_cache_acc_q & ~fgen_ex4_stg_flush_int;
-assign ex6_cache_acc_d = ex5_cache_acc_q & ~fgen_ex5_cp_flush;          
+assign ex6_cache_acc_d = ex5_cache_acc_q & ~fgen_ex5_cp_flush;          // Different because it only goes to performance event
 
 assign ex2_thrd_id_d = dec_dcc_ex1_thrd_id;
 assign ex3_thrd_id_d = ex2_thrd_id_q;
@@ -2796,13 +2978,13 @@ assign ex4_cr_sel = ex4_icswxdot_instr_q | ex4_stx_instr;
 
 generate
    if (`THREADS_POOL_ENC == 0) begin : threads1
-       assign ex4_cr_fld = {({AXU_TARGET_ENC-`CR_POOL_ENC{1'b0}}), ex4_cr_fld_q}; 
+       assign ex4_cr_fld = {({AXU_TARGET_ENC-`CR_POOL_ENC{1'b0}}), ex4_cr_fld_q};
    end
 endgenerate
 
 generate
    if (`THREADS_POOL_ENC != 0) begin : threadMulti
-       assign ex4_cr_fld = {({AXU_TARGET_ENC-`CR_POOL_ENC-1{1'b0}}), ex4_cr_fld_q, ex4_target_gpr_q[AXU_TARGET_ENC-`THREADS_POOL_ENC:AXU_TARGET_ENC-1]}; 
+       assign ex4_cr_fld = {({AXU_TARGET_ENC-`CR_POOL_ENC-1{1'b0}}), ex4_cr_fld_q, ex4_target_gpr_q[AXU_TARGET_ENC-`THREADS_POOL_ENC:AXU_TARGET_ENC-1]};
    end
 endgenerate
 
@@ -2815,10 +2997,13 @@ assign ex4_dcbt_instr_d = ex3_dcbt_instr_q;
 assign ex2_pfetch_val_d = dec_dcc_ex1_pfetch_val;
 assign ex3_pfetch_val_d = ex2_pfetch_val_q;
 assign ex4_pfetch_val_d = ex3_pfetch_val_q;
+// For the case that an instruction got a Bad Machine Path Error,
+// Need to drop prefetch in the pipeline in case it would have
+// bypassed a bad state bit
 assign ex5_pfetch_val_d = ex4_pfetch_val_q & ~ex4_wNComp_excp_restart;
 assign ex6_pfetch_val_d = ex5_pfetch_val_q;
 assign ldp_pfetch_inPipe = (dec_dcc_ex1_thrd_id & {`THREADS{dec_dcc_ex1_pfetch_val}}) |
-                           (ex2_thrd_id_q       & {`THREADS{ex2_pfetch_val_q}}) | 
+                           (ex2_thrd_id_q       & {`THREADS{ex2_pfetch_val_q}}) |
                            (ex3_thrd_id_q       & {`THREADS{ex3_pfetch_val_q}}) |
                            (ex4_thrd_id_q       & {`THREADS{ex4_pfetch_val_q}}) |
                            (ex5_thrd_id_q       & {`THREADS{ex5_pfetch_val_q}});
@@ -2834,30 +3019,40 @@ assign ex2_th_fld_c_d = ~ex1_th_b0 & ~(|dec_dcc_ex1_th_fld[1:4]);
 assign ex3_th_fld_c_d = ex2_th_fld_c_q;
 assign ex4_th_fld_c_d = ex3_th_fld_c_q;
 
-assign ex2_th_fld_l2_d = ~ex1_th_b0 & (dec_dcc_ex1_th_fld[1:4] == 4'b0010); 
+assign ex2_th_fld_l2_d = ~ex1_th_b0 & (dec_dcc_ex1_th_fld[1:4] == 4'b0010);
 assign ex3_th_fld_l2_d = ex2_th_fld_l2_q;
 assign ex4_th_fld_l2_d = ex3_th_fld_l2_q;
 
+// Need to check the L1 and send to the L2      when th=00000
+// Need to not check the L1 and send to the L2  when th=00010
 assign ex2_dcbtls_instr_d = dec_dcc_ex1_dcbtls_instr;
 assign ex3_dcbtls_instr_d = ex2_dcbtls_instr_q;
 assign ex4_dcbtls_instr_d = ex3_dcbtls_instr_q;
 
+// Need to check the L1 and send to the L2      when th=00000
+// Need to not check the L1 and send to the L2  when th=00010
 assign ex2_dcbtstls_instr_d = dec_dcc_ex1_dcbtstls_instr;
 assign ex3_dcbtstls_instr_d = ex2_dcbtstls_instr_q;
 assign ex4_dcbtstls_instr_d = ex3_dcbtstls_instr_q;
 
+// Need to check the L1 and not send to the L2  when th=00000
+// Need to not check the L1 and send to the L2  when th=00010
 assign ex2_dcblc_instr_d = dec_dcc_ex1_dcblc_instr;
 assign ex3_dcblc_instr_d = ex2_dcblc_instr_q;
 assign ex4_dcblc_instr_d = ex3_dcblc_instr_q;
 
+// Need to not check the L1 and not send to the L2  when th=00000
+// Need to not check the L1 and send to the L2      when th=00010
 assign ex2_icblc_l2_instr_d = dec_dcc_ex1_icblc_instr;
 assign ex3_icblc_l2_instr_d = ex2_icblc_l2_instr_q;
 assign ex4_icblc_l2_instr_d = ex3_icblc_l2_instr_q;
 
+// Need to not check the L1 and send to the L2
 assign ex2_icbt_l2_instr_d = dec_dcc_ex1_icbt_instr;
 assign ex3_icbt_l2_instr_d = ex2_icbt_l2_instr_q;
 assign ex4_icbt_l2_instr_d = ex3_icbt_l2_instr_q;
 
+// Need to not check the L1 and send to the L2
 assign ex2_icbtls_l2_instr_d = dec_dcc_ex1_icbtls_instr;
 assign ex3_icbtls_l2_instr_d = ex2_icbtls_l2_instr_q;
 assign ex4_icbtls_l2_instr_d = ex3_icbtls_l2_instr_q;
@@ -2866,29 +3061,35 @@ assign ex2_tlbsync_instr_d = dec_dcc_ex1_tlbsync_instr & ~fgen_ex1_stg_flush_int
 assign ex3_tlbsync_instr_d = ex2_tlbsync_instr_q & ~fgen_ex2_stg_flush_int;
 assign ex4_tlbsync_instr_d = ex3_tlbsync_instr_q & ~fgen_ex3_stg_flush_int;
 
+// Load Double and Set Watch Bit
 assign ex2_ldawx_instr_d = dec_dcc_ex1_ldawx_instr;
 assign ex3_ldawx_instr_d = ex2_ldawx_instr_q;
 assign ex4_ldawx_instr_d = ex3_ldawx_instr_q;
 assign ex5_ldawx_instr_d = ex4_ldawx_instr_q;
 
+// ICSWX Non-Record Form Instruction
 assign ex2_icswx_instr_d = dec_dcc_ex1_icswx_instr;
 assign ex3_icswx_instr_d = ex2_icswx_instr_q;
 assign ex4_icswx_instr_d = ex3_icswx_instr_q;
 
+// ICSWX Record Form Instruction
 assign ex2_icswxdot_instr_d = dec_dcc_ex1_icswxdot_instr;
 assign ex3_icswxdot_instr_d = ex2_icswxdot_instr_q;
 assign ex4_icswxdot_instr_d = ex3_icswxdot_instr_q;
 
+// ICSWX External PID Form Instruction
 assign ex2_icswx_epid_d = dec_dcc_ex1_icswx_epid;
 assign ex3_icswx_epid_d = ex2_icswx_epid_q;
 assign ex4_icswx_epid_d = ex3_icswx_epid_q;
 assign ex5_icswx_epid_d = ex4_icswx_epid_q;
 
+// Watch Clear
 assign ex2_wclr_instr_d = dec_dcc_ex1_wclr_instr;
 assign ex3_wclr_instr_d = ex2_wclr_instr_q;
 assign ex4_wclr_instr_d = ex3_wclr_instr_q;
 assign ex4_wclr_all_val = ex4_wclr_instr_q & ~ex4_l_fld_q[0];
 
+// Watch Check
 assign ex2_wchk_instr_d = dec_dcc_ex1_wchk_instr & ~fgen_ex1_stg_flush_int;
 assign ex3_wchk_instr_d = ex2_wchk_instr_q & ~fgen_ex2_stg_flush_int;
 assign ex4_wchk_instr_d = ex3_wchk_instr_q & ~fgen_ex3_stg_flush_int;
@@ -2899,7 +3100,7 @@ assign ex4_dcbst_instr_d = ex3_dcbst_instr_q;
 
 assign ex2_dcbf_instr_d = dec_dcc_ex1_dcbf_instr;
 assign ex3_dcbf_instr_d = ex2_dcbf_instr_q;
-assign ex3_local_dcbf = ex3_dcbf_instr_q & (ex3_l_fld_q == 2'b11); 
+assign ex3_local_dcbf = ex3_dcbf_instr_q & (ex3_l_fld_q == 2'b11);
 assign ex4_dcbf_instr_d = ex3_dcbf_instr_q;
 
 assign ex2_mtspr_trace_d = dec_dcc_ex1_mtspr_trace & ~fgen_ex1_stg_flush_int;
@@ -2913,16 +3114,16 @@ assign ex4_sync_instr_d = ex3_sync_instr_q & ~fgen_ex3_stg_flush_int;
 assign ex2_l_fld_d = dec_dcc_ex1_l_fld;
 assign ex3_l_fld_d = ex2_l_fld_q;
 assign ex3_l_fld_sel = {ex3_sync_instr_q, ex3_mbar_instr_q, ex3_tlbsync_instr_q, ex3_makeitso_instr_q};
-assign ex3_l_fld_mbar = {1'b0, ~spr_xucr0_mbar_ack_q}; 
-assign ex3_l_fld_sync = {1'b0, (ex3_l_fld_q[1] & ~(ex3_l_fld_q[0] | spr_xucr0_mbar_ack_q))}; 
-assign ex3_l_fld_makeitso = 2'b01; 
+assign ex3_l_fld_mbar = {1'b0, ~spr_xucr0_mbar_ack_q};
+assign ex3_l_fld_sync = {1'b0, (ex3_l_fld_q[1] & ~(ex3_l_fld_q[0] | spr_xucr0_mbar_ack_q))};
+assign ex3_l_fld_makeitso = 2'b01;
 
-assign ex3_l_fld_tlbsync = (spr_xucr0_tlbsync_q == 1'b0) ? 2'b01 : 2'b00; 
+assign ex3_l_fld_tlbsync = (spr_xucr0_tlbsync_q == 1'b0) ? 2'b01 : 2'b00;
 
-assign ex3_l_fld = (ex3_l_fld_sel == 4'b0001) ? ex3_l_fld_makeitso : 
-                   (ex3_l_fld_sel == 4'b0010) ? ex3_l_fld_tlbsync : 
-                   (ex3_l_fld_sel == 4'b0100) ? ex3_l_fld_mbar : 
-                   (ex3_l_fld_sel == 4'b1000) ? ex3_l_fld_sync : 
+assign ex3_l_fld = (ex3_l_fld_sel == 4'b0001) ? ex3_l_fld_makeitso :
+                   (ex3_l_fld_sel == 4'b0010) ? ex3_l_fld_tlbsync :
+                   (ex3_l_fld_sel == 4'b0100) ? ex3_l_fld_mbar :
+                   (ex3_l_fld_sel == 4'b1000) ? ex3_l_fld_sync :
                    ex3_l_fld_q;
 
 assign ex4_l_fld_d = ex3_l_fld;
@@ -2952,6 +3153,9 @@ assign ex2_msgsnd_instr_d = dec_dcc_ex1_is_msgsnd & ~fgen_ex1_stg_flush_int;
 assign ex3_msgsnd_instr_d = ex2_msgsnd_instr_q & ~fgen_ex2_stg_flush_int;
 assign ex4_msgsnd_instr_d = ex3_msgsnd_instr_q & ~fgen_ex3_stg_flush_int;
 
+// DCI with CT=0    -> invalidate L1 only
+// DCI with CT=2    -> invalidate L1 and send to L2
+// DCI with CT!=0,2 -> No-Op
 assign ex2_dci_instr_d = dec_dcc_ex1_dci_instr & ~fgen_ex1_stg_flush_int;
 assign ex3_dci_instr_d = ex2_dci_instr_q & ~fgen_ex2_stg_flush_int;
 assign ex4_dci_instr_d = ex3_dci_instr_q & ~fgen_ex3_stg_flush_int;
@@ -2959,6 +3163,9 @@ assign ex4_dci_l2_val = ex4_dci_instr_q & ex4_th_fld_l2_q;
 assign ex4_is_cinval = (ex4_dci_instr_q | ex4_ici_instr_q) & (ex4_th_fld_l2_q | ex4_th_fld_c_q);
 assign ex4_is_cinval_drop = (ex4_dci_instr_q | ex4_ici_instr_q) & ~(ex4_th_fld_l2_q | ex4_th_fld_c_q);
 
+// ICI with CT=0    -> invalidate L1 only
+// ICI with CT=2    -> invalidate L1 and send to L2
+// ICI with CT!=0,2 -> No-Op
 assign ex2_ici_instr_d = dec_dcc_ex1_ici_instr & ~fgen_ex1_stg_flush_int;
 assign ex3_ici_instr_d = ex2_ici_instr_q & ~fgen_ex2_stg_flush_int;
 assign ex4_ici_instr_d = ex3_ici_instr_q & ~fgen_ex3_stg_flush_int;
@@ -3024,10 +3231,12 @@ assign ex4_tgpr_instr_d = ex3_tgpr_instr_q & ~fgen_ex3_stg_flush_int;
 assign ex4_taxu_instr_d = ex3_taxu_instr_q & ~fgen_ex3_stg_flush_int;
 assign ex4_tdp_instr_d  = ex3_tdp_instr_q  & ~fgen_ex3_stg_flush_int;
 
+// ditc instructions
 assign ex4_mfdpa_val = ex4_sdp_instr_q & ex4_taxu_instr_q;
 assign ex4_mfdpf_val = ex4_sdp_instr_q & ex4_tgpr_instr_q;
 assign ex4_ditc_val  = ex4_tdp_instr_q | (ex4_sdp_instr_q & (ex4_taxu_instr_q | ex4_tgpr_instr_q));
 
+// All the mf[f,t]gpr instructions
 assign ex2_mftgpr_val   = ex2_saxu_instr_q & ex2_tgpr_instr_q;
 assign ex3_mftgpr_val   = ex3_saxu_instr_q & ex3_tgpr_instr_q;
 assign ex4_mftgpr_val   = ex4_saxu_instr_q & ex4_tgpr_instr_q;
@@ -3064,6 +3273,9 @@ assign ex3_upd_form_d = ex2_upd_form_q;
 assign ex2_axu_instr_type_d = dec_dcc_ex1_axu_instr_type;
 assign ex3_axu_instr_type_d = ex2_axu_instr_type_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Commit Execution Pipe
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 assign stq2_store_val_d = lsq_ctl_stq1_store_val & lsq_ctl_stq1_val;
 assign stq3_store_val_d = stq2_store_val_q & ~lsq_ctl_stq2_blk_req;
@@ -3109,7 +3321,11 @@ assign stq4_mfdpa_val_d = stq3_mfdpa_val_q;
 assign stq5_mfdpa_val_d = stq4_mfdpa_val_q;
 assign stq6_mfdpa_val_d = stq5_mfdpa_val_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// ICSWX LOGIC
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// ICSWX
 assign ex2_epsc_egs   = |(spr_dcc_epsc_egs & ex2_thrd_id_q);
 assign ex2_epsc_epr   = |(spr_dcc_epsc_epr & ex2_thrd_id_q);
 assign ex2_msr_gs     = |(spr_msr_gs_q & ex2_thrd_id_q);
@@ -3118,94 +3334,102 @@ assign ex3_icswx_gs_d = ex2_icswx_epid_q ? ex2_epsc_egs : ex2_msr_gs;
 assign ex3_icswx_pr_d = ex2_icswx_epid_q ? ex2_epsc_epr : ex2_msr_pr;
 assign ex4_icswx_ct_val_d = lsq_ctl_ex3_ct_val;
 
+// Only Check ACOP in problem state (PR=1)
 assign ex3_acop_ct_npr = ex3_acop_ct | {32{~ex3_icswx_pr_q}};
 assign ex3_cop_ct = ex3_hacop_ct & ex3_acop_ct_npr;
 
-assign ex4_icswx_ct_d[0] = ex3_icswx_ct[0] | (~ex3_icswx_pr_q & ~ex3_icswx_gs_q);		
-assign ex4_icswx_ct_d[1] = ex3_icswx_ct[1] | (~ex3_icswx_pr_q & ~ex3_icswx_gs_q);		
+// Only Check ACOP/HACOP if not in Hypervisor
+assign ex4_icswx_ct_d[0] = ex3_icswx_ct[0] | (~ex3_icswx_pr_q & ~ex3_icswx_gs_q);		// Big Endian
+assign ex4_icswx_ct_d[1] = ex3_icswx_ct[1] | (~ex3_icswx_pr_q & ~ex3_icswx_gs_q);		// Little Endian
 
-assign ex4_icswx_ct = (ex4_icswx_ct_q[0] & ~derat_dcc_ex4_wimge[4]) |   
-                      (ex4_icswx_ct_q[1] &  derat_dcc_ex4_wimge[4]);	
+// ICSWX DSI Generation
+assign ex4_icswx_ct = (ex4_icswx_ct_q[0] & ~derat_dcc_ex4_wimge[4]) |   // Big Endian
+                      (ex4_icswx_ct_q[1] &  derat_dcc_ex4_wimge[4]);	// Little Endian
 assign ex4_icswx_dsi = ex4_cache_acc_q & ex4_icswx_type & ex4_icswx_ct_val_q & ~ex4_icswx_ct;
 
-assign ex3_icswx_ct[0] = (lsq_ctl_ex3_be_ct == 6'b100000) ? ex3_cop_ct[32] : 
-                         (lsq_ctl_ex3_be_ct == 6'b100001) ? ex3_cop_ct[33] : 
-                         (lsq_ctl_ex3_be_ct == 6'b100010) ? ex3_cop_ct[34] : 
-                         (lsq_ctl_ex3_be_ct == 6'b100011) ? ex3_cop_ct[35] : 
-                         (lsq_ctl_ex3_be_ct == 6'b100100) ? ex3_cop_ct[36] : 
-                         (lsq_ctl_ex3_be_ct == 6'b100101) ? ex3_cop_ct[37] : 
-                         (lsq_ctl_ex3_be_ct == 6'b100110) ? ex3_cop_ct[38] : 
-                         (lsq_ctl_ex3_be_ct == 6'b100111) ? ex3_cop_ct[39] : 
-                         (lsq_ctl_ex3_be_ct == 6'b101000) ? ex3_cop_ct[40] : 
-                         (lsq_ctl_ex3_be_ct == 6'b101001) ? ex3_cop_ct[41] : 
-                         (lsq_ctl_ex3_be_ct == 6'b101010) ? ex3_cop_ct[42] : 
-                         (lsq_ctl_ex3_be_ct == 6'b101011) ? ex3_cop_ct[43] : 
-                         (lsq_ctl_ex3_be_ct == 6'b101100) ? ex3_cop_ct[44] : 
-                         (lsq_ctl_ex3_be_ct == 6'b101101) ? ex3_cop_ct[45] : 
-                         (lsq_ctl_ex3_be_ct == 6'b101110) ? ex3_cop_ct[46] : 
-                         (lsq_ctl_ex3_be_ct == 6'b101111) ? ex3_cop_ct[47] : 
-                         (lsq_ctl_ex3_be_ct == 6'b110000) ? ex3_cop_ct[48] : 
-                         (lsq_ctl_ex3_be_ct == 6'b110001) ? ex3_cop_ct[49] : 
-                         (lsq_ctl_ex3_be_ct == 6'b110010) ? ex3_cop_ct[50] : 
-                         (lsq_ctl_ex3_be_ct == 6'b110011) ? ex3_cop_ct[51] : 
-                         (lsq_ctl_ex3_be_ct == 6'b110100) ? ex3_cop_ct[52] : 
-                         (lsq_ctl_ex3_be_ct == 6'b110101) ? ex3_cop_ct[53] : 
-                         (lsq_ctl_ex3_be_ct == 6'b110110) ? ex3_cop_ct[54] : 
-                         (lsq_ctl_ex3_be_ct == 6'b110111) ? ex3_cop_ct[55] : 
-                         (lsq_ctl_ex3_be_ct == 6'b111000) ? ex3_cop_ct[56] : 
-                         (lsq_ctl_ex3_be_ct == 6'b111001) ? ex3_cop_ct[57] : 
-                         (lsq_ctl_ex3_be_ct == 6'b111010) ? ex3_cop_ct[58] : 
-                         (lsq_ctl_ex3_be_ct == 6'b111011) ? ex3_cop_ct[59] : 
-                         (lsq_ctl_ex3_be_ct == 6'b111100) ? ex3_cop_ct[60] : 
-                         (lsq_ctl_ex3_be_ct == 6'b111101) ? ex3_cop_ct[61] : 
-                         (lsq_ctl_ex3_be_ct == 6'b111110) ? ex3_cop_ct[62] : 
-                         (lsq_ctl_ex3_be_ct == 6'b111111) ? ex3_cop_ct[63] : 
-                         1'b0; 
+// Big Endian CT Select
+assign ex3_icswx_ct[0] = (lsq_ctl_ex3_be_ct == 6'b100000) ? ex3_cop_ct[32] :
+                         (lsq_ctl_ex3_be_ct == 6'b100001) ? ex3_cop_ct[33] :
+                         (lsq_ctl_ex3_be_ct == 6'b100010) ? ex3_cop_ct[34] :
+                         (lsq_ctl_ex3_be_ct == 6'b100011) ? ex3_cop_ct[35] :
+                         (lsq_ctl_ex3_be_ct == 6'b100100) ? ex3_cop_ct[36] :
+                         (lsq_ctl_ex3_be_ct == 6'b100101) ? ex3_cop_ct[37] :
+                         (lsq_ctl_ex3_be_ct == 6'b100110) ? ex3_cop_ct[38] :
+                         (lsq_ctl_ex3_be_ct == 6'b100111) ? ex3_cop_ct[39] :
+                         (lsq_ctl_ex3_be_ct == 6'b101000) ? ex3_cop_ct[40] :
+                         (lsq_ctl_ex3_be_ct == 6'b101001) ? ex3_cop_ct[41] :
+                         (lsq_ctl_ex3_be_ct == 6'b101010) ? ex3_cop_ct[42] :
+                         (lsq_ctl_ex3_be_ct == 6'b101011) ? ex3_cop_ct[43] :
+                         (lsq_ctl_ex3_be_ct == 6'b101100) ? ex3_cop_ct[44] :
+                         (lsq_ctl_ex3_be_ct == 6'b101101) ? ex3_cop_ct[45] :
+                         (lsq_ctl_ex3_be_ct == 6'b101110) ? ex3_cop_ct[46] :
+                         (lsq_ctl_ex3_be_ct == 6'b101111) ? ex3_cop_ct[47] :
+                         (lsq_ctl_ex3_be_ct == 6'b110000) ? ex3_cop_ct[48] :
+                         (lsq_ctl_ex3_be_ct == 6'b110001) ? ex3_cop_ct[49] :
+                         (lsq_ctl_ex3_be_ct == 6'b110010) ? ex3_cop_ct[50] :
+                         (lsq_ctl_ex3_be_ct == 6'b110011) ? ex3_cop_ct[51] :
+                         (lsq_ctl_ex3_be_ct == 6'b110100) ? ex3_cop_ct[52] :
+                         (lsq_ctl_ex3_be_ct == 6'b110101) ? ex3_cop_ct[53] :
+                         (lsq_ctl_ex3_be_ct == 6'b110110) ? ex3_cop_ct[54] :
+                         (lsq_ctl_ex3_be_ct == 6'b110111) ? ex3_cop_ct[55] :
+                         (lsq_ctl_ex3_be_ct == 6'b111000) ? ex3_cop_ct[56] :
+                         (lsq_ctl_ex3_be_ct == 6'b111001) ? ex3_cop_ct[57] :
+                         (lsq_ctl_ex3_be_ct == 6'b111010) ? ex3_cop_ct[58] :
+                         (lsq_ctl_ex3_be_ct == 6'b111011) ? ex3_cop_ct[59] :
+                         (lsq_ctl_ex3_be_ct == 6'b111100) ? ex3_cop_ct[60] :
+                         (lsq_ctl_ex3_be_ct == 6'b111101) ? ex3_cop_ct[61] :
+                         (lsq_ctl_ex3_be_ct == 6'b111110) ? ex3_cop_ct[62] :
+                         (lsq_ctl_ex3_be_ct == 6'b111111) ? ex3_cop_ct[63] :
+                         1'b0;
 
-assign ex3_icswx_ct[1] = (lsq_ctl_ex3_le_ct == 6'b100000) ? ex3_cop_ct[32] : 
-                         (lsq_ctl_ex3_le_ct == 6'b100001) ? ex3_cop_ct[33] : 
-                         (lsq_ctl_ex3_le_ct == 6'b100010) ? ex3_cop_ct[34] : 
-                         (lsq_ctl_ex3_le_ct == 6'b100011) ? ex3_cop_ct[35] : 
-                         (lsq_ctl_ex3_le_ct == 6'b100100) ? ex3_cop_ct[36] : 
-                         (lsq_ctl_ex3_le_ct == 6'b100101) ? ex3_cop_ct[37] : 
-                         (lsq_ctl_ex3_le_ct == 6'b100110) ? ex3_cop_ct[38] : 
-                         (lsq_ctl_ex3_le_ct == 6'b100111) ? ex3_cop_ct[39] : 
-                         (lsq_ctl_ex3_le_ct == 6'b101000) ? ex3_cop_ct[40] : 
-                         (lsq_ctl_ex3_le_ct == 6'b101001) ? ex3_cop_ct[41] : 
-                         (lsq_ctl_ex3_le_ct == 6'b101010) ? ex3_cop_ct[42] : 
-                         (lsq_ctl_ex3_le_ct == 6'b101011) ? ex3_cop_ct[43] : 
-                         (lsq_ctl_ex3_le_ct == 6'b101100) ? ex3_cop_ct[44] : 
-                         (lsq_ctl_ex3_le_ct == 6'b101101) ? ex3_cop_ct[45] : 
-                         (lsq_ctl_ex3_le_ct == 6'b101110) ? ex3_cop_ct[46] : 
-                         (lsq_ctl_ex3_le_ct == 6'b101111) ? ex3_cop_ct[47] : 
-                         (lsq_ctl_ex3_le_ct == 6'b110000) ? ex3_cop_ct[48] : 
-                         (lsq_ctl_ex3_le_ct == 6'b110001) ? ex3_cop_ct[49] : 
-                         (lsq_ctl_ex3_le_ct == 6'b110010) ? ex3_cop_ct[50] : 
-                         (lsq_ctl_ex3_le_ct == 6'b110011) ? ex3_cop_ct[51] : 
-                         (lsq_ctl_ex3_le_ct == 6'b110100) ? ex3_cop_ct[52] : 
-                         (lsq_ctl_ex3_le_ct == 6'b110101) ? ex3_cop_ct[53] : 
-                         (lsq_ctl_ex3_le_ct == 6'b110110) ? ex3_cop_ct[54] : 
-                         (lsq_ctl_ex3_le_ct == 6'b110111) ? ex3_cop_ct[55] : 
-                         (lsq_ctl_ex3_le_ct == 6'b111000) ? ex3_cop_ct[56] : 
-                         (lsq_ctl_ex3_le_ct == 6'b111001) ? ex3_cop_ct[57] : 
-                         (lsq_ctl_ex3_le_ct == 6'b111010) ? ex3_cop_ct[58] : 
-                         (lsq_ctl_ex3_le_ct == 6'b111011) ? ex3_cop_ct[59] : 
-                         (lsq_ctl_ex3_le_ct == 6'b111100) ? ex3_cop_ct[60] : 
-                         (lsq_ctl_ex3_le_ct == 6'b111101) ? ex3_cop_ct[61] : 
-                         (lsq_ctl_ex3_le_ct == 6'b111110) ? ex3_cop_ct[62] : 
-                         (lsq_ctl_ex3_le_ct == 6'b111111) ? ex3_cop_ct[63] : 
-                         1'b0; 
+// Little Endian CT Select
+assign ex3_icswx_ct[1] = (lsq_ctl_ex3_le_ct == 6'b100000) ? ex3_cop_ct[32] :
+                         (lsq_ctl_ex3_le_ct == 6'b100001) ? ex3_cop_ct[33] :
+                         (lsq_ctl_ex3_le_ct == 6'b100010) ? ex3_cop_ct[34] :
+                         (lsq_ctl_ex3_le_ct == 6'b100011) ? ex3_cop_ct[35] :
+                         (lsq_ctl_ex3_le_ct == 6'b100100) ? ex3_cop_ct[36] :
+                         (lsq_ctl_ex3_le_ct == 6'b100101) ? ex3_cop_ct[37] :
+                         (lsq_ctl_ex3_le_ct == 6'b100110) ? ex3_cop_ct[38] :
+                         (lsq_ctl_ex3_le_ct == 6'b100111) ? ex3_cop_ct[39] :
+                         (lsq_ctl_ex3_le_ct == 6'b101000) ? ex3_cop_ct[40] :
+                         (lsq_ctl_ex3_le_ct == 6'b101001) ? ex3_cop_ct[41] :
+                         (lsq_ctl_ex3_le_ct == 6'b101010) ? ex3_cop_ct[42] :
+                         (lsq_ctl_ex3_le_ct == 6'b101011) ? ex3_cop_ct[43] :
+                         (lsq_ctl_ex3_le_ct == 6'b101100) ? ex3_cop_ct[44] :
+                         (lsq_ctl_ex3_le_ct == 6'b101101) ? ex3_cop_ct[45] :
+                         (lsq_ctl_ex3_le_ct == 6'b101110) ? ex3_cop_ct[46] :
+                         (lsq_ctl_ex3_le_ct == 6'b101111) ? ex3_cop_ct[47] :
+                         (lsq_ctl_ex3_le_ct == 6'b110000) ? ex3_cop_ct[48] :
+                         (lsq_ctl_ex3_le_ct == 6'b110001) ? ex3_cop_ct[49] :
+                         (lsq_ctl_ex3_le_ct == 6'b110010) ? ex3_cop_ct[50] :
+                         (lsq_ctl_ex3_le_ct == 6'b110011) ? ex3_cop_ct[51] :
+                         (lsq_ctl_ex3_le_ct == 6'b110100) ? ex3_cop_ct[52] :
+                         (lsq_ctl_ex3_le_ct == 6'b110101) ? ex3_cop_ct[53] :
+                         (lsq_ctl_ex3_le_ct == 6'b110110) ? ex3_cop_ct[54] :
+                         (lsq_ctl_ex3_le_ct == 6'b110111) ? ex3_cop_ct[55] :
+                         (lsq_ctl_ex3_le_ct == 6'b111000) ? ex3_cop_ct[56] :
+                         (lsq_ctl_ex3_le_ct == 6'b111001) ? ex3_cop_ct[57] :
+                         (lsq_ctl_ex3_le_ct == 6'b111010) ? ex3_cop_ct[58] :
+                         (lsq_ctl_ex3_le_ct == 6'b111011) ? ex3_cop_ct[59] :
+                         (lsq_ctl_ex3_le_ct == 6'b111100) ? ex3_cop_ct[60] :
+                         (lsq_ctl_ex3_le_ct == 6'b111101) ? ex3_cop_ct[61] :
+                         (lsq_ctl_ex3_le_ct == 6'b111110) ? ex3_cop_ct[62] :
+                         (lsq_ctl_ex3_le_ct == 6'b111111) ? ex3_cop_ct[63] :
+                         1'b0;
 
 generate begin : regConc
       genvar tid;
       for (tid=0; tid<`THREADS; tid=tid+1) begin : regConc
+        // Concatenate Appropriate EPSC fields
         assign epsc_t_reg[tid] = {spr_dcc_epsc_epr[tid], spr_dcc_epsc_eas[tid], spr_dcc_epsc_egs[tid],
 	                              spr_dcc_epsc_elpid[tid*8:tid*8+7], spr_dcc_epsc_epid[tid*14:tid*14+13]};
+        // Concatenate Appropriate LESR fields
         assign lesr_t_reg[tid] = spr_dcc_spr_lesr[tid*24:(tid*24)+23];
       end
    end
 endgenerate
 
+// Thread Register Selection
 always @(*)
 begin: tidIcswx
    reg [0:13]                                              pid;
@@ -3236,14 +3460,20 @@ begin: tidIcswx
    ex5_spr_lesr <= lesr;
 end
 
+// ICSWX Store Data
 assign stq2_icswx_epid[0:2]   = {~stq2_epsc[2], stq2_epsc[0], stq2_epsc[1]};
 assign stq2_icswx_epid[3:24]  = stq2_epsc[3:24];
 assign stq2_icswx_nepid[0:2]  = {~(|(spr_msr_gs_q & stq2_thrd_id_q)), |(spr_msr_pr_q & stq2_thrd_id_q), |(spr_msr_ds_q & stq2_thrd_id_q)};
 assign stq2_icswx_nepid[3:24] = {spr_lpidr_q, stq2_pid};
 
+// Select between External Pid and non-External Pid ICSWX
 assign stq3_icswx_data_d = stq2_epid_val_q ? stq2_icswx_epid : stq2_icswx_nepid;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// CR Update Logic
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// CR Setter
 generate begin : crData
       genvar cr;
       for (cr=0; cr<`CR_WIDTH; cr=cr+1) begin : crData
@@ -3254,13 +3484,26 @@ generate begin : crData
             assign ex5_cr_wd[cr] = |(xer_lq_cp_rd_so_q & ex5_thrd_id_q);
          end
          if (cr < 2 | cr >= 4) begin : crOff0
-            assign ex5_cr_wd[cr] = 1'b0; 
+            assign ex5_cr_wd[cr] = 1'b0;
          end
       end
    end
 endgenerate
 
+//ldawx.        --> 00 || b2 || XER[SO]
+//icswx.        --> b0b1b2   || 0
+//stcx.         --> 00 || b2 || XER[SO]
+//wchkall       ==> 00 || b2 || XER[SO]
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Byte Enable Generation
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Need to generate byte enables for the type of operation
+// size1  => 0x8000
+// size2  => 0xC000
+// size4  => 0xF000
+// size8  => 0xFF00
+// size16 => 0xFFFF
 assign op_sel[0] = ex3_opsize[1] | ex3_opsize[2] | ex3_opsize[3] | ex3_opsize[4];
 assign op_sel[1] = ex3_opsize[1] | ex3_opsize[2] | ex3_opsize[3];
 assign op_sel[2] = ex3_opsize[1] | ex3_opsize[2];
@@ -3269,18 +3512,22 @@ assign op_sel[4] = ex3_opsize[1];
 assign op_sel[5] = ex3_opsize[1];
 assign op_sel[6] = ex3_opsize[1];
 assign op_sel[7] = ex3_opsize[1];
-assign op_sel[8:15] = {8{1'b0}}; 
+assign op_sel[8:15] = {8{1'b0}};
 
-assign beC840_en = (ex3_eff_addr_q[60:61] == 2'b00) ? op_sel[0:15] : 
-                   (ex3_eff_addr_q[60:61] == 2'b01) ? {4'h0, op_sel[0:11]} : 
-                   (ex3_eff_addr_q[60:61] == 2'b10) ? {8'h00, op_sel[0:7]} : 
+// 16 Bit Rotator
+// Selects between Data rotated by 0, 4, 8, or 12 bits
+assign beC840_en = (ex3_eff_addr_q[60:61] == 2'b00) ? op_sel[0:15] :
+                   (ex3_eff_addr_q[60:61] == 2'b01) ? {4'h0, op_sel[0:11]} :
+                   (ex3_eff_addr_q[60:61] == 2'b10) ? {8'h00, op_sel[0:7]} :
                    {12'h000, op_sel[0:3]};
 
-assign be3210_en = (ex3_eff_addr_q[62:63] == 2'b00) ? beC840_en[0:15] : 
-                   (ex3_eff_addr_q[62:63] == 2'b01) ? {1'b0, beC840_en[0:14]} : 
-                   (ex3_eff_addr_q[62:63] == 2'b10) ? {2'b00, beC840_en[0:13]} : 
+// Selects between Data rotated by 0, 1, 2, or 3 bits
+assign be3210_en = (ex3_eff_addr_q[62:63] == 2'b00) ? beC840_en[0:15] :
+                   (ex3_eff_addr_q[62:63] == 2'b01) ? {1'b0, beC840_en[0:14]} :
+                   (ex3_eff_addr_q[62:63] == 2'b10) ? {2'b00, beC840_en[0:13]} :
                    {3'b000, beC840_en[0:12]};
 
+// Byte Enables Generated using the opsize and physical_addr(60 to 63)
 generate begin : ben_gen
       genvar t;
       for (t=0; t<16; t=t+1) begin : ben_gen
@@ -3289,35 +3536,59 @@ generate begin : ben_gen
    end
 endgenerate
 
+// Gate off Byte Enables for instructions that have no address checking in the Order Queue
 assign ex3_byte_en = byte_en & {16{~(ex3_mfgpr_val | ex3_msgsnd_instr_q)}};
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Load Rotate Control Generation
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-assign ex3_opsize = ex3_mftgpr_val ? 5'b10000 : ({ex3_optype16_q, ex3_optype8_q, ex3_optype4_q, ex3_optype2_q, ex3_optype1_q}); 
+// Table of op_size, Should be 1-hot enabled
+// op_size(0) => size16
+// op_size(1) => size8
+// op_size(2) => size4
+// op_size(3) => size2
+// op_size(4) => size1
+assign ex3_opsize = ex3_mftgpr_val ? 5'b10000 : ({ex3_optype16_q, ex3_optype8_q, ex3_optype4_q, ex3_optype2_q, ex3_optype1_q});
 
-assign ex3_opsize_enc = (ex3_opsize == 5'b10000) ? 3'b110 : 
-                        (ex3_opsize == 5'b01000) ? 3'b101 : 
-                        (ex3_opsize == 5'b00100) ? 3'b100 : 
-                        (ex3_opsize == 5'b00010) ? 3'b010 : 
-                        (ex3_opsize == 5'b00001) ? 3'b001 : 
-                        3'b000; 
+assign ex3_opsize_enc = (ex3_opsize == 5'b10000) ? 3'b110 :
+                        (ex3_opsize == 5'b01000) ? 3'b101 :
+                        (ex3_opsize == 5'b00100) ? 3'b100 :
+                        (ex3_opsize == 5'b00010) ? 3'b010 :
+                        (ex3_opsize == 5'b00001) ? 3'b001 :
+                        3'b000;
 
 assign ex4_opsize_enc_d = ex3_opsize_enc;
 assign ex5_opsize_enc_d = ex4_opsize_enc_q;
 
-assign ex5_opsize = (ex5_opsize_enc_q == 3'b101) ? 4'b1000 : 
-                    (ex5_opsize_enc_q == 3'b100) ? 4'b0100 : 
-                    (ex5_opsize_enc_q == 3'b010) ? 4'b0010 : 
-                    (ex5_opsize_enc_q == 3'b001) ? 4'b0001 : 
-                    4'b0000; 
+assign ex5_opsize = (ex5_opsize_enc_q == 3'b101) ? 4'b1000 :
+                    (ex5_opsize_enc_q == 3'b100) ? 4'b0100 :
+                    (ex5_opsize_enc_q == 3'b010) ? 4'b0010 :
+                    (ex5_opsize_enc_q == 3'b001) ? 4'b0001 :
+                    4'b0000;
 
-assign ex5_byte_mask = (8'h01 & {8{ex5_opsize[4]}}) | (8'h03 & {8{ex5_opsize[3]}}) | (8'h0F & {8{ex5_opsize[2]}}) | (8'hFF & {8{ex5_opsize[1]}}); 
+// Loadhit DVC Compare Byte Valid Generation
+assign ex5_byte_mask = (8'h01 /*'*/ & {8{ex5_opsize[4]}}) | (8'h03 & {8{ex5_opsize[3]}}) | (8'h0F /*'*/& {8{ex5_opsize[2]}}) | (8'hFF /*'*/ & {8{ex5_opsize[1]}});
 
+// LOAD PATH LITTLE ENDIAN ROTATOR SELECT CALCULATION
+// ld_rot_size   = rot_addr + op_size
+// ld_rot_sel_le = rot_addr
+// ld_rot_sel    = rot_max_size - ld_rot_size
+// ld_rot_sel    = ld_rot_sel_le  => le_mode = 1
+//               = ld_rot_sel     => le_mode = 0
 
+// Execution Pipe Rotator Control Calculations
 assign ex3_rot_size       = ex3_eff_addr_q[59:63] + ex3_opsize;
 assign ex3_rot_sel_non_le = rot_max_size - ex3_rot_size;
 assign ex3_alg_bit_le_sel = ex3_rot_size - 5'b00001;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// RV Release Control
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// Instruction Report to RV
+// Removed SYNC/MBAR/MAKEITSO/TLBSYNC since they are non speculative and they are reported and removed on the LQ_RV_ITAG0 bus
+// Work Around for DITC
 assign ex5_spec_itag_vld_d = ((ex4_cache_acc_q | ex4_mffgpr_val | ex4_mftgpr_val | ex4_wchk_instr_q | ex4_ditc_val) & ~fgen_ex4_stg_flush_int) |
                                                                                ((ex4_wNComp_excp | ex4_ucode_val_q) & ~fgen_ex4_cp_flush_int)  |
                                                                                stq6_mftgpr_val_q;
@@ -3327,10 +3598,44 @@ assign ex4_spec_thrd_id = stq6_mftgpr_val_q ? stq6_thrd_id_q : ex4_thrd_id_q;
 assign ex5_spec_itag_d = ex4_spec_itag;
 assign ex5_spec_tid_d = ex4_spec_thrd_id;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// RESTART Control
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// RESTART_SPEC Indicators
 assign ex4_spec_load_miss = (dir_dcc_ex4_miss | derat_dcc_ex4_wimge[1] | spr_xucr0_dcdis_q) & ex4_load_instr_q & ~ex4_blk_touch;
+// either a loadmiss, a cache-inhibited load, larx, stcx, or icswx. instructions
 assign ex5_spec_load_miss_d = (ex4_spec_load_miss | ex4_resv_instr_q | ex4_icswxdot_instr_q) & ex4_cache_acc_q & ~(fgen_ex4_stg_flush_int | stq6_mftgpr_val_q);
 
+// RESTART Indicators
+//  1) STQ   => LSWX that hasn't gotten the XER source
+//  2) DIR   => DCBTLS/DCBTSTLS/LDAWX instruction in EX3/EX4 and a reload targetting the same congruence class
+//  3) DIR   => Instruction Bypassed Directory results that were restarted
+//  4) CTRL  => Request is a CP_NEXT instruction and CP_NEXT_VAL isnt on
+//  5) CTRL  => Request is a CP_NEXT exception and CP_NEXT_VAL isnt on
+//  6) DERAT => ERATM State machines are all busy
+//  7) DERAT => ERATM State machine 0 is busy and oldest itag missed
+//  8) DERAT => ERATM State machines 1 to EMQ_ENTRIES are busy and
+//              this request is not the oldest
+//  9) DERAT => Current Requests ITAG is already using a state machine
+// 10) DERAT => Current Requests EPN down to a 4KB page is already using a state machine
+// 11) DERAT => Current Requests is sending the NonSpeculative Request to the TLB
+// 12) LDQ   => Load hit outstanding LARX for my thread
+// 13) LDQ   => New Loadmiss Request to Cache line already in LoadMiss Queue
+// 14) LDQ   => New LoadMiss Request and the Queue is full
+// 15) LDQ   => New Loadmiss Request and 1 LoadMiss StateMachine available and not the oldest load request
+// 16) LDQ   => Load was gathered to a cTag and reload to that cTag started the same cycle
+// 17) STQ   => Younger Guarded Load Request collided against an older guarded Store
+// 18) STQ   => Younger Load Request hit against an older CP_NEXT store instruction (i.e icbi, sync, stcx, icswx., mftgpr, mfdp)
+// 19) STQ   => Younger Load Request Address hit multiple older entries
+// 20) STQ   => Younger Load Request Address hit against an older store but endianness differs
+// 21) STQ   => Younger Guarded Load Request Address hit against an older store
+// 22) STQ   => Younger Load Request Address hit against an older store type with no data associated
+// 23) STQ   => Younger Loadmiss Request Cacheline Address hit against older store type
+// 24) STQ   => ICSWX that hasn't gotten RS2 data from the FX units
+// 25) CTRL  => CP_NEXT instruction needs to be redirected, the 2 younger instructions behind it need a
+//              restart since they will bypass from bad instruction
+// 26) CTRL  => Ucode PreIssue has not updated the memory attribute bits
 
 assign ex3_lswx_restart     = ex3_ucode_val_q & ex3_load_instr_q & ex3_strg_index_q & ~lsq_ctl_ex3_strg_val;
 assign ex4_lswx_restart_d   = ex3_lswx_restart;
@@ -3348,6 +3653,7 @@ assign ex5_dec_restart_d    = ex4_lswx_restart_q | ex4_icswx_restart_q | ex4_uco
 assign ex6_dec_restart_d    = ex5_dec_restart_q;
 assign ex4_derat_itagHit_d  = derat_dcc_ex3_itagHit;
 
+// Want to restart if loadmiss and didnt forward
 assign ex5_stq_restart_miss  = lsq_ctl_ex5_stq_restart_miss & ex5_load_miss_q;
 assign ex5_stq_restart_val   = lsq_ctl_ex5_stq_restart | ex5_stq_restart_miss;
 assign ex6_stq_restart_val_d = ex5_stq_restart_val;
@@ -3355,19 +3661,28 @@ assign ex5_restart_val       = (ex5_ldq_restart_val | ex5_stq_restart_val | ex5_
 assign ex6_restart_val_d     = ex5_restart_val;
 assign ex5_lq_req_abort      = ((ex5_spec_load_miss_q & ~lsq_ctl_ex5_fwd_val) | ex5_restart_val | ex5_mftgpr_val_q) & ex5_spec_itag_vld_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Completion Control
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// All instructions that report completion when coming down the pipe
+// sfx_val <= src_gpr or src_axu or src_dp   or targ_gpr or targ_axu or targ_dp or mtdp    or mtdpx   or mtdp_dc or mtdpx_dc or mfdp        or
+//            mfdpx   or mfdp_dc or mfdpx_dc or mbar     or msgsnd   or sync    or tlbsync or wchkall or dci     or ici      or mtspr_trace or makeitso
 assign ex4_excp_rpt_val = (ex4_cache_acc_q | ex4_sfx_val_q | ex4_sfx_excpt_det) & ex4_excp_det;
 assign ex4_ucode_rpt = (~ex4_strg_index_q & ~ex4_wNComp_excp & ~(derat_dcc_ex4_restart | ex4_2younger_restart)) | (ex4_excp_det & ~ex4_lswx_restart_q);
 assign ex4_ucode_rpt_val = ex4_ucode_val_q & ex4_ucode_rpt;
-assign ex4_mffgpr_rpt_val = ex4_mffgpr_val;	     
-assign ex5_execute_vld_d  = (ex4_ucode_rpt_val  |       
-                             ex4_mffgpr_rpt_val |       
-                             ex4_excp_rpt_val)  &       
+// I dont think ex4_wNComp_excp_restart needs to be in the equation since mffgpr doesnt use the directory, dataCache, or erats
+assign ex4_mffgpr_rpt_val = ex4_mffgpr_val;
+assign ex5_execute_vld_d  = (ex4_ucode_rpt_val  |       // Ucode_PreIssue
+                             ex4_mffgpr_rpt_val |       // mffgpr
+                             ex4_excp_rpt_val)  &       // Exception Detected on a Cache Access
                              ~fgen_ex4_cp_flush_int;
 
 assign ex5_flush2ucode_type_d = ex4_le_mode_q;
 assign ex5_recirc_val_d = (ex4_wNComp_req  & ~(ex4_wNComp_rcvd_q | fgen_ex4_stg_flush_int)) |
                           (ex4_wNComp_excp & ~(ex4_wNComp_rcvd_q | fgen_ex4_cp_flush_int));
 
+// Mux between Store Queue Completion Report and Load Pipeline Completion Report
+// Load Pipeline has higher priority
 assign ex5_lq_comp_rpt_val	  = ( ex5_execute_vld_q | ex5_wchkall_cplt | ex5_flush_req | ex5_recirc_val_q) & ~fgen_ex5_cp_flush;
 assign ex6_lq_comp_rpt_d	  = ( ex5_execute_vld_q | ex5_wchkall_cplt | ex5_flush_req)		               & ~fgen_ex5_cp_flush;
 assign ex5_execute_vld		  = ((ex5_execute_vld_q | ex5_wchkall_cplt | ex5_flush_req)		               & ~fgen_ex5_cp_flush) |
@@ -3393,7 +3708,14 @@ assign lq0_iu_dacrw_d		  = (   ex5_dacrw_cmpr & {4{ ex5_lq_comp_rpt_val}}) |
                                 (lsq_ctl_stq_dacrw & {4{~ex5_lq_comp_rpt_val}});
 assign lq0_iu_instr_d		  = ex5_instr_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// DEBUG ADDRESS COMPARE only report
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// Data Address Compare Only Interrupt is detected and reported on LQ0 Completion bus
+// Store Pipe Data Value Compare Interrupts are reported on LQ0 Completion bus
+// Load Pipe Data Value Compare Interrupts are reported on LQ1 Completion bus
+// All Debug Interrupts are PRECISE
 assign ex4_dbg_int_en = |(dbg_int_en_q & ex4_thrd_id_q);
 assign ex4_dacrw1_cmpr = spr_dcc_ex4_dacrw1_cmpr & ~ex4_blk_touch_instr;
 assign ex4_dacrw2_cmpr = spr_dcc_ex4_dacrw2_cmpr & ~ex4_blk_touch_instr;
@@ -3406,17 +3728,27 @@ assign ex6_dacrw_cmpr_d = ex5_dacrw_cmpr;
 assign ex5_dvc_en_d = {spr_dcc_ex4_dvc1_en, spr_dcc_ex4_dvc2_en};
 assign ex6_dvc_en_d = ex5_dvc_en_q & {2{ex5_load_hit_q}};
 
+// Debug Address Compare Interrupt detected, Data Value Compare is disabled
+// Flushing instructions early
 assign ex4_dac_int_det = (ex4_dacrw1_cmpr | ex4_dacrw2_cmpr | ex4_dacrw3_cmpr | ex4_dacrw4_cmpr) &
                         ~(spr_dcc_ex4_dvc1_en | spr_dcc_ex4_dvc2_en) & ex4_dbg_int_en;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// L1 D-Cache Control Logic
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// Touch Type Instructions
+// ################################################################
 
+// Touch Ops with unsupported TH fields are no-ops
 assign ex2_undef_touch = (ex2_dcbt_instr_q    | ex2_dcblc_instr_q    | ex2_dcbtls_instr_q | ex2_dcbtstls_instr_q | ex2_dcbtst_instr_q |
 			              ex2_icbt_l2_instr_q | ex2_icblc_l2_instr_q | ex2_icbtls_l2_instr_q) & ~(ex2_th_fld_c_q | ex2_th_fld_l2_q);
 
 assign ex3_undef_touch_d = ex2_undef_touch;
 assign ex4_undef_touch_d = ex3_undef_touch_q;
 
+// Cache Unable to Lock Detection
+// icblc/dcblc are taken care of by ex4_blk_touch and ex4_l1dc_dis_lockclr
 assign ex2_lockset_instr       = ex2_dcbtls_instr_q | ex2_dcbtstls_instr_q | ex2_icbtls_l2_instr_q;
 assign ex3_undef_lockset_d     = ex2_lockset_instr & ~(ex2_th_fld_c_q | ex2_th_fld_l2_q);
 assign ex4_undef_lockset_d     = ex3_undef_lockset_q;
@@ -3427,11 +3759,15 @@ assign ex4_noop_lockset        = (ex4_dcbtls_instr_q | ex4_dcbtstls_instr_q | ex
 assign ex5_unable_2lock_d      = (ex4_undef_lockset_q | ex4_cinh_lockset | ex4_l1dc_dis_lockset | ex4_noop_lockset) & ex4_wNComp_rcvd_q & ex4_cache_acc_q & ~fgen_ex4_stg_flush_int;
 assign ex6_stq5_unable_2lock_d = (ex5_unable_2lock_q & ~fgen_ex5_stg_flush_int) | lsq_ctl_stq4_xucr0_cul;
 
+// ex3 Data touch ops, DCBT/DCBTST/DCBTLS/DCBTSTLS
 assign data_touch_op = ex3_dcbt_instr_q | ex3_dcbtst_instr_q | ex3_dcbtls_instr_q | ex3_dcbtstls_instr_q;
+// ex3 Instruction touch ops, ICBT/ICBTLS
 assign inst_touch_op = ex3_icbt_l2_instr_q | ex3_icbtls_l2_instr_q;
 
+// Ops that should not execute if translated to cache-inh
 assign all_touch_op = data_touch_op | inst_touch_op;
 
+// ex3 DCBTLS/DCBTSTLS instruction that should set the Lock bit for the cacheline
 assign ex3_l1_lock_set   = (ex3_dcbtstls_instr_q | ex3_dcbtls_instr_q) & ex3_th_fld_c_q;
 assign ex4_l1_lock_set_d = ex3_l1_lock_set;
 assign ex5_l1_lock_set_d = ex4_l1_lock_set_q;
@@ -3444,10 +3780,12 @@ assign ex4_l2_icbtls     = ex4_icbtls_l2_instr_q & ex4_th_fld_l2_q;
 assign ex4_l2_icblc      = ex4_icblc_l2_instr_q  & ex4_th_fld_l2_q;
 assign ex4_l2_dcblc      = ex4_dcblc_instr_q     & ex4_th_fld_l2_q;
 
+// ex3 DCBLC/DCBF/DCBI/LWARX/STWCX/DCBZ instruction that should clear the Lock bit for the cacheline
 assign is_lock_clr    = (ex3_dcblc_instr_q & ex3_th_fld_c_q) | is_inval_op;
 assign ex4_lock_clr_d = is_lock_clr;
 assign ex5_lock_clr_d = ex4_lock_clr_q;
 
+// Blockable Touches
 assign ex4_c_inh_drop_op_d = (all_touch_op | ex3_icblc_l2_instr_q | ex3_dcblc_instr_q) & ((ex3_cache_acc_q & ~fgen_ex3_stg_flush_int) | ex3_pfetch_val_q);
 assign ex4_blkable_touch_d = ex3_dcbt_instr_q | ex3_dcbtst_instr_q | ex3_icbt_l2_instr_q | ex3_undef_touch_q;
 assign ex4_excp_touch      = ex4_blkable_touch_q & derat_dcc_ex4_noop_touch;
@@ -3457,17 +3795,26 @@ assign ex4_blk_touch_instr = ex4_undef_touch_q;
 assign ex5_blk_touch_d     = ex4_blk_touch;
 assign ex6_blk_touch_d     = ex5_blk_touch_q;
 
+// Sync Type Instructions
+// ################################################################
 
+// ex3 HSYNC/LWSYNC/MBAR/TLBSYNC/MAKEITSO
 assign is_mem_bar_op = ex3_sync_instr_q | ex3_mbar_instr_q | ex3_tlbsync_instr_q | ex3_makeitso_instr_q;
 assign ex4_is_sync_d = is_mem_bar_op & ~fgen_ex3_stg_flush_int;
 
+// Line Invalidating Type Instructions
+// ################################################################
 
+// ex3 DCBF/DCBI/LWARX/STWCX/DCBZ/ICSWX instruction that should invalidate the L1 Directory if there is a Hit
 assign ex3_icswx_type    = ex3_icswx_instr_q | ex3_icswxdot_instr_q | ex3_icswx_epid_q;
 assign ex4_icswx_type    = ex4_icswx_instr_q | ex4_icswxdot_instr_q | ex4_icswx_epid_q;
 assign is_inval_op       = ex3_dcbf_instr_q | ex3_dcbi_instr_q | ex3_resv_instr_q | ex3_dcbz_instr_q | ex3_icswx_type;
 assign ex4_is_inval_op_d = is_inval_op;
 
+// Hit/Miss Calculation
+// ################################################################
 
+// Type of Hit
 assign stq3_store_hit    = dir_dcc_stq3_hit & stq3_store_val_q & ~(stq3_ci_q | stq3_resv_q);
 assign stq4_store_hit_d  = stq3_store_hit;
 assign stq5_store_hit_d  = stq4_store_hit_q;
@@ -3477,6 +3824,7 @@ assign ex5_load_hit_d    = dir_dcc_ex4_hit & ex4_load_type_q & ex4_cache_enabled
 assign ex6_load_hit_d    = ex5_load_hit_q;
 assign stq4_dcarr_wren_d = dir_dcc_rel3_dcarr_upd | stq3_store_hit;
 
+// Type of Miss
 assign stq3_store_miss   = ~dir_dcc_stq3_hit & (stq3_store_val_q | stq3_resv_q) & ~stq3_ci_q;
 assign stq4_store_miss_d = stq3_store_miss;
 assign ex4_load_miss     = (dir_dcc_ex4_miss | spr_xucr0_dcdis_q) & ex4_load_type_q & ex4_cache_enabled;
@@ -3484,7 +3832,10 @@ assign ex5_load_miss_d   = ex4_load_miss;
 assign ex5_drop_rel_d    = (dir_dcc_ex4_hit & (ex4_dcbtls_instr_q | ex4_dcbtstls_instr_q)) | (ex4_th_fld_l2_q & (ex4_dcbt_instr_q | ex4_dcbtst_instr_q | ex4_dcbtls_instr_q | ex4_dcbtstls_instr_q)) |
                            (ex4_icbt_l2_instr_q | ex4_icbtls_l2_instr_q);
 
+// WIMGE and USR_DEF
+// ################################################################
 
+// Cacheline State Bits
 assign ex3_le_mode	       = derat_dcc_ex3_wimge_e;
 assign ex4_le_mode_d	   = ex3_le_mode;
 assign ex5_wimge_i_bits_d  = derat_dcc_ex4_wimge[1];
@@ -3495,45 +3846,69 @@ assign ex4_cache_inhibited = (ex4_cache_acc_q | ex4_pfetch_val_q) &  derat_dcc_e
 assign ex4_mem_attr        = {derat_dcc_ex4_usr_bits, derat_dcc_ex4_wimge};
 assign ex5_derat_setHold_d = derat_dcc_ex4_setHold;
 
+// Misc. Control
+// ################################################################
 
+// LQ Pipe Directory Access Instructions
 assign ddir_acc_instr = ex3_load_instr_q | ex3_ldawx_instr_q | data_touch_op;
 
+// Ops that should not update the LRU if a miss or hit
 assign ex3_lru_upd = (ex3_load_instr_q & ~ex3_resv_instr_q) | (ex3_ldawx_instr_q & ex3_wNComp_rcvd);
 
+// These instructions should not update the register file but are treated as loads
 assign ex4_nogpr_upd = ex4_dcbt_instr_q | ex4_dcbtst_instr_q | ex4_resv_instr_q | ex4_dcbtls_instr_q | ex4_dcbtstls_instr_q;
 
+// Watch Clear if real address matches
 assign ex3_watch_clr_entry = ex3_wclr_instr_q &  ex3_l_fld_q[0];
 assign ex3_watch_clr_all   = ex3_wclr_instr_q & ~ex3_l_fld_q[0];
 
+// Move Register Type Instructions
 assign ex4_moveOp_val_d  = ex3_mffgpr_val | (ex3_upd_form_q & ex3_cache_acc_q);
 assign stq6_moveOp_val_d = stq5_mftgpr_val_q | stq5_mfdpf_val_q | stq5_mfdpa_val_q;
 
+// ex4 local dcbf is special, need to check against loadmiss queue,
+// but dont want to send request to the L2, since this signal does not set
+// ex4_l_s_q_val, need to do an OR statement for setbarr_tid and ex4_n_flush_req
+// in case it hits against the loadmiss queue
 assign ex4_local_dcbf_d = (ex3_local_dcbf | ex3_watch_clr_entry) & ex3_cache_acc_q & ~fgen_ex3_stg_flush_int;
 
+// Instructions that need to wait for completion
 assign ex4_stx_instr  = ex4_store_instr_q & ex4_resv_instr_q;
 assign ex4_larx_instr = ex4_load_instr_q & ex4_resv_instr_q;
 
+// misc. instructions
 assign ex4_load_val        = ex4_load_instr_q  & ~ex4_resv_instr_q;
 assign ex4_store_val       = ex4_store_instr_q & ~ex4_resv_instr_q;
 assign ex3_illeg_lswx      = ex3_ucode_val_q & ex3_load_instr_q & ex3_strg_index_q & lsq_ctl_ex3_strg_val & lsq_ctl_ex3_illeg_lswx;
 assign ex3_strg_index_noop = ex3_ucode_val_q & ex3_strg_index_q & lsq_ctl_ex3_strg_val & lsq_ctl_ex3_strg_noop;
 assign ex4_strg_gate_d     = ex3_lswx_restart | ex3_strg_index_noop;
 
-assign ex4_othreq_val = ex4_mffgpr_val | (ex4_wchk_instr_q & ex4_wNComp_rcvd_q) | ex4_ucode_val_q | 
+// Other requests that need to be reported to the ORDERQ
+// Work Around for DITC
+assign ex4_othreq_val = ex4_mffgpr_val | (ex4_wchk_instr_q & ex4_wNComp_rcvd_q) | ex4_ucode_val_q |
                         ex4_ditc_val;
 
+// wchkall instruction will complete if not flushed or restarted
 assign ex5_wchkall_cplt_d = ex4_wchk_instr_q & ex4_wNComp_rcvd_q & ~ex4_restart_val;
 assign ex5_wchkall_cplt   = ex5_wchkall_cplt_q & ~lsq_ctl_ex5_stq_restart;
 
+// LoadPipeline is IDLE
 assign ldq_idle_d = ~ldp_pfetch_inPipe & ~dir_arr_rd_tid_busy & derat_dcc_emq_idle;
 
+// Performance Event
 assign ex6_misalign_flush_d = ex5_cache_acc_q & ex5_misalign_flush & ~fgen_ex5_cp_flush;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// LSQ Control Logic
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// Ops that flow down the Store Queue and require CACHE_ACC to be valid
 assign ex2_stq_val_cacc = (ex2_store_instr_q | ex2_dcbf_instr_q | ex2_dcbi_instr_q  | ex2_dcbz_instr_q     | ex2_wclr_instr_q |
 			               ex2_dcbst_instr_q | ex2_icbi_instr_q | ex2_icswx_instr_q | ex2_icswxdot_instr_q | ex2_icswx_epid_q |
 			               ex2_dcblc_instr_q | ex2_icblc_l2_instr_q) & ex2_cache_acc_q;
 
+// Ops that flow down the Store Queue and do not require CACHE_ACC to be valid
+// Removing DITC
 assign ex2_stq_nval_cacc = ex2_msgsnd_instr_q | ex2_mtspr_trace_q   | ex2_dci_instr_q | ex2_ici_instr_q | ex2_sync_instr_q |
                            ex2_mbar_instr_q   | ex2_tlbsync_instr_q | ex2_mftgpr_val  | ex2_makeitso_instr_q;
 
@@ -3541,6 +3916,7 @@ assign ex2_stq_val_req   = ex2_stq_val_cacc | ex2_stq_nval_cacc | (ex2_strg_inde
 assign ex3_stq_val_req_d = ex2_stq_val_req   & ~fgen_ex2_stg_flush_int;
 assign ex4_stq_val_req_d = ex3_stq_val_req_q & ~fgen_ex3_stg_flush_int;
 
+// Wait for Next Completion Indicator Instructions
 generate begin : cpNextItag
       genvar tid;
       for (tid=0; tid<`THREADS; tid=tid+1) begin : cpNextItag
@@ -3559,19 +3935,33 @@ assign ex5_wNComp_d	 = ex4_wNComp_q & ~ex4_wNComp_rcvd_q;
 assign ex4_guarded_load  = derat_dcc_ex4_wimge[3] & ex4_l2load_type_q;
 assign ex5_blk_pf_load_d = (derat_dcc_ex4_wimge[1] | derat_dcc_ex4_wimge[3]) & ex4_l2load_type_q;
 
+// These instructions update a temporary but need to wait for all ops ahead to be completed
+// ex4_wchk_instr_q
+// These instructions update a temporary and are handled by the load pipe but use the store queue
+// ex4_mftgpr_val
+// These instructions update a temporary and update a status register
+// ex4_mfdpa_val, ex4_mfdpf_val
 assign ex4_wNcomp_oth = ex4_wchk_instr_q | ex4_is_sync_q | ex4_mftgpr_val | ex4_mfdpa_val | ex4_mfdpf_val | ex4_is_cinval;
 assign ex4_wNComp_req = (((ex4_wNComp_q | ex4_guarded_load) & ex4_cache_acc_q) | ex4_wNcomp_oth);
 
+// Wait for Next Completion Requests that are handled by the LQ Pipe
+// These requests are restarted to RV
 assign ex4_lq_wNComp_req   = ex4_larx_instr     | ex4_ldawx_instr_q    | ex4_guarded_load      | ex4_wchk_instr_q |
                              ex4_dcbtls_instr_q | ex4_dcbtstls_instr_q | ex4_icbtls_l2_instr_q;
 assign ex5_lq_wNComp_val_d = (ex4_wNComp_req & ex4_lq_wNComp_req & ~(ex4_wNComp_rcvd_q | fgen_ex4_stg_flush_int)) |
                              (ex4_wNComp_excp                    & ~(ex4_wNComp_rcvd_q | fgen_ex4_cp_flush_int));
 assign ex6_lq_wNComp_val_d = ex5_lq_wNComp_val_q;
 
+// Want to report to RV to hold until CP_NEXT_ITAG matches, then release
+// dont want these scenarios to keep recirculating
 assign ex5_wNComp_ord_d = ex4_wNComp_req & ex4_lq_wNComp_req & ~(ex4_wNComp_rcvd_q | fgen_ex4_stg_flush_int);
 
+// CR Update is Valid
 assign ex5_wNComp_cr_upd_d = ((ex4_ldawx_instr_q & ex4_cache_acc_q) | ex4_wchk_instr_q) & ex4_wNComp_rcvd_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// LSQ Entry Data
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 assign ex4_cline_chk = (spr_dcc_spr_lsucr0_clchk | ex4_dcbt_instr_q     | ex4_larx_instr        | ex4_dcbtls_instr_q     | ex4_dcbtst_instr_q     |
 			            ex4_dcbtstls_instr_q     | ex4_icbt_l2_instr_q  | ex4_icbtls_l2_instr_q | ex4_stx_instr          |
@@ -3580,65 +3970,77 @@ assign ex4_cline_chk = (spr_dcc_spr_lsucr0_clchk | ex4_dcbt_instr_q     | ex4_la
 			            ex4_wclr_instr_q         | ex4_ldawx_instr_q    | ex4_icswx_instr_q     | ex4_icswxdot_instr_q   | ex4_icswx_epid_q) &
                         ~(ex4_tgpr_instr_q | ex4_taxu_instr_q | ex4_tdp_instr_q | ex4_msgsnd_instr_q);
 
+// All Store instructions that need to go to the L2
 assign ex4_send_l2 = ex4_store_val      | ex4_stx_instr    | (ex4_dcbf_instr_q & (~ex4_local_dcbf_q))   | ex4_dcbi_instr_q | ex4_dcbz_instr_q   | ex4_dcbst_instr_q |
                      ex4_sync_instr_q   | ex4_mbar_instr_q | ex4_tlbsync_instr_q | ex4_l2_icblc         | ex4_l2_dcblc     | ex4_dci_l2_val     | ex4_ici_l2_val    |
                      ex4_msgsnd_instr_q | ex4_icbi_instr_q | ex4_icswx_instr_q   | ex4_icswxdot_instr_q | ex4_icswx_epid_q | ex4_mtspr_trace_en | ex4_makeitso_instr_q;
 
+// All requests that should be dropped
 assign ex4_dReq_val = ex4_blk_touch | ex4_ucode_val_q | ex4_mtspr_trace_dis | ex4_is_cinval_drop | ex4_l1dc_dis_lockclr;
 
+// All Store instructions that have data
+// Removing DITC
 assign ex4_has_data = ex4_store_val | ex4_stx_instr | ex4_icswx_instr_q | ex4_icswxdot_instr_q | ex4_icswx_epid_q | ex4_mftgpr_val | ex4_strg_index_q;
 
-assign ex5_ttype_d = ({6{ex4_load_val}}							                    & 6'b001000) |	
-		             ({6{ex4_larx_instr}}						                    & ({4'b0010, ex4_mutex_hint_q, 1'b1})) | 
-		             ({6{((ex4_dcbt_instr_q & ex4_th_fld_c_q) | ex4_c_dcbtls)}}		& 6'b001111) |	
-                     ({6{(ex4_dcbt_instr_q & ex4_th_fld_l2_q)}}				        & 6'b000111) |	
-		             ({6{ex4_l2_dcbtls}}						                    & 6'b010111) |	
-                     ({6{((ex4_dcbtst_instr_q & ex4_th_fld_c_q) | ex4_c_dcbtstls)}}	& 6'b001101) |	
-		             ({6{(ex4_dcbtst_instr_q & ex4_th_fld_l2_q)}}			        & 6'b000101) |	
-                     ({6{ex4_l2_dcbtstls}}						                    & 6'b010101) |	
-		             ({6{(ex4_icbt_l2_instr_q | ex4_c_icbtls)}}				        & 6'b000100) |	
-                     ({6{ex4_l2_icbtls}}						                    & 6'b010100) |	
-		             ({6{ex4_store_val}}						                    & 6'b100000) |	
-                     ({6{ex4_stx_instr}}						                    & 6'b101001) |	
-		             ({6{ex4_icbi_instr_q}}						                    & 6'b111110) |	
-                     ({6{(ex4_dcbf_instr_q &  (ex4_l_fld_q == 2'b01))}}			    & 6'b110110) |	
-                     ({6{(ex4_dcbf_instr_q & ~(ex4_l_fld_q == 2'b01))}}			    & 6'b110111) |	
-                     ({6{ex4_dcbi_instr_q}}						                    & 6'b111111) |	
-		             ({6{ex4_dcbz_instr_q}}						                    & 6'b100001) |	
-		             ({6{ex4_dcbst_instr_q}}						                & 6'b110101) |	
-		             ({6{(ex4_sync_instr_q & ((ex4_l_fld_q != 2'b01)))}}		    & 6'b101011) |	
-		             ({6{(ex4_mbar_instr_q &  spr_xucr0_mbar_ack_q)}}			    & 6'b101011) |	
-                     ({6{(ex4_mbar_instr_q & ~spr_xucr0_mbar_ack_q)}}			    & 6'b110010) |	
-                     ({6{(ex4_sync_instr_q & (ex4_l_fld_q == 2'b01))}}			    & 6'b101010) |	
-                     ({6{ex4_makeitso_instr_q}}						                & 6'b100011) |	
-                     ({6{ex4_tlbsync_instr_q}}						                & 6'b111010) |	
-                     ({6{ex4_icblc_l2_instr_q}}						                & 6'b100100) |	
-                     ({6{ex4_dcblc_instr_q}}						                & 6'b100101) |	
-                     ({6{ex4_dci_instr_q}}						                    & 6'b101111) |	
-                     ({6{ex4_ici_instr_q}}						                    & 6'b101110) |	
-                     ({6{ex4_msgsnd_instr_q}}						                & 6'b101101) |	
-                     ({6{ex4_icswx_instr_q}}						                & 6'b100110) |	
-                     ({6{ex4_icswxdot_instr_q}}						                & 6'b100111) |	
-                     ({6{ex4_mtspr_trace_q}}						                & 6'b101100) |	
-                     ({6{ex4_mfdpf_val}}						                    & 6'b011000) |	
-                     ({6{ex4_mfdpa_val}}						                    & 6'b010000) |	
-                     ({6{ex4_tdp_instr_q}}						                    & 6'b110000) |	
-                     ({6{ex4_mftgpr_val}}						                    & 6'b111000);	
+// TTYPE Select
+assign ex5_ttype_d = ({6{ex4_load_val}}							                    & 6'b001000) |
+		             ({6{ex4_larx_instr}}						                    & ({4'b0010, ex4_mutex_hint_q, 1'b1})) |
+		             ({6{((ex4_dcbt_instr_q & ex4_th_fld_c_q) | ex4_c_dcbtls)}}		& 6'b001111) |
+                     ({6{(ex4_dcbt_instr_q & ex4_th_fld_l2_q)}}				        & 6'b000111) |
+		             ({6{ex4_l2_dcbtls}}						                    & 6'b010111) |
+                     ({6{((ex4_dcbtst_instr_q & ex4_th_fld_c_q) | ex4_c_dcbtstls)}}	& 6'b001101) |
+		             ({6{(ex4_dcbtst_instr_q & ex4_th_fld_l2_q)}}			        & 6'b000101) |
+                     ({6{ex4_l2_dcbtstls}}						                    & 6'b010101) |
+		             ({6{(ex4_icbt_l2_instr_q | ex4_c_icbtls)}}				        & 6'b000100) |
+                     ({6{ex4_l2_icbtls}}						                    & 6'b010100) |
+		             ({6{ex4_store_val}}						                    & 6'b100000) |
+                     ({6{ex4_stx_instr}}						                    & 6'b101001) |
+		             ({6{ex4_icbi_instr_q}}						                    & 6'b111110) |
+                     ({6{(ex4_dcbf_instr_q &  (ex4_l_fld_q == 2'b01))}}			    & 6'b110110) |
+                     ({6{(ex4_dcbf_instr_q & ~(ex4_l_fld_q == 2'b01))}}			    & 6'b110111) |
+                     ({6{ex4_dcbi_instr_q}}						                    & 6'b111111) |
+		             ({6{ex4_dcbz_instr_q}}						                    & 6'b100001) |
+		             ({6{ex4_dcbst_instr_q}}						                & 6'b110101) |
+		             ({6{(ex4_sync_instr_q & ((ex4_l_fld_q != 2'b01)))}}		    & 6'b101011) |
+		             ({6{(ex4_mbar_instr_q &  spr_xucr0_mbar_ack_q)}}			    & 6'b101011) |	//' HWSYNC MODE ENABLED for MBAR
+                     ({6{(ex4_mbar_instr_q & ~spr_xucr0_mbar_ack_q)}}			    & 6'b110010) |	//' HWSYNC MODE DISABLED for MBAR
+                     ({6{(ex4_sync_instr_q & (ex4_l_fld_q == 2'b01))}}			    & 6'b101010) |
+                     ({6{ex4_makeitso_instr_q}}						                & 6'b100011) |
+                     ({6{ex4_tlbsync_instr_q}}						                & 6'b111010) |
+                     ({6{ex4_icblc_l2_instr_q}}						                & 6'b100100) |
+                     ({6{ex4_dcblc_instr_q}}						                & 6'b100101) |
+                     ({6{ex4_dci_instr_q}}						                    & 6'b101111) |
+                     ({6{ex4_ici_instr_q}}						                    & 6'b101110) |
+                     ({6{ex4_msgsnd_instr_q}}						                & 6'b101101) |
+                     ({6{ex4_icswx_instr_q}}						                & 6'b100110) |
+                     ({6{ex4_icswxdot_instr_q}}						                & 6'b100111) |
+                     ({6{ex4_mtspr_trace_q}}						                & 6'b101100) |
+                     ({6{ex4_mfdpf_val}}						                    & 6'b011000) |
+                     ({6{ex4_mfdpa_val}}						                    & 6'b010000) |
+                     ({6{ex4_tdp_instr_q}}						                    & 6'b110000) |
+                     ({6{ex4_mftgpr_val}}						                    & 6'b111000);
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Directory Read Control
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 assign dir_arr_rd_cntrl = {spr_dcc_spr_xudbg0_exec, dir_arr_rd_rv1_done};
 
-assign dir_arr_rd_val_d = (dir_arr_rd_cntrl == 2'b10) ? spr_dcc_spr_xudbg0_exec : 
-                          (dir_arr_rd_cntrl == 2'b01) ? 1'b0 : 
-                          dir_arr_rd_val_q; 
+assign dir_arr_rd_val_d = (dir_arr_rd_cntrl == 2'b10) ? spr_dcc_spr_xudbg0_exec :
+                          (dir_arr_rd_cntrl == 2'b01) ? 1'b0 :
+                          dir_arr_rd_val_q;
 
-assign dir_arr_rd_tid_d = dir_arr_rd_cntrl[0] ? spr_dcc_spr_xudbg0_tid : 
-                          dir_arr_rd_tid_q; 
+assign dir_arr_rd_tid_d = dir_arr_rd_cntrl[0] ? spr_dcc_spr_xudbg0_tid :
+                          dir_arr_rd_tid_q;
 
+// Piping Down Directory Read indicator to match up with need hole request
 assign dir_arr_rd_rv1_val_d = dir_arr_rd_val_q;
 
+// Directory Read is done when there isnt a back-invalidate in same stage
+// Creating a Pulse, dont want to set done indicator for multiple cycles
 assign dir_arr_rd_rv1_done = dir_arr_rd_rv1_val_q & ~(rv1_binv_val_q | dir_arr_rd_ex0_done_q | dir_arr_rd_ex1_done_q | dir_arr_rd_ex2_done_q);
 
+// Piping Down Done indicator to capture directory contents
 assign dir_arr_rd_ex0_done_d = dir_arr_rd_rv1_done;
 assign dir_arr_rd_ex1_done_d = dir_arr_rd_ex0_done_q;
 assign dir_arr_rd_ex2_done_d = dir_arr_rd_ex1_done_q;
@@ -3647,42 +4049,48 @@ assign dir_arr_rd_ex4_done_d = dir_arr_rd_ex3_done_q;
 assign dir_arr_rd_ex5_done_d = dir_arr_rd_ex4_done_q;
 assign dir_arr_rd_ex6_done_d = dir_arr_rd_ex5_done_q;
 
+// Directory Read In Progress
 assign dir_arr_rd_busy = dir_arr_rd_rv1_val_q  | dir_arr_rd_ex0_done_q | dir_arr_rd_ex1_done_q | dir_arr_rd_ex2_done_q |
                          dir_arr_rd_ex3_done_q | dir_arr_rd_ex4_done_q | dir_arr_rd_ex5_done_q | dir_arr_rd_ex6_done_q;
 
 assign dir_arr_rd_tid_busy = dir_arr_rd_tid_q & {`THREADS{dir_arr_rd_busy}};
 
-assign dir_arr_rd_tag = (spr_dcc_spr_xudbg0_way == 3'b000) ? dir_dcc_ex4_way_tag_a : 
-                        (spr_dcc_spr_xudbg0_way == 3'b001) ? dir_dcc_ex4_way_tag_b : 
-                        (spr_dcc_spr_xudbg0_way == 3'b010) ? dir_dcc_ex4_way_tag_c : 
-                        (spr_dcc_spr_xudbg0_way == 3'b011) ? dir_dcc_ex4_way_tag_d : 
-                        (spr_dcc_spr_xudbg0_way == 3'b100) ? dir_dcc_ex4_way_tag_e : 
-                        (spr_dcc_spr_xudbg0_way == 3'b101) ? dir_dcc_ex4_way_tag_f : 
-                        (spr_dcc_spr_xudbg0_way == 3'b110) ? dir_dcc_ex4_way_tag_g : 
-                        dir_dcc_ex4_way_tag_h; 
+// Select Tag
+assign dir_arr_rd_tag = (spr_dcc_spr_xudbg0_way == 3'b000) ? dir_dcc_ex4_way_tag_a :
+                        (spr_dcc_spr_xudbg0_way == 3'b001) ? dir_dcc_ex4_way_tag_b :
+                        (spr_dcc_spr_xudbg0_way == 3'b010) ? dir_dcc_ex4_way_tag_c :
+                        (spr_dcc_spr_xudbg0_way == 3'b011) ? dir_dcc_ex4_way_tag_d :
+                        (spr_dcc_spr_xudbg0_way == 3'b100) ? dir_dcc_ex4_way_tag_e :
+                        (spr_dcc_spr_xudbg0_way == 3'b101) ? dir_dcc_ex4_way_tag_f :
+                        (spr_dcc_spr_xudbg0_way == 3'b110) ? dir_dcc_ex4_way_tag_g :
+                        dir_dcc_ex4_way_tag_h;
 
-assign dir_arr_rd_directory = (spr_dcc_spr_xudbg0_way == 3'b000) ? dir_dcc_ex5_way_a_dir : 
-                              (spr_dcc_spr_xudbg0_way == 3'b001) ? dir_dcc_ex5_way_b_dir : 
-                              (spr_dcc_spr_xudbg0_way == 3'b010) ? dir_dcc_ex5_way_c_dir : 
-                              (spr_dcc_spr_xudbg0_way == 3'b011) ? dir_dcc_ex5_way_d_dir : 
-                              (spr_dcc_spr_xudbg0_way == 3'b100) ? dir_dcc_ex5_way_e_dir : 
-                              (spr_dcc_spr_xudbg0_way == 3'b101) ? dir_dcc_ex5_way_f_dir : 
-                              (spr_dcc_spr_xudbg0_way == 3'b110) ? dir_dcc_ex5_way_g_dir : 
-                              dir_dcc_ex5_way_h_dir; 
+// Select Directory Contents
+assign dir_arr_rd_directory = (spr_dcc_spr_xudbg0_way == 3'b000) ? dir_dcc_ex5_way_a_dir :
+                              (spr_dcc_spr_xudbg0_way == 3'b001) ? dir_dcc_ex5_way_b_dir :
+                              (spr_dcc_spr_xudbg0_way == 3'b010) ? dir_dcc_ex5_way_c_dir :
+                              (spr_dcc_spr_xudbg0_way == 3'b011) ? dir_dcc_ex5_way_d_dir :
+                              (spr_dcc_spr_xudbg0_way == 3'b100) ? dir_dcc_ex5_way_e_dir :
+                              (spr_dcc_spr_xudbg0_way == 3'b101) ? dir_dcc_ex5_way_f_dir :
+                              (spr_dcc_spr_xudbg0_way == 3'b110) ? dir_dcc_ex5_way_g_dir :
+                              dir_dcc_ex5_way_h_dir;
 
-assign dir_arr_rd_parity = (spr_dcc_spr_xudbg0_way == 3'b000) ? dir_dcc_ex4_way_par_a : 
-                           (spr_dcc_spr_xudbg0_way == 3'b001) ? dir_dcc_ex4_way_par_b : 
-                           (spr_dcc_spr_xudbg0_way == 3'b010) ? dir_dcc_ex4_way_par_c : 
-                           (spr_dcc_spr_xudbg0_way == 3'b011) ? dir_dcc_ex4_way_par_d : 
-                           (spr_dcc_spr_xudbg0_way == 3'b100) ? dir_dcc_ex4_way_par_e : 
-                           (spr_dcc_spr_xudbg0_way == 3'b101) ? dir_dcc_ex4_way_par_f : 
-                           (spr_dcc_spr_xudbg0_way == 3'b110) ? dir_dcc_ex4_way_par_g : 
-                           dir_dcc_ex4_way_par_h; 
+// Select Directory Tag Parity
+assign dir_arr_rd_parity = (spr_dcc_spr_xudbg0_way == 3'b000) ? dir_dcc_ex4_way_par_a :
+                           (spr_dcc_spr_xudbg0_way == 3'b001) ? dir_dcc_ex4_way_par_b :
+                           (spr_dcc_spr_xudbg0_way == 3'b010) ? dir_dcc_ex4_way_par_c :
+                           (spr_dcc_spr_xudbg0_way == 3'b011) ? dir_dcc_ex4_way_par_d :
+                           (spr_dcc_spr_xudbg0_way == 3'b100) ? dir_dcc_ex4_way_par_e :
+                           (spr_dcc_spr_xudbg0_way == 3'b101) ? dir_dcc_ex4_way_par_f :
+                           (spr_dcc_spr_xudbg0_way == 3'b110) ? dir_dcc_ex4_way_par_g :
+                           dir_dcc_ex4_way_par_h;
 
 assign dir_arr_rd_lru = dir_dcc_ex5_dir_lru;
 
+// XUDBG0 Register
 assign dcc_spr_spr_xudbg0_done = dir_arr_rd_ex5_done_q;
 
+// XUDBG1 Register
 assign xudbg1_dir_reg_d    = {dir_arr_rd_directory, dir_arr_rd_lru};
 assign xudbg1_parity_reg_d = dir_arr_rd_parity;
 
@@ -3693,7 +4101,7 @@ generate begin : xudbg1Watch
             assign dcc_spr_spr_xudbg1_watch[tid] = xudbg1_dir_reg_q[2+tid];
          end
          if (tid >= `THREADS) begin : tidIVal
-            assign dcc_spr_spr_xudbg1_watch[tid] = 1'b0; 
+            assign dcc_spr_spr_xudbg1_watch[tid] = 1'b0;
          end
       end
    end
@@ -3707,7 +4115,7 @@ endgenerate
 
 generate
    if (PARBITS != 4) begin : parityFill
-      assign dcc_spr_spr_xudbg1_parity[0:3 - PARBITS] = {4-PARBITS{1'b0}}; 
+      assign dcc_spr_spr_xudbg1_parity[0:3 - PARBITS] = {4-PARBITS{1'b0}};
       assign dcc_spr_spr_xudbg1_parity[4 - PARBITS:3] = xudbg1_parity_reg_q;
    end
 endgenerate
@@ -3716,6 +4124,7 @@ assign dcc_spr_spr_xudbg1_lock  = xudbg1_dir_reg_q[1];
 assign dcc_spr_spr_xudbg1_valid = xudbg1_dir_reg_q[0];
 assign dcc_spr_spr_xudbg1_lru   = xudbg1_dir_reg_q[2+`THREADS:2+`THREADS+6];
 
+// XUDBG2 Register
 assign xudbg2_tag_d = dir_arr_rd_tag;
 
 generate
@@ -3725,12 +4134,16 @@ generate
 endgenerate
 generate
    if (TAGSIZE != 31) begin : tagFill
-      assign dcc_spr_spr_xudbg2_tag[33:33+(30-TAGSIZE)] = {31-TAGSIZE{1'b0}}; 
+      assign dcc_spr_spr_xudbg2_tag[33:33+(30-TAGSIZE)] = {31-TAGSIZE{1'b0}};
       assign dcc_spr_spr_xudbg2_tag[33+(31-TAGSIZE):63] = xudbg2_tag_q;
    end
 endgenerate
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Register File updates
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
+// Staging out Update of AXU on a Reload
 assign rel2_axu_wren_d = lsq_ctl_rel1_gpr_val & lsq_ctl_rel1_upd_gpr & lsq_ctl_stq1_axu_val;
 assign stq2_axu_val_d  = lsq_ctl_stq1_axu_val;
 assign stq3_axu_val_d  = stq2_axu_val_q;
@@ -3739,6 +4152,8 @@ assign stq4_axu_val_d  = stq3_axu_val_q;
 assign rel2_ta_gpr_d  = lsq_ctl_rel1_ta_gpr;
 assign rel2_xu_wren_d = lsq_ctl_rel1_gpr_val & lsq_ctl_rel1_upd_gpr & (~lsq_ctl_stq1_axu_val);
 
+// Move From DITC to AXU request
+// Move Float To GPR request
 assign stq6_tgpr_val  = stq6_mfdpa_val_q | stq6_mftgpr_val_q;
 assign reg_upd_ta_gpr = stq6_tgpr_val ? stq6_tgpr_q : ex4_target_gpr_q;
 
@@ -3754,22 +4169,35 @@ assign ex5_lq_ta_gpr_d = reg_upd_ta_gpr;
 assign ex6_lq_ta_gpr_d = ex5_lq_ta_gpr_q[AXU_TARGET_ENC-(`GPR_POOL_ENC+`THREADS_POOL_ENC):AXU_TARGET_ENC-1];
 assign ex5_load_le_d   = derat_dcc_ex4_wimge[4];
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// RAM Control
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// RAM Active Thread
 assign pc_lq_ram_active_d = pc_lq_ram_active;
 
+// Active Thread for a pipeline instruction
 assign ex6_ram_thrd	       = pc_lq_ram_active_q & ex6_thrd_id_q;
 assign ex6_ram_active_thrd = ex6_ram_thrd & {`THREADS{(ex6_lq_wren_q | ex6_axu_wren_q)}};
 
+// Active Thread for a MFTGPR instruction
 assign stq8_ram_thrd	    = pc_lq_ram_active_q & stq8_thrd_id_q;
 assign stq8_ram_active_thrd = stq8_ram_thrd & {`THREADS{stq8_mftgpr_val_q}};
 
+// Active Thread for a reload
 assign rel2_ram_thrd	    = pc_lq_ram_active_q & stq2_thrd_id_q;
 assign rel2_ram_active_thrd = rel2_ram_thrd & {`THREADS{(rel2_xu_wren_q | rel2_axu_wren_q)}};
 
+// RAM Data Valid
 assign lq_ram_data_val	    = ex6_ram_active_thrd | stq8_ram_active_thrd | rel2_ram_active_thrd;
 assign lq_pc_ram_data_val_d = |(lq_ram_data_val);
 
+// RAM Data ACT
 assign dcc_byp_ram_act = |(lq_ram_data_val);
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Performance Events
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Events that need to be reported to Completion
 assign perf_com_loadmiss     = ex5_cache_acc_q  & ex5_load_instr_q  &     ex5_load_miss_q & ~lsq_ctl_ex5_fwd_val;
 assign perf_com_loads	     = ex5_cache_acc_q  & ex5_load_instr_q  & ~ex5_wimge_i_bits_q;
 assign perf_com_cinh_loads   = ex5_cache_acc_q  & ex5_load_instr_q  &  ex5_wimge_i_bits_q;
@@ -3781,19 +4209,21 @@ assign perf_com_watch_set    = ex5_cache_acc_q  & ex5_ldawx_instr_q;
 assign perf_com_watch_dup    = ex5_cache_acc_q  & ex5_ldawx_instr_q & dir_dcc_ex5_cr_rslt;
 assign perf_com_wchkall      = ex5_wchkall_cplt;
 assign perf_com_wchkall_succ = ex5_wchkall_cplt & ~dir_dcc_ex5_cr_rslt;
-assign ex5_cmmt_events       = {perf_com_loads,     perf_com_loadmiss,  perf_com_cinh_loads, perf_com_load_fwd, 
+assign ex5_cmmt_events       = {perf_com_loads,     perf_com_loadmiss,  perf_com_cinh_loads, perf_com_load_fwd,
                                 perf_com_axu_load,  perf_com_dcbt_sent, perf_com_dcbt_hit,   perf_com_watch_set,
                                 perf_com_watch_dup, perf_com_wchkall,   perf_com_wchkall_succ};
 
+// STQ Pipeline Events that do not need to be reported to Completion
 assign perf_stq_stores	   = stq4_store_val_q;
 assign perf_stq_store_miss = stq4_store_miss_q;
 assign perf_stq_stcx_exec  = stq4_rec_stcx_q;
 assign perf_stq_axu_store  = stq4_store_val_q & stq4_axu_val_q;
 assign perf_stq_wclr       = stq4_wclr_val_q;
 assign perf_stq_wclr_set   = stq4_wclr_val_q & stq4_wclr_all_set_q;
-assign stq_perf_events     = {perf_stq_stores,    perf_stq_store_miss, perf_stq_stcx_exec, 
+assign stq_perf_events     = {perf_stq_stores,    perf_stq_store_miss, perf_stq_stcx_exec,
                               perf_stq_axu_store, perf_stq_wclr,       perf_stq_wclr_set, stq4_thrd_id_q};
 
+// LDQ Pipeline Events
 assign perf_ex6_derat_attmpts   = 1'b0;
 assign perf_ex6_derat_restarts  = ex6_cache_acc_q  & ex6_restart_val_q & ex6_derat_restart_q;
 assign perf_ex6_pfetch_iss      = ex6_pfetch_val_q;
@@ -3820,8 +4250,12 @@ assign ex6_dcc_perf_events     = {perf_ex6_derat_attmpts,  perf_ex6_derat_restar
                                   perf_ex6_ldq_hit,        perf_ex6_lgq_full,       perf_ex6_lgq_hit,
                                   perf_ex6_stq_sametid,    perf_ex6_stq_difftid,    perf_ex6_align_flush, ex6_thrd_id_q};
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Flush Generation
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 lq_fgen fgen(
-   
+
+   // IU Dispatch to RV0
    .ex0_i0_vld(ex0_i0_vld_q),
    .ex0_i0_ucode_preissue(ex0_i0_ucode_preissue_q),
    .ex0_i0_2ucode(ex0_i0_2ucode_q),
@@ -3830,7 +4264,8 @@ lq_fgen fgen(
    .ex0_i1_ucode_preissue(ex0_i1_ucode_preissue_q),
    .ex0_i1_2ucode(ex0_i1_2ucode_q),
    .ex0_i1_ucode_cnt(ex0_i1_ucode_cnt_q),
-   
+
+   // Execution Pipe
    .dec_dcc_ex1_expt_det(dec_dcc_ex1_expt_det),
    .dec_dcc_ex1_priv_prog(dec_dcc_ex1_priv_prog),
    .dec_dcc_ex1_hypv_prog(dec_dcc_ex1_hypv_prog),
@@ -3839,7 +4274,8 @@ lq_fgen fgen(
    .dec_dcc_ex1_ilock_excp(dec_dcc_ex1_ilock_excp),
    .dec_dcc_ex1_ehpriv_excp(dec_dcc_ex1_ehpriv_excp),
    .byp_dcc_ex2_req_aborted(byp_dcc_ex2_req_aborted),
-   
+
+   // Control
    .ex3_stg_act(ex3_stg_act_q),
    .ex4_stg_act(ex4_stg_act_q),
    .ex1_thrd_id(dec_dcc_ex1_thrd_id),
@@ -3874,14 +4310,16 @@ lq_fgen fgen(
    .ex4_strg_gate(ex4_strg_gate_q),
    .ex4_restart_val(ex4_restart_val),
    .ex5_restart_val(ex5_restart_val),
-   
+
+   // SPR Bits
    .spr_ccr2_ucode_dis(spr_ccr2_ucode_dis_q),
    .spr_ccr2_notlb(spr_ccr2_notlb_q),
    .spr_xucr0_mddp(spr_xucr0_mddp_q),
    .spr_xucr0_mdcp(spr_xucr0_mdcp_q),
    .spr_xucr4_mmu_mchk(spr_xucr4_mmu_mchk_q),
    .spr_xucr4_mddmh(spr_xucr4_mddmh_q),
-   
+
+   // ERAT Interface
    .derat_dcc_ex4_restart(derat_dcc_ex4_restart),
    .derat_dcc_ex4_wimge_w(derat_dcc_ex4_wimge[0]),
    .derat_dcc_ex4_wimge_i(derat_dcc_ex4_wimge[1]),
@@ -3901,7 +4339,8 @@ lq_fgen fgen(
    .derat_dcc_ex4_par_err_flush(derat_dcc_ex4_par_err_flush),
    .derat_fir_par_err(derat_fir_par_err),
    .derat_fir_multihit(derat_fir_multihit),
-     
+
+   // D$ Parity Error Detected
    .dir_dcc_ex5_dir_perr_det(dir_dcc_ex5_dir_perr_det),
    .dir_dcc_ex5_dc_perr_det(dir_dcc_ex5_dc_perr_det),
    .dir_dcc_ex5_dir_perr_flush(dir_dcc_ex5_dir_perr_flush),
@@ -3911,15 +4350,18 @@ lq_fgen fgen(
    .dir_dcc_stq4_dir_perr_det(dir_dcc_stq4_dir_perr_det),
    .dir_dcc_stq4_multihit_det(dir_dcc_stq4_multihit_det),
    .dir_dcc_ex5_stp_flush(dir_dcc_ex5_stp_flush),
-   
+
+   // SPR's
    .spr_xucr0_aflsta(spr_xucr0_aflsta_q),
    .spr_xucr0_flsta(spr_xucr0_flsta_q),
    .spr_ccr2_ap(spr_ccr2_ap_q),
    .spr_msr_fp(spr_msr_fp),
    .spr_msr_spv(spr_msr_spv),
-   
+
+   // Instruction Flush
    .iu_lq_cp_flush(iu_lq_cp_flush_q),
-   
+
+   // Flush Pipe Outputs
    .ex4_ucode_restart(ex4_ucode_restart),
    .ex4_sfx_excpt_det(ex4_sfx_excpt_det),
    .ex4_excp_det(ex4_excp_det),
@@ -3935,16 +4377,19 @@ lq_fgen fgen(
    .fgen_ex3_stg_flush(fgen_ex3_stg_flush_int),
    .fgen_ex4_stg_flush(fgen_ex4_stg_flush_int),
    .fgen_ex5_stg_flush(fgen_ex5_stg_flush_int),
-   
+
+   // Completion Indicators
    .ex5_flush2ucode(ex5_flush2ucode),
    .ex5_n_flush(ex5_n_flush),
    .ex5_np1_flush(ex5_np1_flush),
    .ex5_exception_val(ex5_exception_val),
    .ex5_exception(ex5_exception),
    .ex5_dear_val(ex5_dear_val),
-   
+
+   // Performance Events
    .ex5_misalign_flush(ex5_misalign_flush),
-   
+
+   // Error Reporting
    .lq_pc_err_derat_parity(lq_pc_err_derat_parity),
    .lq_pc_err_dir_ldp_parity(lq_pc_err_dir_ldp_parity),
    .lq_pc_err_dir_stp_parity(lq_pc_err_dir_stp_parity),
@@ -3952,7 +4397,8 @@ lq_fgen fgen(
    .lq_pc_err_derat_multihit(lq_pc_err_derat_multihit),
    .lq_pc_err_dir_ldp_multihit(lq_pc_err_dir_ldp_multihit),
    .lq_pc_err_dir_stp_multihit(lq_pc_err_dir_stp_multihit),
-   
+
+   //pervasive
    .vdd(vdd),
    .gnd(gnd),
    .nclk(nclk),
@@ -3967,6 +4413,9 @@ lq_fgen fgen(
    .scan_out(fgen_scan_out)
 );
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Execution Pipe Outputs
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign dcc_dir_ex2_frc_align2  = ex2_ldst_falign_q & ex2_optype2_q;
 assign dcc_dir_ex2_frc_align4  = ex2_ldst_falign_q & ex2_optype4_q;
 assign dcc_dir_ex2_frc_align8  = ex2_ldst_falign_q & ex2_optype8_q;
@@ -4006,6 +4455,7 @@ assign ctl_lsq_ex3_thrd_id	     = ex3_thrd_id_q;
 assign ctl_lsq_ex3_algebraic	 = ex3_algebraic_q;
 assign ctl_lsq_ex3_opsize	     = ex3_opsize_enc;
 
+// these should be 1-hot (ex4_ldreq_val & ex4_binvreq_val & ex4_streq_val & ex4_othreq_val)
 assign ctl_lsq_ex4_ldreq_val	= ex4_cache_acc_q & ex4_l2load_type_q & (~ex4_wNComp_req | ex4_wNComp_rcvd_q) & ~(fgen_ex4_stg_flush_int | ex4_restart_val);
 assign ctl_lsq_ex4_binvreq_val	= ex4_binv_val_q;
 assign ctl_lsq_ex4_streq_val	= ex4_stq_val_req_q & ~(fgen_ex4_stg_flush_int | ex4_restart_val);
@@ -4056,7 +4506,7 @@ assign ctl_lsq_ex5_perf_val2    = &(ex5_spr_lesr[12:13]);
 assign ctl_lsq_ex5_perf_sel2    = ex5_spr_lesr[14:17];
 assign ctl_lsq_ex5_perf_val3    = &(ex5_spr_lesr[18:19]);
 assign ctl_lsq_ex5_perf_sel3    = ex5_spr_lesr[20:23];
-assign ctl_lsq_stq3_icswx_data	= {stq3_icswx_data_q[0:10], 2'b00, stq3_icswx_data_q[11:24]}; 
+assign ctl_lsq_stq3_icswx_data	= {stq3_icswx_data_q[0:10], 2'b00, stq3_icswx_data_q[11:24]};
 assign ctl_lsq_stq_cpl_blk	    = ex5_lq_comp_rpt_val;
 assign ctl_lsq_rv1_dir_rd_val	= dir_arr_rd_rv1_done;
 assign ctl_lsq_dbg_int_en	    = dbg_int_en_q;
@@ -4092,15 +4542,21 @@ assign dcc_dir_ex3_watch_set	= ex3_ldawx_instr_q & ex3_cache_acc_q & ex3_wNComp_
 assign dcc_dir_ex3_larx_val	    = ex3_load_instr_q & ex3_resv_instr_q & ex3_cache_acc_q & ex3_wNComp_rcvd;
 assign dcc_dir_ex3_watch_chk	= ex3_wchk_instr_q & ex3_wNComp_rcvd;
 assign dcc_dir_ex3_ddir_acc	    = ddir_acc_instr & ((ex3_cache_acc_q & ~(derat_dcc_ex3_itagHit | fgen_ex3_stg_flush_int)) | ex3_pfetch_val_q);
-assign dcc_dir_ex4_load_val     = ex4_load_val & ex4_cache_enabled & ~(spr_xucr0_dcdis_q | ex4_derat_itagHit_q);   
+assign dcc_dir_ex4_load_val     = ex4_load_val & ex4_cache_enabled & ~(spr_xucr0_dcdis_q | ex4_derat_itagHit_q);   // Want to gate off parity detection if dcdis=1 or DERAT Itag Hit
 assign dcc_spr_ex3_data_val	    = (ex3_load_instr_q | ex3_store_instr_q) & ~ex3_axu_op_val_q;
 assign dcc_spr_ex3_eff_addr	    = ex3_eff_addr_q;
 assign dcc_dir_stq6_store_val   = stq6_store_hit_q;
 assign lq_pc_ram_data_val	    = lq_pc_ram_data_val_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Outputs to LQ Pervasive
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign ctl_perv_ex6_perf_events  = ex6_dcc_perf_events;
 assign ctl_perv_stq4_perf_events = stq_perf_events;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Outputs to Reservation Station
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign lq_rv_itag1_vld		= ex5_spec_tid_q & {`THREADS{ex5_spec_itag_vld_q}};
 assign lq_rv_itag1		    = ex5_spec_itag_q;
 assign lq_rv_itag1_restart	= ex5_restart_val;
@@ -4110,6 +4566,9 @@ assign lq_rv_itag1_cord		= ex5_wNComp_ord_q & ~ex5_flush_req;
 assign lq_rv_clr_hold		= lsq_ctl_rv_clr_hold | derat_dcc_clr_hold;
 assign dcc_dec_hold_all		= dir_arr_rd_val_q | lsq_ctl_rv_hold_all;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Outputs to Completion
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign lq0_iu_execute_vld	= lq0_iu_execute_vld_q;
 assign lq0_iu_flush2ucode_type	= lq0_iu_flush2ucode_type_q;
 assign lq0_iu_recirc_val	= lq0_iu_recirc_val_q;
@@ -4125,6 +4584,9 @@ assign lq0_iu_dacr_type		= lq0_iu_dacr_type_q;
 assign lq0_iu_dacrw		    = lq0_iu_dacrw_q;
 assign lq0_iu_instr		    = lq0_iu_instr_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Outputs to Prefetch
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign dcc_pf_ex5_eff_addr	  = ex5_eff_addr_q[64-(2 ** `GPR_WIDTH_ENC):59];
 assign dcc_pf_ex5_req_val_4pf = ex5_cache_acc_q & ex5_load_instr_q & ~ex5_wNComp_q & ~ex5_lq_wNComp_val_q & ~spr_xucr0_dcdis_q & ~ex5_blk_pf_load_q & ~fgen_ex5_stg_flush_int;
 assign dcc_pf_ex5_act		  = ex5_cache_acc_q & ex5_load_instr_q & ~ex5_wNComp_q & ~ex5_lq_wNComp_val_q & ~spr_xucr0_dcdis_q;
@@ -4132,6 +4594,9 @@ assign dcc_pf_ex5_thrd_id	  = ex5_thrd_id_q;
 assign dcc_pf_ex5_loadmiss	  = ex5_load_miss_q;
 assign dcc_pf_ex5_itag		  = ex5_itag_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Stage Flush Outputs
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign fgen_ex1_stg_flush = fgen_ex1_stg_flush_int;
 assign fgen_ex2_stg_flush = fgen_ex2_stg_flush_int;
 assign fgen_ex3_stg_flush = fgen_ex3_stg_flush_int;
@@ -4139,12 +4604,21 @@ assign fgen_ex4_cp_flush  = fgen_ex4_cp_flush_int;
 assign fgen_ex4_stg_flush = fgen_ex4_stg_flush_int;
 assign fgen_ex5_stg_flush = fgen_ex5_stg_flush_int;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// SPR Outputs
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign lq_xu_spr_xucr0_cul = ex6_stq5_unable_2lock_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// AXU Outputs
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign lq_xu_axu_ex4_addr = ex4_eff_addr_q[59:63];
 assign lq_xu_axu_ex5_we   = ex5_axu_wren_q | (lsq_ctl_ex5_fwd_val & ex5_axu_op_val_q) | dec_dcc_ex5_axu_abort_rpt;
 assign lq_xu_axu_ex5_le   = ex5_load_le_q;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// DIRECTORY ACT Controls
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign dcc_dir_ex2_stg_act	 = ex2_stg_act_q;
 assign dcc_dir_ex3_stg_act	 = ex3_stg_act_q;
 assign dcc_dir_ex4_stg_act	 = ex4_stg_act_q;
@@ -4160,6 +4634,9 @@ assign dcc_dir_binv4_ex4_stg_act = ex4_binv4_stg_act;
 assign dcc_dir_binv5_ex5_stg_act = ex5_binv5_stg_act;
 assign dcc_dir_binv6_ex6_stg_act = ex6_binv6_stg_act;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// Registers
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0), .NEEDS_SRESET(1)) iu_lq_recirc_val_reg(
    .vd(vdd),
@@ -11697,6 +12174,9 @@ tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) lq_pc_ram_data_val_reg(
    .dout(lq_pc_ram_data_val_q)
 );
 
+//---------------------------------------------------------------------
+// ACT's
+//---------------------------------------------------------------------
 tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ex1_stg_act_reg(
    .vd(vdd),
    .gd(gnd),
@@ -11970,7 +12450,5 @@ tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) stq5_stg_act_reg(
 assign siv[0:scan_right] = {sov[1:scan_right], scan_in};
 assign fgen_scan_in = sov[0];
 assign scan_out = fgen_scan_out;
-   
+
 endmodule
-
-

@@ -9,16 +9,20 @@
 
 `timescale 1 ns / 1 ns
 
+// *********************************************************************
+//
+// This is the ENTITY for rv_perv
+//
+// *********************************************************************
 
-
-module rv_perv(		
+module rv_perv(		// 0 = ibm umbra, 1 = xilinx, 2 = ibm mpg
 `include "tri_a2o.vh"
-			
+
    inout        vdd,
    inout        gnd,
-   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) 
+   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) // nclk
    input [0:`NCLK_WIDTH-1] nclk,
-   
+
    input 		 rp_rv_ccflush_dc,
    input 		 rp_rv_func_sl_thold_3,
    input 		 rp_rv_gptr_sl_thold_3,
@@ -28,11 +32,11 @@ module rv_perv(
    input 		 an_ac_scan_dis_dc_b,
 
    input                 d_mode,
-			
+
    output 		 func_sl_thold_1,
    output 		 fce_1,
    output 		 sg_1,
-   
+
    output 		 clkoff_dc_b,
    output 		 act_dis,
    output [0:9] 	 delay_lclkr_dc,
@@ -43,6 +47,9 @@ module rv_perv(
    input 		 scan_in,
    output 		 scan_out,
 
+   //------------------------------------------------------------------------------------------------------------
+   // Debug and Perf
+   //------------------------------------------------------------------------------------------------------------
    input [0:8*`THREADS-1]                        fx0_rvs_perf_bus,
    input [0:31]                                  fx0_rvs_dbg_bus,
    input [0:8*`THREADS-1]                        fx1_rvs_perf_bus,
@@ -67,25 +74,22 @@ module rv_perv(
    input  [0:3]		                         coretrace_ctrls_in,
    output [0:3]		    	                 coretrace_ctrls_out
  );
-   
-   
 
    wire 		 func_sl_thold_2;
    wire 		 gptr_sl_thold_2;
-   
+
    wire 		 sg_2;
    wire 		 fce_2;
-   
+
    wire 		 gptr_sl_thold_1;
    wire 		 func_sl_thold_1_int;
    wire 		 sg_1_int;
-   
+
    wire 		 gptr_sl_thold_0;
    wire 		 func_sl_thold_0;
 
    wire                  force_t;
 
-   
    wire 		 sg_0;
    wire 		 gptr_sio;
    wire [0:9] 		 prv_delay_lclkr_dc;
@@ -94,6 +98,7 @@ module rv_perv(
    wire 		 prv_act_dis;
    wire 		 prv_clkoff_dc_b;
 
+   // Debug and Perf
    wire 		 trc_act;
    wire 		 evt_act;
    wire 		 delay_lclkr;
@@ -102,7 +107,7 @@ module rv_perv(
 
    wire [0:31] 		 debug_bus_mux;
    wire [0:3] 		 coretrace_ctrls_mux;
-		 
+
    wire [0:10] 		 debug_mux_ctrls;
    wire [0:39] 		 event_mux_ctrls;
    wire [0:2] 		 event_count_mode;
@@ -113,14 +118,15 @@ module rv_perv(
    wire [0:32*`THREADS-1]	   event_bus_in;
    wire [0:4*`THREADS-1] 	   event_bus_d;
    wire [0:4*`THREADS-1] 	   event_bus_q;
-   
+
 
 
    wire [0:31] 			   dbg_group0;
    wire [0:31] 			   dbg_group1;
    wire [0:31] 			   dbg_group2;
    wire [0:31] 			   dbg_group3;
-   
+
+   // Unused Signals
    (* analysis_not_referenced="TRUE" *)
    wire 		 act0_dis_dc;
    (* analysis_not_referenced="TRUE" *)
@@ -132,11 +138,14 @@ module rv_perv(
    (* analysis_not_referenced="TRUE" *)
    wire 		 d1_mode_dc;
    (* analysis_not_referenced="TRUE" *)
-   wire 		 nc_mpw2_dc_b; 
+   wire 		 nc_mpw2_dc_b;
    (* analysis_not_referenced="TRUE" *)
    wire 		 unused;
-   
 
+
+   //------------------------------------------------------------------------------------------------------------
+   // Scan Chains
+   //------------------------------------------------------------------------------------------------------------
    parameter                      debug_bus_offset = 0 + 0;
    parameter                      debug_mux_offset = debug_bus_offset + 32;
    parameter                      event_bus_offset = debug_mux_offset + 11;
@@ -145,17 +154,15 @@ module rv_perv(
    parameter                      spr_msr_pr_offset = spr_msr_gs_offset + `THREADS;
    parameter                      event_mux_ctrls_offset = spr_msr_pr_offset + `THREADS;
    parameter                      coretrace_ctrls_offset = event_mux_ctrls_offset + 40;
-      
+
    parameter                      scan_right = coretrace_ctrls_offset + 4;
    wire [0:scan_right-1] 	   siv;
    wire [0:scan_right-1] 	   sov;
-	
 
-   
    assign unused = an_ac_scan_dis_dc_b ;
-   
-   
-   tri_plat #(.WIDTH(4)) 
+
+
+   tri_plat #(.WIDTH(4))
    perv_3to2_reg(
 		 .vd(vdd),
 		 .gd(gnd),
@@ -164,9 +171,9 @@ module rv_perv(
 		 .din({rp_rv_func_sl_thold_3, rp_rv_gptr_sl_thold_3, rp_rv_sg_3, rp_rv_fce_3}),
 		 .q({func_sl_thold_2, gptr_sl_thold_2, sg_2, fce_2})
 		 );
-   
-   
-   tri_plat #(.WIDTH(4)) 
+
+
+   tri_plat #(.WIDTH(4))
    perv_2to1_reg(
 		 .vd(vdd),
 		 .gd(gnd),
@@ -178,15 +185,15 @@ module rv_perv(
 
    assign func_sl_thold_1 = func_sl_thold_1_int;
    assign sg_1 = sg_1_int;
-   
-   
-   tri_plat #(.WIDTH(3)) 
+
+
+   tri_plat #(.WIDTH(3))
    perv_1to0_reg(
 		 .vd(vdd),
 		 .gd(gnd),
 		 .nclk(nclk),
 		 .flush(rp_rv_ccflush_dc),
-		 .din({gptr_sl_thold_1 , func_sl_thold_1_int, sg_1_int}),      
+		 .din({gptr_sl_thold_1 , func_sl_thold_1_int, sg_1_int}),
 		 .q({gptr_sl_thold_0,  func_sl_thold_0, sg_0})
 		 );
 
@@ -200,8 +207,18 @@ module rv_perv(
 		.thold_b(func_sl_thold_0_b)
 		);
 
-   
-   
+   // Pipeline mapping of mpw1_b and delay_lclkr
+   // RF0
+   // RF1  0
+   // EX1  1
+   // EX2  2
+   // EX3  3
+   // EX4  4
+   // EX5  5
+   // EX6  6
+   // EX7  7
+
+
    tri_lcbcntl_mac
    perv_lcbctrl0(
 		 .vdd(vdd),
@@ -219,8 +236,8 @@ module rv_perv(
 		 .mpw2_dc_b(prv_mpw2_dc_b),
 		 .scan_out(gptr_sio)
 		 );
-   
-	 
+
+
    tri_lcbcntl_mac
    perv_lcbctrl1(
 		 .vdd(vdd),
@@ -238,26 +255,31 @@ module rv_perv(
 		 .mpw2_dc_b(nc_mpw2_dc_b),
 		 .scan_out(gptr_scan_out)
 		 );
-   
+
+   //Outputs
    assign delay_lclkr_dc[0:9] = prv_delay_lclkr_dc[0:9];
    assign mpw1_dc_b[0:9] = prv_mpw1_dc_b[0:9];
    assign mpw2_dc_b = prv_mpw2_dc_b;
-   
+
+   //never disable act pins, they are used functionally
    assign prv_act_dis = 1'b0;
    assign act_dis = prv_act_dis;
    assign clkoff_dc_b = prv_clkoff_dc_b;
 
-      
 
-   assign event_en      = (  spr_msr_pr_q  &                   {`THREADS{event_count_mode[0]}}) |  
-                          ((~spr_msr_pr_q) &   spr_msr_gs_q  & {`THREADS{event_count_mode[1]}}) |  
-                          ((~spr_msr_pr_q) & (~spr_msr_gs_q) & {`THREADS{event_count_mode[2]}});   
+   //------------------------------------------------------------------------------------------------------------
+   // Perf bus
+   //------------------------------------------------------------------------------------------------------------
+
+   assign event_en      = (  spr_msr_pr_q  &                   {`THREADS{event_count_mode[0]}}) |  //-- User
+                          ((~spr_msr_pr_q) &   spr_msr_gs_q  & {`THREADS{event_count_mode[1]}}) |  //-- Guest Supervisor
+                          ((~spr_msr_pr_q) & (~spr_msr_gs_q) & {`THREADS{event_count_mode[2]}});   //-- Hypervisor
 
    assign event_bus_in[ 0: 7] =  fx0_rvs_perf_bus[0:7] & {8{event_en[0]}};
    assign event_bus_in[ 8:15] =  fx1_rvs_perf_bus[0:7] & {8{event_en[0]}};
    assign event_bus_in[16:23] =   lq_rvs_perf_bus[0:7] & {8{event_en[0]}};
    assign event_bus_in[24:31] = axu0_rvs_perf_bus[0:7] & {8{event_en[0]}};
-   
+
 
    tri_event_mux1t #(.EVENTS_IN(32), .EVENTS_OUT(4))
    event_mux0(
@@ -268,14 +290,14 @@ module rv_perv(
 	     .unit_events_in(event_bus_in[1:31]),
 	     .select_bits(event_mux_ctrls[0:19])
 	     );
-   
+
 `ifndef THREADS1
 
    assign event_bus_in[32:39] =  fx0_rvs_perf_bus[8:15] & {8{event_en[1]}};
    assign event_bus_in[40:47] =  fx1_rvs_perf_bus[8:15] & {8{event_en[1]}};
    assign event_bus_in[48:55] =   lq_rvs_perf_bus[8:15] & {8{event_en[1]}};
    assign event_bus_in[56:63] = axu0_rvs_perf_bus[8:15] & {8{event_en[1]}};
-   
+
    tri_event_mux1t #(.EVENTS_IN(32), .EVENTS_OUT(4))
    event_mux1(
 	     .vd(vdd),
@@ -286,10 +308,13 @@ module rv_perv(
 	     .select_bits(event_mux_ctrls[20:39])
 	     );
 `endif
-   
-   assign rv_event_bus_out = event_bus_q;
-   
 
+   assign rv_event_bus_out = event_bus_q;
+
+
+   //------------------------------------------------------------------------------------------------------------
+   // Debug bus
+   //------------------------------------------------------------------------------------------------------------
 
    assign dbg_group0 =  fx0_rvs_dbg_bus[0:31] ;
    assign dbg_group1 =  fx1_rvs_dbg_bus[0:31] ;
@@ -309,14 +334,17 @@ module rv_perv(
 	   .coretrace_ctrls_out(coretrace_ctrls_mux)
 	   );
 
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Latches
+   //------------------------------------------------------------------------------------------------------------
    assign trc_act = pc_rv_trace_bus_enable;
    assign evt_act = pc_rv_event_bus_enable;
    assign delay_lclkr = prv_delay_lclkr_dc[0];
    assign mpw1_b = prv_mpw1_dc_b[0];
    assign mpw2_b = prv_mpw2_dc_b;
-   
-   tri_rlmreg_p #(.WIDTH(32), .INIT(0)) 
+
+   tri_rlmreg_p #(.WIDTH(32), .INIT(0))
    debug_bus_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -334,7 +362,7 @@ module rv_perv(
 		.din(debug_bus_mux),
 		.dout(debug_bus_out)
 		);
-   tri_rlmreg_p #(.WIDTH(11), .INIT(0)) 
+   tri_rlmreg_p #(.WIDTH(11), .INIT(0))
    debug_mux_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -352,7 +380,7 @@ module rv_perv(
 		.din(pc_rv_debug_mux_ctrls),
 		.dout(debug_mux_ctrls)
 		);
-   tri_rlmreg_p #(.WIDTH(4*`THREADS), .INIT(0)) 
+   tri_rlmreg_p #(.WIDTH(4*`THREADS), .INIT(0))
    event_bus_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -370,7 +398,7 @@ module rv_perv(
 		.din(event_bus_d),
 		.dout(event_bus_q)
 		);
-   tri_rlmreg_p #(.WIDTH(3), .INIT(0)) 
+   tri_rlmreg_p #(.WIDTH(3), .INIT(0))
    event_count_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -388,7 +416,7 @@ module rv_perv(
 		.din(pc_rv_event_count_mode),
 		.dout(event_count_mode)
 		);
-   tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) 
+   tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0))
    spr_msr_gs_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -406,7 +434,7 @@ module rv_perv(
 		.din(spr_msr_gs),
 		.dout(spr_msr_gs_q)
 		);
-   tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0)) 
+   tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0))
    spr_msr_pr_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -424,7 +452,7 @@ module rv_perv(
 		.din(spr_msr_pr),
 		.dout(spr_msr_pr_q)
 		);
-   tri_rlmreg_p #(.WIDTH(40), .INIT(0)) 
+   tri_rlmreg_p #(.WIDTH(40), .INIT(0))
    event_mux_ctrls_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -442,7 +470,7 @@ module rv_perv(
 		.din(pc_rv_event_mux_ctrls),
 		.dout(event_mux_ctrls)
 		);
-   tri_rlmreg_p #(.WIDTH(4), .INIT(0)) 
+   tri_rlmreg_p #(.WIDTH(4), .INIT(0))
    core_trace_ctrls_reg(
 		.vd(vdd),
 		.gd(gnd),
@@ -462,13 +490,14 @@ module rv_perv(
 		);
 
 
-   
 
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Scan Connections
+   //------------------------------------------------------------------------------------------------------------
+
    assign siv[0:scan_right-1] = {sov[1:scan_right-1], scan_in};
    assign scan_out = sov[0];
 
-   
+
 endmodule
-
-

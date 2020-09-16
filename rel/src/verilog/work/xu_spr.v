@@ -7,6 +7,9 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU SPR - Wrapper
+//
+//*****************************************************************************
 `include "tri_a2o.vh"
 module xu_spr
 #(
@@ -14,7 +17,8 @@ module xu_spr
    parameter                           a2mode = 1
 )(
    input  [0:`NCLK_WIDTH-1] nclk,
-   
+
+   // CHIP IO
    input  [54:61]                      an_ac_coreid,
    input  [32:35]                      an_ac_chipid_dc,
    input  [8:15]                       spr_pvr_version_dc,
@@ -32,7 +36,7 @@ module xu_spr
    input  [0:`THREADS-1]               an_ac_external_mchk,
    input                               pc_xu_instr_trace_mode,
    input  [0:1]                        pc_xu_instr_trace_tid,
-   
+
    input                               an_ac_scan_dis_dc_b,
    input                               an_ac_scan_diag_dc,
    input                               pc_xu_ccflush_dc,
@@ -71,22 +75,26 @@ module xu_spr
    output                              repr_scan_out,
    input                               gptr_scan_in,
    output                              gptr_scan_out,
-   
+
+   // Decode
    input  [0:`THREADS-1]               rv_xu_vld,
    input                               rv_xu_ex0_ord,
    input  [0:31]                       rv_xu_ex0_instr,
    input  [62-`EFF_IFAR_WIDTH:61]      rv_xu_ex0_ifar,
-   
+
    output                              spr_xu_ord_read_done,
    output                              spr_xu_ord_write_done,
    input                               xu_spr_ord_ready,
    input                               xu_spr_ord_flush,
    input  [0:`THREADS-1]               cp_flush,
-   
+
+   // Read Data
    output [64-`GPR_WIDTH:63]           spr_xu_ex4_rd_data,
-   
+
+   // Write Data
    input  [64-`GPR_WIDTH:63]           xu_spr_ex2_rs1,
-   
+
+   // Interrupt Interface
    input  [0:`THREADS-1]               iu_xu_rfi,
    input  [0:`THREADS-1]               iu_xu_rfgi,
    input  [0:`THREADS-1]               iu_xu_rfci,
@@ -119,7 +127,8 @@ module xu_spr
    input   [64-`GPR_WIDTH:63]          iu_xu_dear_t1,
    output [62-`EFF_IFAR_ARCH:61]       xu_iu_rest_ifar_t1,
    `endif
-   
+
+   // Async Interrupt Req Interface
    output [0:`THREADS-1]               xu_iu_external_mchk,
    output [0:`THREADS-1]               xu_iu_ext_interrupt,
    output [0:`THREADS-1]               xu_iu_dec_interrupt,
@@ -141,19 +150,22 @@ module xu_spr
    input  [0:`THREADS-1]               iu_xu_gdbell_taken,
    input  [0:`THREADS-1]               iu_xu_gcdbell_taken,
    input  [0:`THREADS-1]               iu_xu_gmcdbell_taken,
-   
+
+   // DBELL Int
    input                               lq_xu_dbell_val,
    input  [0:4]                        lq_xu_dbell_type,
    input                               lq_xu_dbell_brdcast,
    input                               lq_xu_dbell_lpid_match,
    input  [50:63]                      lq_xu_dbell_pirtag,
-   
+
+   // Slow SPR Bus
    output                              xu_slowspr_val_out,
    output                              xu_slowspr_rw_out,
    output [0:1]                        xu_slowspr_etid_out,
    output [11:20]                      xu_slowspr_addr_out,
    output [64-`GPR_WIDTH:63]           xu_slowspr_data_out,
-   
+
+   // DCR Bus
    output                              ac_an_dcr_act,
    output                              ac_an_dcr_val,
    output                              ac_an_dcr_read,
@@ -161,13 +173,15 @@ module xu_spr
    output [0:1]                        ac_an_dcr_etid,
    output [11:20]                      ac_an_dcr_addr,
    output [64-`GPR_WIDTH:63]           ac_an_dcr_data,
-   
+
+   // Trap
    output [0:`THREADS-1]               xu_iu_fp_precise,
    output                              spr_dec_ex4_spr_hypv,
    output                              spr_dec_ex4_spr_illeg,
    output                              spr_dec_ex4_spr_priv,
    output                              spr_dec_ex4_np1_flush,
-   
+
+   // Run State
    input                               pc_xu_pm_hold_thread,
    input  [0:`THREADS-1]               iu_xu_stop,
    output [0:`THREADS-1]               xu_pc_running,
@@ -177,17 +191,20 @@ module xu_spr
    output [0:`THREADS-1]               xu_pc_spr_ccr0_we,
    output [0:1]                        xu_pc_spr_ccr0_pme,
    output [0:`THREADS-1]               xu_pc_stop_dnh_instr,
-   
+
+   // Quiesce
    input  [0:`THREADS-1]               iu_xu_quiesce,
    input  [0:`THREADS-1]               iu_xu_icache_quiesce,
    input  [0:`THREADS-1]               lq_xu_quiesce,
    input  [0:`THREADS-1]               mm_xu_quiesce,
    input  [0:`THREADS-1]               bx_xu_quiesce,
-   
+
+   // PCCR0
    input                               pc_xu_extirpts_dis_on_stop,
    input                               pc_xu_timebase_dis_on_stop,
    input                               pc_xu_decrem_dis_on_stop,
-   
+
+   // PERF
    input [0:2]                         pc_xu_event_count_mode,
    input                               pc_xu_event_bus_enable,
    input  [0:4*`THREADS-1]             xu_event_bus_in,
@@ -195,20 +212,24 @@ module xu_spr
    input [0:`THREADS-1]                div_spr_running,
    input [0:`THREADS-1]                mul_spr_running,
 
+   // MSR Override
    input  [0:`THREADS-1]               pc_xu_ram_active,
    input                               pc_xu_msrovride_enab,
    input                               pc_xu_msrovride_pr,
    input                               pc_xu_msrovride_gs,
    input                               pc_xu_msrovride_de,
 
+   // SIAR
    input  [0:`THREADS-1]               pc_xu_spr_cesr1_pmae,
    output [0:`THREADS-1]               xu_pc_perfmon_alert,
 
-   
+
+   // LiveLock
    input  [0:`THREADS-1]               iu_xu_instr_cpl,
    output [0:`THREADS-1]               xu_pc_err_llbust_attempt,
    output [0:`THREADS-1]               xu_pc_err_llbust_failed,
-   
+
+   // Resets
    input                               pc_xu_reset_wd_complete,
    input                               pc_xu_reset_1_complete,
    input                               pc_xu_reset_2_complete,
@@ -217,18 +238,21 @@ module xu_spr
    output                              ac_tc_reset_2_request,
    output                              ac_tc_reset_3_request,
    output                              ac_tc_reset_wd_request,
-   
+
+   // Err Inject
    input  [0:`THREADS-1]               pc_xu_inj_llbust_attempt,
    input  [0:`THREADS-1]               pc_xu_inj_llbust_failed,
    input  [0:`THREADS-1]               pc_xu_inj_wdt_reset,
    output [0:`THREADS-1]               xu_pc_err_wdt_reset,
-   
+
+   // Parity
    input  [0:`THREADS-1]               pc_xu_inj_sprg_ecc,
    output [0:`THREADS-1]               xu_pc_err_sprg_ecc,
    output [0:`THREADS-1]               xu_pc_err_sprg_ue,
-   
+
+   // SPRs
    output [0:`THREADS-1]               xu_iu_msrovride_enab,
-   
+
    input  [0:`THREADS-1]               spr_dbcr0_edm,
    output [0:3]                        spr_xucr0_clkg_ctl,
    output [0:`THREADS-1]               xu_iu_iac1_en,
@@ -317,7 +341,8 @@ module xu_spr
 	output [0:`THREADS-1]               spr_msr_fp,
 	output [0:`THREADS-1]               spr_msr_ds,
 	output [0:`THREADS-1]               spr_msrp_uclep,
-   
+
+   // BOLT-ON
    input                               bo_enable_2,
    input                               pc_xu_bo_reset,
    input                               pc_xu_bo_unload,
@@ -326,6 +351,7 @@ module xu_spr
    input                               pc_xu_bo_select,
    output                              xu_pc_bo_fail,
    output                              xu_pc_bo_diagout,
+   // ABIST
    input                               an_ac_lbist_ary_wrt_thru_dc,
    input                               pc_xu_abist_ena_dc,
    input                               pc_xu_abist_g8t_wenb,
@@ -338,26 +364,29 @@ module xu_spr
    input  [0:3]                        pc_xu_abist_g8t_dcomp,
    input                               pc_xu_abist_g8t_bw_1,
    input                               pc_xu_abist_g8t_bw_0,
-   
+
+   // Debug
    input                               pc_xu_trace_bus_enable,
    input  [0:10]                       spr_debug_mux_ctrls,
    input  [0:31]             spr_debug_data_in,
    output [0:31]             spr_debug_data_out,
-   
+
+   // Power
    inout                               vcs,
    inout                               vdd,
    inout                               gnd
 );
-   
+
    wire                          reset_1_request_q,         reset_1_request_d          ;
    wire                          reset_2_request_q,         reset_2_request_d          ;
    wire                          reset_3_request_q,         reset_3_request_d          ;
-   wire                          reset_wd_request_q,        reset_wd_request_d         ;  
-   wire [62-`EFF_IFAR_ARCH:61]   int_rest_ifar_q[0:`THREADS-1],int_rest_ifar_d [0:`THREADS-1]; 
-   wire                          trace_bus_enable_q                                    ; 
-   wire [0:10]                   debug_mux_ctrls_q                                     ; 
-   wire [0:31]         debug_data_out_q,          debug_data_out_d           ; 
+   wire                          reset_wd_request_q,        reset_wd_request_d         ;
+   wire [62-`EFF_IFAR_ARCH:61]   int_rest_ifar_q[0:`THREADS-1],int_rest_ifar_d [0:`THREADS-1]; // input=>int_rest_ifar_d      , act=>int_rest_act
+   wire                          trace_bus_enable_q                                    ; // input=>pc_xu_trace_bus_enable     , act=>1'b1                    , scan=>Y, sleep=>Y, needs_sreset=>1
+   wire [0:10]                   debug_mux_ctrls_q                                     ; // input=>spr_debug_mux_ctrls        , act=>trace_bus_enable_q   , scan=>Y, sleep=>Y, needs_sreset=>1
+   wire [0:31]         debug_data_out_q,          debug_data_out_d           ; // input=>debug_data_out_d           , act=>trace_bus_enable_q   , scan=>Y, sleep=>Y, needs_sreset=>1
 
+   // Scanchains
    localparam reset_1_request_offset                     = 0;
    localparam reset_2_request_offset                     = reset_1_request_offset         + 1;
    localparam reset_3_request_offset                     = reset_2_request_offset         + 1;
@@ -370,15 +399,17 @@ module xu_spr
    localparam scan_right                                 = xu_spr_cspr_offset             + 1;
    wire [0:scan_right-1]         siv;
    wire [0:scan_right-1]         sov;
-   wire                          abist_g8t_wenb_q                                      ;		
-   wire [4:9]                    abist_waddr_0_q                                       ;		
-   wire [0:3]                    abist_di_0_q                                          ;		
-   wire                          abist_g8t1p_renb_0_q                                  ;		
-   wire [4:9]                    abist_raddr_0_q                                       ;		
-   wire                          abist_wl32_comp_ena_q                                 ;		
-   wire [0:3]                    abist_g8t_dcomp_q                                     ;		
-   wire                          abist_g8t_bw_1_q                                      ;		
-   wire                          abist_g8t_bw_0_q                                      ;		
+   // ABST Latches
+   wire                          abist_g8t_wenb_q                                      ;		// input=>pc_xu_abist_g8t_wenb   , act=>pc_xu_abist_ena_dc
+   wire [4:9]                    abist_waddr_0_q                                       ;		// input=>pc_xu_abist_waddr_0    , act=>pc_xu_abist_ena_dc
+   wire [0:3]                    abist_di_0_q                                          ;		// input=>pc_xu_abist_di_0       , act=>pc_xu_abist_ena_dc
+   wire                          abist_g8t1p_renb_0_q                                  ;		// input=>pc_xu_abist_g8t1p_renb_0,act=>pc_xu_abist_ena_dc
+   wire [4:9]                    abist_raddr_0_q                                       ;		// input=>pc_xu_abist_raddr_0    , act=>pc_xu_abist_ena_dc
+   wire                          abist_wl32_comp_ena_q                                 ;		// input=>pc_xu_abist_wl32_comp_ena, act=>pc_xu_abist_ena_dc
+   wire [0:3]                    abist_g8t_dcomp_q                                     ;		// input=>pc_xu_abist_g8t_dcomp  , act=>pc_xu_abist_ena_dc
+   wire                          abist_g8t_bw_1_q                                      ;		// input=>pc_xu_abist_g8t_bw_1   , act=>pc_xu_abist_ena_dc
+   wire                          abist_g8t_bw_0_q                                      ;		// input=>pc_xu_abist_g8t_bw_0   , act=>pc_xu_abist_ena_dc
+   // Scanchains
    localparam xu_spr_aspr_offset_abst                    = 1;
    localparam abist_g8t_wenb_offset_abst                 = xu_spr_aspr_offset_abst        + 1;
    localparam abist_waddr_0_offset_abst                  = abist_g8t_wenb_offset_abst     + 1;
@@ -390,6 +421,7 @@ module xu_spr
    localparam abist_g8t_bw_1_offset_abst                 = abist_g8t_dcomp_offset_abst    + 4;
    localparam abist_g8t_bw_0_offset_abst                 = abist_g8t_bw_1_offset_abst     + 1;
    localparam scan_right_abst                            = abist_g8t_bw_0_offset_abst     + 2;
+   // Scanchain Repower
    wire [0:scan_right_abst-1]    siv_abst;
    wire [0:scan_right_abst-1]    sov_abst;
    wire [0:2]                    siv_bcfg;
@@ -407,6 +439,7 @@ module xu_spr
    wire [0:`THREADS+1]           func_scan_rpwr_in;
    wire [0:`THREADS+1]           func_scan_rpwr_out;
    wire [0:`THREADS+1]           func_scan_gate_out;
+   // Signals
    wire                          g8t_clkoff_dc_b;
    wire                          g8t_d_mode_dc;
    wire [0:4]                    g8t_mpw1_dc_b;
@@ -552,15 +585,17 @@ module xu_spr
    wire [0:11]                   trg_group2;
    wire [0:11]                   trg_group3;
 
-   wire [62-`EFF_IFAR_ARCH:61]   iu_xu_nia    [0:`THREADS-1];       
-   wire [0:16]                   iu_xu_esr    [0:`THREADS-1];  
-   wire [0:14]                   iu_xu_mcsr   [0:`THREADS-1];  
-   wire [0:18]                   iu_xu_dbsr   [0:`THREADS-1];  
-   wire [64-`GPR_WIDTH:63]       iu_xu_dear   [0:`THREADS-1];  
-   wire [64-`GPR_WIDTH:63]       spr_dvc1     [0:`THREADS-1];  
-   wire [64-`GPR_WIDTH:63]       spr_dvc2     [0:`THREADS-1];  
+   wire [62-`EFF_IFAR_ARCH:61]   iu_xu_nia    [0:`THREADS-1];
+   wire [0:16]                   iu_xu_esr    [0:`THREADS-1];
+   wire [0:14]                   iu_xu_mcsr   [0:`THREADS-1];
+   wire [0:18]                   iu_xu_dbsr   [0:`THREADS-1];
+   wire [64-`GPR_WIDTH:63]       iu_xu_dear   [0:`THREADS-1];
+   wire [64-`GPR_WIDTH:63]       spr_dvc1     [0:`THREADS-1];
+   wire [64-`GPR_WIDTH:63]       spr_dvc2     [0:`THREADS-1];
    wire                                act_dis = 1'b0;
 
+   //!! Bugspray Include: xu_spr;
+   //## figtree_source: xu_spr.fig;
 
    assign iu_xu_nia[0]        = iu_xu_nia_t0;
    assign iu_xu_esr[0]        = iu_xu_esr_t0;
@@ -613,6 +648,7 @@ module xu_spr
 
    xu_spr_cspr #(.hvmode(hvmode), .a2mode(a2mode)) xu_spr_cspr(
       .nclk(nclk),
+      // CHIP IO
       .an_ac_sleep_en(an_ac_sleep_en),
       .an_ac_reservation_vld(an_ac_reservation_vld),
       .an_ac_tb_update_enable(an_ac_tb_update_enable),
@@ -657,6 +693,7 @@ module xu_spr
       .dcfg_scan_in(siv_dcfg[1]),
       .dcfg_scan_out(sov_dcfg[1]),
       .cspr_tspr_rf1_act(cspr_tspr_rf1_act),
+      // Decode
       .rv_xu_vld(rv_xu_vld),
       .rv_xu_ex0_ord(rv_xu_ex0_ord),
       .rv_xu_ex0_instr(rv_xu_ex0_instr),
@@ -668,31 +705,38 @@ module xu_spr
       .xu_spr_ord_ready(xu_spr_ord_ready),
       .flush(flush),
 
+      // Read Data
       .tspr_cspr_ex3_tspr_rt(tspr_cspr_ex3_tspr_rt),
       .spr_xu_ex4_rd_data(spr_xu_ex4_rd_data),
+      // Write Data
       .xu_spr_ex2_rs1(xu_spr_ex2_rs1),
       .cspr_tspr_ex3_spr_we(cspr_tspr_ex3_spr_we),
       .ex3_spr_wd_out(ex3_spr_wd),
+      // SPRT Interface
       .cspr_tspr_ex1_instr(cspr_tspr_ex1_instr),
       .cspr_tspr_ex2_tid(cspr_tspr_ex2_tid),
 
       .cspr_tspr_timebase_taps(cspr_tspr_timebase_taps),
       .timer_update(timer_update),
       .cspr_tspr_dec_dbg_dis(cspr_tspr_dec_dbg_dis),
+      // Illegal SPR
       .tspr_cspr_illeg_mtspr_b(tspr_cspr_illeg_mtspr_b),
       .tspr_cspr_illeg_mfspr_b(tspr_cspr_illeg_mfspr_b),
       .tspr_cspr_hypv_mtspr(tspr_cspr_hypv_mtspr),
       .tspr_cspr_hypv_mfspr(tspr_cspr_hypv_mfspr),
+      // Array SPRs
       .cspr_aspr_ex3_we(cspr_aspr_ex3_we),
       .cspr_aspr_ex3_waddr(cspr_aspr_ex3_waddr),
       .cspr_aspr_ex1_re(cspr_aspr_ex1_re),
       .cspr_aspr_ex1_raddr(cspr_aspr_ex1_raddr),
       .aspr_cspr_ex2_rdata(aspr_cspr_ex2_rdata[64 - `GPR_WIDTH:72 - (64/`GPR_WIDTH)]),
+      // Slow SPR Bus
       .xu_slowspr_val_out(xu_slowspr_val_out),
       .xu_slowspr_rw_out(xu_slowspr_rw_out),
       .xu_slowspr_etid_out(xu_slowspr_etid_out),
       .xu_slowspr_addr_out(xu_slowspr_addr_out),
       .xu_slowspr_data_out(xu_slowspr_data_out),
+      // DCR Bus
       .ac_an_dcr_act(ac_an_dcr_act),
       .ac_an_dcr_val(ac_an_dcr_val),
       .ac_an_dcr_read(ac_an_dcr_read),
@@ -700,39 +744,47 @@ module xu_spr
       .ac_an_dcr_etid(ac_an_dcr_etid),
       .ac_an_dcr_addr(ac_an_dcr_addr),
       .ac_an_dcr_data(ac_an_dcr_data),
+      // Trap
       .spr_dec_ex4_spr_hypv(spr_dec_ex4_spr_hypv),
       .spr_dec_ex4_spr_illeg(spr_dec_ex4_spr_illeg),
       .spr_dec_ex4_spr_priv(spr_dec_ex4_spr_priv),
       .spr_dec_ex4_np1_flush(spr_dec_ex4_np1_flush),
+      // Run State
       .pc_xu_pm_hold_thread(pc_xu_pm_hold_thread),
       .iu_xu_stop(iu_xu_stop),
       .xu_iu_run_thread(xu_iu_run_thread),
       .xu_pc_spr_ccr0_we(xu_pc_spr_ccr0_we),
       .xu_pc_spr_ccr0_pme(xu_pc_spr_ccr0_pme),
+      // Quiesce
       .iu_xu_quiesce(iu_xu_quiesce),
       .iu_xu_icache_quiesce(iu_xu_icache_quiesce),
       .lq_xu_quiesce(lq_xu_quiesce),
       .mm_xu_quiesce(mm_xu_quiesce),
       .bx_xu_quiesce(bx_xu_quiesce),
       .xu_pc_running(xu_pc_running),
+      // PCCR0
       .pc_xu_extirpts_dis_on_stop(pc_xu_extirpts_dis_on_stop),
       .pc_xu_timebase_dis_on_stop(pc_xu_timebase_dis_on_stop),
       .pc_xu_decrem_dis_on_stop(pc_xu_decrem_dis_on_stop),
+      // .PERF(PERF),
       .pc_xu_event_count_mode(pc_xu_event_count_mode),
       .pc_xu_event_bus_enable(pc_xu_event_bus_enable),
       .xu_event_bus_in(xu_event_bus_in),
       .xu_event_bus_out(xu_event_bus_out),
       .div_spr_running(div_spr_running),
       .mul_spr_running(mul_spr_running),
+      // MSR Override
       .pc_xu_ram_active(pc_xu_ram_active),
       .pc_xu_msrovride_enab(pc_xu_msrovride_enab),
       .cspr_tspr_msrovride_en(cspr_tspr_msrovride_en),
       .cspr_tspr_ram_active(cspr_tspr_ram_active),
       .xu_iu_msrovride_enab(xu_iu_msrovride_enab),
+      // LiveLock
       .cspr_tspr_llen(cspr_tspr_llen),
       .cspr_tspr_llpri(cspr_tspr_llpri),
       .tspr_cspr_lldet(tspr_cspr_lldet),
       .tspr_cspr_llpulse(tspr_cspr_llpulse),
+      // Reset
       .pc_xu_reset_wd_complete(pc_xu_reset_wd_complete),
       .pc_xu_reset_1_complete(pc_xu_reset_1_complete),
       .pc_xu_reset_2_complete(pc_xu_reset_2_complete),
@@ -741,6 +793,7 @@ module xu_spr
       .reset_1_complete(reset_1_complete),
       .reset_2_complete(reset_2_complete),
       .reset_3_complete(reset_3_complete),
+      // Async Interrupt Req Interface
       .cspr_tspr_sleep_mask(cspr_tspr_sleep_mask),
       .cspr_tspr_crit_mask(cspr_tspr_crit_mask),
       .cspr_tspr_ext_mask(cspr_tspr_ext_mask),
@@ -750,6 +803,7 @@ module xu_spr
       .cspr_tspr_udec_mask(cspr_tspr_udec_mask),
       .cspr_tspr_perf_mask(cspr_tspr_perf_mask),
       .tspr_cspr_pm_wake_up(tspr_cspr_pm_wake_up),
+      // DBELL
       .xu_iu_dbell_interrupt(xu_iu_dbell_interrupt),
       .xu_iu_cdbell_interrupt(xu_iu_cdbell_interrupt),
       .xu_iu_gdbell_interrupt(xu_iu_gdbell_interrupt),
@@ -767,12 +821,15 @@ module xu_spr
       .lq_xu_dbell_brdcast(lq_xu_dbell_brdcast),
       .lq_xu_dbell_lpid_match(lq_xu_dbell_lpid_match),
       .lq_xu_dbell_pirtag(lq_xu_dbell_pirtag),
+      // Parity
       .pc_xu_inj_sprg_ecc(pc_xu_inj_sprg_ecc),
       .xu_pc_err_sprg_ecc(xu_pc_err_sprg_ecc),
       .xu_pc_err_sprg_ue(xu_pc_err_sprg_ue),
+      // Debug
       .tspr_cspr_freeze_timers(tspr_cspr_freeze_timers),
       .tspr_cspr_async_int(tspr_cspr_async_int),
       .tspr_cspr_ex2_np1_flush(tspr_cspr_ex2_np1_flush),
+      // SPRs
       .lq_xu_spr_xucr0_cslc_xuop(lq_xu_spr_xucr0_cslc_xuop),
       .lq_xu_spr_xucr0_cslc_binv(lq_xu_spr_xucr0_cslc_binv),
       .lq_xu_spr_xucr0_clo(lq_xu_spr_xucr0_clo),
@@ -819,6 +876,7 @@ module xu_spr
 		.spr_xucr4_mddmh(spr_xucr4_mddmh),
       .cspr_debug0(cspr_debug0),
       .cspr_debug1(cspr_debug1),
+      // Power
       .vdd(vdd),
       .gnd(gnd)
    );
@@ -831,6 +889,7 @@ module xu_spr
 
             xu_spr_tspr #(.hvmode(hvmode), .a2mode(a2mode)) xu_spr_tspr(
                .nclk(nclk),
+               // CHIP IO
                .an_ac_ext_interrupt(an_ac_ext_interrupt[t]),
                .an_ac_crit_interrupt(an_ac_crit_interrupt[t]),
                .an_ac_perf_interrupt(an_ac_perf_interrupt[t]),
@@ -838,6 +897,7 @@ module xu_spr
                .ac_tc_machine_check(ac_tc_machine_check[t]),
                .an_ac_external_mchk(an_ac_external_mchk[t]),
                .instr_trace_mode(instr_trace_mode[t]),
+               // Act
                .d_mode_dc(d_mode_dc),
                .delay_lclkr_dc(delay_lclkr_dc),
                .mpw1_dc_b(mpw1_dc_b),
@@ -860,17 +920,21 @@ module xu_spr
                .dcfg_scan_in(siv_dcfg[2 + t]),
                .dcfg_scan_out(sov_dcfg[2 + t]),
                .cspr_tspr_rf1_act(cspr_tspr_rf1_act),
+               // Read Interface
                .cspr_tspr_ex1_instr(cspr_tspr_ex1_instr),
                .cspr_tspr_ex2_tid(cspr_tspr_ex2_tid[t]),
                .tspr_cspr_ex3_tspr_rt(tspr_cspr_ex3_tspr_rt[`GPR_WIDTH * t:`GPR_WIDTH * (t + 1) - 1]),
+               // Write Interface
                .ex2_spr_wd(ex2_spr_wd),
                .ex3_spr_we(cspr_tspr_ex3_spr_we[t]),
 
                .cspr_tspr_dec_dbg_dis(cspr_tspr_dec_dbg_dis[t]),
+               // Illegal SPR
                .tspr_cspr_illeg_mtspr_b(tspr_cspr_illeg_mtspr_b[t]),
                .tspr_cspr_illeg_mfspr_b(tspr_cspr_illeg_mfspr_b[t]),
                .tspr_cspr_hypv_mtspr(tspr_cspr_hypv_mtspr[t]),
                .tspr_cspr_hypv_mfspr(tspr_cspr_hypv_mfspr[t]),
+               // Interrupt Interface
                .iu_xu_rfi(iu_xu_rfi[t]),
                .iu_xu_rfgi(iu_xu_rfgi[t]),
                .iu_xu_rfci(iu_xu_rfci[t]),
@@ -895,6 +959,7 @@ module xu_spr
                .int_rest_act(int_rest_act[t]),
                .int_rest_ifar(int_rest_ifar_d[t]),
                .ex2_ifar(ex2_ifar),
+               // Async Interrupt Req Interface
                .xu_iu_external_mchk(xu_iu_external_mchk[t]),
                .xu_iu_ext_interrupt(xu_iu_ext_interrupt[t]),
                .xu_iu_dec_interrupt(xu_iu_dec_interrupt[t]),
@@ -916,19 +981,23 @@ module xu_spr
                .cspr_tspr_perf_mask(cspr_tspr_perf_mask[t]),
                .tspr_cspr_pm_wake_up(tspr_cspr_pm_wake_up[t]),
                .tspr_cspr_async_int(tspr_cspr_async_int[3 * t:3 * (t + 1) - 1]),
+               // DBELL Int
                .cspr_tspr_dbell_pirtag(cspr_tspr_dbell_pirtag),
                .tspr_cspr_gpir_match(tspr_cspr_gpir_match[t]),
                .cspr_tspr_timebase_taps(cspr_tspr_timebase_taps),
                .tspr_cspr_ex2_np1_flush(tspr_cspr_ex2_np1_flush[t]),
                .timer_update(timer_update),
+               // Debug
                .xu_iu_iac1_en(xu_iu_iac1_en[t]),
                .xu_iu_iac2_en(xu_iu_iac2_en[t]),
                .xu_iu_iac3_en(xu_iu_iac3_en[t]),
                .xu_iu_iac4_en(xu_iu_iac4_en[t]),
                .tspr_cspr_freeze_timers(tspr_cspr_freeze_timers[t]),
+               // Run State
                .xu_iu_single_instr_mode(xu_iu_single_instr_mode[t]),
                .xu_iu_raise_iss_pri(xu_iu_raise_iss_pri[t]),
                .xu_pc_stop_dnh_instr(xu_pc_stop_dnh_instr[t]),
+               // LiveLock
                .iu_xu_instr_cpl(iu_xu_instr_cpl[t]),
                .cspr_tspr_llen(cspr_tspr_llen[t]),
                .cspr_tspr_llpri(cspr_tspr_llpri[t]),
@@ -939,6 +1008,7 @@ module xu_spr
                .pc_xu_inj_llbust_attempt(pc_xu_inj_llbust_attempt[t]),
                .pc_xu_inj_llbust_failed(pc_xu_inj_llbust_failed[t]),
                .pc_xu_inj_wdt_reset(pc_xu_inj_wdt_reset[t]),
+               // Resets
                .reset_wd_complete(reset_wd_complete),
                .reset_1_complete(reset_1_complete),
                .reset_2_complete(reset_2_complete),
@@ -948,13 +1018,16 @@ module xu_spr
                .reset_3_request(reset_3_request[t]),
                .reset_wd_request(reset_wd_request[t]),
                .xu_pc_err_wdt_reset(xu_pc_err_wdt_reset[t]),
+               // MSR Override
                .cspr_tspr_ram_active(cspr_tspr_ram_active[t]),
                .cspr_tspr_msrovride_en(cspr_tspr_msrovride_en[t]),
                .pc_xu_msrovride_pr(pc_xu_msrovride_pr),
                .pc_xu_msrovride_gs(pc_xu_msrovride_gs),
                .pc_xu_msrovride_de(pc_xu_msrovride_de),
+               // SIAR
                .pc_xu_spr_cesr1_pmae(pc_xu_spr_cesr1_pmae[t]),
                .xu_pc_perfmon_alert(xu_pc_perfmon_alert[t]),
+               // SPRs
                .spr_dbcr0_edm(spr_dbcr0_edm[t]),
                .tspr_epcr_icm(tspr_epcr_icm[t]),
                .tspr_epcr_gicm(tspr_epcr_gicm[t]),
@@ -999,6 +1072,7 @@ module xu_spr
 		.spr_msr_ds(spr_msr_ds[t]),
 		.spr_msrp_uclep(spr_msrp_uclep[t]),
                .tspr_debug(tspr_debug[12 * t:12 * (t + 1) - 1]),
+               // Power
                .vdd(vdd),
                .gnd(gnd)
             );
@@ -1017,18 +1091,22 @@ module xu_spr
       .ary_nsl_thold_0(ary_nsl_thold_0),
       .time_sl_thold_0(time_sl_thold_0),
       .repr_sl_thold_0(repr_sl_thold_0),
+      // Reads
       .rd0_act(cspr_aspr_ex1_re),
       .rd0_adr(cspr_aspr_ex1_raddr),
       .do0(aspr_cspr_ex2_rdata),
+      // Writes
       .wr_act(cspr_aspr_ex3_we),
       .wr_adr(cspr_aspr_ex3_waddr),
       .di(ex3_spr_wd),
+      // Scan
       .abst_scan_in(siv_abst[xu_spr_aspr_offset_abst]),
       .abst_scan_out(sov_abst[xu_spr_aspr_offset_abst]),
       .time_scan_in(siv_time[1]),
       .time_scan_out(sov_time[1]),
       .repr_scan_in(siv_repr[1]),
       .repr_scan_out(sov_repr[1]),
+      // Misc Pervasive
       .scan_dis_dc_b(an_ac_scan_dis_dc_b),
       .scan_diag_dc(an_ac_scan_diag_dc),
       .ccflush_dc(pc_xu_ccflush_dc),
@@ -1037,20 +1115,22 @@ module xu_spr
       .mpw1_dc_b(g8t_mpw1_dc_b),
       .mpw2_dc_b(g8t_mpw2_dc_b),
       .delay_lclkr_dc(g8t_delay_lclkr_dc),
+      // BOLT-ON
       .lcb_bolt_sl_thold_0(bolt_sl_thold_0),
-      .pc_bo_enable_2(bo_enable_2),		
-      .pc_bo_reset(pc_xu_bo_reset),		
-      .pc_bo_unload(pc_xu_bo_unload),		
-      .pc_bo_repair(pc_xu_bo_repair),		
-      .pc_bo_shdata(pc_xu_bo_shdata),		
-      .pc_bo_select(pc_xu_bo_select),		
-      .bo_pc_failout(xu_pc_bo_fail),		
+      .pc_bo_enable_2(bo_enable_2),		// general bolt-on enable
+      .pc_bo_reset(pc_xu_bo_reset),		// reset
+      .pc_bo_unload(pc_xu_bo_unload),		// unload sticky bits
+      .pc_bo_repair(pc_xu_bo_repair),		// execute sticky bit decode
+      .pc_bo_shdata(pc_xu_bo_shdata),		// shift data for timing write and diag loop
+      .pc_bo_select(pc_xu_bo_select),		// select for mask and hier writes
+      .bo_pc_failout(xu_pc_bo_fail),		// fail/no-fix reg
       .bo_pc_diagloop(xu_pc_bo_diagout),
       .tri_lcb_mpw1_dc_b(mpw1_dc_b),
       .tri_lcb_mpw2_dc_b(mpw2_dc_b),
       .tri_lcb_delay_lclkr_dc(delay_lclkr_dc),
       .tri_lcb_clkoff_dc_b(clkoff_dc_b),
       .tri_lcb_act_dis_dc(act_dis),
+      // ABIST
       .abist_bw_odd(abist_g8t_bw_1_q),
       .abist_bw_even(abist_g8t_bw_0_q),
       .tc_lbist_ary_wrt_thru_dc(an_ac_lbist_ary_wrt_thru_dc),
@@ -1083,6 +1163,7 @@ module xu_spr
 
    assign spr_debug_data_out = debug_data_out_q;
 
+   // FUNC Latch Instances
 
    tri_regk #(.WIDTH(1), .INIT(0), .NEEDS_SRESET(1)) reset_1_request_latch(
       .nclk(nclk),
@@ -1222,6 +1303,7 @@ module xu_spr
       .dout(debug_data_out_q)
    );
 
+      // ABST Latch Instances
 
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) abist_g8t_wenb_latch(
          .nclk(nclk),
@@ -1561,6 +1643,9 @@ module xu_spr
          .scout(func_scan_gate_out)
       );
 
+      //-----------------------------------------------
+      // Pervasive
+      //-----------------------------------------------
 
       tri_lcbcntl_array_mac lcbctrl_g8t(
          .vdd(vdd),

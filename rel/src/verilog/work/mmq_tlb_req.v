@@ -7,8 +7,10 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
-
-
+//********************************************************************
+//* TITLE: Memory Management Unit TLB Input Request Queue from ERATs
+//* NAME: mmq_tlb_req.v
+//*********************************************************************
 
 `timescale 1 ns / 1 ns
 
@@ -16,14 +18,13 @@
 `include "mmu_a2o.vh"
 `define       REQ_STATE_WIDTH   4
 
-
 module mmq_tlb_req(
 
    inout                                   vdd,
    inout                                   gnd,
     (* pin_data ="PIN_FUNCTION=/G_CLK/" *)
    input [0:`NCLK_WIDTH-1]                 nclk,
-   
+
    input                       tc_ccflush_dc,
    input                       tc_scan_dis_dc_b,
    input                       tc_scan_diag_dc,
@@ -34,16 +35,16 @@ module mmq_tlb_req(
    input [0:4]                 lcb_mpw1_dc_b,
    input                       lcb_mpw2_dc_b,
    input [0:4]                 lcb_delay_lclkr_dc,
-   
+
 (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)
    input                       ac_func_scan_in,
 (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
    output                      ac_func_scan_out,
-   
+
    input                       pc_sg_2,
    input                       pc_func_sl_thold_2,
    input                       pc_func_slp_sl_thold_2,
-   
+
    input                       xu_mm_ccr2_notlb_b,
    input                       mmucr2_act_override,
    input [0:`PID_WIDTH-1]       pid0,
@@ -51,7 +52,7 @@ module mmq_tlb_req(
    input [0:`PID_WIDTH-1]       pid1,
 `endif
    input [0:`LPID_WIDTH-1]      lpidr,
-   
+
    input                            iu_mm_ierat_req,
    input [0:51]                     iu_mm_ierat_epn,
    input [0:`THDID_WIDTH-1]         iu_mm_ierat_thdid,
@@ -59,7 +60,7 @@ module mmq_tlb_req(
    input [0:`PID_WIDTH-1]           iu_mm_ierat_tid,
    input [0:`THDID_WIDTH-1]         iu_mm_ierat_flush,
    input                            iu_mm_ierat_req_nonspec,
-   
+
    input                            xu_mm_derat_req,
    input [64-`RS_DATA_WIDTH:51]     xu_mm_derat_epn,
    input [0:`THDID_WIDTH-1]         xu_mm_derat_thdid,
@@ -67,11 +68,11 @@ module mmq_tlb_req(
    input [0:`REQ_STATE_WIDTH-1]     xu_mm_derat_state,
    input [0:`PID_WIDTH-1]           xu_mm_derat_tid,
    input [0:`LPID_WIDTH-1]          xu_mm_derat_lpid,
-   
+
    input                           lq_mm_derat_req_nonspec,
    input [0:`ITAG_SIZE_ENC-1]      lq_mm_derat_req_itag,
    input [0:`EMQ_ENTRIES-1]        lq_mm_derat_req_emq,
-   
+
    output [0:`PID_WIDTH-1]      ierat_req0_pid,
    output                       ierat_req0_as,
    output                       ierat_req0_gs,
@@ -79,7 +80,7 @@ module mmq_tlb_req(
    output [0:`THDID_WIDTH-1]    ierat_req0_thdid,
    output                       ierat_req0_valid,
    output                       ierat_req0_nonspec,
-   
+
    output [0:`PID_WIDTH-1]      ierat_req1_pid,
    output                       ierat_req1_as,
    output                       ierat_req1_gs,
@@ -87,7 +88,7 @@ module mmq_tlb_req(
    output [0:`THDID_WIDTH-1]    ierat_req1_thdid,
    output                       ierat_req1_valid,
    output                       ierat_req1_nonspec,
-   
+
    output [0:`PID_WIDTH-1]      ierat_req2_pid,
    output                       ierat_req2_as,
    output                       ierat_req2_gs,
@@ -95,7 +96,7 @@ module mmq_tlb_req(
    output [0:`THDID_WIDTH-1]    ierat_req2_thdid,
    output                       ierat_req2_valid,
    output                       ierat_req2_nonspec,
-   
+
    output [0:`PID_WIDTH-1]      ierat_req3_pid,
    output                       ierat_req3_as,
    output                       ierat_req3_gs,
@@ -103,14 +104,14 @@ module mmq_tlb_req(
    output [0:`THDID_WIDTH-1]    ierat_req3_thdid,
    output                       ierat_req3_valid,
    output                       ierat_req3_nonspec,
-   
+
    output [0:`PID_WIDTH-1]      ierat_iu4_pid,
    output                       ierat_iu4_gs,
    output                       ierat_iu4_as,
    output [0:`EPN_WIDTH-1]      ierat_iu4_epn,
    output [0:`THDID_WIDTH-1]    ierat_iu4_thdid,
    output                       ierat_iu4_valid,
-   
+
    output [0:`LPID_WIDTH-1]     derat_req0_lpid,
    output [0:`PID_WIDTH-1]      derat_req0_pid,
    output                       derat_req0_as,
@@ -120,7 +121,7 @@ module mmq_tlb_req(
    output [0:`EMQ_ENTRIES-1]    derat_req0_emq,
    output                       derat_req0_valid,
    output                       derat_req0_nonspec,
-   
+
    output [0:`LPID_WIDTH-1]     derat_req1_lpid,
    output [0:`PID_WIDTH-1]      derat_req1_pid,
    output                       derat_req1_as,
@@ -130,7 +131,7 @@ module mmq_tlb_req(
    output [0:`EMQ_ENTRIES-1]    derat_req1_emq,
    output                       derat_req1_valid,
    output                       derat_req1_nonspec,
-   
+
    output [0:`LPID_WIDTH-1]     derat_req2_lpid,
    output [0:`PID_WIDTH-1]      derat_req2_pid,
    output                       derat_req2_as,
@@ -140,7 +141,7 @@ module mmq_tlb_req(
    output [0:`EMQ_ENTRIES-1]    derat_req2_emq,
    output                       derat_req2_valid,
    output                       derat_req2_nonspec,
-   
+
    output [0:`LPID_WIDTH-1]     derat_req3_lpid,
    output [0:`PID_WIDTH-1]      derat_req3_pid,
    output                       derat_req3_as,
@@ -150,7 +151,7 @@ module mmq_tlb_req(
    output [0:`EMQ_ENTRIES-1]    derat_req3_emq,
    output                       derat_req3_valid,
    output                       derat_req3_nonspec,
-   
+
    output [0:`LPID_WIDTH-1]     derat_ex5_lpid,
    output [0:`PID_WIDTH-1]      derat_ex5_pid,
    output                       derat_ex5_gs,
@@ -158,20 +159,20 @@ module mmq_tlb_req(
    output [0:`EPN_WIDTH-1]      derat_ex5_epn,
    output [0:`THDID_WIDTH-1]    derat_ex5_thdid,
    output                       derat_ex5_valid,
-   
+
    input [0:`THDID_WIDTH-1]     xu_ex3_flush,
    input [0:`THDID_WIDTH-1]     xu_mm_ex4_flush,
    input [0:`THDID_WIDTH-1]     xu_mm_ex5_flush,
    input [0:`THDID_WIDTH-1]     xu_mm_ierat_miss,
    input [0:`THDID_WIDTH-1]     xu_mm_ierat_flush,
-   
+
    input [0:6]                  tlb_cmp_ierat_dup_val,
    input [0:6]                  tlb_cmp_derat_dup_val,
    output                       tlb_seq_ierat_req,
    output                       tlb_seq_derat_req,
    input                        tlb_seq_ierat_done,
    input                        tlb_seq_derat_done,
-   
+
    input                          ierat_req_taken,
    input                          derat_req_taken,
    output [0:`EPN_WIDTH-1]        ierat_req_epn,
@@ -180,7 +181,7 @@ module mmq_tlb_req(
    output [0:`THDID_WIDTH-1]      ierat_req_thdid,
    output [0:1]                   ierat_req_dup,
    output                         ierat_req_nonspec,
-   
+
    output [0:`EPN_WIDTH-1]        derat_req_epn,
    output [0:`PID_WIDTH-1]        derat_req_pid,
    output [0:`LPID_WIDTH-1]       derat_req_lpid,
@@ -191,9 +192,9 @@ module mmq_tlb_req(
    output [0:`ITAG_SIZE_ENC-1]    derat_req_itag,
    output [0:`EMQ_ENTRIES-1]      derat_req_emq,
    output                         derat_req_nonspec,
-   
+
    output [0:`THDID_WIDTH-1]     tlb_req_quiesce,
-   
+
    output                      tlb_req_dbg_ierat_iu5_valid_q,
    output [0:1]                tlb_req_dbg_ierat_iu5_thdid,
    output [0:3]                tlb_req_dbg_ierat_iu5_state_q,
@@ -351,13 +352,14 @@ module mmq_tlb_req(
       parameter                   derat_req3_nonspec_offset = derat_req3_emq_offset + `EMQ_ENTRIES;
       parameter                   spare_offset = derat_req3_nonspec_offset + 1;
       parameter                   scan_right = spare_offset + 32 - 1;
-      
+
 `ifdef MM_THREADS2
       parameter                      BUGSP_MM_THREADS = 2;
 `else
       parameter                      BUGSP_MM_THREADS = 1;
-`endif  
-    
+`endif
+
+      // Latch signals
       wire                        ierat_req0_valid_d;
       wire                        ierat_req0_valid_q;
       wire                        ierat_req0_nonspec_d;
@@ -617,12 +619,14 @@ module mmq_tlb_req(
       wire                        tlb_seq_derat_req_d;
       wire                        tlb_seq_derat_req_q;
       wire [0:31]                 spare_q;
+      // logic signals
       wire [0:`PID_WIDTH-1]        ierat_req_pid_mux;
       wire [0:`THDID_WIDTH-1]      tlb_req_quiesce_b;
-      
-      (* analysis_not_referenced="true" *)  
+
+      (* analysis_not_referenced="true" *)
       wire [0:16]                 unused_dc;
 
+      // Pervasive
       wire                        pc_sg_1;
       wire                        pc_sg_0;
       wire                        pc_func_sl_thold_1;
@@ -635,38 +639,45 @@ module mmq_tlb_req(
       wire                        pc_func_slp_sl_force;
       wire [0:scan_right]         siv;
       wire [0:scan_right]         sov;
-      
-      
-      
-      
-      assign tlb_req_quiesce_b[0:`THDID_WIDTH - 1] = ({`THDID_WIDTH{ierat_req0_valid_q}} & ierat_req0_thdid_q[0:`THDID_WIDTH - 1]) | 
-                                                       ({`THDID_WIDTH{ierat_req1_valid_q}} & ierat_req1_thdid_q[0:`THDID_WIDTH - 1]) | 
-                                                       ({`THDID_WIDTH{ierat_req2_valid_q}} & ierat_req2_thdid_q[0:`THDID_WIDTH - 1]) | 
-                                                       ({`THDID_WIDTH{ierat_req3_valid_q}} & ierat_req3_thdid_q[0:`THDID_WIDTH - 1]) | 
-                                                       ({`THDID_WIDTH{derat_req0_valid_q}} & derat_req0_thdid_q[0:`THDID_WIDTH - 1]) | 
-                                                       ({`THDID_WIDTH{derat_req1_valid_q}} & derat_req1_thdid_q[0:`THDID_WIDTH - 1]) | 
-                                                       ({`THDID_WIDTH{derat_req2_valid_q}} & derat_req2_thdid_q[0:`THDID_WIDTH - 1]) | 
-                                                       ({`THDID_WIDTH{derat_req3_valid_q}} & derat_req3_thdid_q[0:`THDID_WIDTH - 1]) | 
-                                                       ({`THDID_WIDTH{derat_ex4_valid_q}} & derat_ex4_thdid_q[0:`THDID_WIDTH - 1]) | 
-                                                       ({`THDID_WIDTH{derat_ex5_valid_q}} & derat_ex5_thdid_q[0:`THDID_WIDTH - 1]) | 
-                                                       ({`THDID_WIDTH{derat_ex6_valid_q}} & derat_ex6_thdid_q[0:`THDID_WIDTH - 1]) | 
-                                                       ({`THDID_WIDTH{ierat_iu3_valid_q}} & ierat_iu3_thdid_q[0:`THDID_WIDTH - 1]) | 
-                                                       ({`THDID_WIDTH{ierat_iu4_valid_q}} & ierat_iu4_thdid_q[0:`THDID_WIDTH - 1]) | 
+
+      //!! Bugspray Include: mmq_tlb_req;
+      //---------------------------------------------------------------------
+      // Logic
+      //---------------------------------------------------------------------
+      //---------------------------------------------------------------------
+      // Common stuff for erat-only and tlb
+      //---------------------------------------------------------------------
+
+      // not quiesced
+      assign tlb_req_quiesce_b[0:`THDID_WIDTH - 1] = ({`THDID_WIDTH{ierat_req0_valid_q}} & ierat_req0_thdid_q[0:`THDID_WIDTH - 1]) |
+                                                       ({`THDID_WIDTH{ierat_req1_valid_q}} & ierat_req1_thdid_q[0:`THDID_WIDTH - 1]) |
+                                                       ({`THDID_WIDTH{ierat_req2_valid_q}} & ierat_req2_thdid_q[0:`THDID_WIDTH - 1]) |
+                                                       ({`THDID_WIDTH{ierat_req3_valid_q}} & ierat_req3_thdid_q[0:`THDID_WIDTH - 1]) |
+                                                       ({`THDID_WIDTH{derat_req0_valid_q}} & derat_req0_thdid_q[0:`THDID_WIDTH - 1]) |
+                                                       ({`THDID_WIDTH{derat_req1_valid_q}} & derat_req1_thdid_q[0:`THDID_WIDTH - 1]) |
+                                                       ({`THDID_WIDTH{derat_req2_valid_q}} & derat_req2_thdid_q[0:`THDID_WIDTH - 1]) |
+                                                       ({`THDID_WIDTH{derat_req3_valid_q}} & derat_req3_thdid_q[0:`THDID_WIDTH - 1]) |
+                                                       ({`THDID_WIDTH{derat_ex4_valid_q}} & derat_ex4_thdid_q[0:`THDID_WIDTH - 1]) |
+                                                       ({`THDID_WIDTH{derat_ex5_valid_q}} & derat_ex5_thdid_q[0:`THDID_WIDTH - 1]) |
+                                                       ({`THDID_WIDTH{derat_ex6_valid_q}} & derat_ex6_thdid_q[0:`THDID_WIDTH - 1]) |
+                                                       ({`THDID_WIDTH{ierat_iu3_valid_q}} & ierat_iu3_thdid_q[0:`THDID_WIDTH - 1]) |
+                                                       ({`THDID_WIDTH{ierat_iu4_valid_q}} & ierat_iu4_thdid_q[0:`THDID_WIDTH - 1]) |
                                                        ({`THDID_WIDTH{ierat_iu5_valid_q}} & ierat_iu5_thdid_q[0:`THDID_WIDTH - 1]);
-                                                       
+
       assign tlb_req_quiesce = (~tlb_req_quiesce_b);
       assign xu_mm_ierat_flush_d = xu_mm_ierat_flush;
       assign xu_mm_ierat_miss_d = xu_mm_ierat_miss;
+      // iu pipe for non-speculative ierat flush processing
       assign ierat_iu3_flush_d = iu_mm_ierat_flush;
       assign ierat_iu3_valid_d = iu_mm_ierat_req;
-      assign ierat_iu4_valid_d = ((ierat_iu3_valid_q == 1'b1 & |(ierat_iu3_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1)) ? 1'b1 : 
+      assign ierat_iu4_valid_d = ((ierat_iu3_valid_q == 1'b1 & |(ierat_iu3_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1)) ? 1'b1 :
                                  1'b0;
-      assign ierat_iu5_valid_d = ((ierat_iu4_valid_q == 1'b1 & |(ierat_iu4_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1)) ? 1'b1 : 
+      assign ierat_iu5_valid_d = ((ierat_iu4_valid_q == 1'b1 & |(ierat_iu4_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1)) ? 1'b1 :
                                  1'b0;
       assign ierat_iu3_thdid_d = iu_mm_ierat_thdid;
       assign ierat_iu3_state_d = iu_mm_ierat_state;
       assign ierat_iu3_pid_d = iu_mm_ierat_tid;
-      
+
       generate
          if (`RS_DATA_WIDTH == 64)
          begin : gen64_iu3_epn
@@ -690,150 +701,154 @@ module mmq_tlb_req(
       assign ierat_iu3_nonspec_d = iu_mm_ierat_req_nonspec;
       assign ierat_iu4_nonspec_d = ierat_iu3_nonspec_q;
       assign ierat_iu5_nonspec_d = ierat_iu4_nonspec_q;
-      
-      assign ierat_inptr_d = (ierat_inptr_q == 2'b00 & ierat_req1_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b01 : 
-                             (ierat_inptr_q == 2'b00 & ierat_req2_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b10 : 
-                             (ierat_inptr_q == 2'b00 & ierat_req3_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b11 : 
-                             (ierat_inptr_q == 2'b01 & ierat_req2_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b10 : 
-                             (ierat_inptr_q == 2'b01 & ierat_req3_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b11 : 
-                             (ierat_inptr_q == 2'b01 & ierat_req0_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b00 : 
-                             (ierat_inptr_q == 2'b10 & ierat_req3_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b11 : 
-                             (ierat_inptr_q == 2'b10 & ierat_req0_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b00 : 
-                             (ierat_inptr_q == 2'b10 & ierat_req1_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b01 : 
-                             (ierat_inptr_q == 2'b11 & ierat_req0_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b00 : 
-                             (ierat_inptr_q == 2'b11 & ierat_req1_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b01 : 
-                             (ierat_inptr_q == 2'b11 & ierat_req2_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b10 : 
-                             (ierat_req_taken == 1'b1) ? ierat_outptr_q : 
+
+      // ierat request queue logic pointers
+      assign ierat_inptr_d = (ierat_inptr_q == 2'b00 & ierat_req1_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b01 :
+                             (ierat_inptr_q == 2'b00 & ierat_req2_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b10 :
+                             (ierat_inptr_q == 2'b00 & ierat_req3_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b11 :
+                             (ierat_inptr_q == 2'b01 & ierat_req2_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b10 :
+                             (ierat_inptr_q == 2'b01 & ierat_req3_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b11 :
+                             (ierat_inptr_q == 2'b01 & ierat_req0_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b00 :
+                             (ierat_inptr_q == 2'b10 & ierat_req3_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b11 :
+                             (ierat_inptr_q == 2'b10 & ierat_req0_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b00 :
+                             (ierat_inptr_q == 2'b10 & ierat_req1_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b01 :
+                             (ierat_inptr_q == 2'b11 & ierat_req0_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b00 :
+                             (ierat_inptr_q == 2'b11 & ierat_req1_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b01 :
+                             (ierat_inptr_q == 2'b11 & ierat_req2_valid_q == 1'b0 & ierat_iu5_valid_q == 1'b1) ? 2'b10 :
+                             (ierat_req_taken == 1'b1) ? ierat_outptr_q :
                              ierat_inptr_q;
-                             
-      assign ierat_outptr_d = (ierat_outptr_q == 2'b00 & ierat_req0_valid_q == 1'b1 & ierat_req_taken == 1'b1) ? 2'b01 : 
-                              (ierat_outptr_q == 2'b01 & ierat_req1_valid_q == 1'b1 & ierat_req_taken == 1'b1) ? 2'b10 : 
-                              (ierat_outptr_q == 2'b10 & ierat_req2_valid_q == 1'b1 & ierat_req_taken == 1'b1) ? 2'b11 : 
-                              (ierat_outptr_q == 2'b11 & ierat_req3_valid_q == 1'b1 & ierat_req_taken == 1'b1) ? 2'b00 : 
-                              (ierat_outptr_q == 2'b00 & ierat_req0_valid_q == 1'b0 & ierat_req1_valid_q == 1'b1) ? 2'b01 : 
-                              (ierat_outptr_q == 2'b00 & ierat_req0_valid_q == 1'b0 & ierat_req1_valid_q == 1'b0 & ierat_req2_valid_q == 1'b1) ? 2'b10 : 
-                              (ierat_outptr_q == 2'b00 & ierat_req0_valid_q == 1'b0 & ierat_req1_valid_q == 1'b0 & ierat_req2_valid_q == 1'b0 & ierat_req3_valid_q == 1'b1) ? 2'b11 : 
-                              (ierat_outptr_q == 2'b01 & ierat_req1_valid_q == 1'b0 & ierat_req2_valid_q == 1'b1) ? 2'b10 : 
-                              (ierat_outptr_q == 2'b01 & ierat_req1_valid_q == 1'b0 & ierat_req2_valid_q == 1'b0 & ierat_req3_valid_q == 1'b1) ? 2'b11 : 
-                              (ierat_outptr_q == 2'b01 & ierat_req1_valid_q == 1'b0 & ierat_req2_valid_q == 1'b0 & ierat_req3_valid_q == 1'b0 & ierat_req0_valid_q == 1'b1) ? 2'b00 : 
-                              (ierat_outptr_q == 2'b10 & ierat_req2_valid_q == 1'b0 & ierat_req3_valid_q == 1'b1) ? 2'b11 : 
-                              (ierat_outptr_q == 2'b10 & ierat_req2_valid_q == 1'b0 & ierat_req3_valid_q == 1'b0 & ierat_req0_valid_q == 1'b1) ? 2'b00 : 
-                              (ierat_outptr_q == 2'b10 & ierat_req2_valid_q == 1'b0 & ierat_req3_valid_q == 1'b0 & ierat_req0_valid_q == 1'b0 & ierat_req1_valid_q == 1'b1) ? 2'b01 : 
-                              (ierat_outptr_q == 2'b11 & ierat_req3_valid_q == 1'b0 & ierat_req0_valid_q == 1'b1) ? 2'b00 : 
-                              (ierat_outptr_q == 2'b11 & ierat_req3_valid_q == 1'b0 & ierat_req0_valid_q == 1'b0 & ierat_req1_valid_q == 1'b1) ? 2'b01 : 
-                              (ierat_outptr_q == 2'b11 & ierat_req3_valid_q == 1'b0 & ierat_req0_valid_q == 1'b0 & ierat_req1_valid_q == 1'b0 & ierat_req2_valid_q == 1'b1) ? 2'b10 : 
+
+      assign ierat_outptr_d = (ierat_outptr_q == 2'b00 & ierat_req0_valid_q == 1'b1 & ierat_req_taken == 1'b1) ? 2'b01 :
+                              (ierat_outptr_q == 2'b01 & ierat_req1_valid_q == 1'b1 & ierat_req_taken == 1'b1) ? 2'b10 :
+                              (ierat_outptr_q == 2'b10 & ierat_req2_valid_q == 1'b1 & ierat_req_taken == 1'b1) ? 2'b11 :
+                              (ierat_outptr_q == 2'b11 & ierat_req3_valid_q == 1'b1 & ierat_req_taken == 1'b1) ? 2'b00 :
+                              (ierat_outptr_q == 2'b00 & ierat_req0_valid_q == 1'b0 & ierat_req1_valid_q == 1'b1) ? 2'b01 :
+                              (ierat_outptr_q == 2'b00 & ierat_req0_valid_q == 1'b0 & ierat_req1_valid_q == 1'b0 & ierat_req2_valid_q == 1'b1) ? 2'b10 :
+                              (ierat_outptr_q == 2'b00 & ierat_req0_valid_q == 1'b0 & ierat_req1_valid_q == 1'b0 & ierat_req2_valid_q == 1'b0 & ierat_req3_valid_q == 1'b1) ? 2'b11 :
+                              (ierat_outptr_q == 2'b01 & ierat_req1_valid_q == 1'b0 & ierat_req2_valid_q == 1'b1) ? 2'b10 :
+                              (ierat_outptr_q == 2'b01 & ierat_req1_valid_q == 1'b0 & ierat_req2_valid_q == 1'b0 & ierat_req3_valid_q == 1'b1) ? 2'b11 :
+                              (ierat_outptr_q == 2'b01 & ierat_req1_valid_q == 1'b0 & ierat_req2_valid_q == 1'b0 & ierat_req3_valid_q == 1'b0 & ierat_req0_valid_q == 1'b1) ? 2'b00 :
+                              (ierat_outptr_q == 2'b10 & ierat_req2_valid_q == 1'b0 & ierat_req3_valid_q == 1'b1) ? 2'b11 :
+                              (ierat_outptr_q == 2'b10 & ierat_req2_valid_q == 1'b0 & ierat_req3_valid_q == 1'b0 & ierat_req0_valid_q == 1'b1) ? 2'b00 :
+                              (ierat_outptr_q == 2'b10 & ierat_req2_valid_q == 1'b0 & ierat_req3_valid_q == 1'b0 & ierat_req0_valid_q == 1'b0 & ierat_req1_valid_q == 1'b1) ? 2'b01 :
+                              (ierat_outptr_q == 2'b11 & ierat_req3_valid_q == 1'b0 & ierat_req0_valid_q == 1'b1) ? 2'b00 :
+                              (ierat_outptr_q == 2'b11 & ierat_req3_valid_q == 1'b0 & ierat_req0_valid_q == 1'b0 & ierat_req1_valid_q == 1'b1) ? 2'b01 :
+                              (ierat_outptr_q == 2'b11 & ierat_req3_valid_q == 1'b0 & ierat_req0_valid_q == 1'b0 & ierat_req1_valid_q == 1'b0 & ierat_req2_valid_q == 1'b1) ? 2'b10 :
                               ierat_outptr_q;
-                              
-      assign tlb_seq_ierat_req_d = (((ierat_outptr_q == 2'b00 & ierat_req0_valid_q == 1'b1 & |(ierat_req0_thdid_q & (~(xu_mm_ierat_flush_q))) == 1'b1) | (ierat_outptr_q == 2'b01 & ierat_req1_valid_q == 1'b1 & |(ierat_req1_thdid_q & (~(xu_mm_ierat_flush_q))) == 1'b1) | (ierat_outptr_q == 2'b10 & ierat_req2_valid_q == 1'b1 & |(ierat_req2_thdid_q & (~(xu_mm_ierat_flush_q))) == 1'b1) | (ierat_outptr_q == 2'b11 & ierat_req3_valid_q == 1'b1 & |(ierat_req3_thdid_q & (~(xu_mm_ierat_flush_q))) == 1'b1))) ? 1'b1 : 
+
+      assign tlb_seq_ierat_req_d = (((ierat_outptr_q == 2'b00 & ierat_req0_valid_q == 1'b1 & |(ierat_req0_thdid_q & (~(xu_mm_ierat_flush_q))) == 1'b1) | (ierat_outptr_q == 2'b01 & ierat_req1_valid_q == 1'b1 & |(ierat_req1_thdid_q & (~(xu_mm_ierat_flush_q))) == 1'b1) | (ierat_outptr_q == 2'b10 & ierat_req2_valid_q == 1'b1 & |(ierat_req2_thdid_q & (~(xu_mm_ierat_flush_q))) == 1'b1) | (ierat_outptr_q == 2'b11 & ierat_req3_valid_q == 1'b1 & |(ierat_req3_thdid_q & (~(xu_mm_ierat_flush_q))) == 1'b1))) ? 1'b1 :
                                    1'b0;
       assign tlb_seq_ierat_req = tlb_seq_ierat_req_q;
-      assign ierat_req0_valid_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? 1'b1 : 
-                                  ((ierat_req_taken == 1'b1 & ierat_req0_valid_q == 1'b1 & ierat_outptr_q == 2'b00)) ? 1'b0 : 
-                                  ((tlb_cmp_ierat_dup_val[0] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      // i-erat queue valid bit is ierat_req<t>_valid_q
+      //  tlb_cmp_ierat_dup_val  bits 0:3 are req<t>_tag5_match, 4 is tag5 hit_reload, 5 is stretched hit_reload, 6 is ierat iu5 stage dup
+      assign ierat_req0_valid_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? 1'b1 :
+                                  ((ierat_req_taken == 1'b1 & ierat_req0_valid_q == 1'b1 & ierat_outptr_q == 2'b00)) ? 1'b0 :
+                                  ((tlb_cmp_ierat_dup_val[0] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 :
                                   ierat_req0_valid_q;
-      assign ierat_req0_nonspec_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? ierat_iu5_nonspec_q : 
-                                    ((ierat_req_taken == 1'b1 & ierat_req0_valid_q == 1'b1 & ierat_outptr_q == 2'b00)) ? 1'b0 : 
-                                    ((tlb_cmp_ierat_dup_val[0] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign ierat_req0_nonspec_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? ierat_iu5_nonspec_q :
+                                    ((ierat_req_taken == 1'b1 & ierat_req0_valid_q == 1'b1 & ierat_outptr_q == 2'b00)) ? 1'b0 :
+                                    ((tlb_cmp_ierat_dup_val[0] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 :
                                     ierat_req0_nonspec_q;
-      assign ierat_req0_thdid_d[0:3] = ((ierat_iu5_valid_q == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? ierat_iu5_thdid_q : 
+      assign ierat_req0_thdid_d[0:3] = ((ierat_iu5_valid_q == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? ierat_iu5_thdid_q :
                                        ierat_req0_thdid_q[0:3];
-      assign ierat_req0_epn_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? ierat_iu5_epn_q : 
+      assign ierat_req0_epn_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? ierat_iu5_epn_q :
                                 ierat_req0_epn_q;
-      assign ierat_req0_state_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? ierat_iu5_state_q : 
+      assign ierat_req0_state_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? ierat_iu5_state_q :
                                   ierat_req0_state_q;
-      assign ierat_req0_pid_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? ierat_iu5_pid_q : 
+      assign ierat_req0_pid_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? ierat_iu5_pid_q :
                                 ierat_req0_pid_q;
       assign ierat_req0_dup_d[0] = 1'b0;
-      assign ierat_req0_dup_d[1] = ((ierat_req_taken == 1'b1 & ierat_req0_valid_q == 1'b1 & ierat_outptr_q == 2'b00)) ? 1'b0 : 
-                                   ((ierat_iu5_valid_q == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? tlb_cmp_ierat_dup_val[6] : 
-                                   ((ierat_req0_valid_q == 1'b1 & ierat_req0_dup_q[1] == 1'b0 & tlb_cmp_ierat_dup_val[4] == 1'b0 & tlb_cmp_ierat_dup_val[5] == 1'b1)) ? tlb_cmp_ierat_dup_val[0] : 
+      assign ierat_req0_dup_d[1] = ((ierat_req_taken == 1'b1 & ierat_req0_valid_q == 1'b1 & ierat_outptr_q == 2'b00)) ? 1'b0 :
+                                   ((ierat_iu5_valid_q == 1'b1 & ierat_req0_valid_q == 1'b0 & ierat_inptr_q == 2'b00)) ? tlb_cmp_ierat_dup_val[6] :
+                                   ((ierat_req0_valid_q == 1'b1 & ierat_req0_dup_q[1] == 1'b0 & tlb_cmp_ierat_dup_val[4] == 1'b0 & tlb_cmp_ierat_dup_val[5] == 1'b1)) ? tlb_cmp_ierat_dup_val[0] :
                                    ierat_req0_dup_q[1];
-      assign ierat_req1_valid_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? 1'b1 : 
-                                  ((ierat_req_taken == 1'b1 & ierat_req1_valid_q == 1'b1 & ierat_outptr_q == 2'b01)) ? 1'b0 : 
-                                  ((tlb_cmp_ierat_dup_val[1] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign ierat_req1_valid_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? 1'b1 :
+                                  ((ierat_req_taken == 1'b1 & ierat_req1_valid_q == 1'b1 & ierat_outptr_q == 2'b01)) ? 1'b0 :
+                                  ((tlb_cmp_ierat_dup_val[1] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 :
                                   ierat_req1_valid_q;
-      assign ierat_req1_nonspec_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? ierat_iu5_nonspec_q : 
-                                    ((ierat_req_taken == 1'b1 & ierat_req1_valid_q == 1'b1 & ierat_outptr_q == 2'b01)) ? 1'b0 : 
-                                    ((tlb_cmp_ierat_dup_val[1] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign ierat_req1_nonspec_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? ierat_iu5_nonspec_q :
+                                    ((ierat_req_taken == 1'b1 & ierat_req1_valid_q == 1'b1 & ierat_outptr_q == 2'b01)) ? 1'b0 :
+                                    ((tlb_cmp_ierat_dup_val[1] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 :
                                     ierat_req1_nonspec_q;
-      assign ierat_req1_thdid_d[0:3] = ((ierat_iu5_valid_q == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? ierat_iu5_thdid_q : 
+      assign ierat_req1_thdid_d[0:3] = ((ierat_iu5_valid_q == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? ierat_iu5_thdid_q :
                                        ierat_req1_thdid_q[0:3];
-      assign ierat_req1_epn_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? ierat_iu5_epn_q : 
+      assign ierat_req1_epn_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? ierat_iu5_epn_q :
                                 ierat_req1_epn_q;
-      assign ierat_req1_state_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? ierat_iu5_state_q : 
+      assign ierat_req1_state_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? ierat_iu5_state_q :
                                   ierat_req1_state_q;
-      assign ierat_req1_pid_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? ierat_iu5_pid_q : 
+      assign ierat_req1_pid_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? ierat_iu5_pid_q :
                                 ierat_req1_pid_q;
       assign ierat_req1_dup_d[0] = 1'b0;
-      assign ierat_req1_dup_d[1] = ((ierat_req_taken == 1'b1 & ierat_req1_valid_q == 1'b1 & ierat_outptr_q == 2'b01)) ? 1'b0 : 
-                                   ((ierat_iu5_valid_q == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? tlb_cmp_ierat_dup_val[6] : 
-                                   ((ierat_req1_valid_q == 1'b1 & ierat_req1_dup_q[1] == 1'b0 & tlb_cmp_ierat_dup_val[4] == 1'b0 & tlb_cmp_ierat_dup_val[5] == 1'b1)) ? tlb_cmp_ierat_dup_val[1] : 
+      assign ierat_req1_dup_d[1] = ((ierat_req_taken == 1'b1 & ierat_req1_valid_q == 1'b1 & ierat_outptr_q == 2'b01)) ? 1'b0 :
+                                   ((ierat_iu5_valid_q == 1'b1 & ierat_req1_valid_q == 1'b0 & ierat_inptr_q == 2'b01)) ? tlb_cmp_ierat_dup_val[6] :
+                                   ((ierat_req1_valid_q == 1'b1 & ierat_req1_dup_q[1] == 1'b0 & tlb_cmp_ierat_dup_val[4] == 1'b0 & tlb_cmp_ierat_dup_val[5] == 1'b1)) ? tlb_cmp_ierat_dup_val[1] :
                                    ierat_req1_dup_q[1];
-      assign ierat_req2_valid_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? 1'b1 : 
-                                  ((ierat_req_taken == 1'b1 & ierat_req2_valid_q == 1'b1 & ierat_outptr_q == 2'b10)) ? 1'b0 : 
-                                  ((tlb_cmp_ierat_dup_val[2] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign ierat_req2_valid_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? 1'b1 :
+                                  ((ierat_req_taken == 1'b1 & ierat_req2_valid_q == 1'b1 & ierat_outptr_q == 2'b10)) ? 1'b0 :
+                                  ((tlb_cmp_ierat_dup_val[2] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 :
                                   ierat_req2_valid_q;
-      assign ierat_req2_nonspec_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? ierat_iu5_nonspec_q : 
-                                    ((ierat_req_taken == 1'b1 & ierat_req2_valid_q == 1'b1 & ierat_outptr_q == 2'b10)) ? 1'b0 : 
-                                    ((tlb_cmp_ierat_dup_val[2] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign ierat_req2_nonspec_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? ierat_iu5_nonspec_q :
+                                    ((ierat_req_taken == 1'b1 & ierat_req2_valid_q == 1'b1 & ierat_outptr_q == 2'b10)) ? 1'b0 :
+                                    ((tlb_cmp_ierat_dup_val[2] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 :
                                     ierat_req2_nonspec_q;
-      assign ierat_req2_thdid_d[0:3] = ((ierat_iu5_valid_q == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? ierat_iu5_thdid_q : 
+      assign ierat_req2_thdid_d[0:3] = ((ierat_iu5_valid_q == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? ierat_iu5_thdid_q :
                                        ierat_req2_thdid_q[0:3];
-      assign ierat_req2_epn_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? ierat_iu5_epn_q : 
+      assign ierat_req2_epn_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? ierat_iu5_epn_q :
                                 ierat_req2_epn_q;
-      assign ierat_req2_state_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? ierat_iu5_state_q : 
+      assign ierat_req2_state_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? ierat_iu5_state_q :
                                   ierat_req2_state_q;
-      assign ierat_req2_pid_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? ierat_iu5_pid_q : 
+      assign ierat_req2_pid_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? ierat_iu5_pid_q :
                                 ierat_req2_pid_q;
       assign ierat_req2_dup_d[0] = 1'b0;
-      assign ierat_req2_dup_d[1] = ((ierat_req_taken == 1'b1 & ierat_req2_valid_q == 1'b1 & ierat_outptr_q == 2'b10)) ? 1'b0 : 
-                                   ((ierat_iu5_valid_q == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? tlb_cmp_ierat_dup_val[6] : 
-                                   ((ierat_req2_valid_q == 1'b1 & ierat_req2_dup_q[1] == 1'b0 & tlb_cmp_ierat_dup_val[4] == 1'b0 & tlb_cmp_ierat_dup_val[5] == 1'b1)) ? tlb_cmp_ierat_dup_val[2] : 
+      assign ierat_req2_dup_d[1] = ((ierat_req_taken == 1'b1 & ierat_req2_valid_q == 1'b1 & ierat_outptr_q == 2'b10)) ? 1'b0 :
+                                   ((ierat_iu5_valid_q == 1'b1 & ierat_req2_valid_q == 1'b0 & ierat_inptr_q == 2'b10)) ? tlb_cmp_ierat_dup_val[6] :
+                                   ((ierat_req2_valid_q == 1'b1 & ierat_req2_dup_q[1] == 1'b0 & tlb_cmp_ierat_dup_val[4] == 1'b0 & tlb_cmp_ierat_dup_val[5] == 1'b1)) ? tlb_cmp_ierat_dup_val[2] :
                                    ierat_req2_dup_q[1];
-      assign ierat_req3_valid_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? 1'b1 : 
-                                  ((ierat_req_taken == 1'b1 & ierat_req3_valid_q == 1'b1 & ierat_outptr_q == 2'b11)) ? 1'b0 : 
-                                  ((tlb_cmp_ierat_dup_val[3] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign ierat_req3_valid_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? 1'b1 :
+                                  ((ierat_req_taken == 1'b1 & ierat_req3_valid_q == 1'b1 & ierat_outptr_q == 2'b11)) ? 1'b0 :
+                                  ((tlb_cmp_ierat_dup_val[3] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 :
                                   ierat_req3_valid_q;
-      assign ierat_req3_nonspec_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? ierat_iu5_nonspec_q : 
-                                    ((ierat_req_taken == 1'b1 & ierat_req3_valid_q == 1'b1 & ierat_outptr_q == 2'b11)) ? 1'b0 : 
-                                    ((tlb_cmp_ierat_dup_val[3] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign ierat_req3_nonspec_d = ((ierat_iu5_valid_q == 1'b1 & |(ierat_iu5_thdid_q & (~(ierat_iu3_flush_q)) & (~(xu_mm_ierat_flush_q))) == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? ierat_iu5_nonspec_q :
+                                    ((ierat_req_taken == 1'b1 & ierat_req3_valid_q == 1'b1 & ierat_outptr_q == 2'b11)) ? 1'b0 :
+                                    ((tlb_cmp_ierat_dup_val[3] == 1'b1 & tlb_cmp_ierat_dup_val[4] == 1'b1)) ? 1'b0 :
                                     ierat_req3_nonspec_q;
-      assign ierat_req3_thdid_d[0:3] = ((ierat_iu5_valid_q == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? ierat_iu5_thdid_q : 
+      assign ierat_req3_thdid_d[0:3] = ((ierat_iu5_valid_q == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? ierat_iu5_thdid_q :
                                        ierat_req3_thdid_q[0:3];
-      assign ierat_req3_epn_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? ierat_iu5_epn_q : 
+      assign ierat_req3_epn_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? ierat_iu5_epn_q :
                                 ierat_req3_epn_q;
-      assign ierat_req3_state_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? ierat_iu5_state_q : 
+      assign ierat_req3_state_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? ierat_iu5_state_q :
                                   ierat_req3_state_q;
-      assign ierat_req3_pid_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? ierat_iu5_pid_q : 
+      assign ierat_req3_pid_d = ((ierat_iu5_valid_q == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? ierat_iu5_pid_q :
                                 ierat_req3_pid_q;
       assign ierat_req3_dup_d[0] = 1'b0;
-      assign ierat_req3_dup_d[1] = ((ierat_req_taken == 1'b1 & ierat_req3_valid_q == 1'b1 & ierat_outptr_q == 2'b11)) ? 1'b0 : 
-                                   ((ierat_iu5_valid_q == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? tlb_cmp_ierat_dup_val[6] : 
-                                   ((ierat_req3_valid_q == 1'b1 & ierat_req3_dup_q[1] == 1'b0 & tlb_cmp_ierat_dup_val[4] == 1'b0 & tlb_cmp_ierat_dup_val[5] == 1'b1)) ? tlb_cmp_ierat_dup_val[3] : 
+      assign ierat_req3_dup_d[1] = ((ierat_req_taken == 1'b1 & ierat_req3_valid_q == 1'b1 & ierat_outptr_q == 2'b11)) ? 1'b0 :
+                                   ((ierat_iu5_valid_q == 1'b1 & ierat_req3_valid_q == 1'b0 & ierat_inptr_q == 2'b11)) ? tlb_cmp_ierat_dup_val[6] :
+                                   ((ierat_req3_valid_q == 1'b1 & ierat_req3_dup_q[1] == 1'b0 & tlb_cmp_ierat_dup_val[4] == 1'b0 & tlb_cmp_ierat_dup_val[5] == 1'b1)) ? tlb_cmp_ierat_dup_val[3] :
                                    ierat_req3_dup_q[1];
 `ifdef MM_THREADS2
       assign ierat_req_pid_mux = (pid0 & {`PID_WIDTH{iu_mm_ierat_thdid[0]}}) | (pid1 & {`PID_WIDTH{iu_mm_ierat_thdid[1]}});
 `else
       assign ierat_req_pid_mux = (pid0 & {`PID_WIDTH{iu_mm_ierat_thdid[0]}});
 `endif
+      // xu pipe for non-speculative derat flush processing
       assign derat_ex4_valid_d = xu_mm_derat_req;
       assign derat_ex5_valid_d = derat_ex4_valid_q;
       assign derat_ex6_valid_d = derat_ex5_valid_q;
-      
+
       generate
          if (`RS_DATA_WIDTH == 64)
          begin : gen64_ex4_epn
             assign derat_ex4_epn_d = xu_mm_derat_epn;
          end
       endgenerate
-      
+
       generate
          if (`RS_DATA_WIDTH < 64)
          begin : gen32_ex4_epn
             assign derat_ex4_epn_d = {1'b0, xu_mm_derat_epn[64 - `RS_DATA_WIDTH:51]};
          end
       endgenerate
-      
+
       assign derat_ex4_thdid_d = xu_mm_derat_thdid;
       assign derat_ex4_state_d = xu_mm_derat_state;
       assign derat_ex4_ttype_d = xu_mm_derat_ttype;
@@ -858,226 +873,233 @@ module mmq_tlb_req(
       assign derat_ex6_itag_d = derat_ex5_itag_q;
       assign derat_ex6_emq_d = derat_ex5_emq_q;
       assign derat_ex6_nonspec_d = derat_ex5_nonspec_q;
-      assign derat_ex5_lpid_d = (derat_ex4_valid_q == 1'b1 & derat_ex4_ttype_q[0] == 1'b1) ? derat_ex4_lpid_q : 
+      // use derat lpid for external pid ops
+      assign derat_ex5_lpid_d = (derat_ex4_valid_q == 1'b1 & derat_ex4_ttype_q[0] == 1'b1) ? derat_ex4_lpid_q :
                                 lpidr;
-      assign derat_ex6_lpid_d = (derat_ex5_valid_q == 1'b1 & derat_ex5_ttype_q[0] == 1'b1) ? derat_ex5_lpid_q : 
+      assign derat_ex6_lpid_d = (derat_ex5_valid_q == 1'b1 & derat_ex5_ttype_q[0] == 1'b1) ? derat_ex5_lpid_q :
                                 lpidr;
-      
-      assign derat_inptr_d = (derat_inptr_q == 2'b00 & derat_req1_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b01 : 
-                             (derat_inptr_q == 2'b00 & derat_req2_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b10 : 
-                             (derat_inptr_q == 2'b00 & derat_req3_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b11 : 
-                             (derat_inptr_q == 2'b01 & derat_req2_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b10 : 
-                             (derat_inptr_q == 2'b01 & derat_req3_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b11 : 
-                             (derat_inptr_q == 2'b01 & derat_req0_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b00 : 
-                             (derat_inptr_q == 2'b10 & derat_req3_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b11 : 
-                             (derat_inptr_q == 2'b10 & derat_req0_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b00 : 
-                             (derat_inptr_q == 2'b10 & derat_req1_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b01 : 
-                             (derat_inptr_q == 2'b11 & derat_req0_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b00 : 
-                             (derat_inptr_q == 2'b11 & derat_req1_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b01 : 
-                             (derat_inptr_q == 2'b11 & derat_req2_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b10 : 
-                             (derat_req_taken == 1'b1) ? derat_outptr_q : 
+
+      // derat request queue logic pointers
+      assign derat_inptr_d = (derat_inptr_q == 2'b00 & derat_req1_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b01 :
+                             (derat_inptr_q == 2'b00 & derat_req2_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b10 :
+                             (derat_inptr_q == 2'b00 & derat_req3_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b11 :
+                             (derat_inptr_q == 2'b01 & derat_req2_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b10 :
+                             (derat_inptr_q == 2'b01 & derat_req3_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b11 :
+                             (derat_inptr_q == 2'b01 & derat_req0_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b00 :
+                             (derat_inptr_q == 2'b10 & derat_req3_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b11 :
+                             (derat_inptr_q == 2'b10 & derat_req0_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b00 :
+                             (derat_inptr_q == 2'b10 & derat_req1_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b01 :
+                             (derat_inptr_q == 2'b11 & derat_req0_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b00 :
+                             (derat_inptr_q == 2'b11 & derat_req1_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b01 :
+                             (derat_inptr_q == 2'b11 & derat_req2_valid_q == 1'b0 & derat_ex6_valid_q == 1'b1) ? 2'b10 :
+                             (derat_req_taken == 1'b1) ? derat_outptr_q :
                              derat_inptr_q;
-                             
-      assign derat_outptr_d = (derat_outptr_q == 2'b00 & derat_req0_valid_q == 1'b1 & derat_req_taken == 1'b1) ? 2'b01 : 
-                              (derat_outptr_q == 2'b01 & derat_req1_valid_q == 1'b1 & derat_req_taken == 1'b1) ? 2'b10 : 
-                              (derat_outptr_q == 2'b10 & derat_req2_valid_q == 1'b1 & derat_req_taken == 1'b1) ? 2'b11 : 
-                              (derat_outptr_q == 2'b11 & derat_req3_valid_q == 1'b1 & derat_req_taken == 1'b1) ? 2'b00 : 
-                              (derat_outptr_q == 2'b00 & derat_req0_valid_q == 1'b0 & derat_req1_valid_q == 1'b1) ? 2'b01 : 
-                              (derat_outptr_q == 2'b00 & derat_req0_valid_q == 1'b0 & derat_req1_valid_q == 1'b0 & derat_req2_valid_q == 1'b1) ? 2'b10 : 
-                              (derat_outptr_q == 2'b00 & derat_req0_valid_q == 1'b0 & derat_req1_valid_q == 1'b0 & derat_req2_valid_q == 1'b0 & derat_req3_valid_q == 1'b1) ? 2'b11 : 
-                              (derat_outptr_q == 2'b01 & derat_req1_valid_q == 1'b0 & derat_req2_valid_q == 1'b1) ? 2'b10 : 
-                              (derat_outptr_q == 2'b01 & derat_req1_valid_q == 1'b0 & derat_req2_valid_q == 1'b0 & derat_req3_valid_q == 1'b1) ? 2'b11 : 
-                              (derat_outptr_q == 2'b01 & derat_req1_valid_q == 1'b0 & derat_req2_valid_q == 1'b0 & derat_req3_valid_q == 1'b0 & derat_req0_valid_q == 1'b1) ? 2'b00 : 
-                              (derat_outptr_q == 2'b10 & derat_req2_valid_q == 1'b0 & derat_req3_valid_q == 1'b1) ? 2'b11 : 
-                              (derat_outptr_q == 2'b10 & derat_req2_valid_q == 1'b0 & derat_req3_valid_q == 1'b0 & derat_req0_valid_q == 1'b1) ? 2'b00 : 
-                              (derat_outptr_q == 2'b10 & derat_req2_valid_q == 1'b0 & derat_req3_valid_q == 1'b0 & derat_req0_valid_q == 1'b0 & derat_req1_valid_q == 1'b1) ? 2'b01 : 
-                              (derat_outptr_q == 2'b11 & derat_req3_valid_q == 1'b0 & derat_req0_valid_q == 1'b1) ? 2'b00 : 
-                              (derat_outptr_q == 2'b11 & derat_req3_valid_q == 1'b0 & derat_req0_valid_q == 1'b0 & derat_req1_valid_q == 1'b1) ? 2'b01 : 
-                              (derat_outptr_q == 2'b11 & derat_req3_valid_q == 1'b0 & derat_req0_valid_q == 1'b0 & derat_req1_valid_q == 1'b0 & derat_req2_valid_q == 1'b1) ? 2'b10 : 
+
+      assign derat_outptr_d = (derat_outptr_q == 2'b00 & derat_req0_valid_q == 1'b1 & derat_req_taken == 1'b1) ? 2'b01 :
+                              (derat_outptr_q == 2'b01 & derat_req1_valid_q == 1'b1 & derat_req_taken == 1'b1) ? 2'b10 :
+                              (derat_outptr_q == 2'b10 & derat_req2_valid_q == 1'b1 & derat_req_taken == 1'b1) ? 2'b11 :
+                              (derat_outptr_q == 2'b11 & derat_req3_valid_q == 1'b1 & derat_req_taken == 1'b1) ? 2'b00 :
+                              (derat_outptr_q == 2'b00 & derat_req0_valid_q == 1'b0 & derat_req1_valid_q == 1'b1) ? 2'b01 :
+                              (derat_outptr_q == 2'b00 & derat_req0_valid_q == 1'b0 & derat_req1_valid_q == 1'b0 & derat_req2_valid_q == 1'b1) ? 2'b10 :
+                              (derat_outptr_q == 2'b00 & derat_req0_valid_q == 1'b0 & derat_req1_valid_q == 1'b0 & derat_req2_valid_q == 1'b0 & derat_req3_valid_q == 1'b1) ? 2'b11 :
+                              (derat_outptr_q == 2'b01 & derat_req1_valid_q == 1'b0 & derat_req2_valid_q == 1'b1) ? 2'b10 :
+                              (derat_outptr_q == 2'b01 & derat_req1_valid_q == 1'b0 & derat_req2_valid_q == 1'b0 & derat_req3_valid_q == 1'b1) ? 2'b11 :
+                              (derat_outptr_q == 2'b01 & derat_req1_valid_q == 1'b0 & derat_req2_valid_q == 1'b0 & derat_req3_valid_q == 1'b0 & derat_req0_valid_q == 1'b1) ? 2'b00 :
+                              (derat_outptr_q == 2'b10 & derat_req2_valid_q == 1'b0 & derat_req3_valid_q == 1'b1) ? 2'b11 :
+                              (derat_outptr_q == 2'b10 & derat_req2_valid_q == 1'b0 & derat_req3_valid_q == 1'b0 & derat_req0_valid_q == 1'b1) ? 2'b00 :
+                              (derat_outptr_q == 2'b10 & derat_req2_valid_q == 1'b0 & derat_req3_valid_q == 1'b0 & derat_req0_valid_q == 1'b0 & derat_req1_valid_q == 1'b1) ? 2'b01 :
+                              (derat_outptr_q == 2'b11 & derat_req3_valid_q == 1'b0 & derat_req0_valid_q == 1'b1) ? 2'b00 :
+                              (derat_outptr_q == 2'b11 & derat_req3_valid_q == 1'b0 & derat_req0_valid_q == 1'b0 & derat_req1_valid_q == 1'b1) ? 2'b01 :
+                              (derat_outptr_q == 2'b11 & derat_req3_valid_q == 1'b0 & derat_req0_valid_q == 1'b0 & derat_req1_valid_q == 1'b0 & derat_req2_valid_q == 1'b1) ? 2'b10 :
                               derat_outptr_q;
-                              
-      assign tlb_seq_derat_req_d = (((derat_outptr_q == 2'b00 & derat_req0_valid_q == 1'b1) | (derat_outptr_q == 2'b01 & derat_req1_valid_q == 1'b1) | (derat_outptr_q == 2'b10 & derat_req2_valid_q == 1'b1) | (derat_outptr_q == 2'b11 & derat_req3_valid_q == 1'b1))) ? 1'b1 : 
+
+      assign tlb_seq_derat_req_d = (((derat_outptr_q == 2'b00 & derat_req0_valid_q == 1'b1) | (derat_outptr_q == 2'b01 & derat_req1_valid_q == 1'b1) | (derat_outptr_q == 2'b10 & derat_req2_valid_q == 1'b1) | (derat_outptr_q == 2'b11 & derat_req3_valid_q == 1'b1))) ? 1'b1 :
                                    1'b0;
       assign tlb_seq_derat_req = tlb_seq_derat_req_q;
-      assign derat_req0_valid_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? 1'b1 : 
-                                  ((derat_req_taken == 1'b1 & derat_req0_valid_q == 1'b1 & derat_outptr_q == 2'b00)) ? 1'b0 : 
-                                  ((tlb_cmp_derat_dup_val[0] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      // d-erat queue valid bit is derat_req<t>_valid_q
+      //  tlb_cmp_derat_dup_val  : in std_ulogic_vector(0 to 6); -- bit 4 hit/miss pulse, 5 is stretched hit/miss, 6 is ex6 dup
+      assign derat_req0_valid_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? 1'b1 :
+                                  ((derat_req_taken == 1'b1 & derat_req0_valid_q == 1'b1 & derat_outptr_q == 2'b00)) ? 1'b0 :
+                                  ((tlb_cmp_derat_dup_val[0] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 :
                                   derat_req0_valid_q;
-      assign derat_req0_thdid_d[0:3] = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_thdid_q : 
+      assign derat_req0_thdid_d[0:3] = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_thdid_q :
                                        derat_req0_thdid_q[0:3];
-      assign derat_req0_epn_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_epn_q : 
+      assign derat_req0_epn_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_epn_q :
                                 derat_req0_epn_q;
-      assign derat_req0_state_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_state_q : 
+      assign derat_req0_state_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_state_q :
                                   derat_req0_state_q;
-      assign derat_req0_ttype_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_ttype_q : 
+      assign derat_req0_ttype_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_ttype_q :
                                   derat_req0_ttype_q;
-      assign derat_req0_pid_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_pid_q : 
+      assign derat_req0_pid_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_pid_q :
                                 derat_req0_pid_q;
-      assign derat_req0_lpid_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_lpid_q : 
+      assign derat_req0_lpid_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_lpid_q :
                                  derat_req0_lpid_q;
       assign derat_req0_dup_d[0] = 1'b0;
-      assign derat_req0_dup_d[1] = ((derat_req_taken == 1'b1 & derat_req0_valid_q == 1'b1 & derat_outptr_q == 2'b00)) ? 1'b0 : 
-                                   ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? tlb_cmp_derat_dup_val[6] : 
-                                   ((derat_req0_valid_q == 1'b1 & derat_req0_dup_q[1] == 1'b0 & tlb_cmp_derat_dup_val[4] == 1'b0 & tlb_cmp_derat_dup_val[5] == 1'b1)) ? tlb_cmp_derat_dup_val[0] : 
+      assign derat_req0_dup_d[1] = ((derat_req_taken == 1'b1 & derat_req0_valid_q == 1'b1 & derat_outptr_q == 2'b00)) ? 1'b0 :
+                                   ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? tlb_cmp_derat_dup_val[6] :
+                                   ((derat_req0_valid_q == 1'b1 & derat_req0_dup_q[1] == 1'b0 & tlb_cmp_derat_dup_val[4] == 1'b0 & tlb_cmp_derat_dup_val[5] == 1'b1)) ? tlb_cmp_derat_dup_val[0] :
                                    derat_req0_dup_q[1];
-      assign derat_req0_itag_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_itag_q : 
+      assign derat_req0_itag_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_itag_q :
                                  derat_req0_itag_q;
-      assign derat_req0_emq_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_emq_q : 
+      assign derat_req0_emq_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_emq_q :
                                 derat_req0_emq_q;
-      assign derat_req0_nonspec_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_nonspec_q : 
-                                    ((derat_req_taken == 1'b1 & derat_req0_valid_q == 1'b1 & derat_outptr_q == 2'b00)) ? 1'b0 : 
-                                    ((tlb_cmp_derat_dup_val[0] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign derat_req0_nonspec_d = ((derat_ex6_valid_q == 1'b1 & derat_req0_valid_q == 1'b0 & derat_inptr_q == 2'b00)) ? derat_ex6_nonspec_q :
+                                    ((derat_req_taken == 1'b1 & derat_req0_valid_q == 1'b1 & derat_outptr_q == 2'b00)) ? 1'b0 :
+                                    ((tlb_cmp_derat_dup_val[0] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 :
                                     derat_req0_nonspec_q;
-      assign derat_req1_valid_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? 1'b1 : 
-                                  ((derat_req_taken == 1'b1 & derat_req1_valid_q == 1'b1 & derat_outptr_q == 2'b01)) ? 1'b0 : 
-                                  ((tlb_cmp_derat_dup_val[1] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign derat_req1_valid_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? 1'b1 :
+                                  ((derat_req_taken == 1'b1 & derat_req1_valid_q == 1'b1 & derat_outptr_q == 2'b01)) ? 1'b0 :
+                                  ((tlb_cmp_derat_dup_val[1] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 :
                                   derat_req1_valid_q;
-      assign derat_req1_thdid_d[0:3] = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_thdid_q : 
+      assign derat_req1_thdid_d[0:3] = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_thdid_q :
                                        derat_req1_thdid_q[0:3];
-      assign derat_req1_epn_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_epn_q : 
+      assign derat_req1_epn_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_epn_q :
                                 derat_req1_epn_q;
-      assign derat_req1_state_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_state_q : 
+      assign derat_req1_state_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_state_q :
                                   derat_req1_state_q;
-      assign derat_req1_ttype_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_ttype_q : 
+      assign derat_req1_ttype_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_ttype_q :
                                   derat_req1_ttype_q;
-      assign derat_req1_pid_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_pid_q : 
+      assign derat_req1_pid_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_pid_q :
                                 derat_req1_pid_q;
-      assign derat_req1_lpid_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_lpid_q : 
+      assign derat_req1_lpid_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_lpid_q :
                                  derat_req1_lpid_q;
       assign derat_req1_dup_d[0] = 1'b0;
-      assign derat_req1_dup_d[1] = ((derat_req_taken == 1'b1 & derat_req1_valid_q == 1'b1 & derat_outptr_q == 2'b01)) ? 1'b0 : 
-                                   ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? tlb_cmp_derat_dup_val[6] : 
-                                   ((derat_req1_valid_q == 1'b1 & derat_req1_dup_q[1] == 1'b0 & tlb_cmp_derat_dup_val[4] == 1'b0 & tlb_cmp_derat_dup_val[5] == 1'b1)) ? tlb_cmp_derat_dup_val[1] : 
+      assign derat_req1_dup_d[1] = ((derat_req_taken == 1'b1 & derat_req1_valid_q == 1'b1 & derat_outptr_q == 2'b01)) ? 1'b0 :
+                                   ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? tlb_cmp_derat_dup_val[6] :
+                                   ((derat_req1_valid_q == 1'b1 & derat_req1_dup_q[1] == 1'b0 & tlb_cmp_derat_dup_val[4] == 1'b0 & tlb_cmp_derat_dup_val[5] == 1'b1)) ? tlb_cmp_derat_dup_val[1] :
                                    derat_req1_dup_q[1];
-      assign derat_req1_itag_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_itag_q : 
+      assign derat_req1_itag_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_itag_q :
                                  derat_req1_itag_q;
-      assign derat_req1_emq_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_emq_q : 
+      assign derat_req1_emq_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_emq_q :
                                 derat_req1_emq_q;
-      assign derat_req1_nonspec_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_nonspec_q : 
-                                    ((derat_req_taken == 1'b1 & derat_req1_valid_q == 1'b1 & derat_outptr_q == 2'b01)) ? 1'b0 : 
-                                    ((tlb_cmp_derat_dup_val[1] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign derat_req1_nonspec_d = ((derat_ex6_valid_q == 1'b1 & derat_req1_valid_q == 1'b0 & derat_inptr_q == 2'b01)) ? derat_ex6_nonspec_q :
+                                    ((derat_req_taken == 1'b1 & derat_req1_valid_q == 1'b1 & derat_outptr_q == 2'b01)) ? 1'b0 :
+                                    ((tlb_cmp_derat_dup_val[1] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 :
                                     derat_req1_nonspec_q;
-      assign derat_req2_valid_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? 1'b1 : 
-                                  ((derat_req_taken == 1'b1 & derat_req2_valid_q == 1'b1 & derat_outptr_q == 2'b10)) ? 1'b0 : 
-                                  ((tlb_cmp_derat_dup_val[2] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign derat_req2_valid_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? 1'b1 :
+                                  ((derat_req_taken == 1'b1 & derat_req2_valid_q == 1'b1 & derat_outptr_q == 2'b10)) ? 1'b0 :
+                                  ((tlb_cmp_derat_dup_val[2] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 :
                                   derat_req2_valid_q;
-      assign derat_req2_thdid_d[0:3] = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_thdid_q : 
+      assign derat_req2_thdid_d[0:3] = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_thdid_q :
                                        derat_req2_thdid_q[0:3];
-      assign derat_req2_epn_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_epn_q : 
+      assign derat_req2_epn_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_epn_q :
                                 derat_req2_epn_q;
-      assign derat_req2_state_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_state_q : 
+      assign derat_req2_state_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_state_q :
                                   derat_req2_state_q;
-      assign derat_req2_ttype_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_ttype_q : 
+      assign derat_req2_ttype_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_ttype_q :
                                   derat_req2_ttype_q;
-      assign derat_req2_pid_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_pid_q : 
+      assign derat_req2_pid_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_pid_q :
                                 derat_req2_pid_q;
-      assign derat_req2_lpid_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_lpid_q : 
+      assign derat_req2_lpid_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_lpid_q :
                                  derat_req2_lpid_q;
       assign derat_req2_dup_d[0] = 1'b0;
-      assign derat_req2_dup_d[1] = ((derat_req_taken == 1'b1 & derat_req2_valid_q == 1'b1 & derat_outptr_q == 2'b10)) ? 1'b0 : 
-                                   ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? tlb_cmp_derat_dup_val[6] : 
-                                   ((derat_req2_valid_q == 1'b1 & derat_req2_dup_q[1] == 1'b0 & tlb_cmp_derat_dup_val[4] == 1'b0 & tlb_cmp_derat_dup_val[5] == 1'b1)) ? tlb_cmp_derat_dup_val[2] : 
+      assign derat_req2_dup_d[1] = ((derat_req_taken == 1'b1 & derat_req2_valid_q == 1'b1 & derat_outptr_q == 2'b10)) ? 1'b0 :
+                                   ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? tlb_cmp_derat_dup_val[6] :
+                                   ((derat_req2_valid_q == 1'b1 & derat_req2_dup_q[1] == 1'b0 & tlb_cmp_derat_dup_val[4] == 1'b0 & tlb_cmp_derat_dup_val[5] == 1'b1)) ? tlb_cmp_derat_dup_val[2] :
                                    derat_req2_dup_q[1];
-      assign derat_req2_itag_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_itag_q : 
+      assign derat_req2_itag_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_itag_q :
                                  derat_req2_itag_q;
-      assign derat_req2_emq_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_emq_q : 
+      assign derat_req2_emq_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_emq_q :
                                 derat_req2_emq_q;
-      assign derat_req2_nonspec_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_nonspec_q : 
-                                    ((derat_req_taken == 1'b1 & derat_req2_valid_q == 1'b1 & derat_outptr_q == 2'b10)) ? 1'b0 : 
-                                    ((tlb_cmp_derat_dup_val[2] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign derat_req2_nonspec_d = ((derat_ex6_valid_q == 1'b1 & derat_req2_valid_q == 1'b0 & derat_inptr_q == 2'b10)) ? derat_ex6_nonspec_q :
+                                    ((derat_req_taken == 1'b1 & derat_req2_valid_q == 1'b1 & derat_outptr_q == 2'b10)) ? 1'b0 :
+                                    ((tlb_cmp_derat_dup_val[2] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 :
                                     derat_req2_nonspec_q;
-      assign derat_req3_valid_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? 1'b1 : 
-                                  ((derat_req_taken == 1'b1 & derat_req3_valid_q == 1'b1 & derat_outptr_q == 2'b11)) ? 1'b0 : 
-                                  ((tlb_cmp_derat_dup_val[3] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign derat_req3_valid_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? 1'b1 :
+                                  ((derat_req_taken == 1'b1 & derat_req3_valid_q == 1'b1 & derat_outptr_q == 2'b11)) ? 1'b0 :
+                                  ((tlb_cmp_derat_dup_val[3] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 :
                                   derat_req3_valid_q;
-      assign derat_req3_thdid_d[0:3] = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_thdid_q : 
+      assign derat_req3_thdid_d[0:3] = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_thdid_q :
                                        derat_req3_thdid_q[0:3];
-      assign derat_req3_epn_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_epn_q : 
+      assign derat_req3_epn_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_epn_q :
                                 derat_req3_epn_q;
-      assign derat_req3_state_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_state_q : 
+      assign derat_req3_state_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_state_q :
                                   derat_req3_state_q;
-      assign derat_req3_ttype_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_ttype_q : 
+      assign derat_req3_ttype_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_ttype_q :
                                   derat_req3_ttype_q;
-      assign derat_req3_pid_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_pid_q : 
+      assign derat_req3_pid_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_pid_q :
                                 derat_req3_pid_q;
-      assign derat_req3_lpid_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_lpid_q : 
+      assign derat_req3_lpid_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_lpid_q :
                                  derat_req3_lpid_q;
       assign derat_req3_dup_d[0] = 1'b0;
-      assign derat_req3_dup_d[1] = ((derat_req_taken == 1'b1 & derat_req3_valid_q == 1'b1 & derat_outptr_q == 2'b11)) ? 1'b0 : 
-                                   ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? tlb_cmp_derat_dup_val[6] : 
-                                   ((derat_req3_valid_q == 1'b1 & derat_req3_dup_q[1] == 1'b0 & tlb_cmp_derat_dup_val[4] == 1'b0 & tlb_cmp_derat_dup_val[5] == 1'b1)) ? tlb_cmp_derat_dup_val[3] : 
+      assign derat_req3_dup_d[1] = ((derat_req_taken == 1'b1 & derat_req3_valid_q == 1'b1 & derat_outptr_q == 2'b11)) ? 1'b0 :
+                                   ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? tlb_cmp_derat_dup_val[6] :
+                                   ((derat_req3_valid_q == 1'b1 & derat_req3_dup_q[1] == 1'b0 & tlb_cmp_derat_dup_val[4] == 1'b0 & tlb_cmp_derat_dup_val[5] == 1'b1)) ? tlb_cmp_derat_dup_val[3] :
                                    derat_req3_dup_q[1];
-      assign derat_req3_itag_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_itag_q : 
+      assign derat_req3_itag_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_itag_q :
                                  derat_req3_itag_q;
-      assign derat_req3_emq_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_emq_q : 
+      assign derat_req3_emq_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_emq_q :
                                 derat_req3_emq_q;
-      assign derat_req3_nonspec_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_nonspec_q : 
-                                    ((derat_req_taken == 1'b1 & derat_req3_valid_q == 1'b1 & derat_outptr_q == 2'b11)) ? 1'b0 : 
-                                    ((tlb_cmp_derat_dup_val[3] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 : 
+      assign derat_req3_nonspec_d = ((derat_ex6_valid_q == 1'b1 & derat_req3_valid_q == 1'b0 & derat_inptr_q == 2'b11)) ? derat_ex6_nonspec_q :
+                                    ((derat_req_taken == 1'b1 & derat_req3_valid_q == 1'b1 & derat_outptr_q == 2'b11)) ? 1'b0 :
+                                    ((tlb_cmp_derat_dup_val[3] == 1'b1 & tlb_cmp_derat_dup_val[4] == 1'b1)) ? 1'b0 :
                                     derat_req3_nonspec_q;
-      assign ierat_req_epn = ((ierat_outptr_q == 2'b01)) ? ierat_req1_epn_q : 
-                             ((ierat_outptr_q == 2'b10)) ? ierat_req2_epn_q : 
-                             ((ierat_outptr_q == 2'b11)) ? ierat_req3_epn_q : 
+      //---------------------------------------------------------------------
+      // output assignments
+      //---------------------------------------------------------------------
+      assign ierat_req_epn = ((ierat_outptr_q == 2'b01)) ? ierat_req1_epn_q :
+                             ((ierat_outptr_q == 2'b10)) ? ierat_req2_epn_q :
+                             ((ierat_outptr_q == 2'b11)) ? ierat_req3_epn_q :
                              ierat_req0_epn_q;
-      assign ierat_req_pid = ((ierat_outptr_q == 2'b01)) ? ierat_req1_pid_q : 
-                             ((ierat_outptr_q == 2'b10)) ? ierat_req2_pid_q : 
-                             ((ierat_outptr_q == 2'b11)) ? ierat_req3_pid_q : 
+      assign ierat_req_pid = ((ierat_outptr_q == 2'b01)) ? ierat_req1_pid_q :
+                             ((ierat_outptr_q == 2'b10)) ? ierat_req2_pid_q :
+                             ((ierat_outptr_q == 2'b11)) ? ierat_req3_pid_q :
                              ierat_req0_pid_q;
-      assign ierat_req_state = ((ierat_outptr_q == 2'b01)) ? ierat_req1_state_q : 
-                               ((ierat_outptr_q == 2'b10)) ? ierat_req2_state_q : 
-                               ((ierat_outptr_q == 2'b11)) ? ierat_req3_state_q : 
+      assign ierat_req_state = ((ierat_outptr_q == 2'b01)) ? ierat_req1_state_q :
+                               ((ierat_outptr_q == 2'b10)) ? ierat_req2_state_q :
+                               ((ierat_outptr_q == 2'b11)) ? ierat_req3_state_q :
                                ierat_req0_state_q;
-      assign ierat_req_thdid = ((ierat_outptr_q == 2'b01)) ? ierat_req1_thdid_q[0:`THDID_WIDTH - 1] : 
-                               ((ierat_outptr_q == 2'b10)) ? ierat_req2_thdid_q[0:`THDID_WIDTH - 1] : 
-                               ((ierat_outptr_q == 2'b11)) ? ierat_req3_thdid_q[0:`THDID_WIDTH - 1] : 
+      assign ierat_req_thdid = ((ierat_outptr_q == 2'b01)) ? ierat_req1_thdid_q[0:`THDID_WIDTH - 1] :
+                               ((ierat_outptr_q == 2'b10)) ? ierat_req2_thdid_q[0:`THDID_WIDTH - 1] :
+                               ((ierat_outptr_q == 2'b11)) ? ierat_req3_thdid_q[0:`THDID_WIDTH - 1] :
                                ierat_req0_thdid_q[0:`THDID_WIDTH - 1];
-      assign ierat_req_dup = ((ierat_outptr_q == 2'b01)) ? ierat_req1_dup_q[0:1] : 
-                             ((ierat_outptr_q == 2'b10)) ? ierat_req2_dup_q[0:1] : 
-                             ((ierat_outptr_q == 2'b11)) ? ierat_req3_dup_q[0:1] : 
+      assign ierat_req_dup = ((ierat_outptr_q == 2'b01)) ? ierat_req1_dup_q[0:1] :
+                             ((ierat_outptr_q == 2'b10)) ? ierat_req2_dup_q[0:1] :
+                             ((ierat_outptr_q == 2'b11)) ? ierat_req3_dup_q[0:1] :
                              ierat_req0_dup_q[0:1];
-      assign ierat_req_nonspec = ((ierat_outptr_q == 2'b01)) ? ierat_req1_nonspec_q : 
-                                 ((ierat_outptr_q == 2'b10)) ? ierat_req2_nonspec_q : 
-                                 ((ierat_outptr_q == 2'b11)) ? ierat_req3_nonspec_q : 
+      assign ierat_req_nonspec = ((ierat_outptr_q == 2'b01)) ? ierat_req1_nonspec_q :
+                                 ((ierat_outptr_q == 2'b10)) ? ierat_req2_nonspec_q :
+                                 ((ierat_outptr_q == 2'b11)) ? ierat_req3_nonspec_q :
                                  ierat_req0_nonspec_q;
-      assign derat_req_epn = ((derat_outptr_q == 2'b01)) ? derat_req1_epn_q : 
-                             ((derat_outptr_q == 2'b10)) ? derat_req2_epn_q : 
-                             ((derat_outptr_q == 2'b11)) ? derat_req3_epn_q : 
+      assign derat_req_epn = ((derat_outptr_q == 2'b01)) ? derat_req1_epn_q :
+                             ((derat_outptr_q == 2'b10)) ? derat_req2_epn_q :
+                             ((derat_outptr_q == 2'b11)) ? derat_req3_epn_q :
                              derat_req0_epn_q;
-      assign derat_req_pid = ((derat_outptr_q == 2'b01)) ? derat_req1_pid_q : 
-                             ((derat_outptr_q == 2'b10)) ? derat_req2_pid_q : 
-                             ((derat_outptr_q == 2'b11)) ? derat_req3_pid_q : 
+      assign derat_req_pid = ((derat_outptr_q == 2'b01)) ? derat_req1_pid_q :
+                             ((derat_outptr_q == 2'b10)) ? derat_req2_pid_q :
+                             ((derat_outptr_q == 2'b11)) ? derat_req3_pid_q :
                              derat_req0_pid_q;
-      assign derat_req_lpid = ((derat_outptr_q == 2'b01)) ? derat_req1_lpid_q : 
-                              ((derat_outptr_q == 2'b10)) ? derat_req2_lpid_q : 
-                              ((derat_outptr_q == 2'b11)) ? derat_req3_lpid_q : 
+      assign derat_req_lpid = ((derat_outptr_q == 2'b01)) ? derat_req1_lpid_q :
+                              ((derat_outptr_q == 2'b10)) ? derat_req2_lpid_q :
+                              ((derat_outptr_q == 2'b11)) ? derat_req3_lpid_q :
                               derat_req0_lpid_q;
-      assign derat_req_state = ((derat_outptr_q == 2'b01)) ? derat_req1_state_q : 
-                               ((derat_outptr_q == 2'b10)) ? derat_req2_state_q : 
-                               ((derat_outptr_q == 2'b11)) ? derat_req3_state_q : 
+      assign derat_req_state = ((derat_outptr_q == 2'b01)) ? derat_req1_state_q :
+                               ((derat_outptr_q == 2'b10)) ? derat_req2_state_q :
+                               ((derat_outptr_q == 2'b11)) ? derat_req3_state_q :
                                derat_req0_state_q;
-      assign derat_req_ttype = ((derat_outptr_q == 2'b01)) ? derat_req1_ttype_q : 
-                               ((derat_outptr_q == 2'b10)) ? derat_req2_ttype_q : 
-                               ((derat_outptr_q == 2'b11)) ? derat_req3_ttype_q : 
+      assign derat_req_ttype = ((derat_outptr_q == 2'b01)) ? derat_req1_ttype_q :
+                               ((derat_outptr_q == 2'b10)) ? derat_req2_ttype_q :
+                               ((derat_outptr_q == 2'b11)) ? derat_req3_ttype_q :
                                derat_req0_ttype_q;
-      assign derat_req_thdid = ((derat_outptr_q == 2'b01)) ? derat_req1_thdid_q[0:`THDID_WIDTH - 1] : 
-                               ((derat_outptr_q == 2'b10)) ? derat_req2_thdid_q[0:`THDID_WIDTH - 1] : 
-                               ((derat_outptr_q == 2'b11)) ? derat_req3_thdid_q[0:`THDID_WIDTH - 1] : 
+      assign derat_req_thdid = ((derat_outptr_q == 2'b01)) ? derat_req1_thdid_q[0:`THDID_WIDTH - 1] :
+                               ((derat_outptr_q == 2'b10)) ? derat_req2_thdid_q[0:`THDID_WIDTH - 1] :
+                               ((derat_outptr_q == 2'b11)) ? derat_req3_thdid_q[0:`THDID_WIDTH - 1] :
                                derat_req0_thdid_q[0:`THDID_WIDTH - 1];
-      assign derat_req_dup = ((derat_outptr_q == 2'b01)) ? derat_req1_dup_q[0:1] : 
-                             ((derat_outptr_q == 2'b10)) ? derat_req2_dup_q[0:1] : 
-                             ((derat_outptr_q == 2'b11)) ? derat_req3_dup_q[0:1] : 
+      assign derat_req_dup = ((derat_outptr_q == 2'b01)) ? derat_req1_dup_q[0:1] :
+                             ((derat_outptr_q == 2'b10)) ? derat_req2_dup_q[0:1] :
+                             ((derat_outptr_q == 2'b11)) ? derat_req3_dup_q[0:1] :
                              derat_req0_dup_q[0:1];
-      assign derat_req_itag = ((derat_outptr_q == 2'b01)) ? derat_req1_itag_q : 
-                              ((derat_outptr_q == 2'b10)) ? derat_req2_itag_q : 
-                              ((derat_outptr_q == 2'b11)) ? derat_req3_itag_q : 
+      assign derat_req_itag = ((derat_outptr_q == 2'b01)) ? derat_req1_itag_q :
+                              ((derat_outptr_q == 2'b10)) ? derat_req2_itag_q :
+                              ((derat_outptr_q == 2'b11)) ? derat_req3_itag_q :
                               derat_req0_itag_q;
-      assign derat_req_emq = ((derat_outptr_q == 2'b01)) ? derat_req1_emq_q : 
-                             ((derat_outptr_q == 2'b10)) ? derat_req2_emq_q : 
-                             ((derat_outptr_q == 2'b11)) ? derat_req3_emq_q : 
+      assign derat_req_emq = ((derat_outptr_q == 2'b01)) ? derat_req1_emq_q :
+                             ((derat_outptr_q == 2'b10)) ? derat_req2_emq_q :
+                             ((derat_outptr_q == 2'b11)) ? derat_req3_emq_q :
                              derat_req0_emq_q;
-      assign derat_req_nonspec = ((derat_outptr_q == 2'b01)) ? derat_req1_nonspec_q : 
-                                 ((derat_outptr_q == 2'b10)) ? derat_req2_nonspec_q : 
-                                 ((derat_outptr_q == 2'b11)) ? derat_req3_nonspec_q : 
+      assign derat_req_nonspec = ((derat_outptr_q == 2'b01)) ? derat_req1_nonspec_q :
+                                 ((derat_outptr_q == 2'b10)) ? derat_req2_nonspec_q :
+                                 ((derat_outptr_q == 2'b11)) ? derat_req3_nonspec_q :
                                  derat_req0_nonspec_q;
       assign ierat_req0_pid = ierat_req0_pid_q;
       assign ierat_req0_gs = ierat_req0_state_q[1];
@@ -1193,6 +1215,7 @@ module mmq_tlb_req(
       assign tlb_req_dbg_derat_req_ttype_q[4:5] = derat_req2_ttype_q[0:1];
       assign tlb_req_dbg_derat_req_ttype_q[6:7] = derat_req3_ttype_q[0:1];
       assign tlb_req_dbg_derat_req_dup_q = {derat_req0_dup_q[1], derat_req1_dup_q[1], derat_req2_dup_q[1], derat_req3_dup_q[1]};
+      // unused spare signal assignments
       assign unused_dc[0] = |(lcb_delay_lclkr_dc[1:4]);
       assign unused_dc[1] = |(lcb_mpw1_dc_b[1:4]);
       assign unused_dc[2] = pc_func_sl_force;
@@ -1210,8 +1233,12 @@ module mmq_tlb_req(
       assign unused_dc[14] = |(xu_ex3_flush);
       assign unused_dc[15] = |(xu_mm_ex4_flush);
       assign unused_dc[16] = |(xu_mm_ex5_flush);
-      
-      
+
+      //---------------------------------------------------------------------
+      // Latches
+      //---------------------------------------------------------------------
+      // ierat miss request latches
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_req0_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1229,7 +1256,7 @@ module mmq_tlb_req(
          .din(ierat_req0_valid_d),
          .dout(ierat_req0_valid_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_req0_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1247,7 +1274,7 @@ module mmq_tlb_req(
          .din(ierat_req0_nonspec_d),
          .dout(ierat_req0_nonspec_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req0_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1265,7 +1292,7 @@ module mmq_tlb_req(
          .din(ierat_req0_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(ierat_req0_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req0_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1283,7 +1310,7 @@ module mmq_tlb_req(
          .din(ierat_req0_epn_d[0:`EPN_WIDTH - 1]),
          .dout(ierat_req0_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req0_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1301,7 +1328,7 @@ module mmq_tlb_req(
          .din(ierat_req0_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(ierat_req0_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req0_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1319,7 +1346,7 @@ module mmq_tlb_req(
          .din(ierat_req0_pid_d[0:`PID_WIDTH - 1]),
          .dout(ierat_req0_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) ierat_req0_dup_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1337,7 +1364,7 @@ module mmq_tlb_req(
          .din(ierat_req0_dup_d),
          .dout(ierat_req0_dup_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_req1_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1355,7 +1382,7 @@ module mmq_tlb_req(
          .din(ierat_req1_valid_d),
          .dout(ierat_req1_valid_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_req1_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1373,7 +1400,7 @@ module mmq_tlb_req(
          .din(ierat_req1_nonspec_d),
          .dout(ierat_req1_nonspec_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req1_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1391,7 +1418,7 @@ module mmq_tlb_req(
          .din(ierat_req1_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(ierat_req1_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req1_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1409,7 +1436,7 @@ module mmq_tlb_req(
          .din(ierat_req1_epn_d[0:`EPN_WIDTH - 1]),
          .dout(ierat_req1_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req1_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1427,7 +1454,7 @@ module mmq_tlb_req(
          .din(ierat_req1_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(ierat_req1_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req1_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1445,7 +1472,7 @@ module mmq_tlb_req(
          .din(ierat_req1_pid_d[0:`PID_WIDTH - 1]),
          .dout(ierat_req1_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) ierat_req1_dup_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1463,7 +1490,7 @@ module mmq_tlb_req(
          .din(ierat_req1_dup_d),
          .dout(ierat_req1_dup_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_req2_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1481,7 +1508,7 @@ module mmq_tlb_req(
          .din(ierat_req2_valid_d),
          .dout(ierat_req2_valid_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_req2_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1499,7 +1526,7 @@ module mmq_tlb_req(
          .din(ierat_req2_nonspec_d),
          .dout(ierat_req2_nonspec_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req2_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1517,7 +1544,7 @@ module mmq_tlb_req(
          .din(ierat_req2_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(ierat_req2_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req2_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1535,7 +1562,7 @@ module mmq_tlb_req(
          .din(ierat_req2_epn_d[0:`EPN_WIDTH - 1]),
          .dout(ierat_req2_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req2_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1553,7 +1580,7 @@ module mmq_tlb_req(
          .din(ierat_req2_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(ierat_req2_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req2_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1571,7 +1598,7 @@ module mmq_tlb_req(
          .din(ierat_req2_pid_d[0:`PID_WIDTH - 1]),
          .dout(ierat_req2_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) ierat_req2_dup_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1589,7 +1616,7 @@ module mmq_tlb_req(
          .din(ierat_req2_dup_d),
          .dout(ierat_req2_dup_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_req3_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1607,7 +1634,7 @@ module mmq_tlb_req(
          .din(ierat_req3_valid_d),
          .dout(ierat_req3_valid_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_req3_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1625,7 +1652,7 @@ module mmq_tlb_req(
          .din(ierat_req3_nonspec_d),
          .dout(ierat_req3_nonspec_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req3_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1643,7 +1670,7 @@ module mmq_tlb_req(
          .din(ierat_req3_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(ierat_req3_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req3_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1661,7 +1688,7 @@ module mmq_tlb_req(
          .din(ierat_req3_epn_d[0:`EPN_WIDTH - 1]),
          .dout(ierat_req3_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req3_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1679,7 +1706,7 @@ module mmq_tlb_req(
          .din(ierat_req3_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(ierat_req3_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_req3_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1697,7 +1724,7 @@ module mmq_tlb_req(
          .din(ierat_req3_pid_d[0:`PID_WIDTH - 1]),
          .dout(ierat_req3_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) ierat_req3_dup_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1715,7 +1742,7 @@ module mmq_tlb_req(
          .din(ierat_req3_dup_d),
          .dout(ierat_req3_dup_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) ierat_inptr_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1733,7 +1760,7 @@ module mmq_tlb_req(
          .din(ierat_inptr_d),
          .dout(ierat_inptr_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) ierat_outptr_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1751,7 +1778,7 @@ module mmq_tlb_req(
          .din(ierat_outptr_d),
          .dout(ierat_outptr_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu3_flush_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1769,7 +1796,7 @@ module mmq_tlb_req(
          .din(ierat_iu3_flush_d),
          .dout(ierat_iu3_flush_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) tlb_seq_ierat_req_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1787,7 +1814,7 @@ module mmq_tlb_req(
          .din(tlb_seq_ierat_req_d),
          .dout(tlb_seq_ierat_req_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) xu_mm_ierat_flush_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1805,7 +1832,7 @@ module mmq_tlb_req(
          .din(xu_mm_ierat_flush_d),
          .dout(xu_mm_ierat_flush_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) xu_mm_ierat_miss_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1823,7 +1850,8 @@ module mmq_tlb_req(
          .din(xu_mm_ierat_miss_d),
          .dout(xu_mm_ierat_miss_q)
       );
-      
+      // ierat miss request latches
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_iu3_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1841,7 +1869,7 @@ module mmq_tlb_req(
          .din(ierat_iu3_valid_d),
          .dout(ierat_iu3_valid_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu3_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1859,7 +1887,7 @@ module mmq_tlb_req(
          .din(ierat_iu3_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(ierat_iu3_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu3_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1877,7 +1905,7 @@ module mmq_tlb_req(
          .din(ierat_iu3_epn_d[0:`EPN_WIDTH - 1]),
          .dout(ierat_iu3_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu3_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1895,7 +1923,7 @@ module mmq_tlb_req(
          .din(ierat_iu3_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(ierat_iu3_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu3_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1913,7 +1941,7 @@ module mmq_tlb_req(
          .din(ierat_iu3_pid_d[0:`PID_WIDTH - 1]),
          .dout(ierat_iu3_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_iu3_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1931,7 +1959,7 @@ module mmq_tlb_req(
          .din(ierat_iu3_nonspec_d),
          .dout(ierat_iu3_nonspec_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_iu4_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1949,7 +1977,7 @@ module mmq_tlb_req(
          .din(ierat_iu4_valid_d),
          .dout(ierat_iu4_valid_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu4_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1967,7 +1995,7 @@ module mmq_tlb_req(
          .din(ierat_iu4_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(ierat_iu4_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu4_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -1985,7 +2013,7 @@ module mmq_tlb_req(
          .din(ierat_iu4_epn_d[0:`EPN_WIDTH - 1]),
          .dout(ierat_iu4_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu4_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2003,7 +2031,7 @@ module mmq_tlb_req(
          .din(ierat_iu4_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(ierat_iu4_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu4_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2021,7 +2049,7 @@ module mmq_tlb_req(
          .din(ierat_iu4_pid_d[0:`PID_WIDTH - 1]),
          .dout(ierat_iu4_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_iu4_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2039,7 +2067,7 @@ module mmq_tlb_req(
          .din(ierat_iu4_nonspec_d),
          .dout(ierat_iu4_nonspec_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_iu5_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2057,7 +2085,7 @@ module mmq_tlb_req(
          .din(ierat_iu5_valid_d),
          .dout(ierat_iu5_valid_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu5_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2075,7 +2103,7 @@ module mmq_tlb_req(
          .din(ierat_iu5_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(ierat_iu5_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu5_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2093,7 +2121,7 @@ module mmq_tlb_req(
          .din(ierat_iu5_epn_d[0:`EPN_WIDTH - 1]),
          .dout(ierat_iu5_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu5_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2111,7 +2139,7 @@ module mmq_tlb_req(
          .din(ierat_iu5_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(ierat_iu5_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) ierat_iu5_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2129,7 +2157,7 @@ module mmq_tlb_req(
          .din(ierat_iu5_pid_d[0:`PID_WIDTH - 1]),
          .dout(ierat_iu5_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ierat_iu5_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2147,7 +2175,8 @@ module mmq_tlb_req(
          .din(ierat_iu5_nonspec_d),
          .dout(ierat_iu5_nonspec_q)
       );
-      
+      // derat miss request latches
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_req0_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2165,7 +2194,7 @@ module mmq_tlb_req(
          .din(derat_req0_valid_d),
          .dout(derat_req0_valid_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req0_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2183,7 +2212,7 @@ module mmq_tlb_req(
          .din(derat_req0_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(derat_req0_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req0_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2201,7 +2230,7 @@ module mmq_tlb_req(
          .din(derat_req0_epn_d[0:`EPN_WIDTH - 1]),
          .dout(derat_req0_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req0_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2219,7 +2248,7 @@ module mmq_tlb_req(
          .din(derat_req0_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(derat_req0_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_req0_ttype_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2237,7 +2266,7 @@ module mmq_tlb_req(
          .din(derat_req0_ttype_d),
          .dout(derat_req0_ttype_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req0_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2255,7 +2284,7 @@ module mmq_tlb_req(
          .din(derat_req0_pid_d[0:`PID_WIDTH - 1]),
          .dout(derat_req0_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`LPID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req0_lpid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2273,7 +2302,7 @@ module mmq_tlb_req(
          .din(derat_req0_lpid_d[0:`LPID_WIDTH - 1]),
          .dout(derat_req0_lpid_q[0:`LPID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_req0_dup_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2291,7 +2320,7 @@ module mmq_tlb_req(
          .din(derat_req0_dup_d),
          .dout(derat_req0_dup_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`ITAG_SIZE_ENC), .INIT(0), .NEEDS_SRESET(1)) derat_req0_itag_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2309,7 +2338,7 @@ module mmq_tlb_req(
          .din(derat_req0_itag_d),
          .dout(derat_req0_itag_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EMQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) derat_req0_emq_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2327,7 +2356,7 @@ module mmq_tlb_req(
          .din(derat_req0_emq_d),
          .dout(derat_req0_emq_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_req0_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2345,7 +2374,7 @@ module mmq_tlb_req(
          .din(derat_req0_nonspec_d),
          .dout(derat_req0_nonspec_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_req1_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2363,7 +2392,7 @@ module mmq_tlb_req(
          .din(derat_req1_valid_d),
          .dout(derat_req1_valid_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req1_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2381,7 +2410,7 @@ module mmq_tlb_req(
          .din(derat_req1_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(derat_req1_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req1_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2399,7 +2428,7 @@ module mmq_tlb_req(
          .din(derat_req1_epn_d[0:`EPN_WIDTH - 1]),
          .dout(derat_req1_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req1_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2417,7 +2446,7 @@ module mmq_tlb_req(
          .din(derat_req1_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(derat_req1_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_req1_ttype_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2435,7 +2464,7 @@ module mmq_tlb_req(
          .din(derat_req1_ttype_d),
          .dout(derat_req1_ttype_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req1_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2453,7 +2482,7 @@ module mmq_tlb_req(
          .din(derat_req1_pid_d[0:`PID_WIDTH - 1]),
          .dout(derat_req1_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`LPID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req1_lpid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2471,7 +2500,7 @@ module mmq_tlb_req(
          .din(derat_req1_lpid_d[0:`LPID_WIDTH - 1]),
          .dout(derat_req1_lpid_q[0:`LPID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_req1_dup_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2489,7 +2518,7 @@ module mmq_tlb_req(
          .din(derat_req1_dup_d),
          .dout(derat_req1_dup_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`ITAG_SIZE_ENC), .INIT(0), .NEEDS_SRESET(1)) derat_req1_itag_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2507,7 +2536,7 @@ module mmq_tlb_req(
          .din(derat_req1_itag_d),
          .dout(derat_req1_itag_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EMQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) derat_req1_emq_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2525,7 +2554,7 @@ module mmq_tlb_req(
          .din(derat_req1_emq_d),
          .dout(derat_req1_emq_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_req1_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2543,7 +2572,7 @@ module mmq_tlb_req(
          .din(derat_req1_nonspec_d),
          .dout(derat_req1_nonspec_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_req2_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2561,7 +2590,7 @@ module mmq_tlb_req(
          .din(derat_req2_valid_d),
          .dout(derat_req2_valid_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req2_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2579,7 +2608,7 @@ module mmq_tlb_req(
          .din(derat_req2_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(derat_req2_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req2_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2597,7 +2626,7 @@ module mmq_tlb_req(
          .din(derat_req2_epn_d[0:`EPN_WIDTH - 1]),
          .dout(derat_req2_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req2_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2615,7 +2644,7 @@ module mmq_tlb_req(
          .din(derat_req2_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(derat_req2_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_req2_ttype_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2633,7 +2662,7 @@ module mmq_tlb_req(
          .din(derat_req2_ttype_d),
          .dout(derat_req2_ttype_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req2_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2651,7 +2680,7 @@ module mmq_tlb_req(
          .din(derat_req2_pid_d[0:`PID_WIDTH - 1]),
          .dout(derat_req2_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`LPID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req2_lpid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2669,7 +2698,7 @@ module mmq_tlb_req(
          .din(derat_req2_lpid_d[0:`LPID_WIDTH - 1]),
          .dout(derat_req2_lpid_q[0:`LPID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_req2_dup_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2687,7 +2716,7 @@ module mmq_tlb_req(
          .din(derat_req2_dup_d),
          .dout(derat_req2_dup_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`ITAG_SIZE_ENC), .INIT(0), .NEEDS_SRESET(1)) derat_req2_itag_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2705,7 +2734,7 @@ module mmq_tlb_req(
          .din(derat_req2_itag_d),
          .dout(derat_req2_itag_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EMQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) derat_req2_emq_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2723,7 +2752,7 @@ module mmq_tlb_req(
          .din(derat_req2_emq_d),
          .dout(derat_req2_emq_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_req2_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2741,7 +2770,7 @@ module mmq_tlb_req(
          .din(derat_req2_nonspec_d),
          .dout(derat_req2_nonspec_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_req3_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2759,7 +2788,7 @@ module mmq_tlb_req(
          .din(derat_req3_valid_d),
          .dout(derat_req3_valid_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req3_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2777,7 +2806,7 @@ module mmq_tlb_req(
          .din(derat_req3_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(derat_req3_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req3_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2795,7 +2824,7 @@ module mmq_tlb_req(
          .din(derat_req3_epn_d[0:`EPN_WIDTH - 1]),
          .dout(derat_req3_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req3_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2813,7 +2842,7 @@ module mmq_tlb_req(
          .din(derat_req3_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(derat_req3_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_req3_ttype_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2831,7 +2860,7 @@ module mmq_tlb_req(
          .din(derat_req3_ttype_d),
          .dout(derat_req3_ttype_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req3_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2849,7 +2878,7 @@ module mmq_tlb_req(
          .din(derat_req3_pid_d[0:`PID_WIDTH - 1]),
          .dout(derat_req3_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`LPID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_req3_lpid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2867,7 +2896,7 @@ module mmq_tlb_req(
          .din(derat_req3_lpid_d[0:`LPID_WIDTH - 1]),
          .dout(derat_req3_lpid_q[0:`LPID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_req3_dup_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2885,7 +2914,7 @@ module mmq_tlb_req(
          .din(derat_req3_dup_d),
          .dout(derat_req3_dup_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`ITAG_SIZE_ENC), .INIT(0), .NEEDS_SRESET(1)) derat_req3_itag_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2903,7 +2932,7 @@ module mmq_tlb_req(
          .din(derat_req3_itag_d),
          .dout(derat_req3_itag_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EMQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) derat_req3_emq_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2921,7 +2950,7 @@ module mmq_tlb_req(
          .din(derat_req3_emq_d),
          .dout(derat_req3_emq_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_req3_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2939,7 +2968,7 @@ module mmq_tlb_req(
          .din(derat_req3_nonspec_d),
          .dout(derat_req3_nonspec_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_inptr_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2957,7 +2986,7 @@ module mmq_tlb_req(
          .din(derat_inptr_d),
          .dout(derat_inptr_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_outptr_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2975,7 +3004,7 @@ module mmq_tlb_req(
          .din(derat_outptr_d),
          .dout(derat_outptr_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) tlb_seq_derat_req_latch(
          .vd(vdd),
          .gd(gnd),
@@ -2993,7 +3022,8 @@ module mmq_tlb_req(
          .din(tlb_seq_derat_req_d),
          .dout(tlb_seq_derat_req_q)
       );
-      
+      // derat miss request latches
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_ex4_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3011,7 +3041,7 @@ module mmq_tlb_req(
          .din(derat_ex4_valid_d),
          .dout(derat_ex4_valid_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex4_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3029,7 +3059,7 @@ module mmq_tlb_req(
          .din(derat_ex4_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(derat_ex4_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex4_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3047,7 +3077,7 @@ module mmq_tlb_req(
          .din(derat_ex4_epn_d[0:`EPN_WIDTH - 1]),
          .dout(derat_ex4_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex4_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3065,7 +3095,7 @@ module mmq_tlb_req(
          .din(derat_ex4_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(derat_ex4_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_ex4_ttype_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3083,7 +3113,7 @@ module mmq_tlb_req(
          .din(derat_ex4_ttype_d),
          .dout(derat_ex4_ttype_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex4_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3101,7 +3131,7 @@ module mmq_tlb_req(
          .din(derat_ex4_pid_d[0:`PID_WIDTH - 1]),
          .dout(derat_ex4_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`LPID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex4_lpid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3119,7 +3149,7 @@ module mmq_tlb_req(
          .din(derat_ex4_lpid_d[0:`LPID_WIDTH - 1]),
          .dout(derat_ex4_lpid_q[0:`LPID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`ITAG_SIZE_ENC), .INIT(0), .NEEDS_SRESET(1)) derat_ex4_itag_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3137,7 +3167,7 @@ module mmq_tlb_req(
          .din(derat_ex4_itag_d),
          .dout(derat_ex4_itag_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EMQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) derat_ex4_emq_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3155,7 +3185,7 @@ module mmq_tlb_req(
          .din(derat_ex4_emq_d),
          .dout(derat_ex4_emq_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_ex4_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3173,7 +3203,7 @@ module mmq_tlb_req(
          .din(derat_ex4_nonspec_d),
          .dout(derat_ex4_nonspec_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_ex5_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3191,7 +3221,7 @@ module mmq_tlb_req(
          .din(derat_ex5_valid_d),
          .dout(derat_ex5_valid_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex5_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3209,7 +3239,7 @@ module mmq_tlb_req(
          .din(derat_ex5_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(derat_ex5_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex5_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3227,7 +3257,7 @@ module mmq_tlb_req(
          .din(derat_ex5_epn_d[0:`EPN_WIDTH - 1]),
          .dout(derat_ex5_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex5_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3245,7 +3275,7 @@ module mmq_tlb_req(
          .din(derat_ex5_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(derat_ex5_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_ex5_ttype_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3263,7 +3293,7 @@ module mmq_tlb_req(
          .din(derat_ex5_ttype_d),
          .dout(derat_ex5_ttype_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex5_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3281,7 +3311,7 @@ module mmq_tlb_req(
          .din(derat_ex5_pid_d[0:`PID_WIDTH - 1]),
          .dout(derat_ex5_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`LPID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex5_lpid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3299,7 +3329,7 @@ module mmq_tlb_req(
          .din(derat_ex5_lpid_d[0:`LPID_WIDTH - 1]),
          .dout(derat_ex5_lpid_q[0:`LPID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`ITAG_SIZE_ENC), .INIT(0), .NEEDS_SRESET(1)) derat_ex5_itag_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3317,7 +3347,7 @@ module mmq_tlb_req(
          .din(derat_ex5_itag_d),
          .dout(derat_ex5_itag_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EMQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) derat_ex5_emq_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3335,7 +3365,7 @@ module mmq_tlb_req(
          .din(derat_ex5_emq_d),
          .dout(derat_ex5_emq_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_ex5_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3353,7 +3383,7 @@ module mmq_tlb_req(
          .din(derat_ex5_nonspec_d),
          .dout(derat_ex5_nonspec_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_ex6_valid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3371,7 +3401,7 @@ module mmq_tlb_req(
          .din(derat_ex6_valid_d),
          .dout(derat_ex6_valid_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`THDID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex6_thdid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3389,7 +3419,7 @@ module mmq_tlb_req(
          .din(derat_ex6_thdid_d[0:`THDID_WIDTH - 1]),
          .dout(derat_ex6_thdid_q[0:`THDID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EPN_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex6_epn_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3407,7 +3437,7 @@ module mmq_tlb_req(
          .din(derat_ex6_epn_d[0:`EPN_WIDTH - 1]),
          .dout(derat_ex6_epn_q[0:`EPN_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`REQ_STATE_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex6_state_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3425,7 +3455,7 @@ module mmq_tlb_req(
          .din(derat_ex6_state_d[0:`REQ_STATE_WIDTH - 1]),
          .dout(derat_ex6_state_q[0:`REQ_STATE_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) derat_ex6_ttype_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3443,7 +3473,7 @@ module mmq_tlb_req(
          .din(derat_ex6_ttype_d),
          .dout(derat_ex6_ttype_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`PID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex6_pid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3461,7 +3491,7 @@ module mmq_tlb_req(
          .din(derat_ex6_pid_d[0:`PID_WIDTH - 1]),
          .dout(derat_ex6_pid_q[0:`PID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`LPID_WIDTH), .INIT(0), .NEEDS_SRESET(1)) derat_ex6_lpid_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3479,7 +3509,7 @@ module mmq_tlb_req(
          .din(derat_ex6_lpid_d[0:`LPID_WIDTH - 1]),
          .dout(derat_ex6_lpid_q[0:`LPID_WIDTH - 1])
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`ITAG_SIZE_ENC), .INIT(0), .NEEDS_SRESET(1)) derat_ex6_itag_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3497,7 +3527,7 @@ module mmq_tlb_req(
          .din(derat_ex6_itag_d),
          .dout(derat_ex6_itag_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(`EMQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) derat_ex6_emq_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3515,7 +3545,7 @@ module mmq_tlb_req(
          .din(derat_ex6_emq_d),
          .dout(derat_ex6_emq_q)
       );
-      
+
       tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) derat_ex6_nonspec_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3533,7 +3563,7 @@ module mmq_tlb_req(
          .din(derat_ex6_nonspec_d),
          .dout(derat_ex6_nonspec_q)
       );
-      
+
       tri_rlmreg_p #(.WIDTH(32), .INIT(0), .NEEDS_SRESET(1)) spare_latch(
          .vd(vdd),
          .gd(gnd),
@@ -3552,7 +3582,10 @@ module mmq_tlb_req(
          .dout(spare_q)
       );
 
-      
+      //------------------------------------------------
+      // thold/sg latches
+      //------------------------------------------------
+
       tri_plat #(.WIDTH(3)) perv_2to1_reg(
          .vd(vdd),
          .gd(gnd),
@@ -3561,7 +3594,7 @@ module mmq_tlb_req(
          .din( {pc_func_sl_thold_2, pc_func_slp_sl_thold_2, pc_sg_2} ),
          .q( {pc_func_sl_thold_1, pc_func_slp_sl_thold_1, pc_sg_1} )
       );
-      
+
       tri_plat #(.WIDTH(3)) perv_1to0_reg(
          .vd(vdd),
          .gd(gnd),
@@ -3570,7 +3603,7 @@ module mmq_tlb_req(
          .din( {pc_func_sl_thold_1, pc_func_slp_sl_thold_1, pc_sg_1} ),
          .q( {pc_func_sl_thold_0, pc_func_slp_sl_thold_0, pc_sg_0} )
       );
-      
+
       tri_lcbor perv_lcbor_func_sl(
          .clkoff_b(lcb_clkoff_dc_b),
          .thold(pc_func_sl_thold_0),
@@ -3579,7 +3612,7 @@ module mmq_tlb_req(
          .force_t(pc_func_sl_force),
          .thold_b(pc_func_sl_thold_0_b)
       );
-      
+
       tri_lcbor perv_lcbor_func_slp_sl(
          .clkoff_b(lcb_clkoff_dc_b),
          .thold(pc_func_slp_sl_thold_0),
@@ -3588,9 +3621,11 @@ module mmq_tlb_req(
          .force_t(pc_func_slp_sl_force),
          .thold_b(pc_func_slp_sl_thold_0_b)
       );
-      
+
+      //---------------------------------------------------------------------
+      // Scan
+      //---------------------------------------------------------------------
       assign siv[0:scan_right] = {sov[1:scan_right], ac_func_scan_in};
       assign ac_func_scan_out = sov[0];
-      
-endmodule
 
+endmodule

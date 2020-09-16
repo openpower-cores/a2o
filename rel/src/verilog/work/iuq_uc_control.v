@@ -7,10 +7,15 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//********************************************************************
+//*
+//* TITLE: Microcode Control
+//*
+//* NAME: iuq_uc_control.v
+//*
+//*********************************************************************
 
 `include "tri_a2o.vh"
-
-
 
 
 module iuq_uc_control(
@@ -64,12 +69,13 @@ module iuq_uc_control(
    ucode_ext_even,
    ucode_ext_odd
 );
+   //parameter                ucode_width = 72;
 
-    
+
    inout                    vdd;
-    
+
    inout                    gnd;
-    
+
     (* pin_data ="PIN_FUNCTION=/G_CLK/" *)
    input [0:`NCLK_WIDTH-1]  nclk;
    input                    pc_iu_func_sl_thold_0_b;
@@ -79,37 +85,36 @@ module iuq_uc_control(
    input                    delay_lclkr;
    input                    mpw1_b;
    input                    mpw2_b;
-    
+
     (* pin_data ="PIN_FUNCTION=/SCAN_IN/" *)
    input                    scan_in;
-    
+
     (* pin_data ="PIN_FUNCTION=/SCAN_OUT/" *)
    output                   scan_out;
 
    input                    xu_iu_ucode_xer_val;
    input [57:63]            xu_iu_ucode_xer;
-   input                    br_hold;		
-   input                    flush_next;		
-   input                    flush;		
-   input                    flush_into_uc;	
-   input                    np1_flush;		
-   input [43:61]            flush_ifar;		
+   input                    br_hold;		// br_redirect requires hold on xer_type's
+   input                    flush_next;		// Flush new instruction
+   input                    flush;		// Flush current instruction
+   input                    flush_into_uc;	// Flush back into the middle of uCode sequence
+   input                    np1_flush;		// Skip flushed instruction and go to next
+   input [43:61]            flush_ifar;		// ucode-style address & state to flush to
    input                    cp_uc_credit_free;
    input                    cp_flush;
    input                    uc_default_act;
-   input                    next_valid;		
+   input                    next_valid;		// early signal for act
    input                    new_command;
    input [0:31]             new_instr;
-   input [0:8]              start_addr;		
-   input                    xer_type;		
+   input [0:8]              start_addr;		// bit (9) is unused - always '0'
+   input                    xer_type;		// instruction uses XER:  need to wait until XER guaranteed valid
    input                    early_end;
    input                    force_ep;
    input                    fxm_type;
-   input                    new_cond;		
-
+   input                    new_cond;		// If '1', will skip lines with skip_cond bit set
 
    output                   ra_valid;
-   output [0:8]             rom_ra;		
+   output [0:8]             rom_ra;		// read address
    output                   rom_act;
 
    input                    data_valid;
@@ -118,17 +123,16 @@ module iuq_uc_control(
    input [0:31]             rom_data_even_late;
    input [0:31]             rom_data_odd_late;
 
-   output                   uc_val;		
-   output                   uc_end;		
-   output                   cplbuffer_full;		
+   output                   uc_val;		// to uc_buffer
+   output                   uc_end;		// to uc_buffer
+   output                   cplbuffer_full;		// to uc_buffer
 
    output [0:1]             ucode_valid;
-   output [42:61]           ucode_ifar_even;		
+   output [42:61]           ucode_ifar_even;		// old: EFF_IFAR
    output [0:31]            ucode_instr_even;
    output [0:31]            ucode_instr_odd;
-   output [0:3]             ucode_ext_even;		
-   output [0:3]             ucode_ext_odd;		
-
+   output [0:3]             ucode_ext_even;		// RT, S1, S2, S3
+   output [0:3]             ucode_ext_odd;		// RT, S1, S2, S3
 
    parameter                xu_iu_ucode_xer_offset = 0;
    parameter                xu_iu_ucode_xer_val_offset = xu_iu_ucode_xer_offset + 7;
@@ -154,8 +158,7 @@ module iuq_uc_control(
    parameter                ep_force_odd_late_offset = ep_force_even_late_offset + 1;
    parameter                scan_right = ep_force_odd_late_offset + 1 - 1;
 
-
-
+   // Latches
    wire [57:63]             xu_iu_ucode_xer_d;
    wire                     xu_iu_ucode_xer_val_d;
    wire                     wait_for_xer_d;
@@ -193,6 +196,8 @@ module iuq_uc_control(
 
    wire                     shift_fxm;
 
+   //
+   // Even
    wire [0:31]              template_code_even;
    wire                     uc_end_even;
    wire                     uc_end_early_even;
@@ -207,7 +212,7 @@ module iuq_uc_control(
    wire [0:1]               sel21_25_even;
    wire                     sel26_30_even;
    wire                     sel31_even;
-   wire                     cr_bf2fxm_even;		
+   wire                     cr_bf2fxm_even;		// for mtocrf
    wire                     skip_cond_even;
    wire                     skip_zero_even;
    wire                     skip_nop_even;
@@ -222,6 +227,7 @@ module iuq_uc_control(
    wire                     use_nop_even;
    wire [0:31]              uc_instruction_even;
 
+   //timing fixes
    wire                     sel0_5_even_late;
    wire [0:1]               sel6_10_even_late;
    wire [0:1]               sel11_15_even_late;
@@ -238,6 +244,8 @@ module iuq_uc_control(
    wire [0:31]              instr_even_late_d;
    wire [0:31]              instr_even_late_l2;
 
+   //
+   // Odd
    wire [0:31]              template_code_odd;
    wire                     uc_end_odd;
    wire                     uc_end_early_odd;
@@ -252,7 +260,7 @@ module iuq_uc_control(
    wire [0:1]               sel21_25_odd;
    wire                     sel26_30_odd;
    wire                     sel31_odd;
-   wire                     cr_bf2fxm_odd;		
+   wire                     cr_bf2fxm_odd;		// for mtocrf
    wire                     skip_cond_odd;
    wire                     skip_zero_odd;
    wire                     skip_nop_odd;
@@ -263,6 +271,7 @@ module iuq_uc_control(
    wire                     ucode_end_odd;
    wire [0:31]              uc_instruction_odd;
 
+   //timing fixes
    wire                     sel0_5_odd_late;
    wire [0:1]               sel6_10_odd_late;
    wire [0:1]               sel11_15_odd_late;
@@ -278,15 +287,18 @@ module iuq_uc_control(
    wire [0:31]              instr_odd_late_d;
    wire [0:31]              instr_odd_late_l2;
 
+   //
+   // Combined
    wire                     loop_begin;
    wire                     loop_end;
    wire [0:2]               count_src;
    wire                     skip_zero;
-   wire [0:8]               loop_addr;		
+   wire [0:8]               loop_addr;		// bit (9) is unused (always '0')
    wire [0:2]               loop_init;
 
    wire                     ucode_end;
 
+   // control
    wire                     last_loop;
    wire                     last_loop_fast;
    wire                     loopback;
@@ -317,31 +329,37 @@ module iuq_uc_control(
    wire                     buff_scan_in;
    wire                     buff_scan_out;
 
-    
+
     (* analysis_not_referenced="true" *)
-    
+
    wire [0:16]              unused;
 
-
+   //tidn <= '0';
    assign tiup = 1'b1;
 
+   //---------------------------------------------------------------------
+   // load new command
+   //---------------------------------------------------------------------
 
+   //???? Add act once new_command timing is ok (everything except xu_iu_ucode_xer_val)
+   //???? uc_act <= new_command or valid_l2;
    assign uc_control_act = flush_into_uc | next_valid | data_valid;
    assign rom_act = uc_control_act;
 
+   // Wait for 1 cycle after getting new command to allow IU to flush
 
    assign valid_d = ((new_command & (~flush_next)) | (valid_l2 & (~(ucode_end & data_valid)) & (~flush))) | flush_into_uc;
 
    assign uc_val = valid_l2;
 
-
-
-
-   assign wait_for_xer_d = (flush == 1'b1) ? 1'b0 : 		
+   // Don't need br_hold anymore because new_command checks this
+   assign wait_for_xer_d = (flush == 1'b1) ? 1'b0 : 		//flush_into_uc = '1'
                            (new_command == 1'b1) ? (xer_type & (~(xu_iu_ucode_xer_val_l2 | xer_val_occurred_l2)) ) :
                            ((xu_iu_ucode_xer_val_l2 | xer_val_occurred_l2) == 1'b1) ? 1'b0 :
                            wait_for_xer_l2;
 
+   // Set if xer_val comes before wait_for_xer (preissue sent, but valid is held off in uc_buffer)
+   // Clear when new_command (and don't set wait_for_xer hold), or clear on flush or br_hold
    assign xer_val_occurred_d = (xu_iu_ucode_xer_val_l2 | xer_val_occurred_l2) & (~wait_for_xer_l2) & (~new_command) & (~flush) & (~br_hold);
 
    assign instr_d[0:5] = (flush_into_uc == 1'b1) ? oldest_instr[0:5] :
@@ -357,6 +375,7 @@ module iuq_uc_control(
                         (new_command == 1'b1)   ? new_instr[11] :
                                                   instr_l2[11];
 
+   // Note: we must never flush_into_uc for a fxm_type instruction because we don't keep that info
    assign instr_d[12:19] = (flush_into_uc == 1'b1) ? oldest_instr[12:19] :
                            (new_command == 1'b1)   ? new_instr[12:19] :
                            (shift_fxm == 1'b1)     ? {instr_l2[14:19], instr_l2[12:13]} :
@@ -378,12 +397,15 @@ module iuq_uc_control(
                        (new_command == 1'b1)   ? force_ep :
                                                  force_ep_l2;
 
+   // Note: we must never flush_into_uc for a fxm_type instruction because we don't keep latest instr(12:19)
    assign fxm_type_d = (flush_into_uc == 1'b1) ? 1'b0 :
-                       (new_command == 1'b1)   ? fxm_type : 		
+                       (new_command == 1'b1)   ? fxm_type : 		// for mtcrf
                                                  fxm_type_l2;
 
    assign shift_fxm = fxm_type_l2 & data_valid;
 
+   // uCode sequence cannot cross 256-instr address boundary
+   // Read 2 instructions at a time, so only need 9 bits
    assign rom_addr_d = (flush_into_uc == 1'b1) ? {oldest_instr[9:10], flush_ifar[54:60]} :
                        (new_command == 1'b1)   ? start_addr :
                        (loopback == 1'b1)      ? loop_addr :
@@ -392,22 +414,26 @@ module iuq_uc_control(
 
    assign rom_ra = rom_addr_d;
 
-   assign ra_valid = valid_d & (~wait_for_xer_d) & (~br_hold) & (~cplbuffer_full_int);		
+   assign ra_valid = valid_d & (~wait_for_xer_d) & (~br_hold) & (~cplbuffer_full_int);		// ???? should I change to just check next cycle, or leave as is in case we add other threads?
 
+   // If flushing to second half of pair, throw no-op into first position to keep things balanced.
    assign flush_to_odd_d = (flush_into_uc == 1'b1) ? flush_ifar[61] :
                            (new_command == 1'b1)   ? 1'b0 :
                            (data_valid == 1'b1)    ? 1'b0 :
                                                      flush_to_odd_l2;
 
+   //---------------------------------------------------------------------
+   // create output instruction - even
+   //---------------------------------------------------------------------
    assign uc_end_even       = rom_data_even[32];
    assign uc_end_early_even = rom_data_even[33];
    assign loop_begin_even   = rom_data_even[34];
    assign loop_end_even     = rom_data_even[35] & (inLoop_l2 | loop_begin_even);
-   assign count_src_even    = rom_data_even[36:38];	
-   assign ext_even[0]       = rom_data_even[39];	
-   assign ext_even[1]       = rom_data_even[40];	
-   assign ext_even[2]       = rom_data_even[41];	
-   assign ext_even[3]       = rom_data_even[42];	
+   assign count_src_even    = rom_data_even[36:38];	// 00: NB(3:4), 01: "000" & 2's comp NB(3:4), 10: mult of 4 & XER(62:63), 11: 2's comp XER(62:63), 100: RT(inverted), 101: NB(0:2) - word mode, 110: XER(57:61) - word mode, 111: loop_init
+   assign ext_even[0]       = rom_data_even[39];	// RT   -- ??? Can we incorporate into mux selects?
+   assign ext_even[1]       = rom_data_even[40];	// S1
+   assign ext_even[2]       = rom_data_even[41];	// S2
+   assign ext_even[3]       = rom_data_even[42];	// S3
    assign sel0_5_even       = rom_data_even[43];
    assign sel6_10_even      = rom_data_even[44:45];
    assign sel11_15_even     = rom_data_even[46:47];
@@ -417,12 +443,11 @@ module iuq_uc_control(
    assign sel31_even        = rom_data_even[53];
    assign cr_bf2fxm_even    = rom_data_even[54];
    assign skip_cond_even    = rom_data_even[55];
-   assign skip_zero_even    = rom_data_even[56];	
+   assign skip_zero_even    = rom_data_even[56];	// For when XER = 0 & to help with NB coding
    assign skip_nop_even     = rom_data_even[57];
-   assign loop_addr_even    = rom_data_even[58:67];	
+   assign loop_addr_even    = rom_data_even[58:67];	// ??? In product, can latch loop_begin address instead of keeping in ROM
    assign loop_init_even    = rom_data_even[68:70];
    assign ep_instr_even     = rom_data_even[71];
-
 
    assign template_code_even[0:26]  = rom_data_even_late[0:26];
    assign template_code_even[27]    = rom_data_even_late[27] | ep_force_even_late_l2;
@@ -464,8 +489,6 @@ module iuq_uc_control(
                                      {1'b1, fxm[0:7], 1'b0};
    assign instr_even_late_d[21:31] = instr_l2[21:31];
 
-
-
    assign uc_instruction_even[0:5] = (sel0_5_even_late == 1'b0) ? template_code_even[0:5] :
                                                                   instr_even_late_l2[0:5];
 
@@ -473,7 +496,6 @@ module iuq_uc_control(
                                       (sel6_10_even_late == 2'b01) ? instr_even_late_l2[6:10] :
                                       (sel6_10_even_late == 2'b10) ? instr_even_late_l2[11:15] :
                                                                      instr_even_late_l2[16:20];
-
 
    assign uc_instruction_even[11:15] = (sel11_15_even_late == 2'b00) ? template_code_even[11:15] :
                                        (sel11_15_even_late == 2'b01) ? instr_even_late_l2[11:15] :
@@ -507,22 +529,26 @@ module iuq_uc_control(
                            ext_even;
 
    assign ucode_valid[0] = data_valid & (~flush) & (~(skip_even & skip_odd & (~ucode_end)));
-   assign ucode_valid[1] = data_valid & (~flush) & (~skip_odd) & (~ucode_end_even) & (~(loop_end_even & (~last_loop)));		
+   // Removed ucode_end_odd term from skip_odd.  When we skip on ucode_end_odd (e.g. mtcrf,FXM(7)=0), we still end up with a nop or something on even side.  Since uc_ib_done is only 1 bit, it assumes even side was the end.
+   assign ucode_valid[1] = data_valid & (~flush) & (~skip_odd) & (~ucode_end_even) & (~(loop_end_even & (~last_loop)));		// Handles loops with odd # of lines
 
    assign ucode_ifar_even[42:61] = {rom_addr_l2[1], count_l2, inLoop_l2, instr_l2[6:10], rom_addr_l2[2:8], 1'b0};
 
    assign unused[0] = skip_nop_even;
    assign unused[1:10] = loop_addr_even;
 
+   //---------------------------------------------------------------------
+   // create output instruction - odd
+   //---------------------------------------------------------------------
    assign uc_end_odd        = rom_data_odd[32];
    assign uc_end_early_odd  = rom_data_odd[33];
    assign loop_begin_odd    = rom_data_odd[34];
    assign loop_end_odd      = rom_data_odd[35] & (inLoop_l2 | loop_begin_even);
-   assign count_src_odd     = rom_data_odd[36:38];	
-   assign ext_odd[0]        = rom_data_odd[39];	
-   assign ext_odd[1]        = rom_data_odd[40];	
-   assign ext_odd[2]        = rom_data_odd[41];	
-   assign ext_odd[3]        = rom_data_odd[42];	
+   assign count_src_odd     = rom_data_odd[36:38];	// 00: NB(3:4), 01: "000" & 2's comp NB(3:4), 10: mult of 4 & XER(62:63), 11: 2's comp XER(62:63), 100: RT(inverted), 101: NB(0:2) - word mode, 110: XER(57:61) - word mode, 111: loop_init
+   assign ext_odd[0]        = rom_data_odd[39];	// RT   -- ??? Can we incorporate into mux selects?
+   assign ext_odd[1]        = rom_data_odd[40];	// S1
+   assign ext_odd[2]        = rom_data_odd[41];	// S2
+   assign ext_odd[3]        = rom_data_odd[42];	// S3
    assign sel0_5_odd        = rom_data_odd[43];
    assign sel6_10_odd       = rom_data_odd[44:45];
    assign sel11_15_odd      = rom_data_odd[46:47];
@@ -532,12 +558,11 @@ module iuq_uc_control(
    assign sel31_odd         = rom_data_odd[53];
    assign cr_bf2fxm_odd     = rom_data_odd[54];
    assign skip_cond_odd     = rom_data_odd[55];
-   assign skip_zero_odd     = rom_data_odd[56];	
+   assign skip_zero_odd     = rom_data_odd[56];	// For when XER = 0 & to help with NB coding
    assign skip_nop_odd      = rom_data_odd[57];
-   assign loop_addr_odd     = rom_data_odd[58:67];	
+   assign loop_addr_odd     = rom_data_odd[58:67];	// ??? In product, can latch loop_begin address instead of keeping in ROM
    assign loop_init_odd     = rom_data_odd[68:70];
    assign ep_instr_odd      = rom_data_odd[71];
-
 
    assign template_code_odd[0:26]  = rom_data_odd_late[0:26];
    assign template_code_odd[27]    = rom_data_odd_late[27] | ep_force_odd_late_l2;
@@ -564,13 +589,10 @@ module iuq_uc_control(
    assign ucode_end_odd = (uc_end_odd | (uc_end_early_odd & early_end_l2)) &
                           (~((loop_end_odd | loop_end_even) & (~last_loop_fast)));
 
-
    assign instr_odd_late_d[0:10]  = instr_l2[0:10];
    assign instr_odd_late_d[11:20] = (cr_bf2fxm_odd == 1'b0) ? instr_l2[11:20] :
                                     {1'b1, fxm[0:7], 1'b0};
    assign instr_odd_late_d[21:31] = instr_l2[21:31];
-
-
 
    assign uc_instruction_odd[0:5] = (sel0_5_odd_late == 1'b0) ? template_code_odd[0:5] :
                                                                 instr_odd_late_l2[0:5];
@@ -579,7 +601,6 @@ module iuq_uc_control(
                                      (sel6_10_odd_late == 2'b01) ? instr_odd_late_l2[6:10] :
                                      (sel6_10_odd_late == 2'b10) ? instr_odd_late_l2[11:15] :
                                                                    instr_odd_late_l2[16:20];
-
 
    assign uc_instruction_odd[11:15] = (sel11_15_odd_late == 2'b00) ? template_code_odd[11:15] :
                                       (sel11_15_odd_late == 2'b01) ? instr_odd_late_l2[11:15] :
@@ -601,18 +622,18 @@ module iuq_uc_control(
    assign uc_instruction_odd[31] = (sel31_odd_late == 1'b0) ? template_code_odd[31] :
                                                               instr_odd_late_l2[31];
 
-
    assign ucode_instr_odd = uc_instruction_odd;
 
    assign ucode_ext_odd = ext_odd;
-
-
 
    assign unused[11] = loop_begin_odd;
    assign unused[12] = skip_zero_odd;
    assign unused[13:15] = loop_init_odd;
    assign unused[16] = loop_addr_odd[9];
 
+   //---------------------------------------------------------------------
+   // combine even & odd info
+   //---------------------------------------------------------------------
    assign loop_begin = loop_begin_even;
    assign loop_end = loop_end_odd | loop_end_even;
    assign count_src = (inLoop_l2 == 1'b1) ? count_src_odd :
@@ -624,8 +645,25 @@ module iuq_uc_control(
    assign ucode_end = ucode_end_even | ucode_end_odd;
    assign uc_end = ucode_end & data_valid;
 
+   //---------------------------------------------------------------------
+   // control, state machines
+   //---------------------------------------------------------------------
+   // Old Assumptions:
+   // ??? No Nested Loops
+   // ??? All Loops must have at least 2 instructions??
+   // ??? New ucode instructions will be held off until XU flushes IU (to next instruction) on this thread
+   // ??? If loop_end is skip_c, the instruction before loop_end must also be skip_c
+   //
+   // New Assumptions:
+   // ??? No Nested Loops
+   // ??? Loops can have only 1 instruction
+   // ??? uCode cannot end in the same row as loop_begin
+   // ??? If loop_end is skip_c, the instruction before loop_end must also be skip_c
+   // ??? Loops must begin on an even address
+   // ??? Loops can end on an even address, but loop_address must be written in the odd side (loop_address_odd)
+   // ??? We can skip nop lines.  They must be in the odd side, and marked skip_nop
    assign inLoop_d = (flush_into_uc == 1'b1) ? flush_ifar[48] :
-                     (new_command == 1'b1)   ? 1'b0 : 		
+                     (new_command == 1'b1)   ? 1'b0 : 		// clear when beginning
                          (((data_valid & loop_begin) | inLoop_l2) & (~((data_valid & loop_end) & last_loop)) & valid_l2);
 
    assign last_loop = (count_l2 == 5'b00000 & inLoop_l2) |
@@ -633,8 +671,9 @@ module iuq_uc_control(
                       (skip_zero & loop_begin & count_init == 5'b00001) |
                       (skip_zero_l2 & count_l2 == 5'b00001) |
                       (skip_cond_odd & loop_end_odd & cond_l2) |
-                      (skip_cond_even & loop_end_even & cond_l2);	
+                      (skip_cond_even & loop_end_even & cond_l2);	// ??? Could remove this line if timing bad
 
+   // only for uc_end: never have loop_begin & uc_end in same rom line
    assign last_loop_fast = (count_l2 == 5'b00000 & inLoop_l2) |
                            (skip_zero_l2 & count_l2 == 5'b00001) |
                            (skip_cond_odd & loop_end_odd & cond_l2) |
@@ -644,16 +683,17 @@ module iuq_uc_control(
 
    assign inc_RT = data_valid & loop_end & (~(skip_zero_l2 & count_l2 == 5'b00000 & (~loop_begin))) &
                    (~(skip_zero & loop_begin & count_init == 5'b00000)) &
-                   count_src[0] & (~(count_src == 3'b111));	
+                   count_src[0] & (~(count_src == 3'b111));	// load/store multiple & string op word loops
 
    assign NB_dec = instr_l2[16:20] - 5'b00001;
+   // when NB(3:4) = 00 -> 00, 01 -> 11, 10 -> 10, 11 -> 01
    assign NB_comp[0] = instr_l2[19] ^ instr_l2[20];
    assign NB_comp[1] = instr_l2[20];
 
    assign xer_act = flush_into_uc | xu_iu_ucode_xer_val;
    assign xu_iu_ucode_xer_d = (flush_into_uc == 1'b1) ? oldest_xer :
                                                         xu_iu_ucode_xer;
-   assign xu_iu_ucode_xer_val_d = xu_iu_ucode_xer_val & (~flush) & (~br_hold);	
+   assign xu_iu_ucode_xer_val_d = xu_iu_ucode_xer_val & (~flush) & (~br_hold);	// flush term avoids problems with cplbuffer
 
    assign XER_dec_z = (xu_iu_ucode_xer_l2[57:63] == 7'b0) ? 7'b0000000 :
                        xu_iu_ucode_xer_l2[57:63] - 7'b0000001;
@@ -666,7 +706,7 @@ module iuq_uc_control(
                        (count_src == 3'b001) ? {3'b000, NB_comp[0:1]} :
                        (count_src == 3'b010) ? {2'b00, XER_low} :
                        (count_src == 3'b011) ? {3'b000, XER_comp[0:1]} :
-                       (count_src == 3'b100) ? (~(instr_l2[6:10])) : 	
+                       (count_src == 3'b100) ? (~(instr_l2[6:10])) : 	// RT
                        (count_src == 3'b101) ? {2'b00, NB_dec[0:2]} :
                        (count_src == 3'b110) ? XER_dec_z[0:4] :
                                                {2'b00, loop_init};
@@ -677,14 +717,14 @@ module iuq_uc_control(
                     ((data_valid & loop_end) == 1'b1) ? count_l2 - 5'b00001 :
                     count_l2;
 
-   assign skip_zero_d = (((data_valid & loop_end & last_loop) | new_command | flush_into_uc) == 1'b1) ? 1'b0 : 	
+   assign skip_zero_d = (((data_valid & loop_end & last_loop) | new_command | flush_into_uc) == 1'b1) ? 1'b0 : 	// added last_loop to handle 2 instruction loops in lswi,lswx
                         ((data_valid & loop_begin) == 1'b1) ? skip_zero :
                         skip_zero_l2;
 
+   // ??? If we always read each cycle, could we just do: skip_to_np1_d <- flush_into_uc and np1_flush?
    assign skip_to_np1_d = (flush == 1'b1) ? flush_into_uc & np1_flush :
                           (data_valid == 1'b1) ? 1'b0 :
                           skip_to_np1_l2;
-
 
    assign skip_even = (((skip_zero & loop_begin) | skip_zero_l2) & (count_l2 == 5'b00000) & inLoop_l2) |
                       ( (skip_zero & loop_begin) & count_init == 5'b00000 & (~inLoop_l2)) |
@@ -700,12 +740,18 @@ module iuq_uc_control(
                      skip_nop_odd |
                      (flush_to_odd_l2 & skip_to_np1_l2);
 
-
+   //---------------------------------------------------------------------
+   // Buffer old instructions until they complete
+   //---------------------------------------------------------------------
    assign buff_instr_in = {instr_l2[0:5], early_end_l2, cond_l2, force_ep_l2, rom_addr_l2[0:1], instr_l2[11:31]};
 
    assign cplbuffer_xer_act = (  wait_for_xer_l2 & xu_iu_ucode_xer_val_l2) |
                               ((~wait_for_xer_l2) & new_command & xer_type & (xer_val_occurred_l2 | xu_iu_ucode_xer_val_l2));
 
+   // Flush_into_uc requirements:
+   // -- signal active for only 1 cycle
+   // -- flush_into_uc can only occur if we have a non-completed uCode instruction
+   // -- flush_into_uc must not occur on fxm_type instr (we don't keep around instr_l2(12:19) in ifar)
    iuq_uc_cplbuffer  iuq_uc_cplbuffer0(
       .vdd(vdd),
       .gnd(gnd),
@@ -737,12 +783,15 @@ module iuq_uc_control(
 
    assign cplbuffer_full = cplbuffer_full_int;
 
+   //---------------------------------------------------------------------
+   // Latches
+   //---------------------------------------------------------------------
 
    tri_rlmreg_p #(.WIDTH(7), .INIT(0), .NEEDS_SRESET(0)) xu_iu_ucode_xer_latch(
       .vd(vdd),
       .gd(gnd),
       .nclk(nclk),
-      .act(xer_act),		
+      .act(xer_act),		// ??? If change, make sure xer bugspray is still accurate
       .thold_b(pc_iu_func_sl_thold_0_b),
       .sg(pc_iu_sg_0),
       .force_t(force_t),
@@ -809,7 +858,6 @@ module iuq_uc_control(
       .din(xer_val_occurred_d),
       .dout(xer_val_occurred_l2)
    );
-
 
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) valid_latch(
       .vd(vdd),
@@ -1063,8 +1111,6 @@ module iuq_uc_control(
       .dout(skip_to_np1_l2)
    );
 
-
-
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) force_ep_latch(
       .vd(vdd),
       .gd(gnd),
@@ -1137,9 +1183,11 @@ module iuq_uc_control(
       .dout(ep_force_odd_late_l2)
    );
 
+   //---------------------------------------------------------------------
+   // Scan
+   //---------------------------------------------------------------------
    assign siv[0:scan_right] = {sov[1:scan_right], scan_in};
    assign buff_scan_in = sov[0];
    assign scan_out = buff_scan_out;
 
 endmodule
-

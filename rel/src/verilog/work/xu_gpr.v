@@ -8,12 +8,21 @@
 // license is available.
 
 
+//  Description:  XU_FX ALU Top
+//
+//*****************************************************************************
 `include "tri_a2o.vh"
 module xu_gpr(
+   //-------------------------------------------------------------------
+   // Clocks & Power
+   //-------------------------------------------------------------------
    input [0:`NCLK_WIDTH-1] nclk,
    inout                               vdd,
    inout                               gnd,
-   
+
+   //-------------------------------------------------------------------
+   // Pervasive
+   //-------------------------------------------------------------------
    input                               pc_xu_ccflush_dc,
    input                               d_mode_dc,
    input                               delay_lclkr_dc,
@@ -24,7 +33,10 @@ module xu_gpr(
    input                               sg_0,
    input                               scan_in,
    output                              scan_out,
-   
+
+   //-------------------------------------------------------------------
+   // Read Ports
+   //-------------------------------------------------------------------
    input                               r0e,
    input [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1]            r0a,
    output [64-`GPR_WIDTH:63]            r0d,
@@ -37,15 +49,19 @@ module xu_gpr(
    input                               r3e,
    input [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1]            r3a,
    output [64-`GPR_WIDTH:63]            r3d,
-   
+
+   // Special Port for 3src instructions- erativax
    input                               r4e,
    input [0:2]                         r4t_q,
    input [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1]            r4a,
-   
+
    output                              r0_pe,
    output                              r1_pe,
    output                              r2_pe,
    output                              r3_pe,
+   //-------------------------------------------------------------------
+   // Write ports
+   //-------------------------------------------------------------------
    input                               w0e,
    input [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1]            w0a,
    input [64-`GPR_WIDTH:65+`GPR_WIDTH/8] w0d,
@@ -60,13 +76,16 @@ module xu_gpr(
    input [64-`GPR_WIDTH:65+`GPR_WIDTH/8] w3d
 );
 
-   wire                                r4e_q;		
-   wire [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1]             r4a_q;		
+   // Latches
+   wire                                r4e_q;		// input=>r4e           ,act=>1'b1
+   wire [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1]             r4a_q;		// input=>r4a           ,act=>1'b1
+   // Scanchain
    localparam                          r4e_offset = 2;
    localparam                          r4a_offset = r4e_offset + 1;
    localparam                          scan_right = r4a_offset + `GPR_POOL_ENC+`THREADS_POOL_ENC;
    wire [0:scan_right-1]               siv;
    wire [0:scan_right-1]               sov;
+   // Signals
    wire [64-`GPR_WIDTH:77]              w0d_int;
    wire [64-`GPR_WIDTH:77]              w1d_int;
    wire [64-`GPR_WIDTH:77]              w2d_int;
@@ -88,12 +107,12 @@ module xu_gpr(
    assign r0e_int = r4e_sel | r0e;
 
    assign r0a_int = (r4e_sel == 1'b1) ? r4a_q : r0a;
-   
+
    assign r0d = r0d_int[64 - `GPR_WIDTH:63];
    assign r1d = r1d_int[64 - `GPR_WIDTH:63];
    assign r2d = r2d_int[64 - `GPR_WIDTH:63];
    assign r3d = r3d_int[64 - `GPR_WIDTH:63];
-   
+
    assign w0d_int[64 - `GPR_WIDTH:65 + `GPR_WIDTH/8] = w0d;
    assign w0d_int[66 + `GPR_WIDTH/8:77] = {4{1'b0}};
    assign w1d_int[64 - `GPR_WIDTH:65 + `GPR_WIDTH/8] = w1d;
@@ -105,7 +124,7 @@ module xu_gpr(
 
    generate
    genvar                              i;
-   for (i = 0; i <= `GPR_WIDTH/8 - 1; i = i + 1) 
+   for (i = 0; i <= `GPR_WIDTH/8 - 1; i = i + 1)
       begin : parity
          assign r0d_par[i] = ^(r0d_int[8 * i:8 * i + 7]);
          assign r1d_par[i] = ^(r1d_int[8 * i:8 * i + 7]);
@@ -228,5 +247,5 @@ module xu_gpr(
 
    assign siv[0:scan_right-1] = {sov[1:scan_right-1], scan_in};
    assign scan_out = sov[0];
-         
+
 endmodule

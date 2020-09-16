@@ -7,7 +7,13 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
-
+//********************************************************************
+//*
+//* TITLE: Instruction Buffer
+//*
+//* NAME: iuq.v
+//*
+//*********************************************************************
 
 (* recursive_synthesis="0" *)
 `include "tri_a2o.vh"
@@ -17,9 +23,9 @@ module iuq(
    input [0:`NCLK_WIDTH-1]        nclk,
    input                          pc_iu_sg_3,
    input                          pc_iu_fce_3,
-   input                          pc_iu_func_slp_sl_thold_3,	
-   input                          pc_iu_func_nsl_thold_3,		
-   input                          pc_iu_cfg_slp_sl_thold_3,		
+   input                          pc_iu_func_slp_sl_thold_3,	// was: chip_b_sl_2_thold_3_b
+   input                          pc_iu_func_nsl_thold_3,		// added for custom cam
+   input                          pc_iu_cfg_slp_sl_thold_3,		// for boot config slats
    input                          pc_iu_regf_slp_sl_thold_3,
    input                          pc_iu_func_sl_thold_3,
    input                          pc_iu_time_sl_thold_3,
@@ -41,7 +47,7 @@ module iuq(
    input                          mpw2_b,
    input                          scan_in,
    output                         scan_out,
-   
+
    input [0:3]                    pc_iu_abist_dcomp_g6t_2r,
    input [0:3]                    pc_iu_abist_di_0,
    input [0:3]                    pc_iu_abist_di_g6t_2r,
@@ -62,8 +68,8 @@ module iuq(
    input                          an_ac_lbist_en_dc,
    input                          an_ac_atpg_en_dc,
    input                          an_ac_grffence_en_dc,
-   
-   input                          pc_iu_bo_enable_3,		
+
+   input                          pc_iu_bo_enable_3,		// bolt-on ABIST
    input                          pc_iu_bo_reset,
    input                          pc_iu_bo_unload,
    input                          pc_iu_bo_repair,
@@ -71,9 +77,10 @@ module iuq(
    input [0:4]                    pc_iu_bo_select,
    output [0:4]                   iu_pc_bo_fail,
    output [0:4]                   iu_pc_bo_diagout,
-   
+
    output [0:`THREADS-1]          iu_pc_err_ucode_illegal,
-   
+
+   // Cache inject
    output                         iu_pc_err_icache_parity,
    output                         iu_pc_err_icachedir_parity,
    output                         iu_pc_err_icachedir_multihit,
@@ -83,7 +90,8 @@ module iuq(
    input                          pc_iu_inj_icachedir_parity,
    input                          pc_iu_inj_icachedir_multihit,
    input                          pc_iu_init_reset,
-   
+
+   // spr ring
    input                          iu_slowspr_val_in,
    input                          iu_slowspr_rw_in,
    input [0:1]                    iu_slowspr_etid_in,
@@ -96,7 +104,7 @@ module iuq(
    output [0:9]                   iu_slowspr_addr_out,
    output [64-`GPR_WIDTH:63]      iu_slowspr_data_out,
    output                         iu_slowspr_done_out,
-   
+
    input [0:`THREADS-1]           xu_iu_msr_ucle,
    input [0:`THREADS-1]           xu_iu_msr_de,
    input [0:`THREADS-1]           xu_iu_msr_pr,
@@ -117,13 +125,13 @@ module iuq(
    input [0:1]                    xu_iu_t0_dbcr0_dac1,
    input [0:1]                    xu_iu_t0_dbcr0_dac2,
    input [0:1]                    xu_iu_t0_dbcr0_dac3,
-   input [0:1]                    xu_iu_t0_dbcr0_dac4,        
-`ifndef THREADS1  
+   input [0:1]                    xu_iu_t0_dbcr0_dac4,
+`ifndef THREADS1
    input [0:1]                    xu_iu_t1_dbcr0_dac1,
    input [0:1]                    xu_iu_t1_dbcr0_dac2,
    input [0:1]                    xu_iu_t1_dbcr0_dac3,
    input [0:1]                    xu_iu_t1_dbcr0_dac4,
-`endif      
+`endif
    input [0:`THREADS-1]           xu_iu_dbcr0_ret,
    input [0:`THREADS-1]           xu_iu_dbcr1_iac12m,
    input [0:`THREADS-1]           xu_iu_dbcr1_iac34m,
@@ -141,10 +149,10 @@ module iuq(
    input                          xu_iu_hid_mmu_mode,
    input                          xu_iu_spr_ccr2_en_dcr,
    input                          xu_iu_spr_ccr2_ifrat,
-   input [0:8]                    xu_iu_spr_ccr2_ifratsc,		
+   input [0:8]                    xu_iu_spr_ccr2_ifratsc,		// 0:4: wimge, 5:8: u0:3
    input                          xu_iu_spr_ccr2_ucode_dis,
    input                          xu_iu_xucr4_mmu_mchk,
-   
+
    output                         iu_mm_ierat_req,
    output                         iu_mm_ierat_req_nonspec,
    output [0:51]                  iu_mm_ierat_epn,
@@ -153,7 +161,7 @@ module iuq(
    output [0:13]                  iu_mm_ierat_tid,
    output [0:`THREADS-1]          iu_mm_ierat_flush,
    output [0:`THREADS-1]          iu_mm_perf_itlb,
-   
+
    input [0:4]                    mm_iu_ierat_rel_val,
    input [0:131]                  mm_iu_ierat_rel_data,
    input [0:`THREADS-1]           mm_iu_ierat_pt_fault,
@@ -175,24 +183,24 @@ module iuq(
    input [0:8]                    mm_iu_ierat_mmucr1,
    output [0:3]                   iu_mm_ierat_mmucr1,
    output                         iu_mm_ierat_mmucr1_we,
-   
+
    input                          mm_iu_ierat_snoop_coming,
    input                          mm_iu_ierat_snoop_val,
    input [0:25]                   mm_iu_ierat_snoop_attr,
    input [(62-`EFF_IFAR_ARCH):51] mm_iu_ierat_snoop_vpn,
    output                         iu_mm_ierat_snoop_ack,
-   
+
    output [0:`THREADS-1]          iu_mm_hold_ack,
    input [0:`THREADS-1]           mm_iu_hold_req,
    input [0:`THREADS-1]           mm_iu_flush_req,
    input [0:`THREADS-1]           mm_iu_hold_done,
-   
+
    output [0:`THREADS-1]          iu_mm_bus_snoop_hold_ack,
    input [0:`THREADS-1]           mm_iu_bus_snoop_hold_req,
    input [0:`THREADS-1]           mm_iu_bus_snoop_hold_done,
-   
+
    input [0:`THREADS-1]           mm_iu_tlbi_complete,
-                                  
+
    input                          mm_iu_tlbwe_binv,
 
    output [0:5]                   cp_mm_except_taken_t0,
@@ -202,21 +210,21 @@ module iuq(
 
    input                          an_ac_back_inv,
    input [64-`REAL_IFAR_WIDTH:57] an_ac_back_inv_addr,
-   input                          an_ac_back_inv_target,		
-   
+   input                          an_ac_back_inv_target,		// connect to bit(0)
+
    output [0:`THREADS-1]          iu_lq_request,
    output [0:1]                   iu_lq_ctag,
    output [64-`REAL_IFAR_WIDTH:59] iu_lq_ra,
    output [0:4]                   iu_lq_wimge,
    output [0:3]                   iu_lq_userdef,
-   
+
    input                          an_ac_reld_data_vld,
    input [0:4]                    an_ac_reld_core_tag,
    input [58:59]                  an_ac_reld_qw,
    input [0:127]                  an_ac_reld_data,
    input                          an_ac_reld_ecc_err,
    input                          an_ac_reld_ecc_err_ue,
-   
+
    output                         iu_mm_lmq_empty,
    output [0:`THREADS-1]          iu_xu_icache_quiesce,
    output [0:`THREADS-1]          iu_pc_icache_quiesce,
@@ -224,6 +232,9 @@ module iuq(
    output			  iu_pc_err_btb_parity,
 
 
+   //----------------------------------------------------------------
+   // Interface to reservation station - Completion is snooping also
+   //----------------------------------------------------------------
    output									iu_rv_iu6_t0_i0_vld,
    output									iu_rv_iu6_t0_i0_act,
    output [0:`ITAG_SIZE_ENC-1]		iu_rv_iu6_t0_i0_itag,
@@ -329,8 +340,11 @@ module iuq(
    output [0:`ITAG_SIZE_ENC-1]		iu_rv_iu6_t0_i1_s3_itag,
    output [0:2]          				iu_rv_iu6_t0_i1_s3_t,
    output									iu_rv_iu6_t0_i1_s3_dep_hit,
-   
+
 `ifndef THREADS1
+   //----------------------------------------------------------------
+   // Interface to reservation station - Completion is snooping also
+   //----------------------------------------------------------------
    output									iu_rv_iu6_t1_i0_vld,
    output									iu_rv_iu6_t1_i0_act,
    output [0:`ITAG_SIZE_ENC-1]		iu_rv_iu6_t1_i0_itag,
@@ -437,17 +451,20 @@ module iuq(
    output [0:2]          				iu_rv_iu6_t1_i1_s3_t,
    output									iu_rv_iu6_t1_i1_s3_dep_hit,
 `endif
-  
+
+   // XER read bus to RF for store conditionals
    output [0:`XER_POOL_ENC-1]     iu_rf_t0_xer_p,
 `ifndef THREADS1
    output [0:`XER_POOL_ENC-1]     iu_rf_t1_xer_p,
 `endif
 
+   // Credit Interface with IU
    input [0:`THREADS-1]           rv_iu_fx0_credit_free,
    input [0:`THREADS-1]           rv_iu_fx1_credit_free,
    input [0:`THREADS-1]           axu0_iu_credit_free,
    input [0:`THREADS-1]           axu1_iu_credit_free,
-   
+
+   // LQ Instruction Executed
    input [0:`THREADS-1]           lq0_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]     lq0_iu_itag,
    input                          lq0_iu_n_flush,
@@ -462,7 +479,7 @@ module iuq(
    input                          lq0_iu_flush2ucode_type,
    input [0:`THREADS-1]           lq0_iu_recirc_val,
    input [0:`THREADS-1]           lq0_iu_dear_val,
-   
+
    input [0:`THREADS-1]           lq1_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]     lq1_iu_itag,
    input                          lq1_iu_n_flush,
@@ -472,13 +489,15 @@ module iuq(
    input                          lq1_iu_dacr_type,
    input [0:3]                    lq1_iu_dacrw,
    input [0:3]                    lq1_iu_perf_events,
-   
+
    input [0:`THREADS-1]           lq_iu_credit_free,
    input [0:`THREADS-1]           sq_iu_credit_free,
-   
+
+   // Interface IU ucode
    input [0:`THREADS-1]           xu_iu_ucode_xer_val,
    input [57:63]                  xu_iu_ucode_xer,
-   
+
+   // Complete iTag
    output [0:`THREADS-1]          iu_lq_i0_completed,
    output [0:`THREADS-1]          iu_lq_i1_completed,
    output [0:`ITAG_SIZE_ENC-1]   iu_lq_t0_i0_completed_itag,
@@ -486,27 +505,31 @@ module iuq(
 `ifndef THREADS1
    output [0:`ITAG_SIZE_ENC-1]   iu_lq_t1_i0_completed_itag,
    output [0:`ITAG_SIZE_ENC-1]   iu_lq_t1_i1_completed_itag,
-`endif   
+`endif
    output [0:`THREADS-1]          iu_lq_recirc_val,
-   
+
+   // ICBI Interface to IU
    input [0:`THREADS-1]           lq_iu_icbi_val,
    input [64-`REAL_IFAR_WIDTH:57] lq_iu_icbi_addr,
    output [0:`THREADS-1]          iu_lq_icbi_complete,
    input                          lq_iu_ici_val,
    output                         iu_lq_spr_iucr0_icbi_ack,
-   
+
+   // BR Instruction Executed
    input [0:`THREADS-1]           br_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]     br_iu_itag,
    input [62-`EFF_IFAR_ARCH:61]   br_iu_bta,
    input                          br_iu_taken,
    input [0:`THREADS-1]           br_iu_redirect,
    input [0:3]			             br_iu_perf_events,
-   
+
+   //br unit repairs
    input [0:17]                   br_iu_gshare,
    input [0:2]                    br_iu_ls_ptr,
    input [62-`EFF_IFAR_WIDTH:61]  br_iu_ls_data,
    input                          br_iu_ls_update,
-   
+
+   // XU0 Instruction Executed
    input [0:`THREADS-1]           xu_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]     xu_iu_itag,
    input                          xu_iu_n_flush,
@@ -517,10 +540,12 @@ module iuq(
    input [0:`THREADS-1]           xu_iu_mtiar,
    input [62-`EFF_IFAR_ARCH:61]   xu_iu_bta,
    input [0:3]                    xu_iu_perf_events,
-   
+
+   // XU1 Instruction Executed
    input [0:`THREADS-1]           xu1_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]     xu1_iu_itag,
-   
+
+   // XU IERAT interface
    input [0:`THREADS-1]           xu_iu_val,
    input [0:`THREADS-1]           xu_iu_pri_val,
    input [0:2]                    xu_iu_pri,
@@ -537,7 +562,8 @@ module iuq(
    output                         iu_xu_ord_par_err,
    output                         iu_xu_ord_n_flush_req,
    output [64-`GPR_WIDTH:63]      iu_xu_ex5_data,
-   
+
+   // AXU0 Instruction Executed
    input [0:`THREADS-1]           axu0_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]     axu0_iu_itag,
    input                          axu0_iu_n_flush,
@@ -549,7 +575,8 @@ module iuq(
    input                          axu0_iu_exception_val,
    input [0:`THREADS-1]           axu0_iu_async_fex,
    input [0:3]                    axu0_iu_perf_events,
-   
+
+   // AXU1 Instruction Executed
    input [0:`THREADS-1]           axu1_iu_execute_vld,
    input [0:`ITAG_SIZE_ENC-1]     axu1_iu_itag,
    input                          axu1_iu_n_flush,
@@ -559,7 +586,9 @@ module iuq(
    input                          axu1_iu_flush2ucode_type,
    input                          axu1_iu_exception_val,
    input [0:3]                    axu1_iu_perf_events,
-   
+
+   // Completion and XU
+   // Run State
    output [0:`THREADS-1]          iu_xu_stop,
    input [0:`THREADS-1]           xu_iu_run_thread,
    output			  iu_xu_credits_returned,
@@ -567,6 +596,7 @@ module iuq(
    input [0:`THREADS-1]           xu_iu_raise_iss_pri,
    output [0:`THREADS-1]          iu_xu_quiesce,
    output [0:`THREADS-1]          iu_pc_quiesce,
+   // Interrupt Interface
    output [0:`THREADS-1]          iu_xu_rfi,
    output [0:`THREADS-1]          iu_xu_rfgi,
    output [0:`THREADS-1]          iu_xu_rfci,
@@ -575,7 +605,7 @@ module iuq(
    output [0:`THREADS-1]          iu_xu_gint,
    output [0:`THREADS-1]          iu_xu_cint,
    output [0:`THREADS-1]          iu_xu_mcint,
-   output [0:`THREADS-1]          iu_xu_dear_update,   
+   output [0:`THREADS-1]          iu_xu_dear_update,
    output [62-`EFF_IFAR_ARCH:61]  iu_xu_t0_nia,
    output [0:16]                  iu_xu_t0_esr,
    output [0:14]                  iu_xu_t0_mcsr,
@@ -587,7 +617,7 @@ module iuq(
    output [0:14]                  iu_xu_t1_mcsr,
    output [0:18]                  iu_xu_t1_dbsr,
    output [64-`GPR_WIDTH:63]      iu_xu_t1_dear,
-`endif      
+`endif
    output [0:`THREADS-1]          iu_xu_dbsr_update,
    output [0:`THREADS-1]          iu_xu_dbsr_ude,
    output [0:`THREADS-1]          iu_xu_dbsr_ide,
@@ -601,7 +631,8 @@ module iuq(
    output [0:`THREADS-1]          iu_xu_instr_cpl,
    input [0:`THREADS-1]           xu_iu_np1_async_flush,
    output [0:`THREADS-1]          iu_xu_async_complete,
-   
+
+   // Interrupts
 	input [0:`THREADS-1]           an_ac_uncond_dbg_event,
    input [0:`THREADS-1]           xu_iu_external_mchk,
    input [0:`THREADS-1]           xu_iu_ext_interrupt,
@@ -624,9 +655,10 @@ module iuq(
 `ifndef THREADS1
    input [62-`EFF_IFAR_ARCH:61]   xu_iu_t1_rest_ifar,
 `endif
-   
+
 
    input [0:`THREADS-1]           pc_iu_pm_fetch_halt,
+   //Ram interface
    input [0:31]                   pc_iu_ram_instr,
    input [0:3]                    pc_iu_ram_instr_ext,
    input                          pc_iu_ram_issue,
@@ -648,23 +680,24 @@ module iuq(
    output [0:`THREADS-1]          iu_pc_attention_instr,
    output [0:`THREADS-1]          iu_pc_err_mchk_disabled,
    output [0:`THREADS-1]          ac_an_debug_trigger,
-   
+
    output [0:`THREADS-1]          cp_axu_i0_t1_v,
    output [0:`THREADS-1]          cp_axu_i1_t1_v,
    output [0:`TYPE_WIDTH-1]       cp_axu_t0_i0_t1_t,
    output [0:`GPR_POOL_ENC-1]     cp_axu_t0_i0_t1_p,
    output [0:`TYPE_WIDTH-1]       cp_axu_t0_i1_t1_t,
-   output [0:`GPR_POOL_ENC-1]     cp_axu_t0_i1_t1_p,               
+   output [0:`GPR_POOL_ENC-1]     cp_axu_t0_i1_t1_p,
 `ifndef THREADS1
    output [0:`TYPE_WIDTH-1]       cp_axu_t1_i0_t1_t,
    output [0:`GPR_POOL_ENC-1]     cp_axu_t1_i0_t1_p,
    output [0:`TYPE_WIDTH-1]       cp_axu_t1_i1_t1_t,
-   output [0:`GPR_POOL_ENC-1]     cp_axu_t1_i1_t1_p,               
+   output [0:`GPR_POOL_ENC-1]     cp_axu_t1_i1_t1_p,
 `endif
-   
+
    output                         cp_is_isync,
    output                         cp_is_csync,
-   
+
+   // Completion flush
    output [0:`THREADS-1]          cp_flush,
 `ifndef THREADS1
    output [0:`ITAG_SIZE_ENC-1]    cp_t1_next_itag,
@@ -675,6 +708,7 @@ module iuq(
    output [0:`ITAG_SIZE_ENC-1]    cp_t0_flush_itag,
    output [62-`EFF_IFAR_ARCH:61]  cp_t0_flush_ifar,
 
+   // Performance
    input                          pc_iu_event_bus_enable,
    input [0:2]			  pc_iu_event_count_mode,
    input [0:4*`THREADS-1]         iu_event_bus_in,
@@ -688,6 +722,7 @@ module iuq(
    output [0:`THREADS-1]        iu_pc_sq_credit_ok,
 
 
+   // Debug Trace
    input                          pc_iu_trace_bus_enable,
    input  [0:10]                  pc_iu_debug_mux1_ctrls,
    input  [0:10]                  pc_iu_debug_mux2_ctrls,
@@ -697,7 +732,8 @@ module iuq(
    input  [0:3]                   coretrace_ctrls_in,
    output [0:3]                   coretrace_ctrls_out
    );
-   
+
+   // scan
    wire                           btb_scan_in;
    wire                           btb_scan_out;
    wire                           bh0_scan_in;
@@ -730,11 +766,13 @@ module iuq(
    wire                           ram_scan_out;
    wire                           dbg1_scan_in;
    wire                           dbg1_scan_out;
-   
+
    wire [0:`THREADS-1]            cp_async_block;
 
+   // ERAT connections to these need to be cleaned up for A2O
    wire                           cp_ic_is_isync;
    wire                           cp_ic_is_csync;
+   // bp
    wire [0:1]                     iu2_0_bh0_rd_data;
    wire [0:1]                     iu2_1_bh0_rd_data;
    wire [0:1]                     iu2_2_bh0_rd_data;
@@ -798,6 +836,7 @@ module iuq(
    wire [0:2]                      cp_bp_t1_ls_ptr;
    wire [0:1]                      cp_bp_t1_btb_hist;
 `endif
+   // ibuf
    wire [0:`IBUFF_DEPTH/4-1]       ib_ic_t0_need_fetch;
    wire [0:3]                      bp_ib_iu3_t0_val;
    wire [62-`EFF_IFAR_WIDTH:61]    bp_ib_iu3_t0_ifar;
@@ -817,9 +856,11 @@ module iuq(
    wire [0:`IBUFF_INSTR_WIDTH-1]   bp_ib_iu3_t1_3_instr;
 `endif
 
+   // idec
    wire [0:31]                     spr_dec_mask;
    wire [0:31]                     spr_dec_match;
-      
+
+   // rn
    wire [0:`THREADS-1]             spr_single_issue;
    wire [0:`THREADS-1]             cp_rn_empty;
    wire [0:`THREADS-1]             iu_flush;
@@ -828,8 +869,10 @@ module iuq(
    wire [0:`THREADS-1]             cp_iu0_flush_nonspec;
    wire [0:`THREADS-1]             ic_cp_nonspec_hit;
 
+   // Output to dispatch to block due to ivax
    wire [0:`THREADS-1]             cp_dis_ivax;
 
+   // Instruction 0 Complete
    wire                            cp_rn_t0_i0_v;
    wire                            cp_rn_t0_i0_axu_exception_val;
    wire [0:3]                      cp_rn_t0_i0_axu_exception;
@@ -837,17 +880,18 @@ module iuq(
    wire [0:2]                      cp_rn_t0_i0_t1_t;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i0_t1_p;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i0_t1_a;
-                                     
+
    wire                            cp_rn_t0_i0_t2_v;
    wire [0:2]                      cp_rn_t0_i0_t2_t;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i0_t2_p;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i0_t2_a;
-                                     
+
    wire                            cp_rn_t0_i0_t3_v;
    wire [0:2]                      cp_rn_t0_i0_t3_t;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i0_t3_p;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i0_t3_a;
-                               
+
+   // Instruction 1 Complete
    wire                            cp_rn_t0_i1_v;
    wire                            cp_rn_t0_i1_axu_exception_val;
    wire [0:3]                      cp_rn_t0_i1_axu_exception;
@@ -855,17 +899,18 @@ module iuq(
    wire [0:2]                      cp_rn_t0_i1_t1_t;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i1_t1_p;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i1_t1_a;
-                                     
+
    wire                            cp_rn_t0_i1_t2_v;
    wire [0:2]                      cp_rn_t0_i1_t2_t;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i1_t2_p;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i1_t2_a;
-                                     
+
    wire                            cp_rn_t0_i1_t3_v;
    wire [0:2]                      cp_rn_t0_i1_t3_t;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i1_t3_p;
-   wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i1_t3_a;  
+   wire [0:`GPR_POOL_ENC-1]        cp_rn_t0_i1_t3_a;
 `ifndef THREADS1
+   // Instruction 0 Complete
    wire                            cp_rn_t1_i0_v;
    wire                            cp_rn_t1_i0_axu_exception_val;
    wire [0:3]                      cp_rn_t1_i0_axu_exception;
@@ -873,17 +918,18 @@ module iuq(
    wire [0:2]                      cp_rn_t1_i0_t1_t;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i0_t1_p;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i0_t1_a;
-                                     
+
    wire                            cp_rn_t1_i0_t2_v;
    wire [0:2]                      cp_rn_t1_i0_t2_t;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i0_t2_p;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i0_t2_a;
-                                     
+
    wire                            cp_rn_t1_i0_t3_v;
    wire [0:2]                      cp_rn_t1_i0_t3_t;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i0_t3_p;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i0_t3_a;
-                               
+
+   // Instruction 1 Complete
    wire                            cp_rn_t1_i1_v;
    wire                            cp_rn_t1_i1_axu_exception_val;
    wire [0:3]                      cp_rn_t1_i1_axu_exception;
@@ -891,17 +937,18 @@ module iuq(
    wire [0:2]                      cp_rn_t1_i1_t1_t;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i1_t1_p;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i1_t1_a;
-                                     
+
    wire                            cp_rn_t1_i1_t2_v;
    wire [0:2]                      cp_rn_t1_i1_t2_t;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i1_t2_p;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i1_t2_a;
-                                     
+
    wire                            cp_rn_t1_i1_t3_v;
    wire [0:2]                      cp_rn_t1_i1_t3_t;
    wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i1_t3_p;
-   wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i1_t3_a;  
+   wire [0:`GPR_POOL_ENC-1]        cp_rn_t1_i1_t3_a;
 `endif
+   // Instruction 0 Issue
    wire                            rn_cp_iu6_t0_i0_vld;
    wire [0:`ITAG_SIZE_ENC-1]       rn_cp_iu6_t0_i0_itag;
    wire [0:2]                      rn_cp_iu6_t0_i0_ucode;
@@ -911,7 +958,7 @@ module iuq(
    wire                            rn_cp_iu6_t0_i0_rte_fx0;
    wire                            rn_cp_iu6_t0_i0_rte_fx1;
    wire                            rn_cp_iu6_t0_i0_rte_axu0;
-   wire                            rn_cp_iu6_t0_i0_rte_axu1;                               
+   wire                            rn_cp_iu6_t0_i0_rte_axu1;
    wire [62-`EFF_IFAR_WIDTH:61]    rn_cp_iu6_t0_i0_ifar;
    wire [62-`EFF_IFAR_WIDTH:61]    rn_cp_iu6_t0_i0_bta;
    wire                            rn_cp_iu6_t0_i0_isram;
@@ -925,7 +972,7 @@ module iuq(
    wire [0:1]                      rn_cp_iu6_t0_i0_bh2_hist;
    wire [0:17]                      rn_cp_iu6_t0_i0_gshare;
    wire [0:2]                      rn_cp_iu6_t0_i0_ls_ptr;
-   wire                            rn_cp_iu6_t0_i0_match;                               
+   wire                            rn_cp_iu6_t0_i0_match;
    wire                            rn_cp_iu6_t0_i0_type_fp;
    wire                            rn_cp_iu6_t0_i0_type_ap;
    wire                            rn_cp_iu6_t0_i0_type_spv;
@@ -947,6 +994,7 @@ module iuq(
    wire                            rn_cp_iu6_t0_i0_btb_entry;
    wire [0:1]                      rn_cp_iu6_t0_i0_btb_hist;
    wire                            rn_cp_iu6_t0_i0_bta_val;
+   // Instruction 1 Issue
    wire                            rn_cp_iu6_t0_i1_vld;
    wire [0:`ITAG_SIZE_ENC-1]       rn_cp_iu6_t0_i1_itag;
    wire [0:2]                      rn_cp_iu6_t0_i1_ucode;
@@ -956,7 +1004,7 @@ module iuq(
    wire                            rn_cp_iu6_t0_i1_rte_fx0;
    wire                            rn_cp_iu6_t0_i1_rte_fx1;
    wire                            rn_cp_iu6_t0_i1_rte_axu0;
-   wire                            rn_cp_iu6_t0_i1_rte_axu1;                               
+   wire                            rn_cp_iu6_t0_i1_rte_axu1;
    wire [62-`EFF_IFAR_WIDTH:61]    rn_cp_iu6_t0_i1_ifar;
    wire [62-`EFF_IFAR_WIDTH:61]    rn_cp_iu6_t0_i1_bta;
    wire                            rn_cp_iu6_t0_i1_isram;
@@ -970,7 +1018,7 @@ module iuq(
    wire [0:1]                      rn_cp_iu6_t0_i1_bh2_hist;
    wire [0:17]                      rn_cp_iu6_t0_i1_gshare;
    wire [0:2]                      rn_cp_iu6_t0_i1_ls_ptr;
-   wire                            rn_cp_iu6_t0_i1_match;                               
+   wire                            rn_cp_iu6_t0_i1_match;
    wire                            rn_cp_iu6_t0_i1_type_fp;
    wire                            rn_cp_iu6_t0_i1_type_ap;
    wire                            rn_cp_iu6_t0_i1_type_spv;
@@ -993,6 +1041,7 @@ module iuq(
    wire [0:1]                      rn_cp_iu6_t0_i1_btb_hist;
    wire                            rn_cp_iu6_t0_i1_bta_val;
 `ifndef THREADS1
+   // Instruction 0 Issue
    wire                            rn_cp_iu6_t1_i0_vld;
    wire [0:`ITAG_SIZE_ENC-1]       rn_cp_iu6_t1_i0_itag;
    wire [0:2]                      rn_cp_iu6_t1_i0_ucode;
@@ -1002,7 +1051,7 @@ module iuq(
    wire                            rn_cp_iu6_t1_i0_rte_fx0;
    wire                            rn_cp_iu6_t1_i0_rte_fx1;
    wire                            rn_cp_iu6_t1_i0_rte_axu0;
-   wire                            rn_cp_iu6_t1_i0_rte_axu1;                               
+   wire                            rn_cp_iu6_t1_i0_rte_axu1;
    wire [62-`EFF_IFAR_WIDTH:61]    rn_cp_iu6_t1_i0_ifar;
    wire [62-`EFF_IFAR_WIDTH:61]    rn_cp_iu6_t1_i0_bta;
    wire                            rn_cp_iu6_t1_i0_isram;
@@ -1016,7 +1065,7 @@ module iuq(
    wire [0:1]                      rn_cp_iu6_t1_i0_bh2_hist;
    wire [0:17]                      rn_cp_iu6_t1_i0_gshare;
    wire [0:2]                      rn_cp_iu6_t1_i0_ls_ptr;
-   wire                            rn_cp_iu6_t1_i0_match;                               
+   wire                            rn_cp_iu6_t1_i0_match;
    wire                            rn_cp_iu6_t1_i0_type_fp;
    wire                            rn_cp_iu6_t1_i0_type_ap;
    wire                            rn_cp_iu6_t1_i0_type_spv;
@@ -1038,6 +1087,7 @@ module iuq(
    wire                            rn_cp_iu6_t1_i0_btb_entry;
    wire [0:1]                      rn_cp_iu6_t1_i0_btb_hist;
    wire                            rn_cp_iu6_t1_i0_bta_val;
+   // Instruction 1 Issue
    wire                            rn_cp_iu6_t1_i1_vld;
    wire [0:`ITAG_SIZE_ENC-1]       rn_cp_iu6_t1_i1_itag;
    wire [0:2]                      rn_cp_iu6_t1_i1_ucode;
@@ -1047,7 +1097,7 @@ module iuq(
    wire                            rn_cp_iu6_t1_i1_rte_fx0;
    wire                            rn_cp_iu6_t1_i1_rte_fx1;
    wire                            rn_cp_iu6_t1_i1_rte_axu0;
-   wire                            rn_cp_iu6_t1_i1_rte_axu1;                               
+   wire                            rn_cp_iu6_t1_i1_rte_axu1;
    wire [62-`EFF_IFAR_WIDTH:61]    rn_cp_iu6_t1_i1_ifar;
    wire [62-`EFF_IFAR_WIDTH:61]    rn_cp_iu6_t1_i1_bta;
    wire                            rn_cp_iu6_t1_i1_isram;
@@ -1061,7 +1111,7 @@ module iuq(
    wire [0:1]                      rn_cp_iu6_t1_i1_bh2_hist;
    wire [0:17]                      rn_cp_iu6_t1_i1_gshare;
    wire [0:2]                      rn_cp_iu6_t1_i1_ls_ptr;
-   wire                            rn_cp_iu6_t1_i1_match;                               
+   wire                            rn_cp_iu6_t1_i1_match;
    wire                            rn_cp_iu6_t1_i1_type_fp;
    wire                            rn_cp_iu6_t1_i1_type_ap;
    wire                            rn_cp_iu6_t1_i1_type_spv;
@@ -1136,27 +1186,23 @@ module iuq(
 `ifndef THREADS1
    wire [0:5]                      spr_t1_low_pri_count;
 `endif
-   
+
    wire [0:`THREADS-1]             cp_rn_uc_credit_free;
    wire [0:`THREADS-1]             dp_cp_hold_req;
    wire [0:`THREADS-1]             dp_cp_bus_snoop_hold_req;
-   
+
    wire [0:`THREADS-1]             iu_spr_eheir_update;
    wire [0:31]                     iu_spr_t0_eheir;
 `ifndef THREADS1
    wire [0:31]                     iu_spr_t1_eheir;
 `endif
 
+   // axu
    wire [0:7]                      iu_au_t0_config_iucr;
 `ifndef THREADS1
    wire [0:7]                      iu_au_t1_config_iucr;
 `endif
-   
-   
-   
-   
-   
-   
+
    wire [0:`THREADS-1]             ib_uc_rdy;
    wire [0:3]                      uc_ib_iu3_t0_invalid;
    wire [0:1]                      uc_ib_t0_val;
@@ -1166,8 +1212,8 @@ module iuq(
    wire [0:31]                     uc_ib_t0_instr1;
    wire [62-`EFF_IFAR_WIDTH:61]    uc_ib_t0_ifar0;
    wire [62-`EFF_IFAR_WIDTH:61]    uc_ib_t0_ifar1;
-   wire [0:3]                      uc_ib_t0_ext0;		
-   wire [0:3]                      uc_ib_t0_ext1;		
+   wire [0:3]                      uc_ib_t0_ext0;		//RT, S1, S2, S3
+   wire [0:3]                      uc_ib_t0_ext1;		//RT, S1, S2, S3
 `ifndef THREADS1
    wire [0:3]                      uc_ib_iu3_t1_invalid;
    wire [0:1]                      uc_ib_t1_val;
@@ -1175,15 +1221,15 @@ module iuq(
    wire [0:31]                     uc_ib_t1_instr1;
    wire [62-`EFF_IFAR_WIDTH:61]    uc_ib_t1_ifar0;
    wire [62-`EFF_IFAR_WIDTH:61]    uc_ib_t1_ifar1;
-   wire [0:3]                      uc_ib_t1_ext0;		
-   wire [0:3]                      uc_ib_t1_ext1;		
+   wire [0:3]                      uc_ib_t1_ext0;		//RT, S1, S2, S3
+   wire [0:3]                      uc_ib_t1_ext1;		//RT, S1, S2, S3
 `endif
-   
+
    wire                           iu_pc_ram_done_int;
    wire [0:`THREADS-1]             ib_rm_rdy;
    wire [0:`THREADS-1]             rm_ib_iu3_val;
    wire [0:35]                    rm_ib_iu3_instr;
-   
+
    wire [0:`THREADS-1]           cp_flush_internal;
    wire [0:`THREADS-1]           iu_xu_stop_internal;
    wire [62-`EFF_IFAR_ARCH:61]   cp_t0_flush_ifar_internal;
@@ -1198,7 +1244,7 @@ module iuq(
    wire [43:61]                  cp_uc_t1_flush_ifar;
 `endif
    wire [0:`THREADS-1]           cp_uc_np1_flush;
-   
+
    wire                           g8t_clkoff_b;
    wire                           g8t_d_mode;
    wire [0:4]                     g8t_delay_lclkr;
@@ -1221,6 +1267,9 @@ module iuq(
    wire [0:31]                    ifetch_debug_bus_out;
    wire [0:3]                     ifetch_coretrace_ctrls_out;
 
+   //-------------------------------
+   // Slice performance interface with I$
+   //-------------------------------
    wire [0:20]                    slice_ic_t0_perf_events;
 `ifndef THREADS1
    wire [0:20]                    slice_ic_t1_perf_events;
@@ -1230,15 +1279,16 @@ module iuq(
 
    wire                           tidn;
    wire                           tiup;
-   
+
+   //need to remove only here for the facs
    wire [0:`THREADS-1]             cp_ib_iu4_hold;
-   
+
    wire [0:`ITAG_SIZE_ENC-1]             iu_lq_t0_i0_completed_itag_int;
    wire [0:`ITAG_SIZE_ENC-1]             iu_lq_t0_i1_completed_itag_int;
 `ifndef THREADS1
    wire [0:`ITAG_SIZE_ENC-1]             iu_lq_t1_i0_completed_itag_int;
    wire [0:`ITAG_SIZE_ENC-1]             iu_lq_t1_i1_completed_itag_int;
-`endif   
+`endif
 
    wire                           pc_iu_func_slp_sl_thold_2;
    wire                           pc_iu_func_nsl_thold_2;
@@ -1258,18 +1308,19 @@ module iuq(
 
    wire [0:4*`THREADS-1]          event_bus_in[0:1];
    wire [0:4*`THREADS-1]          event_bus_out[0:1];
-   
+
    wire                           vdd;
    wire                           gnd;
 
    assign vdd = 1'b1;
    assign gnd = 1'b0;
 
+   // Temp should be driven by external mode debug compare decodes
    assign mm_iu_reload_hit[0] = mm_iu_ierat_rel_val[0] & mm_iu_ierat_rel_val[4];
 `ifndef THREADS1
    assign mm_iu_reload_hit[1] = mm_iu_ierat_rel_val[1] & mm_iu_ierat_rel_val[4];
-`endif   
-   
+`endif
+
    assign cp_flush = cp_flush_internal;
    assign iu_xu_stop = iu_xu_stop_internal;
    assign cp_t0_flush_ifar = cp_t0_flush_ifar_internal;
@@ -1280,18 +1331,18 @@ module iuq(
 
    assign tidn = 1'b0;
    assign tiup = 1'b1;
-   
+
    assign cp_ib_iu4_hold = {`THREADS{1'b0}};
-   
+
    assign cp_is_isync = cp_ic_is_isync;
    assign cp_is_csync = cp_ic_is_csync;
-   
+
    assign iu_lq_t0_i0_completed_itag = iu_lq_t0_i0_completed_itag_int;
    assign iu_lq_t0_i1_completed_itag = iu_lq_t0_i1_completed_itag_int;
 `ifndef THREADS1
    assign iu_lq_t1_i0_completed_itag = iu_lq_t1_i0_completed_itag_int;
    assign iu_lq_t1_i1_completed_itag = iu_lq_t1_i1_completed_itag_int;
-`endif   
+`endif
 
    assign event_bus_in[0]  = iu_event_bus_in;
    assign iu_event_bus_out = event_bus_out[1];
@@ -1299,9 +1350,10 @@ module iuq(
 
 
    iuq_btb iuq_btb0(
+//    tri_btb_64x64_1r1w iuq_btb0(
       .gnd(gnd),
       .vdd(vdd),
-      .vcs(vdd),	
+      .vcs(vdd),
       .nclk(nclk),
       .pc_iu_func_sl_thold_2(pc_iu_func_sl_thold_2),
       .pc_iu_sg_2(pc_iu_sg_2),
@@ -1323,9 +1375,12 @@ module iuq(
       .data_out(iu2_btb_rd_data[0:42]),
       .pc_iu_init_reset(pc_iu_init_reset)
    );
-   
-   
+
+
    iuq_ifetch iuq_ifetch0(
+      //.vcs(vdd),
+      //.vdd(vdd),
+      //.gnd(gnd),
       .nclk(nclk),
       .tc_ac_ccflush_dc(tc_ac_ccflush_dc),
       .tc_ac_scan_dis_dc_b(tc_ac_scan_dis_dc_b),
@@ -1748,11 +1803,12 @@ module iuq(
       .coretrace_ctrls_in(coretrace_ctrls_in),
       .coretrace_ctrls_out(ifetch_coretrace_ctrls_out)
    );
-   
+
+//   iuq_bht bht0(
    tri_bht_1024x8_1r1w bht0(
       .gnd(gnd),
       .vdd(vdd),
-      .vcs(vdd),	
+      .vcs(vdd),
       .nclk(nclk),
       .pc_iu_func_sl_thold_2(pc_iu_func_sl_thold_2),
       .pc_iu_sg_2(pc_iu_sg_2),
@@ -1814,12 +1870,13 @@ module iuq(
       .data_out3(iu2_3_bh0_rd_data),
       .pc_iu_init_reset(pc_iu_init_reset)
    );
-   
-   
+
+
+//   iuq_bht bht1(
    tri_bht_1024x8_1r1w bht1(
       .gnd(gnd),
       .vdd(vdd),
-      .vcs(vdd),	
+      .vcs(vdd),
       .nclk(nclk),
       .pc_iu_func_sl_thold_2(pc_iu_func_sl_thold_2),
       .pc_iu_sg_2(pc_iu_sg_2),
@@ -1881,11 +1938,12 @@ module iuq(
       .data_out3(iu2_3_bh1_rd_data),
       .pc_iu_init_reset(pc_iu_init_reset)
    );
-      
+
+//   iuq_bht bht2(
    tri_bht_512x4_1r1w bht2(
       .gnd(gnd),
       .vdd(vdd),
-      .vcs(vdd),	
+      .vcs(vdd),
       .nclk(nclk),
       .pc_iu_func_sl_thold_2(pc_iu_func_sl_thold_2),
       .pc_iu_sg_2(pc_iu_sg_2),
@@ -1947,8 +2005,11 @@ module iuq(
       .data_out3(iu2_3_bh2_rd_data),
       .pc_iu_init_reset(pc_iu_init_reset)
    );
-   
+
+   //`IBUFF_IFAR_WIDTH  => `IBUFF_IFAR_WIDTH,
    iuq_slice_top iuq_slice_top0(
+      //.vdd(vdd),
+      //.gnd(gnd),
       .nclk(nclk),
       .pc_iu_sg_2(pc_iu_sg_2),
       .pc_iu_func_sl_thold_2(pc_iu_func_sl_thold_2),
@@ -1958,7 +2019,7 @@ module iuq(
       .tc_ac_ccflush_dc(tc_ac_ccflush_dc),
       .d_mode(d_mode),
       .delay_lclkr(delay_lclkr),
-      .mpw1_b(mpw1_b),                    
+      .mpw1_b(mpw1_b),
       .mpw2_b(mpw2_b),
       .scan_in(slice_scan_in),
       .scan_out(slice_scan_out),
@@ -1971,6 +2032,9 @@ module iuq(
       .iu_pc_axu0_credit_ok(iu_pc_axu0_credit_ok),
       .iu_pc_axu1_credit_ok(iu_pc_axu1_credit_ok),
 
+      //-------------------------------
+      // Performance interface with I$
+      //-------------------------------
       .pc_iu_event_bus_enable(pc_iu_event_bus_enable),
       .slice_ic_t0_perf_events(slice_ic_t0_perf_events),
 `ifndef THREADS1
@@ -1994,8 +2058,12 @@ module iuq(
       .xu_iu_msr_ucle(xu_iu_msr_ucle),
       .spr_single_issue(spr_single_issue),
 
+      // Input to dispatch to block due to ivax
       .cp_dis_ivax(cp_dis_ivax),
-      
+
+      //-----------------------------
+      // MMU Connections
+      //-----------------------------
       .mm_iu_flush_req(mm_iu_flush_req),
       .dp_cp_hold_req(dp_cp_hold_req),
       .mm_iu_hold_done(mm_iu_hold_done),
@@ -2004,18 +2072,21 @@ module iuq(
       .mm_iu_bus_snoop_hold_done(mm_iu_bus_snoop_hold_done),
       .mm_iu_tlbi_complete(mm_iu_tlbi_complete),
 
+      //----------------------------
+      // Credit Interface with IU
+      //----------------------------
       .rv_iu_fx0_credit_free(rv_iu_fx0_credit_free),
-      .rv_iu_fx1_credit_free(rv_iu_fx1_credit_free),		
+      .rv_iu_fx1_credit_free(rv_iu_fx1_credit_free),		// Need to add 2nd unit someday
       .lq_iu_credit_free(lq_iu_credit_free),
       .sq_iu_credit_free(sq_iu_credit_free),
-      .axu0_iu_credit_free(axu0_iu_credit_free),		
-      .axu1_iu_credit_free(axu1_iu_credit_free),		
-      
+      .axu0_iu_credit_free(axu0_iu_credit_free),		// credit free from axu reservation station
+      .axu1_iu_credit_free(axu1_iu_credit_free),		// credit free from axu reservation station
+
       .ib_rm_rdy(ib_rm_rdy),
       .rm_ib_iu3_val(rm_ib_iu3_val),
       .ib_uc_rdy(ib_uc_rdy),
       .uc_ib_done(uc_ib_done),
-                  
+
       .iu_flush(iu_flush),
       .cp_flush(cp_flush_internal),
       .br_iu_redirect(br_iu_redirect),
@@ -2023,7 +2094,10 @@ module iuq(
       .cp_rn_uc_credit_free(cp_rn_uc_credit_free),
       .xu_iu_run_thread(xu_iu_run_thread),
       .iu_xu_credits_returned(iu_xu_credits_returned),
-     
+
+      //-----------------------------
+      // SPR connections
+      //-----------------------------
       .spr_cpcr_we(spr_cpcr_we),
       .spr_t0_cpcr2_fx0_cnt(spr_t0_cpcr2_fx0_cnt),
       .spr_t0_cpcr2_fx1_cnt(spr_t0_cpcr2_fx1_cnt),
@@ -2054,7 +2128,7 @@ module iuq(
       .spr_t1_cpcr5_fu0_cnt(spr_t1_cpcr5_fu0_cnt),
       .spr_t1_cpcr5_fu1_cnt(spr_t1_cpcr5_fu1_cnt),
       .spr_t1_cpcr5_cp_cnt(spr_t1_cpcr5_cp_cnt),
-`endif              
+`endif
       .spr_cpcr0_fx0_cnt(spr_cpcr0_fx0_cnt),
       .spr_cpcr0_fx1_cnt(spr_cpcr0_fx1_cnt),
       .spr_cpcr0_lq_cnt(spr_cpcr0_lq_cnt),
@@ -2068,8 +2142,14 @@ module iuq(
       .spr_t1_low_pri_count(spr_t1_low_pri_count),
 `endif
 
+      //-----------------------------
+      // SPR values
+      //-----------------------------
       .iu_au_t0_config_iucr(iu_au_t0_config_iucr),
-         
+
+      //----------------------------
+      // Ucode interface with IB
+      //----------------------------
       .uc_ib_iu3_t0_invalid(uc_ib_iu3_t0_invalid),
       .uc_ib_t0_val(uc_ib_t0_val),
       .uc_ib_t0_instr0(uc_ib_t0_instr0),
@@ -2078,7 +2158,10 @@ module iuq(
       .uc_ib_t0_ifar1(uc_ib_t0_ifar1),
       .uc_ib_t0_ext0(uc_ib_t0_ext0),
       .uc_ib_t0_ext1(uc_ib_t0_ext1),
-      
+
+      //----------------------------
+      // Completion Interface
+      //----------------------------
       .cp_rn_empty(cp_rn_empty),
       .cp_rn_t0_i0_axu_exception_val(cp_rn_t0_i0_axu_exception_val),
       .cp_rn_t0_i0_axu_exception(cp_rn_t0_i0_axu_exception),
@@ -2098,7 +2181,7 @@ module iuq(
       .cp_rn_t0_i0_t3_t(cp_rn_t0_i0_t3_t),
       .cp_rn_t0_i0_t3_p(cp_rn_t0_i0_t3_p),
       .cp_rn_t0_i0_t3_a(cp_rn_t0_i0_t3_a),
-      
+
       .cp_rn_t0_i1_v(cp_rn_t0_i1_v),
       .cp_rn_t0_i1_itag(iu_lq_t0_i1_completed_itag_int),
       .cp_rn_t0_i1_t1_v(cp_rn_t0_i1_t1_v),
@@ -2113,7 +2196,10 @@ module iuq(
       .cp_rn_t0_i1_t3_t(cp_rn_t0_i1_t3_t),
       .cp_rn_t0_i1_t3_p(cp_rn_t0_i1_t3_p),
       .cp_rn_t0_i1_t3_a(cp_rn_t0_i1_t3_a),
-         
+
+      //----------------------------------------------------------------
+      // Interface to reservation station - Completion is snooping also
+      //----------------------------------------------------------------
       .iu_rv_iu6_t0_i0_vld(rn_cp_iu6_t0_i0_vld),
       .iu_rv_iu6_t0_i0_act(iu_rv_iu6_t0_i0_act),
       .iu_rv_iu6_t0_i0_itag(rn_cp_iu6_t0_i0_itag),
@@ -2141,7 +2227,7 @@ module iuq(
       .iu_rv_iu6_t0_i0_type_spv(rn_cp_iu6_t0_i0_type_spv),
       .iu_rv_iu6_t0_i0_type_st(rn_cp_iu6_t0_i0_type_st),
       .iu_rv_iu6_t0_i0_async_block(rn_cp_iu6_t0_i0_async_block),
-      .iu_rv_iu6_t0_i0_np1_flush(rn_cp_iu6_t0_i0_np1_flush),      
+      .iu_rv_iu6_t0_i0_np1_flush(rn_cp_iu6_t0_i0_np1_flush),
       .iu_rv_iu6_t0_i0_isram(rn_cp_iu6_t0_i0_isram),
       .iu_rv_iu6_t0_i0_isload(iu_rv_iu6_t0_i0_isload),
       .iu_rv_iu6_t0_i0_isstore(iu_rv_iu6_t0_i0_isstore),
@@ -2255,11 +2341,17 @@ module iuq(
       .iu_rv_iu6_t0_i1_s3_a(iu_rv_iu6_t0_i1_s3_a),
       .iu_rv_iu6_t0_i1_s3_p(iu_rv_iu6_t0_i1_s3_p),
       .iu_rv_iu6_t0_i1_s3_itag(iu_rv_iu6_t0_i1_s3_itag),
-      .iu_rv_iu6_t0_i1_s3_t(iu_rv_iu6_t0_i1_s3_t),      
+      .iu_rv_iu6_t0_i1_s3_t(iu_rv_iu6_t0_i1_s3_t),
       .iu_rv_iu6_t0_i1_s3_dep_hit(iu_rv_iu6_t0_i1_s3_dep_hit),
 `ifndef THREADS1
+      //-----------------------------
+      // SPR values
+      //-----------------------------
       .iu_au_t1_config_iucr(iu_au_t1_config_iucr),
-         
+
+      //----------------------------
+      // Ucode interface with IB
+      //----------------------------
       .uc_ib_iu3_t1_invalid(uc_ib_iu3_t1_invalid),
       .uc_ib_t1_val(uc_ib_t1_val),
       .uc_ib_t1_instr0(uc_ib_t1_instr0),
@@ -2268,7 +2360,10 @@ module iuq(
       .uc_ib_t1_ifar1(uc_ib_t1_ifar1),
       .uc_ib_t1_ext0(uc_ib_t1_ext0),
       .uc_ib_t1_ext1(uc_ib_t1_ext1),
-      
+
+      //----------------------------
+      // Completion Interface
+      //----------------------------
       .cp_rn_t1_i0_axu_exception_val(cp_rn_t1_i0_axu_exception_val),
       .cp_rn_t1_i0_axu_exception(cp_rn_t1_i0_axu_exception),
       .cp_rn_t1_i1_axu_exception_val(cp_rn_t1_i1_axu_exception_val),
@@ -2287,7 +2382,7 @@ module iuq(
       .cp_rn_t1_i0_t3_t(cp_rn_t1_i0_t3_t),
       .cp_rn_t1_i0_t3_p(cp_rn_t1_i0_t3_p),
       .cp_rn_t1_i0_t3_a(cp_rn_t1_i0_t3_a),
-      
+
       .cp_rn_t1_i1_v(cp_rn_t1_i1_v),
       .cp_rn_t1_i1_itag(iu_lq_t1_i1_completed_itag_int),
       .cp_rn_t1_i1_t1_v(cp_rn_t1_i1_t1_v),
@@ -2302,7 +2397,7 @@ module iuq(
       .cp_rn_t1_i1_t3_t(cp_rn_t1_i1_t3_t),
       .cp_rn_t1_i1_t3_p(cp_rn_t1_i1_t3_p),
       .cp_rn_t1_i1_t3_a(cp_rn_t1_i1_t3_a),
-         
+
       .iu_rv_iu6_t1_i0_vld(rn_cp_iu6_t1_i0_vld),
       .iu_rv_iu6_t1_i0_act(iu_rv_iu6_t1_i0_act),
       .iu_rv_iu6_t1_i0_itag(rn_cp_iu6_t1_i0_itag),
@@ -2447,9 +2542,12 @@ module iuq(
       .iu_rv_iu6_t1_i1_s3_t(iu_rv_iu6_t1_i1_s3_t),
       .iu_rv_iu6_t1_i1_s3_dep_hit(iu_rv_iu6_t1_i1_s3_dep_hit),
 `endif
+      //----------------------------
+      // Ifetch with slice
+      //----------------------------
 `ifndef THREADS1
       .ib_ic_t1_need_fetch(ib_ic_t1_need_fetch),
-      .bp_ib_iu3_t1_val(bp_ib_iu3_t1_val),   
+      .bp_ib_iu3_t1_val(bp_ib_iu3_t1_val),
       .bp_ib_iu3_t1_ifar(bp_ib_iu3_t1_ifar),
       .bp_ib_iu3_t1_bta(bp_ib_iu3_t1_bta),
       .bp_ib_iu3_t1_0_instr(bp_ib_iu3_t1_0_instr),
@@ -2465,9 +2563,9 @@ module iuq(
       .bp_ib_iu3_t0_2_instr(bp_ib_iu3_t0_2_instr),
       .bp_ib_iu3_t0_3_instr(bp_ib_iu3_t0_3_instr),
       .bp_ib_iu3_t0_val(bp_ib_iu3_t0_val)
-   
+
    );
-   
+
    assign iu_rv_iu6_t0_i0_vld = rn_cp_iu6_t0_i0_vld;
    assign iu_rv_iu6_t0_i0_itag = rn_cp_iu6_t0_i0_itag;
    assign iu_rv_iu6_t0_i0_ucode = rn_cp_iu6_t0_i0_ucode;
@@ -2574,15 +2672,16 @@ module iuq(
    assign iu_rv_iu6_t1_i1_t3_t = rn_cp_iu6_t1_i1_t3_t;
    assign iu_rv_iu6_t1_i1_bta_val = rn_cp_iu6_t1_i1_bta_val;
 `endif
-   
+
+   // FPSCR, update on completion.  Use t1 type, but no dependency
 `ifdef THREADS1
    assign cp_axu_i1_t1_v = cp_rn_t0_i1_t1_v;
    assign cp_axu_i0_t1_v = cp_rn_t0_i0_t1_v;
-`endif                     
+`endif
 `ifndef THREADS1
    assign cp_axu_i1_t1_v = {cp_rn_t0_i1_t1_v, cp_rn_t1_i1_t1_v};
    assign cp_axu_i0_t1_v = {cp_rn_t0_i0_t1_v, cp_rn_t1_i0_t1_v};
-`endif                     
+`endif
    assign cp_axu_t0_i0_t1_t = cp_rn_t0_i0_t1_t;
    assign cp_axu_t0_i0_t1_p = cp_rn_t0_i0_t1_p;
    assign cp_axu_t0_i1_t1_t = cp_rn_t0_i1_t1_t;
@@ -2592,8 +2691,8 @@ module iuq(
    assign cp_axu_t1_i0_t1_p = cp_rn_t1_i0_t1_p;
    assign cp_axu_t1_i1_t1_t = cp_rn_t1_i1_t1_t;
    assign cp_axu_t1_i1_t1_p = cp_rn_t1_i1_t1_p;
-`endif                     
-   
+`endif
+
    iuq_cpl_top iuq_cpl_top0(
       .vdd(vdd),
       .gnd(gnd),
@@ -3124,7 +3223,7 @@ module iuq(
       .iu_rf_t0_xer_p(iu_rf_t0_xer_p),
 `ifndef THREADS1
       .iu_rf_t1_xer_p(iu_rf_t1_xer_p),
-`endif      
+`endif
 	   .pc_iu_ram_active(pc_iu_ram_active),
       .pc_iu_ram_flush_thread(pc_iu_ram_flush_thread),
       .xu_iu_msrovride_enab(xu_iu_msrovride_enab),
@@ -3152,11 +3251,11 @@ module iuq(
       .coretrace_ctrls_out(coretrace_ctrls_out)
 
    );
-   
+
    assign iu_pc_ram_done = iu_pc_ram_done_int;
-   
-   
-   
+
+   // Need to fix these
+
    assign g8t_clkoff_b = 1'b1;
    assign g8t_d_mode = 1'b0;
    assign g8t_delay_lclkr = {5{1'b0}};
@@ -3174,7 +3273,7 @@ module iuq(
    assign cam_delay_lclkr = {5{1'b0}};
    assign cam_mpw1_b = {5{1'b1}};
    assign cam_mpw2_b = 1'b1;
-   
+
    assign btb_scan_in = 1'b0;
    assign func_scan_in = 1'b0;
    assign ac_ccfg_scan_in = 1'b0;
@@ -3191,11 +3290,11 @@ module iuq(
    assign bh2_scan_in = 1'b0;
    assign slice_scan_in = {(`THREADS*7+1){1'b0}};
    assign cp_scan_in = {(`THREADS+1){1'b0}};
-   
+
    assign iu_pc_bo_fail[4] = 1'b0;
    assign iu_pc_bo_diagout[4] = 1'b0;
 
-
+   // This needs to get moved into an RLM
    tri_plat #(.WIDTH(15)) perv_3to2_reg(
       .vd(vdd),
       .gd(gnd),
@@ -3235,5 +3334,3 @@ module iuq(
 
 
 endmodule
-
-

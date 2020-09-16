@@ -9,10 +9,11 @@
 
 `timescale 1 ns / 1 ns
 
+//  Description:  XU SPR - DVC compare component
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
-
-
 
 module lq_spr_dvccmp(
    en,
@@ -23,6 +24,9 @@ module lq_spr_dvccmp(
    dvc_cmpr
 );
 
+//-------------------------------------------------------------------
+// Generics
+//-------------------------------------------------------------------
 parameter			    REGSIZE = 64;
 
 input			        en;
@@ -31,7 +35,8 @@ input [8-(REGSIZE/8):7]	cmp;
 input [0:1]			    dvcm;
 input [8-(REGSIZE/8):7]	dvcbe;
 output			        dvc_cmpr;
-  
+
+// Signals
 wire [8-(REGSIZE/8):7]	cmp_mask_or;
 wire [8-(REGSIZE/8):7]	cmp_mask_and;
 wire				    cmp_and;
@@ -52,7 +57,7 @@ generate
   end
 endgenerate
 
-generate 
+generate
   if (REGSIZE == 64) begin : cmp_andor_gen64
  	 assign cmp_andor = (&(cmp_mask_or[0:1]) & |(dvcbe[0:1])) |
  	                    (&(cmp_mask_or[2:3]) & |(dvcbe[2:3])) |
@@ -61,9 +66,9 @@ generate
   end
 endgenerate
 
-assign dvc_cmpr = (dvcm[0:1] == 2'b00) ?  en00          : 
-                  (dvcm[0:1] == 2'b01) ? (en & cmp_and) : 
-                  (dvcm[0:1] == 2'b10) ? (en & cmp_or)  : 
-                                         (en & cmp_andor); 
+assign dvc_cmpr = (dvcm[0:1] == 2'b00) ?  en00          :
+                  (dvcm[0:1] == 2'b01) ? (en & cmp_and) :
+                  (dvcm[0:1] == 2'b10) ? (en & cmp_or)  :
+                                         (en & cmp_andor);
 
-endmodule      
+endmodule

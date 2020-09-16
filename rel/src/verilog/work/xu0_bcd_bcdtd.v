@@ -7,12 +7,16 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//*****************************************************************************
+//  Description:  XU BCD to DPD Conversion
+//
+//*****************************************************************************
 
 module xu0_bcd_bcdtd(
    input [0:11] a,
    output [0:9] y
 );
-   
+
    assign y[0] = (a[5] & a[0] & a[8] & (~a[4])) | (a[9] & a[0] & (~a[8])) | (a[1] & (~a[0]));
    assign y[1] = (a[6] & a[0] & a[8] & (~a[4])) | (a[10] & a[0] & (~a[8])) | (a[2] & (~a[0]));
    assign y[2] = a[3];
@@ -23,5 +27,5 @@ module xu0_bcd_bcdtd(
    assign y[7] = ((~a[4]) & a[9] &  (~a[8])) | (a[4] & a[8]) | a[0];
    assign y[8] = ((~a[0]) & a[10] & (~a[8])) | (a[0] & a[8]) | a[4];
    assign y[9] = a[11];
-      
+
 endmodule

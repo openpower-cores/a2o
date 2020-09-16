@@ -7,7 +7,9 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
-
+//  Description:  XU LSU Control
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
 
@@ -494,55 +496,92 @@ module lq_ctl(
    ccfg_scan_out
 );
 
-parameter                                                    WAYDATASIZE = 34;		         
+//-------------------------------------------------------------------
+// Generics
+//-------------------------------------------------------------------
+//parameter                                                    EXPAND_TYPE = 2;
+//parameter                                                    `GPR_WIDTH_ENC = 6;
+//parameter                                                    `XER_POOL_ENC = 4;
+//parameter                                                    `CR_POOL_ENC = 5;
+//parameter                                                    `GPR_POOL_ENC = 6;
+//parameter                                                    `AXU_SPARE_ENC = 3;
+//parameter                                                    `THREADS_POOL_ENC = 1;
+//parameter                                                    `ITAG_SIZE_ENC = 7;		      // Instruction Tag Size
+//parameter                                                    `CR_WIDTH = 4;
+//parameter                                                    `UCODE_ENTRIES_ENC = 3;
+//parameter                                                    `STQ_DATA_SIZE = 64;		      // 64 or 128 Bit store data sizes supported
+//parameter                                                    ``FXU0_PIPE_START = 2;
+//parameter                                                    `XU0_PIPE_END = 8;
+//parameter                                                    ``FXU1_PIPE_START = 2;
+//parameter                                                    `XU1_PIPE_END = 5;
+//parameter                                                    `LQ_LOAD_PIPE_START = 4;
+//parameter                                                    `LQ_LOAD_PIPE_END = 8;
+//parameter                                                    `LQ_REL_PIPE_START = 2;
+//parameter                                                    `LQ_REL_PIPE_END = 4;
+//parameter                                                    `THREADS = 2;
+//parameter                                                    `DC_SIZE = 15;		            // 14 => 16K L1D$, 15 => 32K L1D$
+//parameter                                                    `CL_SIZE = 6;
+//parameter                                                    `LMQ_ENTRIES = 8;
+//parameter                                                    `EMQ_ENTRIES = 4;
+//parameter                                                    `REAL_IFAR_WIDTH = 42;		   // 42 bit real address
+//parameter                                                    `LDSTQ_ENTRIES = 16;		      // Order Queue Size
+//parameter                                                    `PF_IFAR_WIDTH = 12;		      // number of IAR bits used by prefetch
+//parameter                                                    `BUILD_PFETCH = 1;		      // 1=> include pfetch in the build, 0=> build without pfetch
+//parameter                                                    `PFETCH_INITIAL_DEPTH = 0;		// the initial value for the SPR that determines how many lines to prefetch
+//parameter                                                    ``PFETCH_Q_SIZE_ENC = 3;		// number of bits to address queue size (3 => 8 entries, 4 => 16 entries)
+//parameter                                                    `PFETCH_Q_SIZE = 8;		      // number of entries in prefetch queue
+parameter                                                    WAYDATASIZE = 34;		         // TagSize + Parity Bits
 parameter                                                    XU0_PIPE_START = `FXU0_PIPE_START+1;
 parameter                                                    XU0_PIPE_END   = `FXU0_PIPE_END;
 parameter                                                    XU1_PIPE_START = `FXU1_PIPE_START+1;
 parameter                                                    XU1_PIPE_END   = `FXU1_PIPE_END;
 
-input                                                        xu_lq_spr_ccr2_en_trace;		
-input                                                        xu_lq_spr_ccr2_en_pc;		   
-input                                                        xu_lq_spr_ccr2_en_ditc;		
-input                                                        xu_lq_spr_ccr2_en_icswx;		
-input                                                        xu_lq_spr_ccr2_dfrat;		   
-input [0:8]                                                  xu_lq_spr_ccr2_dfratsc;		
-input                                                        xu_lq_spr_ccr2_ap;		      
-input                                                        xu_lq_spr_ccr2_ucode_dis;		
-input                                                        xu_lq_spr_ccr2_notlb;		   
-input                                                        xu_lq_spr_xucr0_clkg_ctl;		
-input                                                        xu_lq_spr_xucr0_wlk;		   
-input                                                        xu_lq_spr_xucr0_mbar_ack;		
-input                                                        xu_lq_spr_xucr0_tlbsync;		
-input                                                        xu_lq_spr_xucr0_dcdis;		   
-input                                                        xu_lq_spr_xucr0_aflsta;		
-input                                                        xu_lq_spr_xucr0_flsta;		   
-input                                                        xu_lq_spr_xucr0_clfc;		   
-input                                                        xu_lq_spr_xucr0_cls;		   
-input [0:`THREADS-1]                                         xu_lq_spr_xucr0_trace_um;		
-input                                                        xu_lq_spr_xucr0_mddp;		   
-input                                                        xu_lq_spr_xucr0_mdcp;		   
-input                                                        xu_lq_spr_xucr4_mmu_mchk;		
-input                                                        xu_lq_spr_xucr4_mddmh;		   
-input [0:`THREADS-1]                                         xu_lq_spr_msr_cm;		      
-input [0:`THREADS-1]                                         xu_lq_spr_msr_ds;		      
-input [0:`THREADS-1]                                         xu_lq_spr_msr_fp;		      
-input [0:`THREADS-1]                                         xu_lq_spr_msr_spv;		      
-input [0:`THREADS-1]                                         xu_lq_spr_msr_gs;		      
-input [0:`THREADS-1]                                         xu_lq_spr_msr_pr;		      
-input [0:`THREADS-1]                                         xu_lq_spr_msr_de;		      
-input [0:`THREADS-1]                                         xu_lq_spr_msr_ucle;		      
-input [0:`THREADS-1]                                         xu_lq_spr_msrp_uclep;		   
-input [0:2*`THREADS-1]                                       xu_lq_spr_dbcr0_dac1;		   
-input [0:2*`THREADS-1]                                       xu_lq_spr_dbcr0_dac2;		   
-input [0:2*`THREADS-1]                                       xu_lq_spr_dbcr0_dac3;		   
-input [0:2*`THREADS-1]                                       xu_lq_spr_dbcr0_dac4;		   
-input [0:`THREADS-1]                                         xu_lq_spr_dbcr0_idm;		   
-input [0:`THREADS-1]                                         xu_lq_spr_epcr_duvd;		   
-output                                                       lq_xu_spr_xucr0_cul;		   
-output                                                       lq_xu_spr_xucr0_cslc_xuop;	
-output                                                       lq_xu_spr_xucr0_cslc_binv;	
-output                                                       lq_xu_spr_xucr0_clo;		   
-output [0:`THREADS-1]                                        lq_iu_spr_dbcr3_ivc;		   
+//--------------------------------------------------------------
+// SPR Interface
+//--------------------------------------------------------------
+input                                                        xu_lq_spr_ccr2_en_trace;		// MTSPR Trace is Enabled
+input                                                        xu_lq_spr_ccr2_en_pc;		   // MSGSND is Enabled
+input                                                        xu_lq_spr_ccr2_en_ditc;		// DITC is Enabled
+input                                                        xu_lq_spr_ccr2_en_icswx;		// ICSWX is Enabled
+input                                                        xu_lq_spr_ccr2_dfrat;		   // Force Real Address Translation
+input [0:8]                                                  xu_lq_spr_ccr2_dfratsc;		// 0:4: wimge, 5:8: u0:3
+input                                                        xu_lq_spr_ccr2_ap;		      // AP Available
+input                                                        xu_lq_spr_ccr2_ucode_dis;		// Ucode Disabled
+input                                                        xu_lq_spr_ccr2_notlb;		   // MMU is disabled
+input                                                        xu_lq_spr_xucr0_clkg_ctl;		// Clock Gating Override
+input                                                        xu_lq_spr_xucr0_wlk;		   // Data Cache Way Locking Enable
+input                                                        xu_lq_spr_xucr0_mbar_ack;		// L2 ACK of membar and lwsync
+input                                                        xu_lq_spr_xucr0_tlbsync;		// L2 ACK of tlbsync
+input                                                        xu_lq_spr_xucr0_dcdis;		   // Data Cache Disable
+input                                                        xu_lq_spr_xucr0_aflsta;		// AXU Force Load/Store Alignment interrupt
+input                                                        xu_lq_spr_xucr0_flsta;		   // FX Force Load/Store Alignment interrupt
+input                                                        xu_lq_spr_xucr0_clfc;		   // Cache Directory Lock Flash Clear
+input                                                        xu_lq_spr_xucr0_cls;		   // Cacheline Size = 1 => 128Byte size, 0 => 64Byte size
+input [0:`THREADS-1]                                         xu_lq_spr_xucr0_trace_um;		// TRACE SPR is Enabled in user mode
+input                                                        xu_lq_spr_xucr0_mddp;		   // Machine Check on Data Cache Directory Parity Error
+input                                                        xu_lq_spr_xucr0_mdcp;		   // Machine Check on Data Cache Parity Error
+input                                                        xu_lq_spr_xucr4_mmu_mchk;		// Machine Check on a Data ERAT Parity or Multihit Error
+input                                                        xu_lq_spr_xucr4_mddmh;		   // Machine Check on Data Cache Directory Multihit Error
+input [0:`THREADS-1]                                         xu_lq_spr_msr_cm;		      // 64bit mode enable
+input [0:`THREADS-1]                                         xu_lq_spr_msr_ds;		      // Data Address Space
+input [0:`THREADS-1]                                         xu_lq_spr_msr_fp;		      // FP Available
+input [0:`THREADS-1]                                         xu_lq_spr_msr_spv;		      // VEC Available
+input [0:`THREADS-1]                                         xu_lq_spr_msr_gs;		      // Guest State
+input [0:`THREADS-1]                                         xu_lq_spr_msr_pr;		      // Problem State
+input [0:`THREADS-1]                                         xu_lq_spr_msr_de;		      // Debug Interrupt Enable
+input [0:`THREADS-1]                                         xu_lq_spr_msr_ucle;		      // User Cache Locking Enable
+input [0:`THREADS-1]                                         xu_lq_spr_msrp_uclep;		   // User Cache Locking Enable Protect
+input [0:2*`THREADS-1]                                       xu_lq_spr_dbcr0_dac1;		   // Data Address Compare 1 Debug Event Enable
+input [0:2*`THREADS-1]                                       xu_lq_spr_dbcr0_dac2;		   // Data Address Compare 2 Debug Event Enable
+input [0:2*`THREADS-1]                                       xu_lq_spr_dbcr0_dac3;		   // Data Address Compare 3 Debug Event Enable
+input [0:2*`THREADS-1]                                       xu_lq_spr_dbcr0_dac4;		   // Data Address Compare 4 Debug Event Enable
+input [0:`THREADS-1]                                         xu_lq_spr_dbcr0_idm;		   // Internal Debug Mode Enable
+input [0:`THREADS-1]                                         xu_lq_spr_epcr_duvd;		   // Disable Hypervisor Debug
+output                                                       lq_xu_spr_xucr0_cul;		   // Cache Lock unable to lock
+output                                                       lq_xu_spr_xucr0_cslc_xuop;	// Invalidate type instruction invalidated lock
+output                                                       lq_xu_spr_xucr0_cslc_binv;	// Back-Invalidate invalidated lock
+output                                                       lq_xu_spr_xucr0_clo;		   // Cache Lock instruction caused an overlock
+output [0:`THREADS-1]                                        lq_iu_spr_dbcr3_ivc;		   // Instruction Value Compare Enabled
 input                                                        slowspr_val_in;
 input                                                        slowspr_rw_in;
 input [0:1]                                                  slowspr_etid_in;
@@ -556,6 +595,9 @@ output [0:9]                                                 slowspr_addr_out;
 output [64-(2**`GPR_WIDTH_ENC):63]                           slowspr_data_out;
 output                                                       slowspr_done_out;
 
+//--------------------------------------------------------------
+// CP Interface
+//--------------------------------------------------------------
 input [0:`THREADS-1]                                         iu_lq_cp_flush;
 input [0:`THREADS-1]                                         iu_lq_recirc_val;
 input [0:`ITAG_SIZE_ENC*`THREADS-1]                          iu_lq_cp_next_itag;
@@ -576,6 +618,8 @@ output [0:3]                                                 lq0_iu_dacrw;
 output [0:31]                                                lq0_iu_instr;
 output [64-(2**`GPR_WIDTH_ENC):63]                           lq0_iu_eff_addr;
 
+//   IU interface to RV for pfetch predictor table0
+// port 0
 input [0:`THREADS-1]                                         rv_lq_rv1_i0_vld;
 input                                                        rv_lq_rv1_i0_ucode_preissue;
 input                                                        rv_lq_rv1_i0_2ucode;
@@ -585,6 +629,7 @@ input                                                        rv_lq_rv1_i0_isLoad
 input [61-`PF_IFAR_WIDTH+1:61]                               rv_lq_rv1_i0_ifar;
 input [0:`ITAG_SIZE_ENC-1]                                   rv_lq_rv1_i0_itag;
 
+// port 1
 input [0:`THREADS-1]                                         rv_lq_rv1_i1_vld;
 input                                                        rv_lq_rv1_i1_ucode_preissue;
 input                                                        rv_lq_rv1_i1_2ucode;
@@ -594,10 +639,14 @@ input                                                        rv_lq_rv1_i1_isLoad
 input [61-`PF_IFAR_WIDTH+1:61]                               rv_lq_rv1_i1_ifar;
 input [0:`ITAG_SIZE_ENC-1]                                   rv_lq_rv1_i1_itag;
 
+// release itag to pfetch
 input [0:`THREADS-1]                                         odq_pf_report_tid;
 input [0:`ITAG_SIZE_ENC-1]                                   odq_pf_report_itag;
 input                                                        odq_pf_resolved;
 
+//--------------------------------------------------------------
+// Interface with XU DERAT
+//--------------------------------------------------------------
 input                                                        xu_lq_act;
 input [0:`THREADS-1]                                         xu_lq_val;
 input                                                        xu_lq_is_eratre;
@@ -609,10 +658,13 @@ input [0:4]                                                  xu_lq_ra_entry;
 input [64-(2**`GPR_WIDTH_ENC):63]                            xu_lq_rs_data;
 input                                                        xu_lq_hold_req;
 output [64-(2**`GPR_WIDTH_ENC):63]                           lq_xu_ex5_data;
-output                                                       lq_xu_ord_par_err;  
+output                                                       lq_xu_ord_par_err;
 output                                                       lq_xu_ord_read_done;
 output                                                       lq_xu_ord_write_done;
 
+//--------------------------------------------------------------
+// Interface with RV
+//--------------------------------------------------------------
 input [0:`THREADS-1]                                         rv_lq_vld;
 input [0:`ITAG_SIZE_ENC-1]                                   rv_lq_ex0_itag;
 input [0:31]                                                 rv_lq_ex0_instr;
@@ -638,6 +690,9 @@ output                                                       lq_rv_itag1_hold;
 output                                                       lq_rv_itag1_cord;
 output [0:`THREADS-1]                                        lq_rv_clr_hold;
 
+//-------------------------------------------------------------------
+// Interface with Bypass Controller
+//-------------------------------------------------------------------
 input [2:12]                                                 rv_lq_ex0_s1_xu0_sel;
 input [2:12]                                                 rv_lq_ex0_s2_xu0_sel;
 input [2:7]                                                  rv_lq_ex0_s1_xu1_sel;
@@ -647,6 +702,9 @@ input [4:8]                                                  rv_lq_ex0_s2_lq_sel
 input [2:3]                                                  rv_lq_ex0_s1_rel_sel;
 input [2:3]                                                  rv_lq_ex0_s2_rel_sel;
 
+//--------------------------------------------------------------
+// Interface with Regfiles
+//--------------------------------------------------------------
 input [0:`THREADS-1]                                         xu_lq_xer_cp_rd;
 input [64-(2**`GPR_WIDTH_ENC):63]                            rv_lq_gpr_ex1_r0d;
 input [64-(2**`GPR_WIDTH_ENC):63]                            rv_lq_gpr_ex1_r1d;
@@ -665,6 +723,9 @@ output [(128-`STQ_DATA_SIZE):128+((`STQ_DATA_SIZE-1)/8)]     lq_xu_gpr_rel_wd;
 output                                                       lq_xu_cr_ex5_we;
 output [0:`CR_POOL_ENC+`THREADS_POOL_ENC-1]                  lq_xu_cr_ex5_wa;
 
+//-------------------------------------------------------------------
+// Interface with XU0
+//-------------------------------------------------------------------
 input                                                        xu0_lq_ex3_act;
 input                                                        xu0_lq_ex3_abort;
 input [64-(2**`GPR_WIDTH_ENC):63]                            xu0_lq_ex3_rt;
@@ -676,31 +737,40 @@ output [0:`CR_WIDTH-1]                                       lq_xu_ex5_cr;
 output [(128-`STQ_DATA_SIZE):127]                            lq_xu_ex5_rt;
 output                                                       lq_xu_ex5_abort;
 
+//-------------------------------------------------------------------
+// Interface with XU1
+//-------------------------------------------------------------------
 input                                                        xu1_lq_ex3_act;
 input                                                        xu1_lq_ex3_abort;
 input [64-(2**`GPR_WIDTH_ENC):63]                            xu1_lq_ex3_rt;
 
+//-------------------------------------------------------------------
+// Interface with AXU PassThru with XU
+//-------------------------------------------------------------------
 output [59:63]                                               lq_xu_axu_ex4_addr;
 output                                                       lq_xu_axu_ex5_we;
 output                                                       lq_xu_axu_ex5_le;
 
+//--------------------------------------------------------------
+// Interface with MMU
+//--------------------------------------------------------------
 input                                                        mm_lq_hold_req;
 input                                                        mm_lq_hold_done;
 input [0:`THREADS*14-1]                                      mm_lq_pid;
-input [0:7]                                                  mm_lq_lsu_lpidr;		   
+input [0:7]                                                  mm_lq_lsu_lpidr;		   // the LPIDR register
 input [0:`THREADS*20-1]                                      mm_lq_mmucr0;
 input [0:9]                                                  mm_lq_mmucr1;
 input [0:4]                                                  mm_lq_rel_val;
 input [0:131]                                                mm_lq_rel_data;
 input [0:`EMQ_ENTRIES-1]                                     mm_lq_rel_emq;
 input [0:`ITAG_SIZE_ENC-1]                                   mm_lq_itag;
-input [0:`THREADS-1]                                         mm_lq_tlb_miss;		   
-input [0:`THREADS-1]                                         mm_lq_tlb_inelig;		
-input [0:`THREADS-1]                                         mm_lq_pt_fault;		   
-input [0:`THREADS-1]                                         mm_lq_lrat_miss;		   
-input [0:`THREADS-1]                                         mm_lq_tlb_multihit;		
-input [0:`THREADS-1]                                         mm_lq_tlb_par_err;		
-input [0:`THREADS-1]                                         mm_lq_lru_par_err;		
+input [0:`THREADS-1]                                         mm_lq_tlb_miss;		   // Request got a TLB Miss
+input [0:`THREADS-1]                                         mm_lq_tlb_inelig;		// Request got a TLB Ineligible
+input [0:`THREADS-1]                                         mm_lq_pt_fault;		   // Request got a PT Fault
+input [0:`THREADS-1]                                         mm_lq_lrat_miss;		   // Request got an LRAT Miss
+input [0:`THREADS-1]                                         mm_lq_tlb_multihit;		// Request got a TLB Multihit Error
+input [0:`THREADS-1]                                         mm_lq_tlb_par_err;		// Request got a TLB Parity Error
+input [0:`THREADS-1]                                         mm_lq_lru_par_err;		// Request got a LRU Parity Error
 input                                                        mm_lq_snoop_coming;
 input                                                        mm_lq_snoop_val;
 input [0:25]                                                 mm_lq_snoop_attr;
@@ -722,12 +792,18 @@ output [0:`THREADS-1]                                        lq_mm_mmucr1_we;
 output [0:4]                                                 lq_mm_mmucr1;
 output [0:`THREADS-1]                                        lq_mm_perf_dtlb;
 
+//--------------------------------------------------------------
+// Interface with PC
+//--------------------------------------------------------------
 input                                                        pc_lq_inj_dcachedir_ldp_parity;
 input                                                        pc_lq_inj_dcachedir_ldp_multihit;
 input                                                        pc_lq_inj_dcachedir_stp_parity;
 input                                                        pc_lq_inj_dcachedir_stp_multihit;
 input                                                        pc_lq_inj_prefetcher_parity;
 
+//--------------------------------------------------------------
+// Interface with Load/Store Queses
+//--------------------------------------------------------------
 input [0:`THREADS-1]                                         lsq_ctl_oldest_tid;
 input [0:`ITAG_SIZE_ENC-1]                                   lsq_ctl_oldest_itag;
 input                                                        lsq_ctl_stq1_stg_act;
@@ -773,22 +849,22 @@ input [0:3]                                                  lsq_ctl_rel1_tag;
 input [0:1]                                                  lsq_ctl_rel1_classid;
 input                                                        lsq_ctl_rel1_lock_set;
 input                                                        lsq_ctl_rel1_watch_set;
-input                                                        lsq_ctl_rel2_blk_req;		   
-input [0:127]                                                lsq_ctl_rel2_data;		      
-input                                                        lsq_ctl_stq2_blk_req;		   
+input                                                        lsq_ctl_rel2_blk_req;		   // Block Reload due to RV issue or Back-Invalidate
+input [0:127]                                                lsq_ctl_rel2_data;		      // Reload PRF Update Data
+input                                                        lsq_ctl_stq2_blk_req;		   // Block Store due to RV issue
 input [0:`ITAG_SIZE_ENC-1]                                   lsq_ctl_stq5_itag;
 input [0:`AXU_SPARE_ENC+`GPR_POOL_ENC+`THREADS_POOL_ENC-1]   lsq_ctl_stq5_tgpr;
 input                                                        lsq_ctl_rel2_upd_val;
-input                                                        lsq_ctl_rel3_l1dump_val;		
-input                                                        lsq_ctl_rel3_clr_relq;		   
-output                                                       ctl_lsq_stq4_perr_reject;    
+input                                                        lsq_ctl_rel3_l1dump_val;		// Reload Complete for an L1_DUMP reload
+input                                                        lsq_ctl_rel3_clr_relq;		   // Reload Complete due to an ECC error
+output                                                       ctl_lsq_stq4_perr_reject;    // STQ4 parity error detect, reject STQ2 Commit
 output [0:7]                                                 ctl_dat_stq5_way_perr_inval;
 input                                                        lsq_ctl_ex3_strg_val;
 input                                                        lsq_ctl_ex3_strg_noop;
 input                                                        lsq_ctl_ex3_illeg_lswx;
-input                                                        lsq_ctl_ex3_ct_val;		      
-input [0:5]                                                  lsq_ctl_ex3_be_ct;		      
-input [0:5]                                                  lsq_ctl_ex3_le_ct;		      
+input                                                        lsq_ctl_ex3_ct_val;		      // ICSWX Data is valid
+input [0:5]                                                  lsq_ctl_ex3_be_ct;		      // Big Endian Coprocessor Type Select
+input [0:5]                                                  lsq_ctl_ex3_le_ct;		      // Little Endian Coprocessor Type Select
 input                                                        lsq_ctl_stq_cpl_ready;
 input [0:`ITAG_SIZE_ENC-1]                                   lsq_ctl_stq_cpl_ready_itag;
 input [0:`THREADS-1]                                         lsq_ctl_stq_cpl_ready_tid;
@@ -840,12 +916,12 @@ output                                                       ctl_lsq_ex5_lock_cl
 output                                                       ctl_lsq_ex5_lock_set;
 output                                                       ctl_lsq_ex5_watch_set;
 output [0:`AXU_SPARE_ENC+`GPR_POOL_ENC+`THREADS_POOL_ENC-1]  ctl_lsq_ex5_tgpr;
-output                                                       ctl_lsq_ex5_axu_val;		
+output                                                       ctl_lsq_ex5_axu_val;		// XU,AXU type operation
 output                                                       ctl_lsq_ex5_is_epid;
 output [0:3]                                                 ctl_lsq_ex5_usr_def;
-output                                                       ctl_lsq_ex5_drop_rel;		
-output                                                       ctl_lsq_ex5_flush_req;		
-output                                                       ctl_lsq_ex5_flush_pfetch; 
+output                                                       ctl_lsq_ex5_drop_rel;		// L2 only instructions
+output                                                       ctl_lsq_ex5_flush_req;		// Flush request from LDQ/STQ
+output                                                       ctl_lsq_ex5_flush_pfetch; // Flush Prefetch in EX5
 output [0:10]                                                ctl_lsq_ex5_cmmt_events;
 output                                                       ctl_lsq_ex5_perf_val0;
 output [0:3]                                                 ctl_lsq_ex5_perf_sel0;
@@ -862,15 +938,15 @@ output [0:3]                                                 ctl_lsq_ex5_dacrw;
 output [0:5]                                                 ctl_lsq_ex5_ttype;
 output [0:1]                                                 ctl_lsq_ex5_l_fld;
 output                                                       ctl_lsq_ex5_load_hit;
-input  [0:3]                                                 lsq_ctl_ex6_ldq_events;      
-input  [0:1]                                                 lsq_ctl_ex6_stq_events;      
+input  [0:3]                                                 lsq_ctl_ex6_ldq_events;      // LDQ Pipeline Performance Events
+input  [0:1]                                                 lsq_ctl_ex6_stq_events;      // LDQ Pipeline Performance Events
 output [0:3]                                                 ctl_lsq_ex6_ldh_dacrw;
 output [0:26]                                                ctl_lsq_stq3_icswx_data;
 output [0:`THREADS-1]                                        ctl_lsq_dbg_int_en;
 output [0:`THREADS-1]                                        ctl_lsq_ldp_idle;
 output                                                       ctl_lsq_rv1_dir_rd_val;
 output                                                       ctl_lsq_spr_lsucr0_ford;
-output                                                       ctl_lsq_spr_lsucr0_b2b;		
+output                                                       ctl_lsq_spr_lsucr0_b2b;		// LSUCR0[B2B] Mode enabled
 output                                                       ctl_lsq_spr_lsucr0_lge;
 output [0:2]                                                 ctl_lsq_spr_lsucr0_lca;
 output [0:2]                                                 ctl_lsq_spr_lsucr0_sca;
@@ -878,12 +954,18 @@ output                                                       ctl_lsq_spr_lsucr0_
 output [64-(2**`GPR_WIDTH_ENC):63]                           ctl_lsq_ex4_xu1_data;
 output [0:`THREADS-1]                                        ctl_lsq_pf_empty;
 
+//--------------------------------------------------------------
+// Interface with Commit Pipe Directories
+//--------------------------------------------------------------
 output [0:3]                                                 dir_arr_wr_enable;
 output [0:7]                                                 dir_arr_wr_way;
 output [64-(`DC_SIZE-3):63-`CL_SIZE]                         dir_arr_wr_addr;
 output [64-`REAL_IFAR_WIDTH:64-`REAL_IFAR_WIDTH+WAYDATASIZE-1] dir_arr_wr_data;
 input [0:(8*WAYDATASIZE)-1]                                  dir_arr_rd_data1;
 
+//--------------------------------------------------------------
+// Interface with DATA
+//--------------------------------------------------------------
 output                                                       ctl_dat_ex1_data_act;
 output [52:59]                                               ctl_dat_ex2_eff_addr;
 output [0:4]                                                 ctl_dat_ex3_opsize;
@@ -900,6 +982,9 @@ input [(128-`STQ_DATA_SIZE):127]                             dat_ctl_stq6_axu_da
 output                                                       stq4_dcarr_wren;
 output [0:7]                                                 stq4_dcarr_way_en;
 
+//--------------------------------------------------------------
+// Common Interface
+//--------------------------------------------------------------
 output [64-(2**`GPR_WIDTH_ENC):63]                           ctl_spr_dvc1_dbg;
 output [64-(2**`GPR_WIDTH_ENC):63]                           ctl_spr_dvc2_dbg;
 output [0:23]                                                ctl_perv_spr_lesr1;
@@ -909,10 +994,12 @@ output [0:8*`THREADS-1]                                      ctl_spr_dbcr2_dvc2b
 output [0:2*`THREADS-1]                                      ctl_spr_dbcr2_dvc1m;
 output [0:2*`THREADS-1]                                      ctl_spr_dbcr2_dvc2m;
 
+// LQ Pervasive
 output [0:18+`THREADS-1]                                     ctl_perv_ex6_perf_events;
 output [0:6+`THREADS-1]                                      ctl_perv_stq4_perf_events;
 output [0:(`THREADS*3)+1]                                    ctl_perv_dir_perf_events;
 
+// Error Reporting
 output                                                       lq_pc_err_derat_parity;
 output                                                       lq_pc_err_dir_ldp_parity;
 output                                                       lq_pc_err_dir_stp_parity;
@@ -922,18 +1009,19 @@ output                                                       lq_pc_err_dir_ldp_m
 output                                                       lq_pc_err_dir_stp_multihit;
 output                                                       lq_pc_err_prefetcher_parity;
 
+// Pervasive
 
 
 inout                                                        vcs;
 
-                       
+
 inout                                                        vdd;
-                                  
-                                   
+
+
 inout                                                        gnd;
-                                  
-(* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)     
-                                   
+
+(* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)
+
 input [0:`NCLK_WIDTH-1]                                      nclk;
 input                                                        sg_2;
 input                                                        fce_2;
@@ -980,10 +1068,12 @@ input [4:7]                                                  pc_lq_bo_select;
 output [4:7]                                                 lq_pc_bo_fail;
 output [4:7]                                                 lq_pc_bo_diagout;
 
+// RAM Control
 input [0:`THREADS-1]                                         pc_lq_ram_active;
 output                                                       lq_pc_ram_data_val;
 output [64-(2**`GPR_WIDTH_ENC):63]                           lq_pc_ram_data;
 
+// G8T ABIST Control
 input                                                        pc_lq_abist_wl64_comp_ena;
 input                                                        pc_lq_abist_g8t_wenb;
 input                                                        pc_lq_abist_g8t1p_renb_0;
@@ -994,6 +1084,7 @@ input [0:3]                                                  pc_lq_abist_di_0;
 input [4:9]                                                  pc_lq_abist_waddr_0;
 input [3:8]                                                  pc_lq_abist_raddr_0;
 
+// D-ERAT CAM ABIST Control
 input                                                        cam_clkoff_dc_b;
 input                                                        cam_d_mode_dc;
 input                                                        cam_act_dis_dc;
@@ -1001,6 +1092,7 @@ input [0:4]                                                  cam_delay_lclkr_dc;
 input [0:4]                                                  cam_mpw1_dc_b;
 input                                                        cam_mpw2_dc_b;
 
+// SCAN Ports
 
 (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)
 
@@ -1050,7 +1142,13 @@ output [0:6]                                                 regf_scan_out;
 
 output                                                       ccfg_scan_out;
 
+//--------------------------
+// components
+//--------------------------
 
+//--------------------------
+// constants
+//--------------------------
 parameter                                                    UPRTAGBIT = 64 - `REAL_IFAR_WIDTH;
 parameter                                                    LWRTAGBIT = 63 - (`DC_SIZE - 3);
 parameter                                                    TAGSIZE = LWRTAGBIT - UPRTAGBIT + 1;
@@ -1058,6 +1156,9 @@ parameter                                                    PAREXTCALC = 8 - (T
 parameter                                                    PARBITS = (TAGSIZE + PAREXTCALC)/8;
 parameter                                                    AXU_TARGET_ENC = `AXU_SPARE_ENC + `GPR_POOL_ENC + `THREADS_POOL_ENC;
 
+//--------------------------
+// signals
+//--------------------------
 wire                                                         dcc_dec_hold_all;
 wire                                                         dec_byp_ex1_s1_vld;
 wire                                                         dec_byp_ex1_s2_vld;
@@ -1488,19 +1589,27 @@ wire [0:13]                                                  regf_scan_q_b;
 (* analysis_not_referenced="true" *)
 wire                                                         unused;
 
-
 assign tiup = 1'b1;
 assign tidn = 1'b0;
-assign unused = |abst_scan_q | |abst_scan_q_b | |time_scan_q | |time_scan_q_b | 
-                |repr_scan_q | |repr_scan_q_b | |func_scan_q | |func_scan_q_b | 
+assign unused = |abst_scan_q | |abst_scan_q_b | |time_scan_q | |time_scan_q_b |
+                |repr_scan_q | |repr_scan_q_b | |func_scan_q | |func_scan_q_b |
                 |regf_scan_q | |regf_scan_q_b;
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// DECODE
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 lq_dec dec(
+   //--------------------------------------------------------------
+   // Clocks & Power
+   //--------------------------------------------------------------
    .nclk(nclk),
    .vdd(vdd),
    .gnd(gnd),
-   
+
+   //--------------------------------------------------------------
+   // Pervasive
+   //--------------------------------------------------------------
    .d_mode_dc(d_mode_dc),
    .delay_lclkr_dc(delay_lclkr_dc[5]),
    .mpw1_dc_b(mpw1_dc_b[5]),
@@ -1512,7 +1621,10 @@ lq_dec dec(
    .sg_0(sg_0),
    .scan_in(func_scan_in_q[0]),
    .scan_out(func_scan_out_int[0]),
-   
+
+   //--------------------------------------------------------------
+   // SPR Interface
+   //--------------------------------------------------------------
    .xu_lq_spr_msr_gs(xu_lq_spr_msr_gs),
    .xu_lq_spr_msr_pr(xu_lq_spr_msr_pr),
    .xu_lq_spr_msr_ucle(xu_lq_spr_msr_ucle),
@@ -1520,9 +1632,15 @@ lq_dec dec(
    .xu_lq_spr_ccr2_en_pc(xu_lq_spr_ccr2_en_pc),
    .xu_lq_spr_ccr2_en_ditc(xu_lq_spr_ccr2_en_ditc),
    .xu_lq_spr_ccr2_en_icswx(xu_lq_spr_ccr2_en_icswx),
-   
+
+   //--------------------------------------------------------------
+   // CP Interface
+   //--------------------------------------------------------------
    .iu_lq_cp_flush(iu_lq_cp_flush),
-   
+
+   //-----------------------------------------------------
+   // Interface with RV
+   //-----------------------------------------------------
    .rv_lq_vld(rv_lq_vld),
    .rv_lq_ex0_itag(rv_lq_ex0_itag),
    .rv_lq_ex0_instr(rv_lq_ex0_instr),
@@ -1533,23 +1651,32 @@ lq_dec dec(
    .rv_lq_ex0_t3_p(rv_lq_ex0_t3_p),
    .rv_lq_ex0_s1_v(rv_lq_ex0_s1_v),
    .rv_lq_ex0_s2_v(rv_lq_ex0_s2_v),
-   
+
    .dcc_dec_hold_all(dcc_dec_hold_all),
-   
+
    .xu_lq_hold_req(xu_lq_hold_req),
    .mm_lq_hold_req(mm_lq_hold_req),
    .mm_lq_hold_done(mm_lq_hold_done),
-   
+
    .lq_rv_itag0(lq_rv_itag0),
    .lq_rv_itag0_vld(lq_rv_itag0_vld),
    .lq_rv_itag0_abort(lq_rv_itag0_abort),
    .lq_rv_hold_all(lq_rv_hold_all),
-   
+
+   //--------------------------------------------------------------
+   // Interface with Regfiles
+   //--------------------------------------------------------------
    .lq_rv_gpr_ex6_we(lq_rv_gpr_ex6_we),
    .lq_xu_gpr_ex5_we(lq_xu_gpr_ex5_we),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with XU
+   //-------------------------------------------------------------------
    .lq_xu_ex5_act(lq_xu_ex5_act),
-   
+
+   //--------------------------------------------------------------
+   // Interface with BYP
+   //--------------------------------------------------------------
    .dec_byp_ex1_s1_vld(dec_byp_ex1_s1_vld),
    .dec_byp_ex1_s2_vld(dec_byp_ex1_s2_vld),
    .dec_byp_ex1_use_imm(dec_byp_ex1_use_imm),
@@ -1563,34 +1690,61 @@ lq_dec dec(
    .byp_dec_ex2_req_aborted(byp_ex2_req_aborted),
    .byp_dec_ex1_s1_abort(byp_dec_ex1_s1_abort),
    .byp_dec_ex1_s2_abort(byp_dec_ex1_s2_abort),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with PreFetch
+   //-------------------------------------------------------------------
    .pf_dec_req_addr(pf_dec_req_addr),
    .pf_dec_req_thrd(pf_dec_req_thrd),
    .pf_dec_req_val(pf_dec_req_val),
    .dec_pf_ack(dec_pf_ack),
-   
+
    .lsq_ctl_sync_in_stq(lsq_ctl_sync_in_stq),
-   
+
+   //--------------------------------------------------------------
+   // Reload Itag Complete
+   //--------------------------------------------------------------
    .lsq_ctl_stq_release_itag_vld(lsq_ctl_stq_release_itag_vld),
    .lsq_ctl_stq_release_itag(lsq_ctl_stq_release_itag),
    .lsq_ctl_stq_release_tid(lsq_ctl_stq_release_tid),
-   
+
+   //--------------------------------------------------------------
+   // LSU Back-Invalidate
+   //--------------------------------------------------------------
+   // Back-Invalidate Interface
    .lsq_ctl_rv0_back_inv(lsq_ctl_rv0_back_inv),
    .lsq_ctl_rv1_back_inv_addr(lsq_ctl_rv1_back_inv_addr),
-   
+
+   //--------------------------------------------------------------
+   // LSU L1 Directory Read Instruction
+   //--------------------------------------------------------------
+   // Directory Read interface
    .dcc_dec_arr_rd_rv1_val(dcc_dec_arr_rd_rv1_val),
    .dcc_dec_arr_rd_congr_cl(dcc_dec_arr_rd_congr_cl),
 
+   //--------------------------------------------------------------
+   // LSU L1 Directory Reload Write
+   //--------------------------------------------------------------
    .dir_dec_rel3_dir_wr_val(dir_dec_rel3_dir_wr_val),
    .dir_dec_rel3_dir_wr_addr(dir_dec_rel3_dir_wr_addr),
-   
+
+   //--------------------------------------------------------------
+   // MFTGPR Instruction
+   //--------------------------------------------------------------
    .dcc_dec_stq3_mftgpr_val(dcc_dec_stq3_mftgpr_val),
    .dcc_dec_stq5_mftgpr_val(dcc_dec_stq5_mftgpr_val),
-   
+
+   //--------------------------------------------------------------
+   // DERAT Snoop-Invalidate
+   //--------------------------------------------------------------
+   // Back-Invalidate Interface
    .derat_rv1_snoop_val(derat_rv1_snoop_val),
    .derat_dec_rv1_snoop_addr(derat_dec_rv1_snoop_addr),
    .derat_dec_hole_all(derat_dec_hole_all),
-   
+
+   //--------------------------------------------------------------
+   // LSU Control
+   //--------------------------------------------------------------
    .dec_dcc_ex1_cmd_act(dec_dcc_ex1_cmd_act),
    .ctl_dat_ex1_data_act(ctl_dat_ex1_data_act),
    .dec_derat_ex1_derat_act(dec_derat_ex1_derat_act),
@@ -1686,16 +1840,26 @@ lq_dec dec(
    .dec_ex2_is_any_load_dac(dec_ex2_is_any_load_dac),
    .dec_ex2_is_any_store_dac(dec_ex2_is_any_store_dac),
    .ctl_lsq_ex_pipe_full(ctl_lsq_ex_pipe_full),
-   
+
+   // FXU Load Hit Store is Valid in ex5
    .dcc_dec_ex5_wren(dcc_dec_ex5_wren)
 );
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// BYPASS
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 lq_byp byp(
+   //-------------------------------------------------------------------
+   // Clocks & Power
+   //-------------------------------------------------------------------
    .nclk(nclk),
    .vdd(vdd),
    .gnd(gnd),
-   
+
+   //-------------------------------------------------------------------
+   // Pervasive
+   //-------------------------------------------------------------------
    .d_mode_dc(d_mode_dc),
    .delay_lclkr_dc(delay_lclkr_dc[5]),
    .mpw1_dc_b(mpw1_dc_b[5]),
@@ -1707,7 +1871,10 @@ lq_byp byp(
    .sg_0(sg_0),
    .scan_in(func_scan_in_q[1]),
    .scan_out(func_scan_out_int[1]),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with XU
+   //-------------------------------------------------------------------
    .xu0_lq_ex3_act(xu0_lq_ex3_act),
    .xu0_lq_ex3_abort(xu0_lq_ex3_abort),
    .xu0_lq_ex3_rt(xu0_lq_ex3_rt),
@@ -1718,7 +1885,10 @@ lq_byp byp(
    .xu1_lq_ex3_act(xu1_lq_ex3_act),
    .xu1_lq_ex3_abort(xu1_lq_ex3_abort),
    .xu1_lq_ex3_rt(xu1_lq_ex3_rt),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with DEC
+   //-------------------------------------------------------------------
    .dec_byp_ex0_stg_act(dec_byp_ex0_stg_act),
    .dec_byp_ex1_stg_act(dec_byp_ex1_stg_act),
    .dec_byp_ex5_stg_act(dec_byp_ex5_stg_act),
@@ -1732,7 +1902,11 @@ lq_byp byp(
    .byp_ex2_req_aborted(byp_ex2_req_aborted),
    .byp_dec_ex1_s1_abort(byp_dec_ex1_s1_abort),
    .byp_dec_ex1_s2_abort(byp_dec_ex1_s2_abort),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with LQ Pipe
+   //-------------------------------------------------------------------
+   // Load Pipe
    .ctl_lsq_ex4_xu1_data(ctl_lsq_ex4_xu1_data),
    .ctl_lsq_ex6_ldh_dacrw(ctl_lsq_ex6_ldh_dacrw),
    .lsq_ctl_ex5_fwd_val(lsq_ctl_ex5_fwd_val),
@@ -1753,17 +1927,23 @@ lq_byp byp(
    .dat_ctl_ex5_load_data(dat_ctl_ex5_load_data),
    .dat_ctl_stq6_axu_data(dat_ctl_stq6_axu_data),
    .dcc_byp_ram_sel(dcc_byp_ram_sel),
-   
+
    .byp_dir_ex2_rs1(byp_dir_ex2_rs1),
    .byp_dir_ex2_rs2(byp_dir_ex2_rs2),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with SPR's
+   //-------------------------------------------------------------------
    .spr_byp_spr_dvc1_dbg(spr_dvc1_dbg),
    .spr_byp_spr_dvc2_dbg(spr_dvc2_dbg),
    .spr_byp_spr_dbcr2_dvc1m(spr_dbcr2_dvc1m),
    .spr_byp_spr_dbcr2_dvc1be(spr_dbcr2_dvc1be),
    .spr_byp_spr_dbcr2_dvc2m(spr_dbcr2_dvc2m),
    .spr_byp_spr_dbcr2_dvc2be(spr_dbcr2_dvc2be),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with Bypass Controller
+   //-------------------------------------------------------------------
    .rv_lq_ex0_s1_xu0_sel(rv_lq_ex0_s1_xu0_sel),
    .rv_lq_ex0_s2_xu0_sel(rv_lq_ex0_s2_xu0_sel),
    .rv_lq_ex0_s1_xu1_sel(rv_lq_ex0_s1_xu1_sel),
@@ -1772,22 +1952,35 @@ lq_byp byp(
    .rv_lq_ex0_s2_lq_sel(rv_lq_ex0_s2_lq_sel),
    .rv_lq_ex0_s1_rel_sel(rv_lq_ex0_s1_rel_sel),
    .rv_lq_ex0_s2_rel_sel(rv_lq_ex0_s2_rel_sel),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with PERVASIVE
+   //-------------------------------------------------------------------
    .lq_pc_ram_data(lq_pc_ram_data),
-   
+
+   //-------------------------------------------------------------------
+   // Interface with GPR
+   //-------------------------------------------------------------------
    .rv_lq_gpr_ex1_r0d(rv_lq_gpr_ex1_r0d),
    .rv_lq_gpr_ex1_r1d(rv_lq_gpr_ex1_r1d),
    .lq_rv_gpr_ex6_wd(lq_rv_gpr_ex6_wd),
    .lq_rv_gpr_rel_wd(lq_rv_gpr_rel_wd),
    .lq_xu_gpr_rel_wd(lq_xu_gpr_rel_wd),
 
+   //-------------------------------------------------------------------
+   // Interface with RV
+   //-------------------------------------------------------------------
    .lq_rv_ex2_s1_abort(lq_rv_ex2_s1_abort),
    .lq_rv_ex2_s2_abort(lq_rv_ex2_s2_abort)
 );
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// DATA CACHE CONTROL
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 lq_dcc #(.PARBITS(PARBITS)) dcc(
-   
+
+   // IU Dispatch
    .rv_lq_rv1_i0_vld(rv_lq_rv1_i0_vld),
    .rv_lq_rv1_i0_ucode_preissue(rv_lq_rv1_i0_ucode_preissue),
    .rv_lq_rv1_i0_2ucode(rv_lq_rv1_i0_2ucode),
@@ -1796,7 +1989,8 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .rv_lq_rv1_i1_ucode_preissue(rv_lq_rv1_i1_ucode_preissue),
    .rv_lq_rv1_i1_2ucode(rv_lq_rv1_i1_2ucode),
    .rv_lq_rv1_i1_ucode_cnt(rv_lq_rv1_i1_ucode_cnt),
-   
+
+   // Execution Pipe Inputs
    .dec_dcc_ex0_act(dec_byp_ex0_stg_act),
    .dec_dcc_ex1_cmd_act(dec_dcc_ex1_cmd_act),
    .dec_dcc_ex1_ucode_val(dec_dcc_ex1_ucode_val),
@@ -1873,11 +2067,14 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .dec_dcc_ex5_req_abort_rpt(dec_dcc_ex5_req_abort_rpt),
    .dec_dcc_ex5_axu_abort_rpt(dec_dcc_ex5_axu_abort_rpt),
    .dir_dcc_ex2_eff_addr(dir_dcc_ex2_eff_addr),
-   
+
+   // Directory Back-Invalidate
    .lsq_ctl_rv0_back_inv(lsq_ctl_rv0_back_inv),
-   
+
+   // Derat Snoop-Invalidate
    .derat_rv1_snoop_val(derat_rv1_snoop_val),
-   
+
+   // Directory Read Operation
    .dir_dcc_ex4_way_tag_a(dir_dcc_ex4_way_tag_a),
    .dir_dcc_ex4_way_tag_b(dir_dcc_ex4_way_tag_b),
    .dir_dcc_ex4_way_tag_c(dir_dcc_ex4_way_tag_c),
@@ -1903,7 +2100,7 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .dir_dcc_ex5_way_g_dir(dir_dcc_ex5_way_g_dir),
    .dir_dcc_ex5_way_h_dir(dir_dcc_ex5_way_h_dir),
    .dir_dcc_ex5_dir_lru(dir_dcc_ex5_dir_lru),
-   
+
    .derat_dcc_ex3_wimge_e(derat_dcc_ex3_wimge_e),
    .derat_dcc_ex3_itagHit(derat_dcc_ex3_itagHit),
    .derat_dcc_ex4_wimge(derat_dcc_ex4_wimge),
@@ -1928,11 +2125,12 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .derat_dcc_ex4_restart(derat_dcc_ex4_restart),
    .derat_fir_par_err(derat_fir_par_err),
    .derat_fir_multihit(derat_fir_multihit),
-   
+
+   // SetHold and ClrHold for itag
    .derat_dcc_ex4_setHold(derat_dcc_ex4_setHold),
    .derat_dcc_clr_hold(derat_dcc_clr_hold),
    .derat_dcc_emq_idle(derat_dcc_emq_idle),
-   
+
    .spr_dcc_ex4_dvc1_en(spr_dcc_ex4_dvc1_en),
    .spr_dcc_ex4_dvc2_en(spr_dcc_ex4_dvc2_en),
    .spr_dcc_ex4_dacrw1_cmpr(spr_dcc_ex4_dacrw1_cmpr),
@@ -1940,7 +2138,7 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .spr_dcc_ex4_dacrw3_cmpr(spr_dcc_ex4_dacrw3_cmpr),
    .spr_dcc_ex4_dacrw4_cmpr(spr_dcc_ex4_dacrw4_cmpr),
    .spr_dcc_spr_lesr(spr_dcc_spr_lesr),
-   
+
    .dir_dcc_ex4_hit(dir_dcc_ex4_hit),
    .dir_dcc_ex4_miss(dir_dcc_ex4_miss),
    .dir_dcc_ex4_set_rel_coll(dir_dcc_ex4_set_rel_coll),
@@ -1954,22 +2152,26 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .dir_dcc_stq4_dir_perr_det(dir_dcc_stq4_dir_perr_det),
    .dir_dcc_stq4_multihit_det(dir_dcc_stq4_multihit_det),
    .dir_dcc_ex5_stp_flush(dir_dcc_ex5_stp_flush),
-   
+
+   // Completion Inputs
    .iu_lq_cp_flush(iu_lq_cp_flush),
    .iu_lq_recirc_val(iu_lq_recirc_val),
    .iu_lq_cp_next_itag(iu_lq_cp_next_itag),
-   
+
+   // XER[SO] Read for CP_NEXT instructions (stcx./icswx./ldawx.)
    .xu_lq_xer_cp_rd(xu_lq_xer_cp_rd),
-   
+
+   // Stage Flush
    .fgen_ex1_stg_flush(fgen_ex1_stg_flush),
    .fgen_ex2_stg_flush(fgen_ex2_stg_flush),
    .fgen_ex3_stg_flush(fgen_ex3_stg_flush),
    .fgen_ex4_cp_flush(fgen_ex4_cp_flush),
    .fgen_ex4_stg_flush(fgen_ex4_stg_flush),
    .fgen_ex5_stg_flush(fgen_ex5_stg_flush),
-   
+
    .dir_dcc_rel3_dcarr_upd(dir_dcc_rel3_dcarr_upd),
-   
+
+   // Data Cache Config
    .xu_lq_spr_ccr2_en_trace(xu_lq_spr_ccr2_en_trace),
    .xu_lq_spr_ccr2_dfrat(xu_lq_spr_ccr2_dfrat),
    .xu_lq_spr_ccr2_ap(xu_lq_spr_ccr2_ap),
@@ -1993,26 +2195,32 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .xu_lq_spr_msr_de(xu_lq_spr_msr_de),
    .xu_lq_spr_dbcr0_idm(xu_lq_spr_dbcr0_idm),
    .xu_lq_spr_epcr_duvd(xu_lq_spr_epcr_duvd),
-   
+
+   // MSR[GS,PR] bits, indicates which state we are running in
    .xu_lq_spr_msr_gs(xu_lq_spr_msr_gs),
    .xu_lq_spr_msr_pr(xu_lq_spr_msr_pr),
    .xu_lq_spr_msr_ds(xu_lq_spr_msr_ds),
    .mm_lq_lsu_lpidr(mm_lq_lsu_lpidr),
    .mm_lq_pid(mm_lq_pid),
-   
+
+   // RESTART indicator
    .lsq_ctl_ex5_ldq_restart(lsq_ctl_ex5_ldq_restart),
    .lsq_ctl_ex5_stq_restart(lsq_ctl_ex5_stq_restart),
    .lsq_ctl_ex5_stq_restart_miss(lsq_ctl_ex5_stq_restart_miss),
-   
+
+   // Store Data Forward
    .lsq_ctl_ex5_fwd_val(lsq_ctl_ex5_fwd_val),
-   
+
    .lsq_ctl_sync_in_stq(lsq_ctl_sync_in_stq),
-   
+
+   // Hold RV Indicator
    .lsq_ctl_rv_hold_all(lsq_ctl_rv_hold_all),
-   
+
+   // Reservation station set barrier indicator
    .lsq_ctl_rv_set_hold(lsq_ctl_rv_set_hold),
    .lsq_ctl_rv_clr_hold(lsq_ctl_rv_clr_hold),
-   
+
+   // Reload/Commit Pipe
    .lsq_ctl_stq1_stg_act(lsq_ctl_stq1_stg_act),
    .lsq_ctl_stq1_val(lsq_ctl_stq1_val),
    .lsq_ctl_stq1_thrd_id(lsq_ctl_stq1_thrd_id),
@@ -2033,7 +2241,8 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .lsq_ctl_rel1_gpr_val(lsq_ctl_rel1_gpr_val),
    .lsq_ctl_rel1_ta_gpr(lsq_ctl_rel1_ta_gpr),
    .lsq_ctl_rel1_upd_gpr(lsq_ctl_rel1_upd_gpr),
-   
+
+   // Store Queue Completion Report
    .lsq_ctl_stq_cpl_ready(lsq_ctl_stq_cpl_ready),
    .lsq_ctl_stq_cpl_ready_itag(lsq_ctl_stq_cpl_ready_itag),
    .lsq_ctl_stq_cpl_ready_tid(lsq_ctl_stq_cpl_ready_tid),
@@ -2043,17 +2252,20 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .lsq_ctl_stq_exception(lsq_ctl_stq_exception),
    .lsq_ctl_stq_dacrw(lsq_ctl_stq_dacrw),
    .ctl_lsq_stq_cpl_blk(ctl_lsq_stq_cpl_blk),
-   
+
+   // Illegal LSWX has been determined
    .lsq_ctl_ex3_strg_val(lsq_ctl_ex3_strg_val),
    .lsq_ctl_ex3_strg_noop(lsq_ctl_ex3_strg_noop),
    .lsq_ctl_ex3_illeg_lswx(lsq_ctl_ex3_illeg_lswx),
    .lsq_ctl_ex3_ct_val(lsq_ctl_ex3_ct_val),
    .lsq_ctl_ex3_be_ct(lsq_ctl_ex3_be_ct),
    .lsq_ctl_ex3_le_ct(lsq_ctl_ex3_le_ct),
-   
+
+   // Directory Results Input
    .dir_dcc_stq3_hit(dir_dcc_stq3_hit),
    .dir_dcc_ex5_cr_rslt(dir_dcc_ex5_cr_rslt),
-   
+
+   // EX2 Execution Pipe Outputs
    .dcc_dir_ex2_frc_align2(dcc_dir_ex2_frc_align2),
    .dcc_dir_ex2_frc_align4(dcc_dir_ex2_frc_align4),
    .dcc_dir_ex2_frc_align8(dcc_dir_ex2_frc_align8),
@@ -2064,7 +2276,8 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .dcc_derat_ex5_blk_tlb_req(dcc_derat_ex5_blk_tlb_req),
    .dcc_derat_ex6_cplt(dcc_derat_ex6_cplt),
    .dcc_derat_ex6_cplt_itag(dcc_derat_ex6_cplt_itag),
-   
+
+   // EX3 Execution Pipe Outputs
    .dcc_dir_ex3_lru_upd(dcc_dir_ex3_lru_upd),
    .dcc_dir_ex3_cache_acc(dcc_dir_ex3_cache_acc),
    .dcc_dir_ex3_pfetch_val(dcc_dir_ex3_pfetch_val),
@@ -2077,14 +2290,15 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .dcc_dir_ex4_load_val(dcc_dir_ex4_load_val),
    .dcc_spr_ex3_data_val(dcc_spr_ex3_data_val),
    .dcc_spr_ex3_eff_addr(dcc_spr_ex3_eff_addr),
-   
+
    .ctl_dat_ex3_opsize(ctl_dat_ex3_opsize),
    .ctl_dat_ex3_le_mode(ctl_dat_ex3_le_mode),
    .ctl_dat_ex3_le_ld_rotsel(ctl_dat_ex3_le_ld_rotsel),
    .ctl_dat_ex3_be_ld_rotsel(ctl_dat_ex3_be_ld_rotsel),
    .ctl_dat_ex3_algebraic(ctl_dat_ex3_algebraic),
    .ctl_dat_ex3_le_alg_rotsel(ctl_dat_ex3_le_alg_rotsel),
-   
+
+   // EX4 Execution Pipe Outputs
    .dcc_byp_rel2_stg_act(dcc_byp_rel2_stg_act),
    .dcc_byp_rel3_stg_act(dcc_byp_rel3_stg_act),
    .dcc_byp_ram_act(dcc_byp_ram_act),
@@ -2100,7 +2314,8 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .dcc_byp_ex6_dacr_cmpr(dcc_byp_ex6_dacr_cmpr),
    .dcc_dir_ex4_p_addr(dcc_dir_ex4_p_addr),
    .dcc_dir_stq6_store_val(dcc_dir_stq6_store_val),
-   
+
+   // Execution Pipe Outputs
    .ctl_lsq_ex2_streq_val(ctl_lsq_ex2_streq_val),
    .ctl_lsq_ex2_itag(ctl_lsq_ex2_itag),
    .ctl_lsq_ex2_thrd_id(ctl_lsq_ex2_thrd_id),
@@ -2167,15 +2382,19 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .ctl_lsq_stq3_icswx_data(ctl_lsq_stq3_icswx_data),
    .ctl_lsq_dbg_int_en(ctl_lsq_dbg_int_en),
    .ctl_lsq_ldp_idle(ctl_lsq_ldp_idle),
-   
+
+   // SPR Directory Read Valid
    .ctl_lsq_rv1_dir_rd_val(ctl_lsq_rv1_dir_rd_val),
-   
+
+   // Directory Read interface
    .dcc_dec_arr_rd_rv1_val(dcc_dec_arr_rd_rv1_val),
    .dcc_dec_arr_rd_congr_cl(dcc_dec_arr_rd_congr_cl),
-   
+
+   // MFTGPR instruction
    .dcc_dec_stq3_mftgpr_val(dcc_dec_stq3_mftgpr_val),
    .dcc_dec_stq5_mftgpr_val(dcc_dec_stq5_mftgpr_val),
-   
+
+   // SPR status
    .lq_xu_spr_xucr0_cul(lq_xu_spr_xucr0_cul),
    .dcc_dir_spr_xucr2_rmt(dcc_dir_spr_xucr2_rmt),
    .spr_dcc_spr_xudbg0_exec(spr_dcc_spr_xudbg0_exec),
@@ -2198,11 +2417,13 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .spr_dcc_epsc_egs(spr_derat_epsc_egs),
    .spr_dcc_epsc_elpid(spr_derat_epsc_elpid),
    .spr_dcc_epsc_epid(spr_derat_epsc_epid),
-   
+
+   // Back-invalidate
    .dcc_dir_ex2_binv_val(dcc_dir_ex2_binv_val),
-   
+
+   // Update Data Array Valid
    .stq4_dcarr_wren(stq4_dcarr_wren),
-   
+
    .dcc_byp_ram_sel(dcc_byp_ram_sel),
    .dcc_dec_ex5_wren(dcc_dec_ex5_wren),
    .lq_xu_gpr_ex5_wa(lq_xu_gpr_ex5_wa),
@@ -2213,15 +2434,17 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .lq_rv_gpr_rel_wa(lq_rv_gpr_rel_wa),
    .lq_xu_gpr_rel_wa(lq_xu_gpr_rel_wa),
    .lq_xu_ex5_abort(lq_xu_ex5_abort),
-   
+
    .lq_xu_cr_ex5_we(lq_xu_cr_ex5_we),
    .lq_xu_cr_ex5_wa(lq_xu_cr_ex5_wa),
    .lq_xu_ex5_cr(lq_xu_ex5_cr),
-     
+
+   // Interface with AXU PassThru with XU
    .lq_xu_axu_ex4_addr(lq_xu_axu_ex4_addr),
    .lq_xu_axu_ex5_we(lq_xu_axu_ex5_we),
    .lq_xu_axu_ex5_le(lq_xu_axu_ex5_le),
-   
+
+   // Outputs to Reservation Station
    .lq_rv_itag1_vld(lq_rv_itag1_vld),
    .lq_rv_itag1(lq_rv_itag1),
    .lq_rv_itag1_restart(lq_rv_itag1_restart),
@@ -2230,7 +2453,8 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .lq_rv_itag1_cord(lq_rv_itag1_cord),
    .lq_rv_clr_hold(lq_rv_clr_hold),
    .dcc_dec_hold_all(dcc_dec_hold_all),
-   
+
+   // Completion Report
    .lq0_iu_execute_vld(lq0_iu_execute_vld),
    .lq0_iu_recirc_val(lq0_iu_recirc_val),
    .lq0_iu_itag(lq0_iu_itag),
@@ -2245,14 +2469,16 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .lq0_iu_dacrw(lq0_iu_dacrw),
    .lq0_iu_instr(lq0_iu_instr),
    .lq0_iu_eff_addr(lq0_iu_eff_addr),
-   
+
+   // outputs to prefetch
    .dcc_pf_ex5_eff_addr(dcc_pf_ex5_eff_addr),
    .dcc_pf_ex5_req_val_4pf(dcc_pf_ex5_req_val_4pf),
    .dcc_pf_ex5_act(dcc_pf_ex5_act),
    .dcc_pf_ex5_thrd_id(dcc_pf_ex5_thrd_id),
    .dcc_pf_ex5_loadmiss(dcc_pf_ex5_loadmiss),
    .dcc_pf_ex5_itag(dcc_pf_ex5_itag),
-   
+
+   // Error Reporting
    .lq_pc_err_derat_parity(lq_pc_err_derat_parity),
    .lq_pc_err_dir_ldp_parity(lq_pc_err_dir_ldp_parity),
    .lq_pc_err_dir_stp_parity(lq_pc_err_dir_stp_parity),
@@ -2260,14 +2486,17 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .lq_pc_err_derat_multihit(lq_pc_err_derat_multihit),
    .lq_pc_err_dir_ldp_multihit(lq_pc_err_dir_ldp_multihit),
    .lq_pc_err_dir_stp_multihit(lq_pc_err_dir_stp_multihit),
-   
+
+   // Ram Mode Control
    .pc_lq_ram_active(pc_lq_ram_active),
    .lq_pc_ram_data_val(lq_pc_ram_data_val),
 
+   // LQ Pervasive
     .ctl_perv_ex6_perf_events(ctl_perv_ex6_perf_events),
     .ctl_perv_stq4_perf_events(ctl_perv_stq4_perf_events),
 
-   
+
+   // ACT's
    .dcc_dir_ex2_stg_act(dcc_dir_ex2_stg_act),
    .dcc_dir_ex3_stg_act(dcc_dir_ex3_stg_act),
    .dcc_dir_ex4_stg_act(dcc_dir_ex4_stg_act),
@@ -2282,7 +2511,8 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .dcc_dir_binv4_ex4_stg_act(dcc_dir_binv4_ex4_stg_act),
    .dcc_dir_binv5_ex5_stg_act(dcc_dir_binv5_ex5_stg_act),
    .dcc_dir_binv6_ex6_stg_act(dcc_dir_binv6_ex6_stg_act),
-   
+
+   // Pervasive
    .vdd(vdd),
    .gnd(gnd),
    .nclk(nclk),
@@ -2303,15 +2533,18 @@ lq_dcc #(.PARBITS(PARBITS)) dcc(
    .scan_out(func_scan_out_int[2])
 );
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// LQ SPR control
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 lq_spr  spr(
    .nclk(nclk),
-   
+
    .d_mode_dc(d_mode_dc),
    .delay_lclkr_dc(delay_lclkr_dc[5]),
    .mpw1_dc_b(mpw1_dc_b[5]),
    .mpw2_dc_b(mpw2_dc_b),
-   
+
    .ccfg_sl_force(cfg_sl_force),
    .ccfg_sl_thold_0_b(cfg_sl_thold_0_b),
    .func_sl_force(func_sl_force),
@@ -2323,36 +2556,39 @@ lq_spr  spr(
    .scan_out(spr_pf_func_scan),
    .ccfg_scan_in(ccfg_scan_in),
    .ccfg_scan_out(spr_derat_cfg_scan),
-   
+
    .flush(iu_lq_cp_flush),
    .ex1_valid(dec_spr_ex1_valid),
    .ex3_data_val(dcc_spr_ex3_data_val),
    .ex3_eff_addr(dcc_spr_ex3_eff_addr),
-   
+
+   // SlowSPR Interface
    .slowspr_val_in(slowspr_val_in),
    .slowspr_rw_in(slowspr_rw_in),
    .slowspr_etid_in(slowspr_etid_in),
    .slowspr_addr_in(slowspr_addr_in),
    .slowspr_data_in(slowspr_data_in),
    .slowspr_done_in(slowspr_done_in),
-   
+
    .slowspr_val_out(slowspr_val_out),
    .slowspr_rw_out(slowspr_rw_out),
    .slowspr_etid_out(slowspr_etid_out),
    .slowspr_addr_out(slowspr_addr_out),
    .slowspr_data_out(slowspr_data_out),
    .slowspr_done_out(slowspr_done_out),
-   
+
+   // DAC
    .ex2_is_any_load_dac(dec_ex2_is_any_load_dac),
    .ex2_is_any_store_dac(dec_ex2_is_any_store_dac),
-   
+
    .spr_dcc_ex4_dvc1_en(spr_dcc_ex4_dvc1_en),
    .spr_dcc_ex4_dvc2_en(spr_dcc_ex4_dvc2_en),
    .spr_dcc_ex4_dacrw1_cmpr(spr_dcc_ex4_dacrw1_cmpr),
    .spr_dcc_ex4_dacrw2_cmpr(spr_dcc_ex4_dacrw2_cmpr),
    .spr_dcc_ex4_dacrw3_cmpr(spr_dcc_ex4_dacrw3_cmpr),
    .spr_dcc_ex4_dacrw4_cmpr(spr_dcc_ex4_dacrw4_cmpr),
-   
+
+   // SPRs
    .spr_msr_pr(xu_lq_spr_msr_pr),
    .spr_msr_gs(xu_lq_spr_msr_gs),
    .spr_msr_ds(xu_lq_spr_msr_ds),
@@ -2360,7 +2596,7 @@ lq_spr  spr(
    .spr_dbcr0_dac2(xu_lq_spr_dbcr0_dac2),
    .spr_dbcr0_dac3(xu_lq_spr_dbcr0_dac3),
    .spr_dbcr0_dac4(xu_lq_spr_dbcr0_dac4),
-   
+
    .spr_xudbg0_exec(spr_dcc_spr_xudbg0_exec),
    .spr_xudbg0_tid(spr_dcc_spr_xudbg0_tid),
    .spr_xudbg0_done(dcc_spr_spr_xudbg0_done),
@@ -2376,7 +2612,7 @@ lq_spr  spr(
    .spr_dbcr2_dvc2be(spr_dbcr2_dvc2be),
    .spr_dbcr2_dvc1m(spr_dbcr2_dvc1m),
    .spr_dbcr2_dvc2m(spr_dbcr2_dvc2m),
-   
+
    .spr_dvc1(spr_dvc1_dbg),
    .spr_dvc2(spr_dvc2_dbg),
    .spr_pesr(spr_pf_spr_pesr),
@@ -2418,14 +2654,19 @@ lq_spr  spr(
    .spr_epsc_elpid(spr_derat_epsc_elpid),
    .spr_epsc_epid(spr_derat_epsc_epid),
    .spr_hacop_ct(spr_dcc_spr_hacop_ct),
-   
+
+   // Power
    .vdd(vdd),
    .gnd(gnd)
 );
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// DIRECTORY
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 lq_dir #(.WAYDATASIZE(WAYDATASIZE), .PARBITS(PARBITS)) dir(
-   
+
+   // ACT's
    .dcc_dir_ex2_stg_act(dcc_dir_ex2_stg_act),
    .dcc_dir_ex3_stg_act(dcc_dir_ex3_stg_act),
    .dcc_dir_ex4_stg_act(dcc_dir_ex4_stg_act),
@@ -2440,16 +2681,18 @@ lq_dir #(.WAYDATASIZE(WAYDATASIZE), .PARBITS(PARBITS)) dir(
    .dcc_dir_binv4_ex4_stg_act(dcc_dir_binv4_ex4_stg_act),
    .dcc_dir_binv5_ex5_stg_act(dcc_dir_binv5_ex5_stg_act),
    .dcc_dir_binv6_ex6_stg_act(dcc_dir_binv6_ex6_stg_act),
-   
+
+   // AGEN Sources
    .byp_dir_ex2_rs1(byp_dir_ex2_rs1),
    .byp_dir_ex2_rs2(byp_dir_ex2_rs2),
    .dcc_dir_ex2_64bit_agen(dcc_dir_ex2_64bit_agen),
-   
+
+   // Error Inject
    .pc_lq_inj_dcachedir_ldp_parity(pc_lq_inj_dcachedir_ldp_parity),
    .pc_lq_inj_dcachedir_ldp_multihit(pc_lq_inj_dcachedir_ldp_multihit),
    .pc_lq_inj_dcachedir_stp_parity(pc_lq_inj_dcachedir_stp_parity),
    .pc_lq_inj_dcachedir_stp_multihit(pc_lq_inj_dcachedir_stp_multihit),
-   
+
    .dcc_dir_ex2_binv_val(dcc_dir_ex2_binv_val),
    .dcc_dir_ex2_thrd_id(dcc_dir_ex2_thrd_id),
    .dcc_dir_ex3_cache_acc(dcc_dir_ex3_cache_acc),
@@ -2465,9 +2708,9 @@ lq_dir #(.WAYDATASIZE(WAYDATASIZE), .PARBITS(PARBITS)) dir(
    .dcc_dir_ex4_p_addr(dcc_dir_ex4_p_addr),
    .derat_dir_ex4_wimge_i(derat_dcc_ex4_wimge[1]),
    .dcc_dir_stq6_store_val(dcc_dir_stq6_store_val),
-   
+
    .dat_ctl_dcarr_perr_way(dat_ctl_dcarr_perr_way),
-   
+
    .xu_lq_spr_xucr0_wlk(xu_lq_spr_xucr0_wlk),
    .xu_lq_spr_xucr0_dcdis(xu_lq_spr_xucr0_dcdis),
    .xu_lq_spr_xucr0_clfc(xu_lq_spr_xucr0_clfc),
@@ -2477,7 +2720,8 @@ lq_dir #(.WAYDATASIZE(WAYDATASIZE), .PARBITS(PARBITS)) dir(
    .dcc_dir_ex2_frc_align8(dcc_dir_ex2_frc_align8),
    .dcc_dir_ex2_frc_align4(dcc_dir_ex2_frc_align4),
    .dcc_dir_ex2_frc_align2(dcc_dir_ex2_frc_align2),
-   
+
+   // RELOAD/COMMIT Control
    .lsq_ctl_stq1_val(lsq_ctl_stq1_val),
    .lsq_ctl_stq2_blk_req(lsq_ctl_stq2_blk_req),
    .lsq_ctl_stq1_thrd_id(lsq_ctl_stq1_thrd_id),
@@ -2504,46 +2748,56 @@ lq_dir #(.WAYDATASIZE(WAYDATASIZE), .PARBITS(PARBITS)) dir(
    .lsq_ctl_rel3_clr_relq(lsq_ctl_rel3_clr_relq),
    .ctl_lsq_stq4_perr_reject(ctl_lsq_stq4_perr_reject),
    .ctl_dat_stq5_way_perr_inval(ctl_dat_stq5_way_perr_inval),
-   
+
+   // Instruction Flush
    .fgen_ex3_stg_flush(fgen_ex3_stg_flush),
    .fgen_ex4_cp_flush(fgen_ex4_cp_flush),
    .fgen_ex4_stg_flush(fgen_ex4_stg_flush),
    .fgen_ex5_stg_flush(fgen_ex5_stg_flush),
-   
+
+   // Directory Read Interface
    .dir_arr_rd_addr0_01(dir_arr_rd_addr0_01),
    .dir_arr_rd_addr0_23(dir_arr_rd_addr0_23),
    .dir_arr_rd_addr0_45(dir_arr_rd_addr0_45),
    .dir_arr_rd_addr0_67(dir_arr_rd_addr0_67),
    .dir_arr_rd_data0(dir_arr_rd_data0),
    .dir_arr_rd_data1(dir_arr_rd_data1),
-   
+
+   // Directory Write Interface
    .dir_arr_wr_enable(dir_arr_wr_enable_int),
    .dir_arr_wr_way(dir_arr_wr_way_int),
    .dir_arr_wr_addr(dir_arr_wr_addr_int),
    .dir_arr_wr_data(dir_arr_wr_data_int),
-   
+
+   // LQ Pipe Outputs
    .dir_dcc_ex2_eff_addr(dir_dcc_ex2_eff_addr),
    .dir_derat_ex2_eff_addr(dir_derat_ex2_eff_addr),
    .dir_dcc_ex4_hit(dir_dcc_ex4_hit),
    .dir_dcc_ex4_miss(dir_dcc_ex4_miss),
    .ctl_dat_ex4_way_hit(ctl_dat_ex4_way_hit),
-   
+
+   // COMMIT Pipe Hit indicator
    .dir_dcc_stq3_hit(dir_dcc_stq3_hit),
-   
+
+   // CR results
    .dir_dcc_ex5_cr_rslt(dir_dcc_ex5_cr_rslt),
-   
+
+   // Performance Events
    .ctl_perv_dir_perf_events(ctl_perv_dir_perf_events),
-   
+
+   // Data Array Controls
    .dir_dcc_rel3_dcarr_upd(dir_dcc_rel3_dcarr_upd),
    .dir_dec_rel3_dir_wr_val(dir_dec_rel3_dir_wr_val),
    .dir_dec_rel3_dir_wr_addr(dir_dec_rel3_dir_wr_addr),
 
    .stq4_dcarr_way_en(stq4_dcarr_way_en),
-   
+
+   // SPR status
    .lq_xu_spr_xucr0_cslc_xuop(lq_xu_spr_xucr0_cslc_xuop),
    .lq_xu_spr_xucr0_cslc_binv(lq_xu_spr_xucr0_cslc_binv),
    .lq_xu_spr_xucr0_clo(lq_xu_spr_xucr0_clo),
-   
+
+   // L1 Directory Contents
    .dir_dcc_ex4_way_tag_a(dir_dcc_ex4_way_tag_a),
    .dir_dcc_ex4_way_tag_b(dir_dcc_ex4_way_tag_b),
    .dir_dcc_ex4_way_tag_c(dir_dcc_ex4_way_tag_c),
@@ -2569,7 +2823,8 @@ lq_dir #(.WAYDATASIZE(WAYDATASIZE), .PARBITS(PARBITS)) dir(
    .dir_dcc_ex5_way_g_dir(dir_dcc_ex5_way_g_dir),
    .dir_dcc_ex5_way_h_dir(dir_dcc_ex5_way_h_dir),
    .dir_dcc_ex5_dir_lru(dir_dcc_ex5_dir_lru),
-   
+
+   // Reject Cases
    .dir_dcc_ex4_set_rel_coll(dir_dcc_ex4_set_rel_coll),
    .dir_dcc_ex4_byp_restart(dir_dcc_ex4_byp_restart),
    .dir_dcc_ex5_dir_perr_det(dir_dcc_ex5_dir_perr_det),
@@ -2581,7 +2836,7 @@ lq_dir #(.WAYDATASIZE(WAYDATASIZE), .PARBITS(PARBITS)) dir(
    .dir_dcc_stq4_dir_perr_det(dir_dcc_stq4_dir_perr_det),
    .dir_dcc_stq4_multihit_det(dir_dcc_stq4_multihit_det),
    .dir_dcc_ex5_stp_flush(dir_dcc_ex5_stp_flush),
-   
+
    .vdd(vdd),
    .gnd(gnd),
    .nclk(nclk),
@@ -2603,25 +2858,34 @@ lq_dir #(.WAYDATASIZE(WAYDATASIZE), .PARBITS(PARBITS)) dir(
 );
 assign dir_func_scan_in[3:7] = {func_scan_in_q[3:6],arr_func_scan_out};
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// DIRECTORY ARRAYS
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 generate
    if (`DC_SIZE == 15 & `CL_SIZE == 6)
    begin : dc32Kdir64B
-      
-      tri_64x34_8w_1r1w #(.addressable_ports(64), .addressbus_width(6), .port_bitwidth(WAYDATASIZE), .ways(8)) arr(		
+
+      // number of addressable register in this array
+      // width of the bus to address all ports (2^portadrbus_width >= addressable_ports)
+      // bitwidth of ports
+      // number of ways
+      tri_64x34_8w_1r1w #(.addressable_ports(64), .addressbus_width(6), .port_bitwidth(WAYDATASIZE), .ways(8)) arr(		// 0 = ibm (Umbra), 1 = non-ibm, 2 = ibm (MPG)
+         // POWER PINS
          .vcs(vdd),
          .vdd(vdd),
          .gnd(gnd),
-         
+
+         // CLOCK AND CLOCKCONTROL PORTS
          .nclk(nclk),
          .rd_act(dec_dir_ex2_dir_rd_act),
          .wr_act(tiup),
          .sg_0(sg_0),
-         .abst_sl_thold_0(abst_slp_sl_thold_0),          
-         .ary_nsl_thold_0(ary_slp_nsl_thold_0),          
+         .abst_sl_thold_0(abst_slp_sl_thold_0),          // Need to use Sleep THOLDS, This copy is active while in sleep mode
+         .ary_nsl_thold_0(ary_slp_nsl_thold_0),          // Need to use Sleep THOLDS, This copy is active while in sleep mode
          .time_sl_thold_0(time_sl_thold_0),
          .repr_sl_thold_0(repr_sl_thold_0),
-         .func_sl_force(func_slp_sl_force),             
-         .func_sl_thold_0_b(func_slp_sl_thold_0_b),     
+         .func_sl_force(func_slp_sl_force),             // Need to use Sleep THOLDS, This copy is active while in sleep mode
+         .func_sl_thold_0_b(func_slp_sl_thold_0_b),     // Need to use Sleep THOLDS, This copy is active while in sleep mode
          .g8t_clkoff_dc_b(g8t_clkoff_dc_b),
          .ccflush_dc(pc_lq_ccflush_dc),
          .scan_dis_dc_b(an_ac_scan_dis_dc_b),
@@ -2634,7 +2898,8 @@ generate
          .mpw1_dc_b(mpw1_dc_b[5]),
          .mpw2_dc_b(mpw2_dc_b),
          .delay_lclkr_dc(delay_lclkr_dc[5]),
-         
+
+         // ABIST
          .wr_abst_act(pc_lq_abist_g8t_wenb_q),
          .rd0_abst_act(pc_lq_abist_g8t1p_renb_0_q),
          .abist_di(pc_lq_abist_di_0_q),
@@ -2647,7 +2912,8 @@ generate
          .abist_g8t_rd0_comp_ena(pc_lq_abist_wl64_comp_ena_q),
          .abist_raw_dc_b(pc_lq_abist_raw_dc_b),
          .obs0_abist_cmp(pc_lq_abist_g8t_dcomp_q),
-         
+
+         // SCAN PORTS
          .abst_scan_in(abst_scan_in_q),
          .time_scan_in(time_scan_in_q[0]),
          .repr_scan_in(repr_scan_in_q[0]),
@@ -2656,7 +2922,8 @@ generate
          .time_scan_out(time_scan_out_int[0]),
          .repr_scan_out(repr_scan_out_int[0]),
          .func_scan_out(arr_func_scan_out),
-         
+
+         // BOLT-ON
          .lcb_bolt_sl_thold_0(bolt_sl_thold_0),
          .pc_bo_enable_2(bo_enable_2),
          .pc_bo_reset(pc_lq_bo_reset),
@@ -2671,12 +2938,14 @@ generate
          .tri_lcb_delay_lclkr_dc(delay_lclkr_dc[5]),
          .tri_lcb_clkoff_dc_b(clkoff_dc_b),
          .tri_lcb_act_dis_dc(tidn),
-         
+
+         // Write Ports
          .write_enable(dir_arr_wr_enable_int),
          .way(dir_arr_wr_way_int),
          .addr_wr(dir_arr_wr_addr_int),
          .data_in(dir_arr_wr_data_int),
-         
+
+         // Read Ports
          .addr_rd_01(dir_arr_rd_addr0_01),
          .addr_rd_23(dir_arr_rd_addr0_23),
          .addr_rd_45(dir_arr_rd_addr0_45),
@@ -2686,12 +2955,17 @@ generate
    end
 endgenerate
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// D-ERATS
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 lq_derat derat(
+   // POWER PINS
    .gnd(gnd),
    .vdd(vdd),
    .vcs(vdd),
-   
+
+   // CLOCK and CLOCK CONTROL ports
    .nclk(nclk),
    .pc_xu_init_reset(pc_lq_init_reset),
    .pc_xu_ccflush_dc(pc_lq_ccflush_dc),
@@ -2700,14 +2974,14 @@ lq_derat derat(
    .tc_lbist_en_dc(an_ac_lbist_en_dc),
    .an_ac_atpg_en_dc(an_ac_atpg_en_dc),
    .an_ac_grffence_en_dc(an_ac_grffence_en_dc),
-   
+
    .lcb_d_mode_dc(d_mode_dc),
    .lcb_clkoff_dc_b(clkoff_dc_b),
    .lcb_act_dis_dc(tidn),
    .lcb_mpw1_dc_b(mpw1_dc_b),
    .lcb_mpw2_dc_b(mpw2_dc_b),
    .lcb_delay_lclkr_dc(delay_lclkr_dc),
-   
+
    .pc_func_sl_thold_2(func_sl_thold_2),
    .pc_func_slp_sl_thold_2(func_slp_sl_thold_2),
    .pc_func_slp_nsl_thold_2(func_slp_nsl_thold_2),
@@ -2716,14 +2990,14 @@ lq_derat derat(
    .pc_time_sl_thold_2(time_sl_thold_2),
    .pc_sg_2(sg_2),
    .pc_fce_2(fce_2),
-   
+
    .cam_clkoff_dc_b(cam_clkoff_dc_b),
    .cam_act_dis_dc(cam_act_dis_dc),
    .cam_d_mode_dc(cam_d_mode_dc),
    .cam_delay_lclkr_dc(cam_delay_lclkr_dc),
    .cam_mpw1_dc_b(cam_mpw1_dc_b),
    .cam_mpw2_dc_b(cam_mpw2_dc_b),
-   
+
    .ac_func_scan_in(func_scan_in_q[8:9]),
    .ac_func_scan_out(func_scan_out_int[8:9]),
    .ac_ccfg_scan_in(spr_derat_cfg_scan),
@@ -2732,8 +3006,11 @@ lq_derat derat(
    .time_scan_out(time_scan_out_int[1]),
    .regf_scan_in(regf_scan_in_q),
    .regf_scan_out(regf_scan_out_int),
-   
+
+   // Functional ports
+   // lsu pipelined instructions
    .dec_derat_ex1_derat_act(dec_derat_ex1_derat_act),
+   // ttypes
    .dec_derat_ex0_val(dec_derat_ex0_val),
    .dec_derat_ex0_is_extload(dec_derat_ex0_is_extload),
    .dec_derat_ex0_is_extstore(dec_derat_ex0_is_extstore),
@@ -2750,7 +3027,7 @@ lq_derat derat(
    .dcc_derat_ex5_blk_tlb_req(dcc_derat_ex5_blk_tlb_req),
    .dcc_derat_ex6_cplt(dcc_derat_ex6_cplt),
    .dcc_derat_ex6_cplt_itag(dcc_derat_ex6_cplt_itag),
-   
+
    .dir_derat_ex2_epn_arr(dir_derat_ex2_eff_addr[64 - (2 ** `GPR_WIDTH_ENC):51]),
    .dir_derat_ex2_epn_nonarr(dir_dcc_ex2_eff_addr[64 - (2 ** `GPR_WIDTH_ENC):51]),
    .iu_lq_recirc_val(iu_lq_recirc_val),
@@ -2759,11 +3036,13 @@ lq_derat derat(
    .lsq_ctl_oldest_itag(lsq_ctl_oldest_itag),
    .dec_derat_ex1_itag(dec_dcc_ex1_itag),
    .derat_dcc_ex4_restart(derat_dcc_ex4_restart),
-   
+
+   // SetHold and ClrHold for itag
    .derat_dcc_ex4_setHold(derat_dcc_ex4_setHold),
    .derat_dcc_clr_hold(derat_dcc_clr_hold),
    .derat_dcc_emq_idle(derat_dcc_emq_idle),
-   
+
+   // ordered instructions
    .xu_lq_act(xu_lq_act),
    .xu_lq_val(xu_lq_val),
    .xu_lq_is_eratre(xu_lq_is_eratre),
@@ -2774,13 +3053,15 @@ lq_derat derat(
    .xu_lq_ra_entry(xu_lq_ra_entry),
    .xu_lq_rs_data(xu_lq_rs_data),
    .lq_xu_ex5_data(lq_xu_ex5_data),
-   .lq_xu_ord_par_err(lq_xu_ord_par_err),   
+   .lq_xu_ord_par_err(lq_xu_ord_par_err),
    .lq_xu_ord_read_done(lq_xu_ord_read_done),
    .lq_xu_ord_write_done(lq_xu_ord_write_done),
-   
+
+   // context synchronizing event
    .iu_lq_isync(iu_lq_isync),
    .iu_lq_csync(iu_lq_csync),
-   
+
+   // reload from mmu
    .mm_derat_rel_val(mm_lq_rel_val),
    .mm_derat_rel_data(mm_lq_rel_data),
    .mm_derat_rel_emq(mm_lq_rel_emq),
@@ -2792,9 +3073,11 @@ lq_derat derat(
    .mm_lq_tlb_multihit(mm_lq_tlb_multihit),
    .mm_lq_tlb_par_err(mm_lq_tlb_par_err),
    .mm_lq_lru_par_err(mm_lq_lru_par_err),
-   
+
+   // D$ snoop
    .lsq_ctl_rv0_binv_val(lsq_ctl_rv0_back_inv),
-   
+
+   // tlbivax or tlbilx snoop
    .mm_lq_snoop_coming(mm_lq_snoop_coming),
    .mm_lq_snoop_val(mm_lq_snoop_val),
    .mm_lq_snoop_attr(mm_lq_snoop_attr),
@@ -2802,13 +3085,16 @@ lq_derat derat(
    .lq_mm_snoop_ack(lq_mm_snoop_ack),
    .derat_dec_rv1_snoop_addr(derat_dec_rv1_snoop_addr),
    .derat_rv1_snoop_val(derat_rv1_snoop_val),
-   
+
+   // pipeline controls
    .iu_lq_cp_flush(iu_lq_cp_flush),
    .derat_dec_hole_all(derat_dec_hole_all),
-   
+
+   // cam _np1 ports
    .derat_dcc_ex3_e(derat_dcc_ex3_wimge_e),
    .derat_dcc_ex3_itagHit(derat_dcc_ex3_itagHit),
-   
+
+   // cam _np2 ports
    .derat_dcc_ex4_rpn(derat_dcc_ex4_p_addr),
    .derat_dcc_ex4_wimge(derat_dcc_ex4_wimge),
    .derat_dcc_ex4_u(derat_dcc_ex4_usr_bits),
@@ -2829,10 +3115,11 @@ lq_derat derat(
    .derat_dcc_ex4_tlb_multihit(derat_dcc_ex4_tlb_multihit),
    .derat_dcc_ex4_tlb_par_err(derat_dcc_ex4_tlb_par_err),
    .derat_dcc_ex4_lru_par_err(derat_dcc_ex4_lru_par_err),
-   
+
    .derat_fir_par_err(derat_fir_par_err),
    .derat_fir_multihit(derat_fir_multihit),
-   
+
+   // erat reload request to mmu
    .lq_mm_req(lq_mm_req),
    .lq_mm_req_nonspec(lq_mm_req_nonspec),
    .lq_mm_req_itag(lq_mm_req_itag),
@@ -2844,14 +3131,16 @@ lq_derat derat(
    .lq_mm_lpid(lq_mm_lpid),
    .lq_mm_tid(lq_mm_tid),
    .lq_mm_perf_dtlb(lq_mm_perf_dtlb),
-   
+
+   // write interface to mmucr0,1
    .lq_mm_mmucr0_we(lq_mm_mmucr0_we),
    .lq_mm_mmucr0(lq_mm_mmucr0),
    .lq_mm_mmucr1_we(lq_mm_mmucr1_we),
    .lq_mm_mmucr1(lq_mm_mmucr1),
-   
+
+   // spr's
    .spr_xucr0_clkg_ctl_b1(xu_lq_spr_xucr0_clkg_ctl),
-   
+
    .xu_lq_spr_msr_hv(xu_lq_spr_msr_gs),
    .xu_lq_spr_msr_pr(xu_lq_spr_msr_pr),
    .xu_lq_spr_msr_ds(xu_lq_spr_msr_ds),
@@ -2860,84 +3149,98 @@ lq_derat derat(
    .xu_lq_spr_ccr2_dfrat(xu_lq_spr_ccr2_dfrat),
    .xu_lq_spr_ccr2_dfratsc(xu_lq_spr_ccr2_dfratsc),
    .xu_lq_spr_xucr4_mmu_mchk(xu_lq_spr_xucr4_mmu_mchk),
-   
+
    .spr_derat_eplc_wr(spr_derat_eplc_wr),
    .spr_derat_eplc_epr(spr_derat_eplc_epr),
    .spr_derat_eplc_eas(spr_derat_eplc_eas),
    .spr_derat_eplc_egs(spr_derat_eplc_egs),
    .spr_derat_eplc_elpid(spr_derat_eplc_elpid),
    .spr_derat_eplc_epid(spr_derat_eplc_epid),
-   
+
    .spr_derat_epsc_wr(spr_derat_epsc_wr),
    .spr_derat_epsc_epr(spr_derat_epsc_epr),
    .spr_derat_epsc_eas(spr_derat_epsc_eas),
    .spr_derat_epsc_egs(spr_derat_epsc_egs),
    .spr_derat_epsc_elpid(spr_derat_epsc_elpid),
    .spr_derat_epsc_epid(spr_derat_epsc_epid),
-   
+
    .mm_lq_pid(mm_lq_pid),
    .mm_lq_mmucr0(mm_lq_mmucr0),
    .mm_lq_mmucr1(mm_lq_mmucr1),
-   
+
+   // debug
    .derat_xu_debug_group0(derat_xu_debug_group0),
    .derat_xu_debug_group1(derat_xu_debug_group1),
    .derat_xu_debug_group2(derat_xu_debug_group2),
    .derat_xu_debug_group3(derat_xu_debug_group3)
 );
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// PreFetch
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 assign ctl_pf_clear_queue = lsq_ctl_sync_done;
 
 generate
    if (`BUILD_PFETCH == 1)
    begin : pf
-      
-      lq_pfetch pfetch(		
-         
+
+      // Order Queue Size
+      lq_pfetch pfetch(		// number of IAR bits used by prefetch
+
+         //   IU interface to RV for pfetch predictor table0
+         // port 0
          .rv_lq_rv1_i0_vld(rv_lq_rv1_i0_vld),
          .rv_lq_rv1_i0_isLoad(rv_lq_rv1_i0_isLoad),
          .rv_lq_rv1_i0_itag(rv_lq_rv1_i0_itag),
          .rv_lq_rv1_i0_rte_lq(rv_lq_rv1_i0_rte_lq),
          .rv_lq_rv1_i0_ifar(rv_lq_rv1_i0_ifar),
-         
+
+         // port 1
          .rv_lq_rv1_i1_vld(rv_lq_rv1_i1_vld),
          .rv_lq_rv1_i1_isLoad(rv_lq_rv1_i1_isLoad),
          .rv_lq_rv1_i1_itag(rv_lq_rv1_i1_itag),
          .rv_lq_rv1_i1_rte_lq(rv_lq_rv1_i1_rte_lq),
          .rv_lq_rv1_i1_ifar(rv_lq_rv1_i1_ifar),
-         
+
+         // Zap Machine
          .iu_lq_cp_flush(iu_lq_cp_flush),
-         
+
          .ctl_pf_clear_queue(ctl_pf_clear_queue),
-         
+
+         // release itag to pfetch
          .odq_pf_report_tid(odq_pf_report_tid),
          .odq_pf_report_itag(odq_pf_report_itag),
          .odq_pf_resolved(odq_pf_resolved),
-         
+
+         // EA of load miss that is valid for pre-fetching
          .dcc_pf_ex5_eff_addr(dcc_pf_ex5_eff_addr),
          .dcc_pf_ex5_req_val_4pf(dcc_pf_ex5_req_val_4pf),
          .dcc_pf_ex5_act(dcc_pf_ex5_act),
          .dcc_pf_ex5_thrd_id(dcc_pf_ex5_thrd_id),
          .dcc_pf_ex5_loadmiss(dcc_pf_ex5_loadmiss),
          .dcc_pf_ex5_itag(dcc_pf_ex5_itag),
-         
+
          .spr_pf_spr_dscr_lsd(spr_pf_spr_dscr_lsd),
          .spr_pf_spr_dscr_snse(spr_pf_spr_dscr_snse),
          .spr_pf_spr_dscr_sse(spr_pf_spr_dscr_sse),
          .spr_pf_spr_dscr_dpfd(spr_pf_spr_dscr_dpfd),
          .spr_pf_spr_pesr(spr_pf_spr_pesr),
-         
+
+         // EA of prefetch request
          .pf_dec_req_addr(pf_dec_req_addr),
          .pf_dec_req_thrd(pf_dec_req_thrd),
          .pf_dec_req_val(pf_dec_req_val),
          .dec_pf_ack(dec_pf_ack),
 
          .pf_empty(ctl_lsq_pf_empty),
-         
+
+         // EA of prefetch request
          .pc_lq_inj_prefetcher_parity(pc_lq_inj_prefetcher_parity),
          .lq_pc_err_prefetcher_parity(lq_pc_err_prefetcher_parity),
-         
-         .vcs(vdd),                       
+
+         // Pervasive
+         .vcs(vdd),
          .vdd(vdd),
          .gnd(gnd),
          .nclk(nclk),
@@ -2951,7 +3254,8 @@ generate
          .mpw2_dc_b(mpw2_dc_b),
          .scan_in(spr_pf_func_scan),
          .scan_out(func_scan_out_int[10]),
-         
+
+         // array pervasive
          .abst_sl_thold_0(abst_sl_thold_0),
          .ary_nsl_thold_0(ary_nsl_thold_0),
          .time_sl_thold_0(time_sl_thold_0),
@@ -2964,6 +3268,7 @@ generate
          .g8t_mpw1_dc_b(g8t_mpw1_dc_b),
          .g8t_mpw2_dc_b(g8t_mpw2_dc_b),
          .g8t_delay_lclkr_dc(g8t_delay_lclkr_dc),
+         // ABIST
          .pc_xu_abist_g8t_wenb_q(pc_lq_abist_g8t_wenb_q),
          .pc_xu_abist_g8t1p_renb_0_q(pc_lq_abist_g8t1p_renb_0_q),
          .pc_xu_abist_di_0_q(pc_lq_abist_di_0_q),
@@ -2976,20 +3281,22 @@ generate
          .pc_xu_abist_wl64_comp_ena_q(pc_lq_abist_wl64_comp_ena_q),
          .pc_xu_abist_raw_dc_b(pc_lq_abist_raw_dc_b),
          .pc_xu_abist_g8t_dcomp_q(pc_lq_abist_g8t_dcomp_q),
+         // Scan
          .abst_scan_in({abst_scan_out_q[1], abst_scan_out_int[2]}),
          .time_scan_in(time_scan_in_q[2]),
          .repr_scan_in(repr_scan_in_q[1]),
          .abst_scan_out({abst_scan_out_int[2], abst_scan_out_int[3]}),
          .time_scan_out(time_scan_out_int[2]),
          .repr_scan_out(repr_scan_out_int[1]),
+         // BOLT-ON
          .bolt_sl_thold_0(bolt_sl_thold_0),
-         .pc_bo_enable_2(bo_enable_2),		
-         .pc_xu_bo_reset(pc_lq_bo_reset),		
-         .pc_xu_bo_unload(pc_lq_bo_unload),		
-         .pc_xu_bo_repair(pc_lq_bo_repair),		
-         .pc_xu_bo_shdata(pc_lq_bo_shdata),		
-         .pc_xu_bo_select(2'b00),		
-         .xu_pc_bo_fail(),		
+         .pc_bo_enable_2(bo_enable_2),		// general bolt-on enable
+         .pc_xu_bo_reset(pc_lq_bo_reset),		// reset
+         .pc_xu_bo_unload(pc_lq_bo_unload),		// unload sticky bits
+         .pc_xu_bo_repair(pc_lq_bo_repair),		// execute sticky bit decode
+         .pc_xu_bo_shdata(pc_lq_bo_shdata),		// shift data for timing write and diag loop
+         .pc_xu_bo_select(2'b00),		// select for mask and hier writes
+         .xu_pc_bo_fail(),		// fail/no-fix reg
          .xu_pc_bo_diagout()
       );
    end
@@ -3008,6 +3315,9 @@ generate
    end
 endgenerate
 
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// OUTPUTS
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 assign ctl_dat_ex2_eff_addr = dir_dcc_ex2_eff_addr[52:59];
 assign dir_arr_wr_enable = dir_arr_wr_enable_int;
 assign dir_arr_wr_way = dir_arr_wr_way_int;
@@ -3026,6 +3336,7 @@ assign spr_dcc_spr_lesr   = {spr_lesr1, spr_lesr2};
 assign ctl_perv_spr_lesr1 = spr_lesr1;
 assign ctl_perv_spr_lesr2 = spr_lesr2;
 
+// SCAN OUT Gate
 assign abst_scan_out = abst_scan_out_q[2] & an_ac_scan_dis_dc_b;
 assign time_scan_out = time_scan_out_q & an_ac_scan_dis_dc_b;
 assign repr_scan_out = repr_scan_out_q & an_ac_scan_dis_dc_b;
@@ -3033,6 +3344,9 @@ assign func_scan_out = func_scan_out_q & {11{an_ac_scan_dis_dc_b}};
 assign regf_scan_out = regf_scan_out_q & {7{an_ac_scan_dis_dc_b}};
 assign ccfg_scan_out = ccfg_scan_out_int & an_ac_scan_dis_dc_b;
 
+//---------------------------------------------------------------------
+// abist latches
+//---------------------------------------------------------------------
 
 tri_rlmreg_p #(.INIT(0), .WIDTH(25), .NEEDS_SRESET(1)) abist_reg(
    .vd(vdd),
@@ -3051,7 +3365,7 @@ tri_rlmreg_p #(.INIT(0), .WIDTH(25), .NEEDS_SRESET(1)) abist_reg(
    .din({pc_lq_abist_wl64_comp_ena,
          pc_lq_abist_g8t_wenb,
          pc_lq_abist_g8t1p_renb_0,
-         pc_lq_abist_di_0, 
+         pc_lq_abist_di_0,
          pc_lq_abist_g8t_dcomp,
          pc_lq_abist_g8t_bw_1,
          pc_lq_abist_g8t_bw_0,
@@ -3060,14 +3374,17 @@ tri_rlmreg_p #(.INIT(0), .WIDTH(25), .NEEDS_SRESET(1)) abist_reg(
    .dout({pc_lq_abist_wl64_comp_ena_q,
           pc_lq_abist_g8t_wenb_q,
           pc_lq_abist_g8t1p_renb_0_q,
-          pc_lq_abist_di_0_q, 
+          pc_lq_abist_di_0_q,
           pc_lq_abist_g8t_dcomp_q,
           pc_lq_abist_g8t_bw_1_q,
           pc_lq_abist_g8t_bw_0_q,
-          pc_lq_abist_raddr_0_q, 
+          pc_lq_abist_raddr_0_q,
           pc_lq_abist_waddr_0_q})
 );
 
+//-----------------------------------------------
+// Pervasive
+//-----------------------------------------------
 
 tri_plat #(.WIDTH(15)) perv_2to1_reg(
    .vd(vdd),
@@ -3203,6 +3520,7 @@ tri_lcbor perv_lcbor_cfg_sl(
    .thold_b(cfg_sl_thold_0_b)
 );
 
+// LCBs for scan only staging latches
 assign slat_force = sg_0;
 assign abst_slat_thold_b = (~abst_sl_thold_0);
 assign time_slat_thold_b = (~time_sl_thold_0);
@@ -3384,7 +3702,5 @@ tri_slat_scan #(.WIDTH(14), .INIT(14'b00000000000000)) perv_regf_stg(
 
 assign abist_siv = {abist_sov[1:24], abst_scan_out_q[0]};
 assign abst_scan_out_int[1] = abist_sov[0];
-   
+
 endmodule
-
-

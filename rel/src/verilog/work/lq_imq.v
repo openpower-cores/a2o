@@ -7,13 +7,25 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//
+//  Description:  XU LSU Store Data Rotator Wrapper
+//
+//*****************************************************************************
 
+// ##########################################################################################
+// VHDL Contents
+// 1) Load Queue
+// 2) Store Queue
+// 3) Load/Store Queue Control
+// ##########################################################################################
 
 `include "tri_a2o.vh"
 
-
-
-
+//   parameter                          EXPAND_TYPE = 2;		// 0 = ibm (Umbra), 1 = non-ibm, 2 = ibm (MPG)
+//   parameter                          THREADS = 2;		// Number of Threads
+// `define                               IUQ_ENTRIES   4 		// Instruction Fetch Queue Size
+// `define                               MMQ_ENTRIES   2 		// MMU Queue Size
+//   parameter                          REAL_IFAR_WIDTH = 42;		// real addressing bits
 
 module lq_imq(
    iu_lq_request,
@@ -22,15 +34,15 @@ module lq_imq(
    iu_lq_wimge,
    iu_lq_userdef,
    mm_lq_lsu_req,
-   mm_lq_lsu_ttype,	
+   mm_lq_lsu_ttype,
    mm_lq_lsu_wimge,
-   mm_lq_lsu_u,		
-   mm_lq_lsu_addr,	
-   mm_lq_lsu_lpid,	
+   mm_lq_lsu_u,
+   mm_lq_lsu_addr,
+   mm_lq_lsu_lpid,
    mm_lq_lsu_gs,
    mm_lq_lsu_ind,
-   mm_lq_lsu_lbit,	
-   lq_mm_lsu_token,	
+   mm_lq_lsu_lbit,
+   lq_mm_lsu_token,
    arb_imq_iuq_unit_sel,
    arb_imq_mmq_unit_sel,
    imq_arb_iuq_ld_req_avail,
@@ -66,27 +78,32 @@ module lq_imq(
    scan_in,
    scan_out
 );
-   
+
+   // Instruction Fetches
    input [0:`THREADS-1]               iu_lq_request;
    input [0:1]                        iu_lq_cTag;
    input [64-`REAL_IFAR_WIDTH:59]     iu_lq_ra;
    input [0:4]                        iu_lq_wimge;
    input [0:3]                        iu_lq_userdef;
-   
-   input [0:`THREADS-1]               mm_lq_lsu_req;		
-   input [0:1]                        mm_lq_lsu_ttype;		
+
+   // MMU instruction interface
+   input [0:`THREADS-1]               mm_lq_lsu_req;		// will only pulse when mm has at least 1 token (1 bit per thread)
+   input [0:1]                        mm_lq_lsu_ttype;		// 0=TLBIVAX; 1=TLBI_COMPLETE; 2=LOAD (tag=01100); 3=LOAD (tag=01101)
    input [0:4]                        mm_lq_lsu_wimge;
-   input [0:3]                        mm_lq_lsu_u;		    
-   input [64-`REAL_IFAR_WIDTH:63]     mm_lq_lsu_addr;		
-   input [0:7]                        mm_lq_lsu_lpid;		
+   input [0:3]                        mm_lq_lsu_u;		    // user defined bits
+   input [64-`REAL_IFAR_WIDTH:63]     mm_lq_lsu_addr;		// address for TLBI (or loads; maybe);
+   // TLBI_COMPLETE is addressless
+   input [0:7]                        mm_lq_lsu_lpid;		// muxed LPID for the thread of the mmu command
    input                              mm_lq_lsu_gs;
    input                              mm_lq_lsu_ind;
-   input                              mm_lq_lsu_lbit;		
-   output                             lq_mm_lsu_token;		
-   
+   input                              mm_lq_lsu_lbit;		// "L" bit; for large vs. small
+   output                             lq_mm_lsu_token;		// MMU Request has been sent
+
+   // IUQ Request Sent
    input                              arb_imq_iuq_unit_sel;
    input                              arb_imq_mmq_unit_sel;
-   
+
+   // IUQ Request to the L2
    output                             imq_arb_iuq_ld_req_avail;
    output reg [0:1]                   imq_arb_iuq_tid;
    output reg [0:3]                   imq_arb_iuq_usr_def;
@@ -95,7 +112,8 @@ module lq_imq(
    output [0:5]                       imq_arb_iuq_ttype;
    output [0:2]                       imq_arb_iuq_opSize;
    output reg [0:4]                   imq_arb_iuq_cTag;
-   
+
+   // MMQ Request to the L2
    output                             imq_arb_mmq_ld_req_avail;
    output                             imq_arb_mmq_st_req_avail;
    output reg [0:1]                   imq_arb_mmq_tid;
@@ -106,16 +124,17 @@ module lq_imq(
    output [0:2]                       imq_arb_mmq_opSize;
    output [0:4]                       imq_arb_mmq_cTag;
    output [0:15]                      imq_arb_mmq_st_data;
-   
-   
-            
+
+   // Pervasive
+
+
    inout                              vdd;
-             
-              
+
+
    inout                              gnd;
-           
-   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)     
-                                      
+
+   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)
+
    input [0:`NCLK_WIDTH-1]            nclk;
    input                              sg_0;
    input                              func_sl_thold_0_b;
@@ -126,15 +145,18 @@ module lq_imq(
    input                              delay_lclkr_dc;
    input                              mpw1_dc_b;
    input                              mpw2_dc_b;
-   
+
    (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)
-   
+
    input                              scan_in;
-   
+
    (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
-   
+
    output                             scan_out;
-   
+
+   //--------------------------
+   // signals
+   //--------------------------
    wire [0:`IUQ_ENTRIES-1]            iuq_entry_wrt_ptr;
    wire [0:`IUQ_ENTRIES-1]            entry_iuq_set_val;
    wire [0:`IUQ_ENTRIES-1]            entry_iuq_clr_val;
@@ -233,8 +255,11 @@ module lq_imq(
    wire                               mm_lq_lsu_ind_q;
    wire                               mm_lq_lsu_lbit_d;
    wire                               mm_lq_lsu_lbit_q;
-   
-   
+
+   //--------------------------
+   // constants
+   //--------------------------
+
    parameter                          iu_lq_request_offset = 0;
    parameter                          iu_lq_cTag_offset = iu_lq_request_offset + `THREADS;
    parameter                          iu_lq_ra_offset = iu_lq_cTag_offset + 2;
@@ -273,17 +298,21 @@ module lq_imq(
    parameter                          mmq_seq_offset = mmq_ret_token_offset + 1;
    parameter                          mmq_seq_rd_offset = mmq_seq_offset + 3;
    parameter                          scan_right = mmq_seq_rd_offset + 3 - 1;
-   
+
    wire                               tiup;
    wire                               tidn;
    wire [0:scan_right]                siv;
    wire [0:scan_right]                sov;
- 
-  
+
+   //!! Bugspray Include: lq_imq
+
    assign tiup = 1'b1;
    assign tidn = 1'b0;
-   
-   
+
+   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+   // INPUTS LATCHED
+   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
    assign iu_lq_int_act     = |(iu_lq_request);
    assign iu_lq_request_d   = iu_lq_request;
    assign iu_lq_cTag_d      = iu_lq_cTag;
@@ -300,7 +329,10 @@ module lq_imq(
    assign mm_lq_lsu_gs_d    = mm_lq_lsu_gs;
    assign mm_lq_lsu_ind_d   = mm_lq_lsu_ind;
    assign mm_lq_lsu_lbit_d  = mm_lq_lsu_lbit;
-   
+
+   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+   // `THREADS ENCODE
+   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
    always @(*) begin: tidMulti
       reg [0:1]                          iuTid;
       reg [0:1]                          mmTid;
@@ -315,19 +347,25 @@ module lq_imq(
       iu_req_tid <= iuTid;
       mm_req_tid <= mmTid;
    end
-   
-   
+
+   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+   // INSTRUCTION FETCH QUEUE LOGIC
+   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+   // Sequence number for IUQ Requests
    assign iuq_seq_incr = iuq_seq_q + 3'b001;
    assign iu_req_val   = |(iu_lq_request_q);
-   
-   assign iuq_seq_d = (iu_req_val == 1'b1) ? iuq_seq_incr : 
+
+   assign iuq_seq_d = (iu_req_val == 1'b1) ? iuq_seq_incr :
                                              iuq_seq_q;
-   
+
+   // Pointer to next IUQ request to be sent to the L2
    assign iuq_seq_rd_incr = iuq_seq_rd_q + 3'b001;
-   
-   assign iuq_seq_rd_d = (arb_imq_iuq_unit_sel == 1'b1) ? iuq_seq_rd_incr : 
+
+   assign iuq_seq_rd_d = (arb_imq_iuq_unit_sel == 1'b1) ? iuq_seq_rd_incr :
                                                           iuq_seq_rd_q;
-   
+
+   // Update Logic
    assign iuq_entry_wrt_ptr[0] = (~iuq_entry_val_q[0]);
    generate begin : IuPriWrt
      genvar iuq;
@@ -336,41 +374,46 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : InstrQ
      genvar iuq;
      for (iuq = 0; iuq <= `IUQ_ENTRIES - 1; iuq = iuq + 1) begin : InstrQ
         assign entry_iuq_set_val[iuq] = iu_req_val & iuq_entry_wrt_ptr[iuq];
         assign entry_iuq_clr_val[iuq] = arb_imq_iuq_unit_sel & iuq_entry_sel[iuq];
-        
-        assign iuq_entry_val_d[iuq] = ({entry_iuq_set_val[iuq], entry_iuq_clr_val[iuq]} == 2'b10) ? 1'b1 : 
-                                      ({entry_iuq_set_val[iuq], entry_iuq_clr_val[iuq]} == 2'b01) ? 1'b0 : 
+
+        assign iuq_entry_val_d[iuq] = ({entry_iuq_set_val[iuq], entry_iuq_clr_val[iuq]} == 2'b10) ? 1'b1 :
+                                      ({entry_iuq_set_val[iuq], entry_iuq_clr_val[iuq]} == 2'b01) ? 1'b0 :
                                                                                                     iuq_entry_val_q[iuq];
-        
-        assign iuq_entry_p_addr_d[iuq] = (entry_iuq_set_val[iuq] == 1'b1) ? iu_lq_ra_q : 
+
+        assign iuq_entry_p_addr_d[iuq] = (entry_iuq_set_val[iuq] == 1'b1) ? iu_lq_ra_q :
                                                                             iuq_entry_p_addr_q[iuq];
-        
-        assign iuq_entry_cTag_d[iuq] = (entry_iuq_set_val[iuq] == 1'b1) ? iu_lq_cTag_q : 
+
+        assign iuq_entry_cTag_d[iuq] = (entry_iuq_set_val[iuq] == 1'b1) ? iu_lq_cTag_q :
                                                                           iuq_entry_cTag_q[iuq];
-        
-        assign iuq_entry_wimge_d[iuq] = (entry_iuq_set_val[iuq] == 1'b1) ? iu_lq_wimge_q : 
+
+        assign iuq_entry_wimge_d[iuq] = (entry_iuq_set_val[iuq] == 1'b1) ? iu_lq_wimge_q :
                                                                            iuq_entry_wimge_q[iuq];
-        
-        assign iuq_entry_usr_def_d[iuq] = (entry_iuq_set_val[iuq] == 1'b1) ? iu_lq_userdef_q : 
+
+        assign iuq_entry_usr_def_d[iuq] = (entry_iuq_set_val[iuq] == 1'b1) ? iu_lq_userdef_q :
                                                                              iuq_entry_usr_def_q[iuq];
-        
-        assign iuq_entry_tid_d[iuq] = (entry_iuq_set_val[iuq] == 1'b1) ? iu_req_tid : 
+
+        assign iuq_entry_tid_d[iuq] = (entry_iuq_set_val[iuq] == 1'b1) ? iu_req_tid :
                                                                          iuq_entry_tid_q[iuq];
-        
-        assign iuq_entry_seq_d[iuq] = (entry_iuq_set_val[iuq] == 1'b1) ? iuq_seq_q : 
+
+        assign iuq_entry_seq_d[iuq] = (entry_iuq_set_val[iuq] == 1'b1) ? iuq_seq_q :
                                                                          iuq_entry_seq_q[iuq];
      end
    end
    endgenerate
-   
-   
-   
-   
+
+   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+   // INSTRUCTION FETCH REQUEST ARBITRATION
+   // ##############################################
+
+   // Instruction Fetches contain a sequence number that indicates an order
+   // They are sent to the L2 in the order recieved
+
    generate begin : IQSel
      genvar iuq;
      for (iuq = 0; iuq <= `IUQ_ENTRIES - 1; iuq = iuq + 1) begin : IQSel
@@ -378,8 +421,9 @@ module lq_imq(
      end
    end
    endgenerate
-   
-   
+
+   // Mux Load Queue Entry between Groups
+
    always @(*) begin: IqMux
       reg [0:3]                          usrDef;
       reg [0:4]                          wimge;
@@ -406,27 +450,34 @@ module lq_imq(
       imq_arb_iuq_cTag <= {3'b010, cTag};
       imq_arb_iuq_tid <= tid;
    end
-   
+
    assign imq_arb_iuq_ttype = {6{1'b0}};
    assign imq_arb_iuq_opSize = 3'b110;
-   
+
    assign imq_arb_iuq_ld_req_avail = |(iuq_entry_val_q);
-   
-   
+
+   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+   // MMU QUEUE
+   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+   // MMQ Request Has been Sent
    assign mmq_req_sent    = arb_imq_mmq_unit_sel;
    assign mmq_ret_token_d = mmq_req_sent;
-   
+
+   // Sequence number for MMQ Requests
    assign mmq_seq_incr = mmq_seq_q + 3'b001;
    assign mm_req_val   = |(mm_lq_lsu_req_q);
-   
-   assign mmq_seq_d = (mm_req_val == 1'b1) ? mmq_seq_incr : 
+
+   assign mmq_seq_d = (mm_req_val == 1'b1) ? mmq_seq_incr :
                                              mmq_seq_q;
-   
+
+   // Pointer to next MMQ request to be sent to the L2
    assign mmq_seq_rd_incr = mmq_seq_rd_q + 3'b001;
-   
-   assign mmq_seq_rd_d = (mmq_req_sent == 1'b1) ? mmq_seq_rd_incr : 
+
+   assign mmq_seq_rd_d = (mmq_req_sent == 1'b1) ? mmq_seq_rd_incr :
                                                   mmq_seq_rd_q;
-   
+
+   // Update Logic
    assign mmq_entry_wrt_ptr[0] = (~mmq_entry_val_q[0]);
 
    generate begin : MmuPriWrt
@@ -436,51 +487,55 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : mmuQ
      genvar mmq;
      for (mmq = 0; mmq <= `MMQ_ENTRIES - 1; mmq = mmq + 1) begin : mmuQ
         assign entry_mmq_set_val[mmq] = mm_req_val & mmq_entry_wrt_ptr[mmq];
         assign entry_mmq_clr_val[mmq] = mmq_req_sent & mmq_entry_sel[mmq];
-        assign mmq_entry_val_d[mmq] = ({entry_mmq_set_val[mmq], entry_mmq_clr_val[mmq]} == 2'b10) ? 1'b1 : 
-                                      ({entry_mmq_set_val[mmq], entry_mmq_clr_val[mmq]} == 2'b01) ? 1'b0 : 
+        assign mmq_entry_val_d[mmq] = ({entry_mmq_set_val[mmq], entry_mmq_clr_val[mmq]} == 2'b10) ? 1'b1 :
+                                      ({entry_mmq_set_val[mmq], entry_mmq_clr_val[mmq]} == 2'b01) ? 1'b0 :
                                                                                                     mmq_entry_val_q[mmq];
-        
-        assign mmq_entry_p_addr_d[mmq]  = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_addr_q : 
+
+        assign mmq_entry_p_addr_d[mmq]  = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_addr_q :
                                                                              mmq_entry_p_addr_q[mmq];
-        
-        assign mmq_entry_ttype_d[mmq]   = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_ttype_q : 
+
+        assign mmq_entry_ttype_d[mmq]   = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_ttype_q :
                                                                              mmq_entry_ttype_q[mmq];
-        
-        assign mmq_entry_wimge_d[mmq]   = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_wimge_q : 
+
+        assign mmq_entry_wimge_d[mmq]   = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_wimge_q :
                                                                              mmq_entry_wimge_q[mmq];
-        
-        assign mmq_entry_usr_def_d[mmq] = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_u_q : 
+
+        assign mmq_entry_usr_def_d[mmq] = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_u_q :
                                                                              mmq_entry_usr_def_q[mmq];
-        
-        assign mmq_entry_tid_d[mmq]     = (entry_mmq_set_val[mmq] == 1'b1) ? mm_req_tid : 
+
+        assign mmq_entry_tid_d[mmq]     = (entry_mmq_set_val[mmq] == 1'b1) ? mm_req_tid :
                                                                              mmq_entry_tid_q[mmq];
-        
-        assign mmq_entry_seq_d[mmq]     = (entry_mmq_set_val[mmq] == 1'b1) ? mmq_seq_q : 
+
+        assign mmq_entry_seq_d[mmq]     = (entry_mmq_set_val[mmq] == 1'b1) ? mmq_seq_q :
                                                                              mmq_entry_seq_q[mmq];
-        
-        assign mmq_entry_lpid_d[mmq]    = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_lpid_q : 
+
+        assign mmq_entry_lpid_d[mmq]    = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_lpid_q :
                                                                              mmq_entry_lpid_q[mmq];
-        
-        assign mmq_entry_ind_d[mmq]     = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_ind_q : 
+
+        assign mmq_entry_ind_d[mmq]     = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_ind_q :
                                                                              mmq_entry_ind_q[mmq];
-        
-        assign mmq_entry_gs_d[mmq]      = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_gs_q : 
+
+        assign mmq_entry_gs_d[mmq]      = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_gs_q :
                                                                              mmq_entry_gs_q[mmq];
-        
-        assign mmq_entry_lbit_d[mmq]    = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_lbit_q : 
+
+        assign mmq_entry_lbit_d[mmq]    = (entry_mmq_set_val[mmq] == 1'b1) ? mm_lq_lsu_lbit_q :
                                                                              mmq_entry_lbit_q[mmq];
      end
    end
    endgenerate
-   
-   
-   
+
+   // MMU REQUEST ARBITRATION
+   // ##############################################
+
+   // MMU Requests contain a sequence number that indicates an order
+   // They are sent to the L2 in the order recieved
+
    generate begin : MQSel
      genvar mmq;
      for (mmq = 0; mmq <= `MMQ_ENTRIES - 1; mmq = mmq + 1) begin : MQSel
@@ -488,7 +543,8 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
+   // Mux Load Queue Entry between Groups
    always @(*) begin: MqMux
       reg [0:3]                          usrDef;
       reg [0:4]                          wimge;
@@ -531,22 +587,26 @@ module lq_imq(
       mmq_lbit <= lbit;
       imq_arb_mmq_tid <= tid;
    end
-   
-   assign imq_arb_mmq_ttype = (mmq_ttype_enc == 2'b00) ? 6'b111100 : 		
-                              (mmq_ttype_enc == 2'b01) ? 6'b111011 : 		
-                                                         6'b000010;		
-   
-   assign imq_arb_mmq_cTag = (mmq_ttype_enc == 2'b10) ? 5'b01100 : 		
-                             (mmq_ttype_enc == 2'b11) ? 5'b01101 : 		
-                                                        5'b00000;		
-   
+
+   assign imq_arb_mmq_ttype = (mmq_ttype_enc == 2'b00) ? 6'b111100 : 		// TLBIVAX
+                              (mmq_ttype_enc == 2'b01) ? 6'b111011 : 		// TLBI COMPLETE
+                                                         6'b000010;		// MMU LOAD
+
+   assign imq_arb_mmq_cTag = (mmq_ttype_enc == 2'b10) ? 5'b01100 : 		// MMU Load TAG=0
+                             (mmq_ttype_enc == 2'b11) ? 5'b01101 : 		// MMU Load TAG=1
+                                                        5'b00000;		// TLB STORE TYPE
+
    assign imq_arb_mmq_opSize = {3{1'b0}};
    assign imq_arb_mmq_ld_req_avail = |(mmq_entry_val_q) & mmq_ttype_enc[0];
    assign imq_arb_mmq_st_req_avail = |(mmq_entry_val_q) & (~mmq_ttype_enc[0]);
    assign imq_arb_mmq_st_data = {mmq_lpid, 5'b00000, mmq_ind, mmq_gs, mmq_lbit};
    assign lq_mm_lsu_token = mmq_ret_token_q;
-   
-   
+   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+   // REGISTERS
+   // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0), .NEEDS_SRESET(1)) iu_lq_request_reg(
       .vd(vdd),
       .gd(gnd),
@@ -564,8 +624,8 @@ module lq_imq(
       .din(iu_lq_request_d),
       .dout(iu_lq_request_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) iu_lq_cTag_reg(
       .vd(vdd),
       .gd(gnd),
@@ -583,8 +643,8 @@ module lq_imq(
       .din(iu_lq_cTag_d),
       .dout(iu_lq_cTag_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH((`REAL_IFAR_WIDTH-4)), .INIT(0), .NEEDS_SRESET(1)) iu_lq_ra_reg(
       .vd(vdd),
       .gd(gnd),
@@ -602,8 +662,8 @@ module lq_imq(
       .din(iu_lq_ra_d),
       .dout(iu_lq_ra_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(5), .INIT(0), .NEEDS_SRESET(1)) iu_lq_wimge_reg(
       .vd(vdd),
       .gd(gnd),
@@ -621,8 +681,8 @@ module lq_imq(
       .din(iu_lq_wimge_d),
       .dout(iu_lq_wimge_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(4), .INIT(0), .NEEDS_SRESET(1)) iu_lq_userdef_reg(
       .vd(vdd),
       .gd(gnd),
@@ -640,8 +700,8 @@ module lq_imq(
       .din(iu_lq_userdef_d),
       .dout(iu_lq_userdef_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`THREADS), .INIT(0), .NEEDS_SRESET(1)) mm_lq_lsu_req_reg(
       .vd(vdd),
       .gd(gnd),
@@ -659,8 +719,8 @@ module lq_imq(
       .din(mm_lq_lsu_req_d),
       .dout(mm_lq_lsu_req_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) mm_lq_lsu_ttype_reg(
       .vd(vdd),
       .gd(gnd),
@@ -678,8 +738,8 @@ module lq_imq(
       .din(mm_lq_lsu_ttype_d),
       .dout(mm_lq_lsu_ttype_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`REAL_IFAR_WIDTH), .INIT(0), .NEEDS_SRESET(1)) mm_lq_lsu_addr_reg(
       .vd(vdd),
       .gd(gnd),
@@ -697,8 +757,8 @@ module lq_imq(
       .din(mm_lq_lsu_addr_d),
       .dout(mm_lq_lsu_addr_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(5), .INIT(0), .NEEDS_SRESET(1)) mm_lq_lsu_wimge_reg(
       .vd(vdd),
       .gd(gnd),
@@ -716,8 +776,8 @@ module lq_imq(
       .din(mm_lq_lsu_wimge_d),
       .dout(mm_lq_lsu_wimge_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(4), .INIT(0), .NEEDS_SRESET(1)) mm_lq_lsu_u_reg(
       .vd(vdd),
       .gd(gnd),
@@ -735,8 +795,8 @@ module lq_imq(
       .din(mm_lq_lsu_u_d),
       .dout(mm_lq_lsu_u_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(8), .INIT(0), .NEEDS_SRESET(1)) mm_lq_lsu_lpid_reg(
       .vd(vdd),
       .gd(gnd),
@@ -754,8 +814,8 @@ module lq_imq(
       .din(mm_lq_lsu_lpid_d),
       .dout(mm_lq_lsu_lpid_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) mm_lq_lsu_gs_reg(
       .vd(vdd),
       .gd(gnd),
@@ -773,8 +833,8 @@ module lq_imq(
       .din(mm_lq_lsu_gs_d),
       .dout(mm_lq_lsu_gs_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) mm_lq_lsu_ind_reg(
       .vd(vdd),
       .gd(gnd),
@@ -792,8 +852,8 @@ module lq_imq(
       .din(mm_lq_lsu_ind_d),
       .dout(mm_lq_lsu_ind_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) mm_lq_lsu_lbit_reg(
       .vd(vdd),
       .gd(gnd),
@@ -811,8 +871,8 @@ module lq_imq(
       .din(mm_lq_lsu_lbit_d),
       .dout(mm_lq_lsu_lbit_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`IUQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) iuq_entry_val_reg(
       .vd(vdd),
       .gd(gnd),
@@ -830,11 +890,11 @@ module lq_imq(
       .din(iuq_entry_val_d),
       .dout(iuq_entry_val_q)
    );
-   
+
    generate begin : iuq_entry_p_addr
      genvar                             iuq;
      for (iuq = 0; iuq <= `IUQ_ENTRIES - 1; iuq = iuq + 1) begin : iuq_entry_p_addr
-        
+
         tri_rlmreg_p #(.WIDTH(`REAL_IFAR_WIDTH - 4), .INIT(0), .NEEDS_SRESET(1)) iuq_entry_p_addr_reg(
            .vd(vdd),
            .gd(gnd),
@@ -855,11 +915,11 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : iuq_entry_cTag
      genvar                             iuq;
      for (iuq = 0; iuq <= `IUQ_ENTRIES - 1; iuq = iuq + 1) begin : iuq_entry_cTag
-        
+
         tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) iuq_entry_cTag_reg(
            .vd(vdd),
            .gd(gnd),
@@ -880,11 +940,11 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : iuq_entry_wimge
      genvar                             iuq;
      for (iuq = 0; iuq <= `IUQ_ENTRIES - 1; iuq = iuq + 1) begin : iuq_entry_wimge
-        
+
         tri_rlmreg_p #(.WIDTH(5), .INIT(0), .NEEDS_SRESET(1)) iuq_entry_wimge_reg(
            .vd(vdd),
            .gd(gnd),
@@ -905,11 +965,11 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : iuq_entry_usr_def
      genvar                             iuq;
      for (iuq = 0; iuq <= `IUQ_ENTRIES - 1; iuq = iuq + 1) begin : iuq_entry_usr_def
-        
+
         tri_rlmreg_p #(.WIDTH(4), .INIT(0), .NEEDS_SRESET(1)) iuq_entry_usr_def_reg(
            .vd(vdd),
            .gd(gnd),
@@ -930,11 +990,11 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : iuq_entry_tid
      genvar                             iuq;
      for (iuq = 0; iuq <= `IUQ_ENTRIES - 1; iuq = iuq + 1) begin : iuq_entry_tid
-        
+
         tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) iuq_entry_tid_reg(
            .vd(vdd),
            .gd(gnd),
@@ -955,11 +1015,11 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : iuq_entry_seq
      genvar                             iuq;
      for (iuq = 0; iuq <= `IUQ_ENTRIES - 1; iuq = iuq + 1) begin : iuq_entry_seq
-        
+
         tri_rlmreg_p #(.WIDTH(3), .INIT(0), .NEEDS_SRESET(1)) iuq_entry_seq_reg(
            .vd(vdd),
            .gd(gnd),
@@ -980,8 +1040,8 @@ module lq_imq(
      end
    end
    endgenerate
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(3), .INIT(0), .NEEDS_SRESET(1)) iuq_seq_reg(
       .vd(vdd),
       .gd(gnd),
@@ -999,8 +1059,8 @@ module lq_imq(
       .din(iuq_seq_d),
       .dout(iuq_seq_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(3), .INIT(0), .NEEDS_SRESET(1)) iuq_seq_rd_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1018,8 +1078,8 @@ module lq_imq(
       .din(iuq_seq_rd_d),
       .dout(iuq_seq_rd_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`MMQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) mmq_entry_val_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1037,11 +1097,11 @@ module lq_imq(
       .din(mmq_entry_val_d),
       .dout(mmq_entry_val_q)
    );
-   
+
    generate begin : mmq_entry_p_addr
      genvar                             mmq;
      for (mmq = 0; mmq <= `MMQ_ENTRIES - 1; mmq = mmq + 1) begin : mmq_entry_p_addr
-        
+
         tri_rlmreg_p #(.WIDTH(`REAL_IFAR_WIDTH), .INIT(0), .NEEDS_SRESET(1)) mmq_entry_p_addr_reg(
            .vd(vdd),
            .gd(gnd),
@@ -1062,11 +1122,11 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : mmq_entry_ttype
      genvar                             mmq;
      for (mmq = 0; mmq <= `MMQ_ENTRIES - 1; mmq = mmq + 1) begin : mmq_entry_ttype
-        
+
         tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) mmq_entry_ttype_reg(
            .vd(vdd),
            .gd(gnd),
@@ -1087,11 +1147,11 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : mmq_entry_wimge
      genvar                             mmq;
      for (mmq = 0; mmq <= `MMQ_ENTRIES - 1; mmq = mmq + 1) begin : mmq_entry_wimge
-        
+
         tri_rlmreg_p #(.WIDTH(5), .INIT(0), .NEEDS_SRESET(1)) mmq_entry_wimge_reg(
            .vd(vdd),
            .gd(gnd),
@@ -1112,11 +1172,11 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : mmq_entry_usr_def
      genvar                             mmq;
      for (mmq = 0; mmq <= `MMQ_ENTRIES - 1; mmq = mmq + 1) begin : mmq_entry_usr_def
-        
+
         tri_rlmreg_p #(.WIDTH(4), .INIT(0), .NEEDS_SRESET(1)) mmq_entry_usr_def_reg(
            .vd(vdd),
            .gd(gnd),
@@ -1137,11 +1197,11 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : mmq_entry_tid
      genvar                             mmq;
      for (mmq = 0; mmq <= `MMQ_ENTRIES - 1; mmq = mmq + 1) begin : mmq_entry_tid
-        
+
         tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) mmq_entry_tid_reg(
            .vd(vdd),
            .gd(gnd),
@@ -1162,11 +1222,11 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : mmq_entry_seq
      genvar                             mmq;
      for (mmq = 0; mmq <= `MMQ_ENTRIES - 1; mmq = mmq + 1) begin : mmq_entry_seq
-        
+
         tri_rlmreg_p #(.WIDTH(3), .INIT(0), .NEEDS_SRESET(1)) mmq_entry_seq_reg(
            .vd(vdd),
            .gd(gnd),
@@ -1187,11 +1247,11 @@ module lq_imq(
      end
    end
    endgenerate
-   
+
    generate begin : mmq_entry_lpid
      genvar                             mmq;
      for (mmq = 0; mmq <= `MMQ_ENTRIES - 1; mmq = mmq + 1) begin : mmq_entry_lpid
-        
+
         tri_rlmreg_p #(.WIDTH(8), .INIT(0), .NEEDS_SRESET(1)) mmq_entry_lpid_reg(
            .vd(vdd),
            .gd(gnd),
@@ -1212,8 +1272,8 @@ module lq_imq(
      end
    end
    endgenerate
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`MMQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) mmq_entry_ind_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1231,8 +1291,8 @@ module lq_imq(
       .din(mmq_entry_ind_d),
       .dout(mmq_entry_ind_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`MMQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) mmq_entry_gs_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1250,8 +1310,8 @@ module lq_imq(
       .din(mmq_entry_gs_d),
       .dout(mmq_entry_gs_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(`MMQ_ENTRIES), .INIT(0), .NEEDS_SRESET(1)) mmq_entry_lbit_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1269,8 +1329,8 @@ module lq_imq(
       .din(mmq_entry_lbit_d),
       .dout(mmq_entry_lbit_q)
    );
-   
-   
+
+
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) mmq_ret_token_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1288,8 +1348,8 @@ module lq_imq(
       .din(mmq_ret_token_d),
       .dout(mmq_ret_token_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(3), .INIT(0), .NEEDS_SRESET(1)) mmq_seq_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1307,8 +1367,8 @@ module lq_imq(
       .din(mmq_seq_d),
       .dout(mmq_seq_q)
    );
-   
-   
+
+
    tri_rlmreg_p #(.WIDTH(3), .INIT(0), .NEEDS_SRESET(1)) mmq_seq_rd_reg(
       .vd(vdd),
       .gd(gnd),
@@ -1326,10 +1386,8 @@ module lq_imq(
       .din(mmq_seq_rd_d),
       .dout(mmq_seq_rd_q)
    );
-   
+
    assign siv[0:scan_right] = {sov[1:scan_right], scan_in};
    assign scan_out = sov[0];
-   
+
 endmodule
-
-

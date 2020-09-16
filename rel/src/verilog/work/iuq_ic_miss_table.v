@@ -9,9 +9,13 @@
 
 `timescale 1 ns / 1 ns
 
-
-
-
+//********************************************************************
+//*
+//* DESCRIPTION: State Machine Table for ICache Miss
+//*
+//* NAME: iuq_ic_miss_table.v
+//*
+//*********************************************************************
 
 
 module iuq_ic_miss_table(
@@ -44,7 +48,12 @@ module iuq_ic_miss_table(
 
    wire [1:23]          miss_sm_pt;
 
+   // Example State Ordering for cacheable reloads
+   //  64B Cacheline, No Gaps      : (2)(3)(3)(3)(3)(5)            - Wait, Data, Data, Data, Data, CheckECC
+   //  64B Cacheline, Always Gaps  : (2)(3)(2)(3)(2)(3)(2)(3)(5)   - Wait, Data, Wait, Data, Wait, Data, Wait, Data, CheckECC
+   // similar pattern for 128B
 /*
+//table_start
 ?TABLE miss_sm LISTING(final) OPTIMIZE PARMS(ON-SET, OFF-SET);
 *INPUTS*=========================================*OUTPUTS*========================================*
 |                                                |                                                |
@@ -123,33 +132,35 @@ module iuq_ic_miss_table(
 | -   - - - 1 -   - - - - - 000001 -             |  001000 0  0 0 0 0   0 0 0 0                   | -- (5) In CheckECC, correctable error; go to wait state
 *END*============================================+================================================+
 ?TABLE END miss_sm;
+//table_end
 */
 
+//assign_start
 
 assign miss_sm_pt[1] =
-    (({ miss_flushed_l2 , miss_inval_l2 , 
+    (({ miss_flushed_l2 , miss_inval_l2 ,
     miss_tid_sm_l2[3] , last_data
      }) === 4'b0010);
 assign miss_sm_pt[2] =
-    (({ reld_r1_val_l2 , miss_tid_sm_l2[3] , 
+    (({ reld_r1_val_l2 , miss_tid_sm_l2[3] ,
     last_data }) === 3'b010);
 assign miss_sm_pt[3] =
     (({ miss_tid_sm_l2[3] , last_data
      }) === 2'b10);
 assign miss_sm_pt[4] =
-    (({ ecc_err , ecc_err_ue , 
-    miss_flushed_l2 , miss_inval_l2 , 
+    (({ ecc_err , ecc_err_ue ,
+    miss_flushed_l2 , miss_inval_l2 ,
     miss_tid_sm_l2[3] , last_data
      }) === 6'b000011);
 assign miss_sm_pt[5] =
     (({ miss_tid_sm_l2[3] , last_data
      }) === 2'b11);
 assign miss_sm_pt[6] =
-    (({ iu2_flush , miss_tid_sm_l2[2] , 
-    miss_tid_sm_l2[3] , miss_tid_sm_l2[4] , 
+    (({ iu2_flush , miss_tid_sm_l2[2] ,
+    miss_tid_sm_l2[3] , miss_tid_sm_l2[4] ,
     miss_tid_sm_l2[5] }) === 5'b10000);
 assign miss_sm_pt[7] =
-    (({ miss_tid_sm_l2[0] , miss_tid_sm_l2[3] , 
+    (({ miss_tid_sm_l2[0] , miss_tid_sm_l2[3] ,
     miss_tid_sm_l2[4] , miss_tid_sm_l2[5]
      }) === 4'b0000);
 assign miss_sm_pt[8] =
@@ -164,10 +175,10 @@ assign miss_sm_pt[10] =
 assign miss_sm_pt[11] =
     (({ miss_tid_sm_l2[4] }) === 1'b1);
 assign miss_sm_pt[12] =
-    (({ miss_flushed_l2 , miss_inval_l2 , 
+    (({ miss_flushed_l2 , miss_inval_l2 ,
     miss_tid_sm_l2[3] }) === 3'b001);
 assign miss_sm_pt[13] =
-    (({ r2_crit_qw_l2 , miss_flushed_l2 , 
+    (({ r2_crit_qw_l2 , miss_flushed_l2 ,
     miss_tid_sm_l2[3] }) === 3'b101);
 assign miss_sm_pt[14] =
     (({ reld_r1_val_l2 , miss_tid_sm_l2[3]
@@ -176,72 +187,72 @@ assign miss_sm_pt[15] =
     (({ reld_r1_val_l2 , miss_tid_sm_l2[2]
      }) === 2'b01);
 assign miss_sm_pt[16] =
-    (({ miss_ci_l2 , reld_r1_val_l2 , 
+    (({ miss_ci_l2 , reld_r1_val_l2 ,
     miss_tid_sm_l2[2] }) === 3'b011);
 assign miss_sm_pt[17] =
-    (({ miss_ci_l2 , reld_r1_val_l2 , 
+    (({ miss_ci_l2 , reld_r1_val_l2 ,
     miss_tid_sm_l2[2] }) === 3'b111);
 assign miss_sm_pt[18] =
-    (({ iu2_flush , release_sm , 
+    (({ iu2_flush , release_sm ,
     miss_tid_sm_l2[1] }) === 3'b001);
 assign miss_sm_pt[19] =
     (({ release_sm , miss_tid_sm_l2[1]
      }) === 2'b11);
 assign miss_sm_pt[20] =
-    (({ new_miss , addr_match , 
-    iu2_flush , release_sm , 
+    (({ new_miss , addr_match ,
+    iu2_flush , release_sm ,
     miss_tid_sm_l2[0] }) === 5'b11001);
 assign miss_sm_pt[21] =
-    (({ addr_match , release_sm , 
+    (({ addr_match , release_sm ,
     miss_tid_sm_l2[0] }) === 3'b111);
 assign miss_sm_pt[22] =
-    (({ new_miss , addr_match , 
+    (({ new_miss , addr_match ,
     iu2_flush , miss_tid_sm_l2[0]
      }) === 4'b1001);
 assign miss_sm_pt[23] =
     (({ new_miss , miss_tid_sm_l2[0]
      }) === 2'b01);
-assign miss_tid_sm_d[0] = 
+assign miss_tid_sm_d[0] =
     (miss_sm_pt[6] | miss_sm_pt[8]
      | miss_sm_pt[19] | miss_sm_pt[21]
      | miss_sm_pt[23]);
-assign miss_tid_sm_d[1] = 
+assign miss_tid_sm_d[1] =
     (miss_sm_pt[18] | miss_sm_pt[20]
     );
-assign miss_tid_sm_d[2] = 
+assign miss_tid_sm_d[2] =
     (miss_sm_pt[2] | miss_sm_pt[9]
      | miss_sm_pt[15] | miss_sm_pt[22]
     );
-assign miss_tid_sm_d[3] = 
+assign miss_tid_sm_d[3] =
     (miss_sm_pt[14] | miss_sm_pt[16]
     );
-assign miss_tid_sm_d[4] = 
+assign miss_tid_sm_d[4] =
     (miss_sm_pt[17]);
-assign miss_tid_sm_d[5] = 
+assign miss_tid_sm_d[5] =
     (miss_sm_pt[5] | miss_sm_pt[11]
     );
-assign reset_state = 
+assign reset_state =
     (miss_sm_pt[8]);
-assign request_tag = 
+assign request_tag =
     (miss_sm_pt[22]);
-assign write_dir_inval = 
+assign write_dir_inval =
     (miss_sm_pt[1]);
-assign write_dir_val = 
+assign write_dir_val =
     (miss_sm_pt[4]);
-assign hold_tid = 
+assign hold_tid =
     (miss_sm_pt[3] | miss_sm_pt[7]
     );
-assign data_write = 
+assign data_write =
     (miss_sm_pt[12]);
-assign dir_write = 
+assign dir_write =
     (miss_sm_pt[1]);
-assign load_tag = 
+assign load_tag =
     (miss_sm_pt[10] | miss_sm_pt[13]
     );
-assign release_sm_hold = 
+assign release_sm_hold =
     (miss_sm_pt[5] | miss_sm_pt[8]
      | miss_sm_pt[11]);
 
+//assign_end
 
 endmodule
-

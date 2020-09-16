@@ -7,20 +7,28 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//
+//  Description: Pervasive Core Unit
+//
+//*****************************************************************************
 
 
-
-
-module pcq( 
+module pcq(
+// Include model build parameters
 `include "tri_a2o.vh"
 
-   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) 
+   // inout                     	vdd,
+   // inout                     	gnd,
+   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) // nclk
    input  [0:`NCLK_WIDTH-1]  	nclk,
+   //SCOM and Register Interfaces
+   //  SCOM Satellite
    input  [0:3]              	an_ac_scom_sat_id,
    input                     	an_ac_scom_dch,
    input                     	an_ac_scom_cch,
    output                    	ac_an_scom_dch,
    output                    	ac_an_scom_cch,
+   //  Slow SPR
    input                     	slowspr_val_in,
    input                     	slowspr_rw_in,
    input  [0:1]              	slowspr_etid_in,
@@ -34,7 +42,8 @@ module pcq(
    output [0:9]              	slowspr_addr_out,
    output [64-`GPR_WIDTH:63] 	slowspr_data_out,
    output                    	slowspr_done_out,
-   
+
+   //FIR and Error Signals
    output [0:`THREADS-1]     	ac_an_special_attn,
    output [0:2]              	ac_an_checkstop,
    output [0:2]              	ac_an_local_checkstop,
@@ -99,6 +108,7 @@ module pcq(
    output [0:`THREADS-1]     	pc_xu_inj_llbust_attempt,
    output [0:`THREADS-1]     	pc_xu_inj_llbust_failed,
    output [0:`THREADS-1]     	pc_iu_inj_cpArray_parity,
+   //  Unit quiesce and credit status bits
    input  [0:`THREADS-1]        iu_pc_quiesce,
    input  [0:`THREADS-1]        iu_pc_icache_quiesce,
    input  [0:`THREADS-1]        lq_pc_ldq_quiesce,
@@ -114,6 +124,8 @@ module pcq(
    input  [0:`THREADS-1]        iu_pc_axu1_credit_ok,
    input  [0:`THREADS-1]        iu_pc_lq_credit_ok,
    input  [0:`THREADS-1]        iu_pc_sq_credit_ok,
+   //Debug Functions
+   //  RAM Command/Data
    output [0:31]             	pc_iu_ram_instr,
    output [0:3]              	pc_iu_ram_instr_ext,
    output [0:`THREADS-1]     	pc_iu_ram_active,
@@ -136,6 +148,7 @@ module pcq(
    output                    	pc_xu_msrovride_de,
    output                    	pc_iu_ram_force_cmplt,
    output [0:`THREADS-1]     	pc_iu_ram_flush_thread,
+   //  THRCTL + PCCR0 Registers
    input  [0:`THREADS-1]     	xu_pc_running,
    input  [0:`THREADS-1]     	iu_pc_stop_dbg_event,
    input  [0:`THREADS-1]     	xu_pc_stop_dnh_instr,
@@ -149,11 +162,13 @@ module pcq(
    output [0:3*`THREADS-1]   	pc_iu_dbg_action,
    output [0:`THREADS-1]     	pc_iu_spr_dbcr0_edm,
    output [0:`THREADS-1]     	pc_xu_spr_dbcr0_edm,
-   
+
+   //Trace/Debug Bus
    output [0:31]             	debug_bus_out,
    input  [0:31]             	debug_bus_in,
    input  [0:3]		    	coretrace_ctrls_in,
    output [0:3]		    	coretrace_ctrls_out,
+   //  Debug Select Register outputs to units for debug grouping
    output                    	pc_iu_trace_bus_enable,
    output                    	pc_fu_trace_bus_enable,
    output                    	pc_rv_trace_bus_enable,
@@ -168,7 +183,8 @@ module pcq(
    output [0:10]             	pc_xu_debug_mux_ctrls,
    output [0:10]             	pc_lq_debug_mux1_ctrls,
    output [0:10]             	pc_lq_debug_mux2_ctrls,
-   
+
+   //Performance event mux controls
    output [0:39]             	pc_rv_event_mux_ctrls,
    output                    	pc_iu_event_bus_enable,
    output                    	pc_fu_event_bus_enable,
@@ -192,10 +208,12 @@ module pcq(
    output                    	pc_xu_instr_trace_tid,
    input  [0:`THREADS-1]     	xu_pc_perfmon_alert,
    output [0:`THREADS-1]     	pc_xu_spr_cesr1_pmae,
-   
+
+   //Reset related
    output                    	pc_lq_init_reset,
    output                    	pc_iu_init_reset,
-   
+
+   //Power Management
    output [0:`THREADS-1]     	ac_an_pm_thread_running,
    input  [0:`THREADS-1]     	an_ac_pm_thread_stop,
    input  [0:`THREADS-1]     	an_ac_pm_fetch_halt,
@@ -205,7 +223,8 @@ module pcq(
    output                    	pc_xu_pm_hold_thread,
    input  [0:1]              	xu_pc_spr_ccr0_pme,
    input  [0:`THREADS-1]     	xu_pc_spr_ccr0_we,
-   
+
+   //Clock, Test, and LCB Controls
    input                     	an_ac_gsd_test_enable_dc,
    input                     	an_ac_gsd_test_acmode_dc,
    input                     	an_ac_ccflush_dc,
@@ -215,6 +234,7 @@ module pcq(
    input                     	an_ac_lbist_ac_mode_dc,
    input                     	an_ac_scan_diag_dc,
    input                     	an_ac_scan_dis_dc_b,
+   //  Thold input to clock control macro
    input                     	an_ac_rtim_sl_thold_7,
    input                     	an_ac_func_sl_thold_7,
    input                     	an_ac_func_nsl_thold_7,
@@ -222,6 +242,7 @@ module pcq(
    input                     	an_ac_sg_7,
    input                     	an_ac_fce_7,
    input  [0:8]              	an_ac_scan_type_dc,
+   //  Thold outputs to clock staging
    output                    	pc_rp_ccflush_out_dc,
    output                    	pc_rp_gptr_sl_thold_4,
    output                    	pc_rp_time_sl_thold_4,
@@ -241,6 +262,7 @@ module pcq(
    output                    	pc_rp_rtim_sl_thold_4,
    output                    	pc_rp_sg_4,
    output                    	pc_rp_fce_4,
+   //
    output               	pc_fu_ccflush_dc,
    output               	pc_fu_gptr_sl_thold_3,
    output               	pc_fu_time_sl_thold_3,
@@ -257,41 +279,50 @@ module pcq(
    output               	pc_fu_ary_slp_nsl_thold_3,
    output [0:1]              	pc_fu_sg_3,
    output               	pc_fu_fce_3,
-   
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  
+
+   //Scanning
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  // scan_in
    input                     	gptr_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  // scan_in
    input                     	ccfg_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  // scan_in
    input                     	bcfg_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  // scan_in
    input                     	dcfg_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *)  // scan_in
    input  [0:1]              	func_scan_in,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) // scan_out
    output                    	gptr_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) // scan_out
    output                    	ccfg_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) // scan_out
    output                    	bcfg_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) // scan_out
    output                    	dcfg_scan_out,
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) // scan_out
    output [0:1]              	func_scan_out
 );
-   
-   
+
+
+//=====================================================================
+// Signal Declarations
+//=====================================================================
+//---------------------------------------------------------------------
+// Basic/Misc Signals
    wire 		     	ct_db_func_scan_out;
    wire 		     	db_ss_func_scan_out;
    wire 		     	lcbctrl_gptr_scan_out;
+   // Misc Controls
    wire [0:`THREADS-1]  	ct_rg_power_managed;
    wire 		     	ct_ck_pm_raise_tholds;
    wire 		     	ct_ck_pm_ccflush_disable;
    wire 		     	rg_ct_dis_pwr_savings;
    wire 		     	rg_ck_fast_xstop;
    wire 		     	ct_rg_hold_during_init;
+   // SRAMD data and load pulse
    wire 		     	rg_rg_load_sramd;
    wire [0:63]  	     	rg_rg_sramd_din;
+   // Clock Controls
    wire 		     	d_mode_dc;
    wire 		     	clkoff_dc_b;
    wire 		     	act_dis_dc;
@@ -305,6 +336,7 @@ module pcq(
    wire 		     	pc_pc_cfg_sl_thold_0;
    wire 		     	pc_pc_cfg_slp_sl_thold_0;
    wire 		     	pc_pc_sg_0;
+   // Trace bus signals
    wire 		     	sp_rg_trace_bus_enable;
    wire 		     	rg_db_trace_bus_enable;
    wire [0:10]  	     	rg_db_debug_mux_ctrls;
@@ -320,16 +352,23 @@ module pcq(
 
    wire                      	vdd;
    wire                      	gnd;
-   
-(* analysis_not_referenced="true" *)  
+
+// Get rid of sinkless net messages
+// synopsys translate_off
+(* analysis_not_referenced="true" *)
+// synopsys translate_on
    wire 		     	unused_signals;
    assign unused_signals = (|{1'b0, 1'b0});
-   
-   assign 			vdd = 1'b1;  
-   assign 			gnd = 1'b0;  
-   
-      
- 
+
+   assign 			vdd = 1'b1;
+   assign 			gnd = 1'b0;
+
+//!! Bugspray Include: pcq;
+
+//=====================================================================
+// Start of PCQ Module Instantiations
+//=====================================================================
+
    pcq_regs  pcq_regs(
       .vdd(vdd),
       .gnd(gnd),
@@ -353,11 +392,13 @@ module pcq(
       .bcfg_scan_out(bcfg_scan_out),
       .dcfg_scan_out(dcfg_scan_out),
       .func_scan_out(func_scan_out[0]),
+      //SCOM Satellite interface
       .an_ac_scom_sat_id(an_ac_scom_sat_id),
       .an_ac_scom_dch(an_ac_scom_dch),
       .an_ac_scom_cch(an_ac_scom_cch),
       .ac_an_scom_dch(ac_an_scom_dch),
       .ac_an_scom_cch(ac_an_scom_cch),
+      //Error Related
       .ac_an_special_attn(ac_an_special_attn),
       .ac_an_checkstop(ac_an_checkstop),
       .ac_an_local_checkstop(ac_an_local_checkstop),
@@ -397,7 +438,7 @@ module pcq(
       .mm_pc_err_tlb_multihit(mm_pc_err_tlb_multihit),
       .mm_pc_err_tlb_lru_parity(mm_pc_err_tlb_lru_parity),
       .mm_pc_err_local_snoop_reject(mm_pc_err_local_snoop_reject),
-      .xu_pc_err_sprg_ecc(xu_pc_err_sprg_ecc), 
+      .xu_pc_err_sprg_ecc(xu_pc_err_sprg_ecc),
       .xu_pc_err_sprg_ue(xu_pc_err_sprg_ue),
       .xu_pc_err_regfile_parity(xu_pc_err_regfile_parity),
       .xu_pc_err_regfile_ue(xu_pc_err_regfile_ue),
@@ -423,6 +464,7 @@ module pcq(
       .pc_xu_inj_llbust_attempt(pc_xu_inj_llbust_attempt),
       .pc_xu_inj_llbust_failed(pc_xu_inj_llbust_failed),
       .pc_iu_inj_cpArray_parity(pc_iu_inj_cpArray_parity),
+      //  Unit quiesce and credit status bits
       .iu_pc_quiesce(iu_pc_quiesce),
       .iu_pc_icache_quiesce(iu_pc_icache_quiesce),
       .lq_pc_ldq_quiesce(lq_pc_ldq_quiesce),
@@ -438,6 +480,7 @@ module pcq(
       .iu_pc_axu1_credit_ok(iu_pc_axu1_credit_ok),
       .iu_pc_lq_credit_ok(iu_pc_lq_credit_ok),
       .iu_pc_sq_credit_ok(iu_pc_sq_credit_ok),
+      //RAMC+RAMD
       .pc_iu_ram_instr(pc_iu_ram_instr),
       .pc_iu_ram_instr_ext(pc_iu_ram_instr_ext),
       .pc_iu_ram_active(pc_iu_ram_active),
@@ -462,6 +505,7 @@ module pcq(
       .pc_iu_ram_flush_thread(pc_iu_ram_flush_thread),
       .rg_rg_load_sramd(rg_rg_load_sramd),
       .rg_rg_sramd_din(rg_rg_sramd_din),
+      //THRCTL + PCCR0 Registers
       .ac_an_pm_thread_running(ac_an_pm_thread_running),
       .pc_iu_stop(pc_iu_stop),
       .pc_iu_step(pc_iu_step),
@@ -482,6 +526,7 @@ module pcq(
       .pc_xu_timebase_dis_on_stop(pc_xu_timebase_dis_on_stop),
       .pc_xu_decrem_dis_on_stop(pc_xu_decrem_dis_on_stop),
       .rg_ct_dis_pwr_savings(rg_ct_dis_pwr_savings),
+      //Debug Registers
       .sp_rg_trace_bus_enable(sp_rg_trace_bus_enable),
       .rg_db_trace_bus_enable(rg_db_trace_bus_enable),
       .pc_iu_trace_bus_enable(pc_iu_trace_bus_enable),
@@ -499,6 +544,7 @@ module pcq(
       .pc_xu_debug_mux_ctrls(pc_xu_debug_mux_ctrls),
       .pc_lq_debug_mux1_ctrls(pc_lq_debug_mux1_ctrls),
       .pc_lq_debug_mux2_ctrls(pc_lq_debug_mux2_ctrls),
+      //Trace Signals
       .dbg_scom(rg_db_dbg_scom),
       .dbg_thrctls(rg_db_dbg_thrctls),
       .dbg_ram(rg_db_dbg_ram),
@@ -507,7 +553,7 @@ module pcq(
       .dbg_fir2_err(rg_db_dbg_fir2_err),
       .dbg_fir_misc(rg_db_dbg_fir_misc)
    );
-   
+
    pcq_ctrl  pcq_ctrl(
       .vdd(vdd),
       .gnd(gnd),
@@ -522,9 +568,11 @@ module pcq(
       .pc_pc_sg_0(pc_pc_sg_0),
       .func_scan_in(func_scan_in[1]),
       .func_scan_out(ct_db_func_scan_out),
+      //Stop/Start/Reset
       .pc_lq_init_reset(pc_lq_init_reset),
       .pc_iu_init_reset(pc_iu_init_reset),
       .ct_rg_hold_during_init(ct_rg_hold_during_init),
+      //Power Management
       .ct_rg_power_managed(ct_rg_power_managed),
       .ac_an_power_managed(ac_an_power_managed),
       .ac_an_rvwinkle_mode(ac_an_rvwinkle_mode),
@@ -534,9 +582,10 @@ module pcq(
       .rg_ct_dis_pwr_savings(rg_ct_dis_pwr_savings),
       .xu_pc_spr_ccr0_pme(xu_pc_spr_ccr0_pme),
       .xu_pc_spr_ccr0_we(xu_pc_spr_ccr0_we),
+      //Trace/Trigger Signals
       .dbg_ctrls(ct_db_dbg_ctrls)
    );
-   
+
    pcq_dbg  pcq_dbg(
       .vdd(vdd),
       .gnd(gnd),
@@ -551,23 +600,25 @@ module pcq(
       .pc_pc_sg_0(pc_pc_sg_0),
       .func_scan_in(ct_db_func_scan_out),
       .func_scan_out(db_ss_func_scan_out),
+      //Trace/Trigger Bus
       .debug_bus_out(debug_bus_out),
       .debug_bus_in(debug_bus_in),
       .rg_db_trace_bus_enable(rg_db_trace_bus_enable),
       .rg_db_debug_mux_ctrls(rg_db_debug_mux_ctrls),
       .coretrace_ctrls_in(coretrace_ctrls_in),
       .coretrace_ctrls_out(coretrace_ctrls_out),
+      //PC Unit internal debug signals
       .rg_db_dbg_scom(rg_db_dbg_scom),
-      .rg_db_dbg_thrctls(rg_db_dbg_thrctls),  
-      .rg_db_dbg_ram(rg_db_dbg_ram),  
-      .rg_db_dbg_fir0_err(rg_db_dbg_fir0_err),	 
-      .rg_db_dbg_fir1_err(rg_db_dbg_fir1_err),	
-      .rg_db_dbg_fir2_err(rg_db_dbg_fir2_err),	
-      .rg_db_dbg_fir_misc(rg_db_dbg_fir_misc),	
+      .rg_db_dbg_thrctls(rg_db_dbg_thrctls),
+      .rg_db_dbg_ram(rg_db_dbg_ram),
+      .rg_db_dbg_fir0_err(rg_db_dbg_fir0_err),
+      .rg_db_dbg_fir1_err(rg_db_dbg_fir1_err),
+      .rg_db_dbg_fir2_err(rg_db_dbg_fir2_err),
+      .rg_db_dbg_fir_misc(rg_db_dbg_fir_misc),
       .ct_db_dbg_ctrls(ct_db_dbg_ctrls),
       .rg_db_dbg_spr(rg_db_dbg_spr)
    );
-   
+
    pcq_spr  pcq_spr(
       .vdd(vdd),
       .gnd(gnd),
@@ -582,6 +633,7 @@ module pcq(
       .pc_pc_sg_0(pc_pc_sg_0),
       .func_scan_in(db_ss_func_scan_out),
       .func_scan_out(func_scan_out[1]),
+      // slowSPR Interface
       .slowspr_val_in(slowspr_val_in),
       .slowspr_rw_in(slowspr_rw_in),
       .slowspr_etid_in(slowspr_etid_in),
@@ -595,7 +647,9 @@ module pcq(
       .slowspr_addr_out(slowspr_addr_out),
       .slowspr_data_out(slowspr_data_out[64 - `GPR_WIDTH:63]),
       .slowspr_done_out(slowspr_done_out),
+      // Event Mux Controls
       .pc_rv_event_mux_ctrls(pc_rv_event_mux_ctrls),
+      // CESR1 Controls
       .pc_iu_event_bus_enable(pc_iu_event_bus_enable),
       .pc_fu_event_bus_enable(pc_fu_event_bus_enable),
       .pc_rv_event_bus_enable(pc_rv_event_bus_enable),
@@ -619,11 +673,13 @@ module pcq(
       .pc_lq_event_bus_seldbglo(pc_lq_event_bus_seldbglo),
       .xu_pc_perfmon_alert(xu_pc_perfmon_alert),
       .pc_xu_spr_cesr1_pmae(pc_xu_spr_cesr1_pmae),
+      // SRAMD data and load pulse
       .rg_rg_load_sramd(rg_rg_load_sramd),
       .rg_rg_sramd_din(rg_rg_sramd_din),
+      // Debug
       .dbg_spr(rg_db_dbg_spr)
    );
-   
+
    pcq_clks  pcq_clks(
       .vdd(vdd),
       .gnd(gnd),
@@ -644,6 +700,7 @@ module pcq(
       .rg_ck_fast_xstop(rg_ck_fast_xstop),
       .ct_ck_pm_ccflush_disable(ct_ck_pm_ccflush_disable),
       .ct_ck_pm_raise_tholds(ct_ck_pm_raise_tholds),
+      //  --Thold outputs to the units
       .pc_pc_ccflush_out_dc(pc_rp_ccflush_out_dc),
       .pc_pc_gptr_sl_thold_4(pc_rp_gptr_sl_thold_4),
       .pc_pc_time_sl_thold_4(pc_rp_time_sl_thold_4),
@@ -687,8 +744,11 @@ module pcq(
       .pc_pc_cfg_slp_sl_thold_0(pc_pc_cfg_slp_sl_thold_0),
       .pc_pc_sg_0(pc_pc_sg_0)
    );
-   
 
+
+//=====================================================================
+// LCBCNTL Macro
+//=====================================================================
    tri_lcbcntl_mac  lcbctrl(
       .vdd(vdd),
       .gnd(gnd),
@@ -705,9 +765,10 @@ module pcq(
       .mpw2_dc_b(mpw2_dc_b),
       .scan_out(lcbctrl_gptr_scan_out)
    );
-   
+
+   // Forcing act_dis pin on all tri_lcbor components to 0.
+   // Using logic signal connected to LCB ACT pin to control if latch held or updated.
    assign act_dis_dc = 1'b0;
-   
+
 
 endmodule
-

@@ -10,6 +10,15 @@
 
 `timescale 1 ns / 1 ns
 
+//-----------------------------------------------------------------------------------------------------
+// Title:   rv_dep_scard.vhdl
+// Desc:       Itag based score card
+//
+// Notes:
+//          All indexes are assumed to be ITAG indices
+//
+//
+//-----------------------------------------------------------------------------------------------------
 module rv_dep_scard(
    iu_xx_zap,
    rv0_sc_act,
@@ -51,23 +60,32 @@ module rv_dep_scard(
    scan_in,
    scan_out
 );
-   
+
 
    `include "tri_a2o.vh"
 
    parameter                     num_entries_g = 32;
    parameter                     itag_width_enc_g = 6;
 
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // IU Control
+   //------------------------------------------------------------------------------------------------------------
    input                         iu_xx_zap;
    input                         rv0_sc_act;
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Target interface
+   //------------------------------------------------------------------------------------------------------------
    input 			 ta_v;
    input [0:itag_width_enc_g-1]  ta_itag;
-   
+
    input 			 tb_v;
    input [0:itag_width_enc_g-1]  tb_itag;
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Itag Compare and Reset Valid Interface
+   //------------------------------------------------------------------------------------------------------------
    input [0:6] 			 xx_rv_itag_v;
    input [0:6] 			 xx_rv_itag_abort;
    input [0:itag_width_enc_g-1]  xx_rv_itag_ary0;
@@ -77,28 +95,34 @@ module rv_dep_scard(
    input [0:itag_width_enc_g-1]  xx_rv_itag_ary4;
    input [0:itag_width_enc_g-1]  xx_rv_itag_ary5;
    input [0:itag_width_enc_g-1]  xx_rv_itag_ary6;
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Itag Mux(s)
+   //------------------------------------------------------------------------------------------------------------
    input [0:itag_width_enc_g-1]  i0_s1_itag;
    output                        i0_s1_itag_v;
-   
+
    input [0:itag_width_enc_g-1]  i0_s2_itag;
    output                        i0_s2_itag_v;
-   
+
    input [0:itag_width_enc_g-1]  i0_s3_itag;
    output                        i0_s3_itag_v;
-   
+
    input [0:itag_width_enc_g-1]  i1_s1_itag;
    output                        i1_s1_itag_v;
-   
+
    input [0:itag_width_enc_g-1]  i1_s2_itag;
    output                        i1_s2_itag_v;
-   
+
    input [0:itag_width_enc_g-1]  i1_s3_itag;
    output                        i1_s3_itag_v;
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Pervasive
+   //------------------------------------------------------------------------------------------------------------
    inout                         vdd;
    inout                         gnd;
-   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) 
+   (* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *) // nclk
    input [0:`NCLK_WIDTH-1] 	 nclk;
    input                         chip_b_sl_sg_0_t;
    input                         chip_b_sl_2_thold_0_b;
@@ -110,18 +134,28 @@ module rv_dep_scard(
    input                         scan_in;
    output                        scan_out;
 
-   
-   
+   //!! Bugspray Include: rv_dep_scard ;
+
+   //------------------------------------------------------------------------------------------------------------
+   // typedefs and constants
+   //------------------------------------------------------------------------------------------------------------
+
+   //------------------------------------------------------------------------------------------------------------
+   // Select and mux signals
+   //------------------------------------------------------------------------------------------------------------
    wire [0:num_entries_g-1]      i0_s1_itag_v_gated;
    wire [0:num_entries_g-1]      i0_s2_itag_v_gated;
    wire [0:num_entries_g-1]      i0_s3_itag_v_gated;
    wire [0:num_entries_g-1]      i1_s1_itag_v_gated;
    wire [0:num_entries_g-1]      i1_s2_itag_v_gated;
    wire [0:num_entries_g-1]      i1_s3_itag_v_gated;
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Storage
+   //------------------------------------------------------------------------------------------------------------
    wire [0:num_entries_g-1] 	 scorecard_d;
    wire [0:num_entries_g-1] 	 scorecard_q;
-   
+
    wire [0:num_entries_g-1]      score_ta_match;
    wire [0:num_entries_g-1]      score_tb_match;
    wire [0:num_entries_g-1]      itag_ary0_match;
@@ -133,16 +167,20 @@ module rv_dep_scard(
    wire [0:num_entries_g-1]      itag_ary6_match;
    wire [0:num_entries_g-1]      score_set;
    wire [0:num_entries_g-1]      score_reset;
-   
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Scan
+   //------------------------------------------------------------------------------------------------------------
    `define                       scorecard_offset 0
-   
+
    `define                       scan_right  `scorecard_offset + num_entries_g
    wire [0:`scan_right-1]         siv;
    wire [0:`scan_right-1]         sov;
-   
-   
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Set the target if t_v is valid and clear the valid if any of the target busses match
+   //------------------------------------------------------------------------------------------------------------
+
    generate
       begin : xhdl1
          genvar                        i;
@@ -151,7 +189,7 @@ module rv_dep_scard(
 	      wire [0:itag_width_enc_g-1] id = i;
               assign score_ta_match[i] = (ta_v & (id == ta_itag));
               assign score_tb_match[i] = (tb_v & (id == tb_itag));
-	      
+
               assign itag_ary0_match[i] = (id == xx_rv_itag_ary0);
               assign itag_ary1_match[i] = (id == xx_rv_itag_ary1);
               assign itag_ary2_match[i] = (id == xx_rv_itag_ary2);
@@ -174,14 +212,16 @@ module rv_dep_scard(
 				      (xx_rv_itag_v[4] & xx_rv_itag_abort[4] & itag_ary4_match[i]) |
 				      (xx_rv_itag_v[5] & xx_rv_itag_abort[5] & itag_ary5_match[i]) |
 				      (xx_rv_itag_v[6] & xx_rv_itag_abort[6] & itag_ary6_match[i]) ;
-	      
+
 
               assign scorecard_d[i] = (score_ta_match[i] | score_tb_match[i] | score_set[i] | scorecard_q[i]) & (~score_reset[i]) & (~iu_xx_zap);
            end
       end
    endgenerate
-      
-   
+
+   //------------------------------------------------------------------------------------------------------------
+   // Mux out the itag
+   //------------------------------------------------------------------------------------------------------------
    generate
       begin : xhdl2
          genvar                        i;
@@ -203,9 +243,11 @@ module rv_dep_scard(
    assign i1_s1_itag_v = |(i1_s1_itag_v_gated);
    assign i1_s2_itag_v = |(i1_s2_itag_v_gated);
    assign i1_s3_itag_v = |(i1_s3_itag_v_gated);
-         
-         
-                  
+
+         //------------------------------------------------------------------------------------------------------------
+         // Storage Elements
+         //------------------------------------------------------------------------------------------------------------
+
                   tri_rlmreg_p #(.WIDTH(num_entries_g), .INIT(0) ) scorecard_reg(
                      .vd(vdd),
                      .gd(gnd),
@@ -223,9 +265,12 @@ module rv_dep_scard(
                      .din(scorecard_d),
                      .dout(scorecard_q)
                   );
-            
+
+            //---------------------------------------------------------------------
+            // Scan
+            //---------------------------------------------------------------------
             assign siv[0:`scan_right-1] = {sov[1:`scan_right-1], scan_in};
             assign scan_out = sov[0];
-            
+
 endmodule
 
