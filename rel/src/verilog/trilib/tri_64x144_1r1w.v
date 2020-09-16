@@ -9,6 +9,11 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_64x144_1r1w.v
+// *! DESCRIPTION : 64 Entry x 144 bit array, 9 bit writeable
+// *!
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -78,16 +83,18 @@ module tri_64x144_1r1w(
    addr_rd,
    data_out
 );
-parameter                                      addressable_ports = 64;	
-parameter                                      addressbus_width = 6;		
-parameter                                      port_bitwidth = 144;		
-parameter                                      bit_write_type = 9;		
-parameter                                      ways = 1;                     
+parameter                                      addressable_ports = 64;	// number of addressable register in this array
+parameter                                      addressbus_width = 6;		// width of the bus to address all ports (2^addressbus_width >= addressable_ports)
+parameter                                      port_bitwidth = 144;		// bitwidth of ports (per way)
+parameter                                      bit_write_type = 9;		// gives the number of bits that shares one write-enable; must divide evenly into array
+parameter                                      ways = 1;                     // number of ways
 
+// POWER PINS
 inout                                          gnd;
 inout                                          vdd;
 inout                                          vcs;
 
+// CLOCK and CLOCKCONTROL ports
 input [0:`NCLK_WIDTH-1]                        nclk;
 input                                          rd_act;
 input                                          wr_act;
@@ -111,6 +118,7 @@ input                                          mpw1_dc_b;
 input                                          mpw2_dc_b;
 input                                          delay_lclkr_dc;
 
+// ABIST
 input                                          wr_abst_act;
 input                                          rd0_abst_act;
 input [0:3]                                    abist_di;
@@ -124,6 +132,7 @@ input                                          abist_g8t_rd0_comp_ena;
 input                                          abist_raw_dc_b;
 input [0:3]                                    obs0_abist_cmp;
 
+// Scan
 input                                          abst_scan_in;
 input                                          time_scan_in;
 input                                          repr_scan_in;
@@ -133,14 +142,15 @@ output                                         time_scan_out;
 output                                         repr_scan_out;
 output                                         func_scan_out;
 
+// BOLT-ON
 input                                          lcb_bolt_sl_thold_0;
-input                                          pc_bo_enable_2;	
-input                                          pc_bo_reset;		
-input                                          pc_bo_unload;		
-input                                          pc_bo_repair;		
-input                                          pc_bo_shdata;		
-input [0:1]                                    pc_bo_select;		
-output [0:1]                                   bo_pc_failout;	
+input                                          pc_bo_enable_2;	// general bolt-on enable
+input                                          pc_bo_reset;		// reset
+input                                          pc_bo_unload;		// unload sticky bits
+input                                          pc_bo_repair;		// execute sticky bit decode
+input                                          pc_bo_shdata;		// shift data for timing write and diag loop
+input [0:1]                                    pc_bo_select;		// select for mask and hier writes
+output [0:1]                                   bo_pc_failout;	// fail/no-fix reg
 output [0:1]                                   bo_pc_diagloop;
 input                                          tri_lcb_mpw1_dc_b;
 input                                          tri_lcb_mpw2_dc_b;
@@ -148,15 +158,19 @@ input                                          tri_lcb_delay_lclkr_dc;
 input                                          tri_lcb_clkoff_dc_b;
 input                                          tri_lcb_act_dis_dc;
 
+// Write Ports
 input                                          write_enable;
 input [0:addressbus_width-1]                   addr_wr;
 input [0:port_bitwidth-1]                      data_in;
 
+// Read Ports
 input [0:addressbus_width-1]                   addr_rd;
 output [0:port_bitwidth-1]                     data_out;
 
+// tri_64x144_1r1w
 
-
+// Configuration Statement for NCsim
+//for all:RAMB36 use entity unisim.RAMB36;
 
 parameter                                      data_width = ((((port_bitwidth - 1)/36) + 1) * 36) - 1;
 parameter                                      rd_act_offset = 0;
@@ -218,6 +232,8 @@ generate begin
     end
   end
 
+  // PORTA => Used for Writing
+  // PORTB => Used for Reading
   genvar  arr;
   for (arr = 0; arr <= (port_bitwidth - 1)/36; arr = arr + 1)
   begin : padD0
@@ -242,6 +258,7 @@ generate begin
     assign ramb_par_in[byte] = data_in_pad[(byte * 8) + byte + 8];
   end
 
+  //genvar  byte;
   for (byte = 0; byte <= (data_width)/9; byte = byte + 1)
   begin : dOutFixUp
     assign data_out_pad[(byte * 8) + byte:(byte * 8) + 7 + byte] = ramb_data_out[byte * 8:(byte * 8) + 7];
@@ -277,10 +294,10 @@ generate begin
       .ENB(act),
       .REGCEA(1'b0),
       .REGCEB(1'b0),
-      .SSRA(nclk[1]),        
+      .SSRA(nclk[1]),        //sreset
       .SSRB(nclk[1]),
       .WEA(wrt_en[anum * 4:anum * 4 + 3]),
-      .WEB(4'b0)	
+      .WEB(4'b0)	//'
    );
   end
   assign data_out_d = data_out_pad[0:port_bitwidth - 1];
@@ -346,6 +363,9 @@ assign unused = | {
   tri_lcb_clkoff_dc_b ,
   tri_lcb_act_dis_dc };
 
+// ####################################################
+// Registers
+// ####################################################
 tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) rd_act_reg(
    .vd(vdd),
    .gd(gnd),
@@ -386,4 +406,3 @@ assign siv[0:scan_right] = {sov[1:scan_right], func_scan_in};
 assign func_scan_out = sov[0];
 
 endmodule
-

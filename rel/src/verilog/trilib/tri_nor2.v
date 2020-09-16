@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_nor2.v
+// *! DESCRIPTION : Two input NOR gate
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -18,24 +22,23 @@ module tri_nor2(
    b
 );
    parameter                      WIDTH = 1;
-   parameter                      BTR = "NOR2_X2M_NONE";  
+   parameter                      BTR = "NOR2_X2M_NONE";  //Specify full BTR name, else let tool select
    output [0:WIDTH-1]  y;
    input [0:WIDTH-1]   a;
    input [0:WIDTH-1]   b;
 
+   // tri_nor2
    genvar 	       i;
-   
+
    generate
       begin : t
 	 for (i = 0; i < WIDTH; i = i + 1)
 	   begin : w
 
 	      nor I0(y[i], a[i], b[i]);
-	      
-	   end 
+
+	   end // block: w
       end
-      
+
    endgenerate
 endmodule
-
-

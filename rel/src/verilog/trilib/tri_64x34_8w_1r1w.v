@@ -9,6 +9,11 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_64x34_8w_1r1w.vhdl
+// *! DESCRIPTION : 32 entry x 35 bit x 8 way array
+// *!
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -82,14 +87,16 @@ module tri_64x34_8w_1r1w(
    addr_rd_67,
    data_out
 );
-parameter                         addressable_ports = 64;		
-parameter                         addressbus_width = 6;		    
-parameter                         port_bitwidth = 34;		    
-parameter                         ways = 8;				        
+parameter                         addressable_ports = 64;		// number of addressable register in this array
+parameter                         addressbus_width = 6;		    // width of the bus to address all ports (2^addressbus_width >= addressable_ports)
+parameter                         port_bitwidth = 34;		    // bitwidth of ports
+parameter                         ways = 8;				        // number of ways
+// POWER PINS
 inout                             gnd;
 inout                             vdd;
 inout                             vcs;
 
+// CLOCK and CLOCKCONTROL ports
 input [0:`NCLK_WIDTH-1]           nclk;
 input                             rd_act;
 input                             wr_act;
@@ -113,6 +120,7 @@ input                             mpw1_dc_b;
 input                             mpw2_dc_b;
 input                             delay_lclkr_dc;
 
+// ABIST
 input                             wr_abst_act;
 input                             rd0_abst_act;
 input [0:3]                       abist_di;
@@ -126,6 +134,7 @@ input                             abist_g8t_rd0_comp_ena;
 input                             abist_raw_dc_b;
 input [0:3]                       obs0_abist_cmp;
 
+// SCAN
 input                             abst_scan_in;
 input                             time_scan_in;
 input                             repr_scan_in;
@@ -135,14 +144,15 @@ output                            time_scan_out;
 output                            repr_scan_out;
 output                            func_scan_out;
 
+// BOLT-ON
 input                             lcb_bolt_sl_thold_0;
-input                             pc_bo_enable_2;		        
-input                             pc_bo_reset;		            
-input                             pc_bo_unload;		            
-input                             pc_bo_repair;		            
-input                             pc_bo_shdata;		            
-input [0:3]                       pc_bo_select;		            
-output [0:3]                      bo_pc_failout;		        
+input                             pc_bo_enable_2;		        // general bolt-on enable
+input                             pc_bo_reset;		            // reset
+input                             pc_bo_unload;		            // unload sticky bits
+input                             pc_bo_repair;		            // execute sticky bit decode
+input                             pc_bo_shdata;		            // shift data for timing write and diag loop
+input [0:3]                       pc_bo_select;		            // select for mask and hier writes
+output [0:3]                      bo_pc_failout;		        // fail/no-fix reg
 output [0:3]                      bo_pc_diagloop;
 input                             tri_lcb_mpw1_dc_b;
 input                             tri_lcb_mpw2_dc_b;
@@ -150,21 +160,26 @@ input                             tri_lcb_delay_lclkr_dc;
 input                             tri_lcb_clkoff_dc_b;
 input                             tri_lcb_act_dis_dc;
 
+// Write Ports
 input [0:3]                       write_enable;
 input [0:ways-1]                  way;
 input [0:addressbus_width-1]      addr_wr;
 input [0:port_bitwidth-1]         data_in;
 
+// Read Ports
 input [0:addressbus_width-1]      addr_rd_01;
 input [0:addressbus_width-1]      addr_rd_23;
 input [0:addressbus_width-1]      addr_rd_45;
 input [0:addressbus_width-1]      addr_rd_67;
 output [0:port_bitwidth*ways-1]   data_out;
 
+// tri_64x34_8w_1r1w
 parameter                           ramb_base_addr = 16;
 parameter                           dataWidth = ((((port_bitwidth - 1)/36) + 1) * 36) - 1;
 parameter                           numBytes = (dataWidth/9);
 
+// Configuration Statement for NCsim
+//for all:RAMB16_S36_S36 use entity unisim.RAMB16_S36_S36;
 parameter                           rd_act_offset = 0;
 parameter                           data_out_offset = rd_act_offset + 1;
 parameter                           scan_right = data_out_offset + (ways*port_bitwidth) - 1;
@@ -174,7 +189,7 @@ wire [0:35]                         ramb_data_p0_out[0:ways-1];
 wire [0:(dataWidth+1)*ways-1]       ramb_data_p0_concat;
 wire [0:ramb_base_addr-1]           ramb_addr_rd1;
 wire [0:ramb_base_addr-1]           ramb_addr_wr_rd0;
-                                    
+
 wire [0:ramb_base_addr-1]           rd_addr0;
 wire [0:ramb_base_addr-1]           wr_addr;
 wire                                write_en;
@@ -206,6 +221,7 @@ generate begin
   assign tiup = 1'b1;
   assign tidn = 36'b0;
 
+  // Data Generate
   genvar  t;
   for (t = 0; t < 36; t = t + 1)
   begin : addr_calc
@@ -230,7 +246,7 @@ generate begin
     end
   end
 
-
+  // Read/Write Port Address Generate
   assign rd_addr0[1] = 1'b0;
   assign rd_addr0[0] = 1'b0;
   assign rd_addr0[11:15] = 5'b0;
@@ -241,7 +257,7 @@ generate begin
   for (t = 0; t < 9; t = t + 1) begin : rambAddrCalc
     if (t < 9 - addressbus_width) begin
       assign rd_addr0[t+2] = 1'b0;
-      assign wr_addr[t+2] = 1'b0; 
+      assign wr_addr[t+2] = 1'b0;
     end
     if (t >= 9 - addressbus_width) begin
       assign rd_addr0[t+2] = addr_rd_01[t - (9 - addressbus_width)];
@@ -260,12 +276,15 @@ generate begin
 end
 endgenerate
 
+// Writing on PortA
+// Reading on PortB
 assign ramb_addr_rd1 = rd_addr0;
 assign write_en = |(write_enable);
 assign ramb_addr_wr_rd0 = wr_addr;
 assign rd_act_d = rd_act;
 assign data_out = data_out_q;
 
+// all, none, warning_only, generate_x_only
 RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WRITE_WIDTH_A(36), .WRITE_WIDTH_B(36), .WRITE_MODE_A("READ_FIRST"), .WRITE_MODE_B("READ_FIRST")) arr0_A(
    .CASCADEOUTLATA(cascadeoutlata[0]),
    .CASCADEOUTLATB(cascadeoutlatb[0]),
@@ -291,12 +310,13 @@ RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WR
    .ENB(rd_act),
    .REGCEA(1'b0),
    .REGCEB(1'b0),
-   .SSRA(nclk[1]),   
-   .SSRB(nclk[1]),   
+   .SSRA(nclk[1]),   //sreset
+   .SSRB(nclk[1]),   //sreset
    .WEA(write_enable_way[0]),
    .WEB(tidn[0:3])
 );
 
+// all, none, warning_only, generate_x_only
 RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WRITE_WIDTH_A(36), .WRITE_WIDTH_B(36), .WRITE_MODE_A("READ_FIRST"), .WRITE_MODE_B("READ_FIRST")) arr1_B(
    .CASCADEOUTLATA(cascadeoutlata[1]),
    .CASCADEOUTLATB(cascadeoutlatb[1]),
@@ -328,6 +348,7 @@ RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WR
    .WEB(tidn[0:3])
 );
 
+// all, none, warning_only, generate_x_only
 RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WRITE_WIDTH_A(36), .WRITE_WIDTH_B(36), .WRITE_MODE_A("READ_FIRST"), .WRITE_MODE_B("READ_FIRST")) arr2_C(
    .CASCADEOUTLATA(cascadeoutlata[2]),
    .CASCADEOUTLATB(cascadeoutlatb[2]),
@@ -359,6 +380,7 @@ RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WR
    .WEB(tidn[0:3])
 );
 
+// all, none, warning_only, generate_x_only
 RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WRITE_WIDTH_A(36), .WRITE_WIDTH_B(36), .WRITE_MODE_A("READ_FIRST"), .WRITE_MODE_B("READ_FIRST")) arr3_D(
    .CASCADEOUTLATA(cascadeoutlata[3]),
    .CASCADEOUTLATB(cascadeoutlatb[3]),
@@ -390,6 +412,7 @@ RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WR
    .WEB(tidn[0:3])
 );
 
+// all, none, warning_only, generate_x_only
 RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WRITE_WIDTH_A(36), .WRITE_WIDTH_B(36), .WRITE_MODE_A("READ_FIRST"), .WRITE_MODE_B("READ_FIRST")) arr4_E(
    .CASCADEOUTLATA(cascadeoutlata[4]),
    .CASCADEOUTLATB(cascadeoutlatb[4]),
@@ -421,6 +444,7 @@ RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WR
    .WEB(tidn[0:3])
 );
 
+// all, none, warning_only, generate_x_only
 RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WRITE_WIDTH_A(36), .WRITE_WIDTH_B(36), .WRITE_MODE_A("READ_FIRST"), .WRITE_MODE_B("READ_FIRST")) arr5_F(
    .CASCADEOUTLATA(cascadeoutlata[5]),
    .CASCADEOUTLATB(cascadeoutlatb[5]),
@@ -452,6 +476,7 @@ RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WR
    .WEB(tidn[0:3])
 );
 
+// all, none, warning_only, generate_x_only
 RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WRITE_WIDTH_A(36), .WRITE_WIDTH_B(36), .WRITE_MODE_A("READ_FIRST"), .WRITE_MODE_B("READ_FIRST")) arr6_G(
    .CASCADEOUTLATA(cascadeoutlata[6]),
    .CASCADEOUTLATB(cascadeoutlatb[6]),
@@ -483,6 +508,7 @@ RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WR
    .WEB(tidn[0:3])
 );
 
+// all, none, warning_only, generate_x_only
 RAMB36 #(.SIM_COLLISION_CHECK("NONE"), .READ_WIDTH_A(36), .READ_WIDTH_B(36), .WRITE_WIDTH_A(36), .WRITE_WIDTH_B(36), .WRITE_MODE_A("READ_FIRST"), .WRITE_MODE_B("READ_FIRST")) arr7_H(
    .CASCADEOUTLATA(cascadeoutlata[7]),
    .CASCADEOUTLATB(cascadeoutlatb[7]),
@@ -530,6 +556,9 @@ assign unused = |({cascadeoutlata, cascadeoutlatb, cascadeoutrega, cascadeoutreg
                    pc_bo_select, tri_lcb_mpw1_dc_b, tri_lcb_mpw2_dc_b, tri_lcb_delay_lclkr_dc, tri_lcb_clkoff_dc_b,
                    tri_lcb_act_dis_dc, addr_rd_23, addr_rd_45, addr_rd_67, arr_data_concat});
 
+// ####################################################
+// Registers
+// ####################################################
 
 tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) rd_act_reg(
    .vd(vdd),
@@ -571,4 +600,3 @@ assign siv[0:scan_right] = {sov[1:scan_right], func_scan_in};
 assign func_scan_out = sov[0];
 
 endmodule
-

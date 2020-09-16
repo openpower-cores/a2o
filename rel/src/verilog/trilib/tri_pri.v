@@ -9,19 +9,23 @@
 
 `timescale 1 ns / 1 ns
 
+//  Description:  Prioritizer
+//
+//*****************************************************************************
 
 module tri_pri(
    cond,
    pri,
    or_cond
 );
-   parameter                  SIZE = 32;	
-   parameter                  REV = 0;		
-   parameter                  CMP_ZERO = 0;	
+   parameter                  SIZE = 32;	// Size of "cond", range 3 - 32
+   parameter                  REV = 0;		// 0 = 0 is highest,   1 = 0 is lowest
+   parameter                  CMP_ZERO = 0;	// 1 = include comparing cond to zero in pri vector, 0 = don't
    input [0:SIZE-1]           cond;
    output [0:SIZE-1+CMP_ZERO] pri;
    output                     or_cond;
 
+   // tri_pri
 
    parameter                  s = SIZE - 1;
    wire [0:s]                 l0;
@@ -42,6 +46,7 @@ module tri_pri(
        assign l0[0:s] = cond[s:0];
      end
 
+     // Odd Numbered Levels are inverted
 
      assign or_l1[0] = ~l0[0];
      assign or_l1[1:s] = ~(l0[0:s - 1] | l0[1:s]);
@@ -86,6 +91,7 @@ module tri_pri(
        assign or_l5 = ~or_l4;
      end
 
+     //assert SIZE > 32 report "Maximum Size of 32 Exceeded!" severity error;
 
      assign pri[0] = cond[0];
      assign pri[1:s] = cond[1:s] & or_l5[0:s - 1];
@@ -99,6 +105,6 @@ module tri_pri(
    end
    endgenerate
 
+//!! [fail; tri_pri;  "Priority not zero or one hot!!"] : (pri1 ) <= not zero_or_one_hot(pri);
 
 endmodule
-

@@ -9,6 +9,9 @@
 
 `timescale 1 ns / 1 ns
 
+//  Description:  Address Decoder
+//
+//*****************************************************************************
 
 module tri_addrcmp(
    enable_lsb,
@@ -17,11 +20,12 @@ module tri_addrcmp(
    eq
 );
 
-   input        enable_lsb;		
+   input        enable_lsb;		// when "0" the LSB is disabled
    input [0:35] d0;
    input [0:35] d1;
    output       eq;
 
+   // tri_addrcmp
 
       parameter    tiup = 1'b1;
       parameter    tidn = 1'b0;
@@ -74,7 +78,5 @@ module tri_addrcmp(
       assign eq24_b[0] = (~(eq08[0] & eq08[1] & eq08[2]));
       assign eq24_b[1] = (~(eq08[3] & eq08[4]));
 
-      assign eq = (~(eq24_b[0] | eq24_b[1]));		
+      assign eq = (~(eq24_b[0] | eq24_b[1]));		// output
 endmodule
-
-

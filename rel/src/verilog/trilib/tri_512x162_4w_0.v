@@ -9,6 +9,11 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_512x162_4w_0.v
+// *! DESCRIPTION : 512 Entry x 162 bit x 4 way array
+// *!
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -82,14 +87,16 @@ module tri_512x162_4w_0(
    data_in,
    data_out
 );
-   parameter                                      addressable_ports = 512;	
-   parameter                                      addressbus_width = 9;		
-   parameter                                      port_bitwidth = 162;		
-   parameter                                      ways = 4;		
+   parameter                                      addressable_ports = 512;	// number of addressable register in this array
+   parameter                                      addressbus_width = 9;		// width of the bus to address all ports (2^addressbus_width >= addressable_ports)
+   parameter                                      port_bitwidth = 162;		// bitwidth of ports
+   parameter                                      ways = 4;		// number of ways
+   // POWER PINS
    inout                                          gnd;
    inout                                          vdd;
    (* analysis_not_referenced="true" *)
    inout                                          vcs;
+   // CLOCK and CLOCKCONTROL ports
    input [0:`NCLK_WIDTH-1]                        nclk;
    input                                          ccflush_dc;
    input                                          lcb_clkoff_dc_b;
@@ -116,15 +123,18 @@ module tri_512x162_4w_0(
    input                                          aodo_lcb_delay_lclkr_dc;
    input                                          aodo_lcb_mpw1_dc_b;
    input                                          aodo_lcb_mpw2_dc_b;
+   // Timing Scan Chain Pins
    input                                          lcb_time_sg_0;
    input                                          lcb_time_sl_thold_0;
    input                                          time_scan_in;
    output                                         time_scan_out;
    input [0:1]                                    bitw_abist;
+   // REDUNDANCY PINS
    input                                          lcb_repr_sl_thold_0;
    input                                          lcb_repr_sg_0;
    input                                          repr_scan_in;
    output                                         repr_scan_out;
+   // DATA I/O RELATED PINS:
    input                                          tc_lbist_ary_wrt_thru_dc;
    input                                          abist_en_1;
    input [0:3]                                    din_abist;
@@ -134,20 +144,22 @@ module tri_512x162_4w_0(
    input [0:addressbus_width-1]                   addr_abist;
    input                                          r_wb_abist;
    input                                          write_thru_en_dc;
-   input                                          lcb_bolt_sl_thold_0;	
-   input                                          pc_bo_enable_2;	
-   input                                          pc_bo_reset;		
+   // BOLT-ON
+   input                                          lcb_bolt_sl_thold_0;	// thold for any regs inside backend
+   input                                          pc_bo_enable_2;	// general bolt-on enable, probably DC
+   input                                          pc_bo_reset;		// execute sticky bit decode
    input                                          pc_bo_unload;
-   input                                          pc_bo_repair;		
-   input                                          pc_bo_shdata;		
-   input [0:1]                                    pc_bo_select;		
-   output [0:1]                                   bo_pc_failout;	
+   input                                          pc_bo_repair;		// load repair reg
+   input                                          pc_bo_shdata;		// shift data for timing write
+   input [0:1]                                    pc_bo_select;		// select for mask and hier writes
+   output [0:1]                                   bo_pc_failout;	// fail/no-fix reg
    output [0:1]                                   bo_pc_diagloop;
    input                                          tri_lcb_mpw1_dc_b;
    input                                          tri_lcb_mpw2_dc_b;
    input                                          tri_lcb_delay_lclkr_dc;
    input                                          tri_lcb_clkoff_dc_b;
    input                                          tri_lcb_act_dis_dc;
+   // FUNCTIONAL PORTS
    input [0:1]                                    read_act;
    input [0:3]                                    write_act;
    input                                          write_enable;
@@ -156,11 +168,14 @@ module tri_512x162_4w_0(
    input [0:port_bitwidth-1]                      data_in;
    output [0:port_bitwidth*ways-1]                data_out;
 
+   // tri_512x162_4w_0
 
    parameter            ramb_base_width = 36;
    parameter            ramb_base_addr = 9;
-   parameter            ramb_width_mult = (port_bitwidth - 1)/ramb_base_width + 1;	
+   parameter            ramb_width_mult = (port_bitwidth - 1)/ramb_base_width + 1;	// # of RAMB's per way
 
+   // Configuration Statement for NCsim
+   //for all:RAMB16_S36_S36 use entity unisim.RAMB16_S36_S36;
 
    wire [0:ramb_base_width*ramb_width_mult-1]   ramb_data_in;
    wire [0:ramb_base_width*ramb_width_mult-1]   ramb_data_out[0:ways-1];
@@ -215,7 +230,7 @@ module tri_512x162_4w_0(
        for (x = 0; x < ramb_width_mult; x = x + 1)
        begin : ax
          RAMB16_S36_S36
-             #(.SIM_COLLISION_CHECK("NONE"))            
+             #(.SIM_COLLISION_CHECK("NONE"))            // all, none, warning_only, generate_x_only
          arr(
                .DOA(ramb_data_out[w][x * ramb_base_width:x * ramb_base_width + 31]),
                .DOB(dob),
@@ -236,15 +251,15 @@ module tri_512x162_4w_0(
                .WEA(write[w]),
                .WEB(tidn)
             );
-       end  
+       end  //ax
 
        assign data_out_d[w * port_bitwidth:((w + 1) * port_bitwidth) - 1] = ramb_data_out[w][0:port_bitwidth - 1];
 
-     end  
+     end  //aw
 
    assign data_out = data_out_l2;
 
-   assign rd_act_d = |(read_act);	
+   assign rd_act_d = |(read_act);	// Use for data_out latch act
 
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(0)) rd_act_latch(
       .vd(vdd),
@@ -291,8 +306,6 @@ module tri_512x162_4w_0(
       .q(lcb_sg_0)
    );
 
-
-
      assign abst_scan_out = 2'b00;
      assign time_scan_out = 1'b0;
      assign repr_scan_out = 1'b0;
@@ -304,5 +317,3 @@ module tri_512x162_4w_0(
    end
    endgenerate
 endmodule
-
-

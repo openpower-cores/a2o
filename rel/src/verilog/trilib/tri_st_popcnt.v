@@ -7,6 +7,10 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//*****************************************************************************
+//  Description:  XU Population Count
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
 
@@ -28,10 +32,16 @@ module tri_st_popcnt(
    ex2_popcnt_rs1,
    ex4_popcnt_rt
 );
+   //-------------------------------------------------------------------
+   // Clocks & Power
+   //-------------------------------------------------------------------
    input [0:`NCLK_WIDTH-1] nclk;
    inout                 vdd;
    inout                 gnd;
-   
+
+   //-------------------------------------------------------------------
+   // Pervasive
+   //-------------------------------------------------------------------
    input                 delay_lclkr_dc;
    input                 mpw1_dc_b;
    input                 mpw2_dc_b;
@@ -39,38 +49,40 @@ module tri_st_popcnt(
    input                 func_sl_force;
    input                 func_sl_thold_0_b;
    input                 sg_0;
-   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *) 
+   (* pin_data="PIN_FUNCTION=/SCAN_IN/" *) // scan_in
    input                 scan_in;
-   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) 
+   (* pin_data="PIN_FUNCTION=/SCAN_OUT/" *) // scan_out
    output                scan_out;
-   
+
    input                 ex1_act;
    input [22:23]         ex1_instr;
    input [0:63]          ex2_popcnt_rs1;
    output [0:63]         ex4_popcnt_rt;
-   
-   wire [2:3]            exx_act_q;		
+
+   // Latches
+   wire [2:3]            exx_act_q;		// input=>exx_act_d        ,act=>1
    wire [2:3]            exx_act_d;
-   wire [22:23]          ex2_instr_q;		
-   wire [0:2]            ex3_popcnt_sel_q;		
+   wire [22:23]          ex2_instr_q;		// input=>ex1_instr        ,act=>exx_act(1)
+   wire [0:2]            ex3_popcnt_sel_q;		// input=>ex2_popcnt_sel   ,act=>exx_act(2)
    wire [0:2]            ex2_popcnt_sel;
-   wire [0:7]            ex3_b3_q;		
+   wire [0:7]            ex3_b3_q;		// input=>ex2_b3           ,act=>exx_act(2)
    wire [0:7]            ex2_b3;
-   wire [0:7]            ex3_b2_q;		
+   wire [0:7]            ex3_b2_q;		// input=>ex2_b2           ,act=>exx_act(2)
    wire [0:7]            ex2_b2;
-   wire [0:7]            ex3_b1_q;		
+   wire [0:7]            ex3_b1_q;		// input=>ex2_b1           ,act=>exx_act(2)
    wire [0:7]            ex2_b1;
-   wire [0:7]            ex3_b0_q;		
+   wire [0:7]            ex3_b0_q;		// input=>ex2_b0           ,act=>exx_act(2)
    wire [0:7]            ex2_b0;
-   wire [0:7]            ex4_b3_q;		
-   wire [0:7]            ex4_b2_q;		
-   wire [0:7]            ex4_b1_q;		
-   wire [0:7]            ex4_b0_q;		
-   wire [0:5]            ex4_word0_q;		
+   wire [0:7]            ex4_b3_q;		// input=>ex3_b3_q         ,act=>exx_act(3)
+   wire [0:7]            ex4_b2_q;		// input=>ex3_b2_q         ,act=>exx_act(3)
+   wire [0:7]            ex4_b1_q;		// input=>ex3_b1_q         ,act=>exx_act(3)
+   wire [0:7]            ex4_b0_q;		// input=>ex3_b0_q         ,act=>exx_act(3)
+   wire [0:5]            ex4_word0_q;		// input=>ex3_word0        ,act=>exx_act(3)
    wire [0:5]            ex3_word0;
-   wire [0:5]            ex4_word1_q;		
+   wire [0:5]            ex4_word1_q;		// input=>ex3_word1        ,act=>exx_act(3)
    wire [0:5]            ex3_word1;
-   wire [0:2]            ex4_popcnt_sel_q;		
+   wire [0:2]            ex4_popcnt_sel_q;		// input=>ex3_popcnt_sel_q ,act=>exx_act(3)
+   // Scanchain
    parameter             exx_act_offset = 0;
    parameter             ex2_instr_offset = exx_act_offset + 2;
    parameter             ex3_popcnt_sel_offset = ex2_instr_offset + 2;
@@ -88,6 +100,7 @@ module tri_st_popcnt(
    parameter             scan_right = ex4_popcnt_sel_offset + 3;
    wire [0:scan_right-1] siv;
    wire [0:scan_right-1] sov;
+   // Signals
    wire [0:63]           ex4_popcnt_byte;
    wire [0:63]           ex4_popcnt_word;
    wire [0:63]           ex4_popcnt_dword;
@@ -154,6 +167,9 @@ module tri_st_popcnt(
                           (ex4_popcnt_word  & {64{ex4_popcnt_sel_q[1]}}) |
                           (ex4_popcnt_dword & {64{ex4_popcnt_sel_q[2]}});
 
+   //-------------------------------------------------------------------
+   // Latch instances
+   //-------------------------------------------------------------------
 
    tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) exx_act_latch(
       .nclk(nclk),
@@ -409,6 +425,6 @@ module tri_st_popcnt(
 
    assign siv[0:scan_right-1] = {sov[1:scan_right-1], scan_in};
    assign scan_out = sov[0];
-         
+
 
 endmodule

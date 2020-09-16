@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_inv.v
+// *! DESCRIPTION : INVERTER gate
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -17,23 +21,22 @@ module tri_inv(
    a
 );
    parameter                      WIDTH = 1;
-   parameter                      BTR = "INV_X2M_NONE";  
+   parameter                      BTR = "INV_X2M_NONE";  //Specify full BTR name, else let tool select
    output [0:WIDTH-1]  y;
    input [0:WIDTH-1]   a;
 
+   // tri_nand2
    genvar 	       i;
-   
+
    generate
       begin : t
 	 for (i = 0; i < WIDTH; i = i + 1)
 	   begin : w
 
 	      not I0(y[i], a[i]);
-	      
-	   end 
+
+	   end // block: w
       end
-      
+
    endgenerate
 endmodule
-
-

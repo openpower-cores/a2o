@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+//*****************************************************************************
+//  Description:  Tri Array Wrapper
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
 
@@ -73,11 +77,12 @@ module tri_512x16_1r1w_1(
    di,
    do
 );
-   parameter                                      addressable_ports = 128;	
-   parameter                                      addressbus_width = 9;		
-   parameter                                      port_bitwidth = 16;		
-   parameter                                      ways = 1;		
+   parameter                                      addressable_ports = 128;	// number of addressable register in this array
+   parameter                                      addressbus_width = 9;		// width of the bus to address all ports (2^addressbus_width >= addressable_ports)
+   parameter                                      port_bitwidth = 16;		// bitwidth of ports
+   parameter                                      ways = 1;		// number of ways
 
+   // POWER PINS
    inout                                          vdd;
    inout                                          vcs;
    inout                                          gnd;
@@ -87,6 +92,7 @@ module tri_512x16_1r1w_1(
    input                                          rd_act;
    input                                          wr_act;
 
+   // DC TEST PINS
    input                                          lcb_d_mode_dc;
    input                                          lcb_clkoff_dc_b;
    input [0:4]                                    lcb_mpw1_dc_b;
@@ -125,14 +131,15 @@ module tri_512x16_1r1w_1(
    input                                          abist_raw_dc_b;
    input [0:3]                                    obs0_abist_cmp;
 
+   // BOLT-ON
    input                                          lcb_bolt_sl_thold_0;
-   input                                          pc_bo_enable_2;		
-   input                                          pc_bo_reset;		
-   input                                          pc_bo_unload;		
-   input                                          pc_bo_repair;		
-   input                                          pc_bo_shdata;		
-   input                                          pc_bo_select;		
-   output                                         bo_pc_failout;		
+   input                                          pc_bo_enable_2;		// general bolt-on enable
+   input                                          pc_bo_reset;		// reset
+   input                                          pc_bo_unload;		// unload sticky bits
+   input                                          pc_bo_repair;		// execute sticky bit decode
+   input                                          pc_bo_shdata;		// shift data for timing write and diag loop
+   input                                          pc_bo_select;		// select for mask and hier writes
+   output                                         bo_pc_failout;		// fail/no-fix reg
    output                                         bo_pc_diagloop;
    input                                          tri_lcb_mpw1_dc_b;
    input                                          tri_lcb_mpw2_dc_b;
@@ -147,6 +154,8 @@ module tri_512x16_1r1w_1(
 
    output [0:15]                                  do;
 
+   // Configuration Statement for NCsim
+   //for all:RAMB16_S36_S36 use entity unisim.RAMB16_S36_S36;
 
    wire                                           clk;
    wire                                           clk2x;
@@ -155,6 +164,7 @@ module tri_512x16_1r1w_1(
    wire                                           wea;
    wire                                           web;
    wire                                           wren_a;
+   // Latches
    reg                                            reset_q;
    reg                                            gate_fq;
    wire                                           gate_d;
@@ -181,6 +191,9 @@ module tri_512x16_1r1w_1(
        reset_q <= nclk[1];
      end
 
+     //
+     //  NEW clk2x gate logic start
+     //
 
      always @(posedge clk)
      begin: tlatch
@@ -200,20 +213,26 @@ module tri_512x16_1r1w_1(
      assign toggle_d = (~toggle_q);
      assign toggle2x_d = toggle_q;
 
+     // should force gate_fq to be on during odd 2x clock (second half of 1x clock).
+     //gate_d <= toggle_q xor toggle2x_q;
+     // if you want the first half do the following
      assign gate_d = (~(toggle_q ^ toggle2x_q));
 
-
-
-
+     //
+     //  NEW clk2x gate logic end
+     //
 
      assign b0addra[0:8] = wr_adr;
      assign b0addrb[0:8] = rd_adr;
 
+     // Unused Address Bits
+     //b0addra(0 to 1) <= "00";
+     //b0addrb(0 to 1) <= "00";
 
-
+     // port a is a read-modify-write port
      assign wren_a = ((bw != 16'b0000000000000000) & (wr_act == 1'b1)) ? 1'b1 :
                      1'b0;
-     assign wea = wren_a & (~(gate_fq));		
+     assign wea = wren_a & (~(gate_fq));		// write in 2nd half of nclk
      assign web = 1'b0;
      assign w_data_in_0[0] = (bw[0] == 1'b1) ? di[0] :
                              r_data_out_0_bram[0];
@@ -252,7 +271,7 @@ module tri_512x16_1r1w_1(
      assign r_data_out_1_d = r_data_out_1_bram;
 
      RAMB16_S36_S36
-              #(.SIM_COLLISION_CHECK("NONE"))            
+              #(.SIM_COLLISION_CHECK("NONE"))            // all, none, warning_only, generate_x_only
      bram0a(
                .CLKA(clk2x),
                .CLKB(clk2x),
@@ -293,4 +312,3 @@ module tri_512x16_1r1w_1(
                        pc_bo_select, tri_lcb_mpw1_dc_b, tri_lcb_mpw2_dc_b, tri_lcb_delay_lclkr_dc, tri_lcb_clkoff_dc_b,
                        tri_lcb_act_dis_dc, rd_act, r_data_out_0_bram[16:35], r_data_out_1_fq[16:35]};
 endmodule
-

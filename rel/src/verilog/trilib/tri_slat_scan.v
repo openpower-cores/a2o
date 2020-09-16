@@ -9,6 +9,11 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_slat_scan.v
+// *! DESCRIPTION : n-bit scan-only latch without scan_connect
+// *!
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -38,6 +43,7 @@ module tri_slat_scan(
    output [OFFSET:OFFSET+WIDTH-1] q;
    output [OFFSET:OFFSET+WIDTH-1] q_b;
 
+   // tri_slat_scan
 
    parameter [0:WIDTH-1]          ZEROS = {WIDTH{1'b0}};
    parameter [0:WIDTH-1]          initv = INIT;
@@ -51,5 +57,3 @@ module tri_slat_scan(
    assign q = initv;
    assign q_b = (~initv);
 endmodule
-
-

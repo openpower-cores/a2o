@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_oai21.v
+// *! DESCRIPTION : OAI21 gate
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -19,27 +23,26 @@ module tri_oai21(
    b0
 );
    parameter                      WIDTH = 1;
-   parameter                      BTR = "OAI21_X2M_NONE";  
+   parameter                      BTR = "OAI21_X2M_NONE";  //Specify full BTR name, else let tool select
    output [0:WIDTH-1]  y;
    input [0:WIDTH-1]   a0;
    input [0:WIDTH-1]   a1;
    input [0:WIDTH-1]   b0;
 
+   // tri_oai21
    genvar 	       i;
    wire [0:WIDTH-1]    outA;
-   
+
    generate
       begin : t
 	 for (i = 0; i < WIDTH; i = i + 1)
 	   begin : w
 
 	      or   I0(outA[i], a0[i], a1[i]);
-	      nand I2(y[i], outA[i], b0[i]);	      
+	      nand I2(y[i], outA[i], b0[i]);
 
-	   end 
+	   end // block: w
       end
-      
+
    endgenerate
 endmodule
-
-

@@ -7,7 +7,12 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  Adder Component
+//
+//*****************************************************************************
 
+// input phase is important
+// (change X (B) by switching xor/xnor )
 
 module tri_st_add_csmux(
    sum_0,
@@ -15,7 +20,7 @@ module tri_st_add_csmux(
    ci_b,
    sum
 );
-   input [0:7]  sum_0;		
+   input [0:7]  sum_0;		// after xor
    input [0:7]  sum_1;
    input        ci_b;
    output [0:7] sum;
@@ -56,6 +61,5 @@ module tri_st_add_csmux(
    assign sum[5] = (~(sum0_b[5] & sum1_b[5]));
    assign sum[6] = (~(sum0_b[6] & sum1_b[6]));
    assign sum[7] = (~(sum0_b[7] & sum1_b[7]));
-      
-endmodule
 
+endmodule

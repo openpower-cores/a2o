@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+//  Description:  Service Error Rate Latch Instance
+//       Constant feedback to L1, should improve the error rate of the latch
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
 
@@ -53,6 +57,7 @@ module tri_ser_rlmreg_p(
    output [OFFSET:OFFSET+WIDTH-1] scout;
    output [OFFSET:OFFSET+WIDTH-1] dout;
 
+   // tri_ser_rlmreg_p
 
    wire [OFFSET:OFFSET+WIDTH-1]   dout_b;
    wire [OFFSET:OFFSET+WIDTH-1]   act_buf;
@@ -85,4 +90,3 @@ module tri_ser_rlmreg_p(
          .qb(dout_b)
    );
 endmodule
-

@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_lcbs.v
+// *! DESCRIPTION : Wrapper for slat LCB
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -31,14 +35,14 @@ module tri_lcbs(
    output     dclk;
    output[0:`NCLK_WIDTH-1]  lclk;
 
+   //  tri_lcbs
 
    (* analysis_not_referenced="true" *)
    wire       unused;
 
    assign unused = vd | gd | delay_lclkr | force_t;
 
+   // No scan chain in this methodology
    assign dclk = thold_b;
    assign lclk = nclk;
 endmodule
-
-

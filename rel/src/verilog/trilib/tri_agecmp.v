@@ -9,6 +9,9 @@
 
 `timescale 1 ns / 1 ns
 
+//  Description:  Prioritizer
+//
+//*****************************************************************************
 
 module tri_agecmp(
    a,
@@ -21,6 +24,7 @@ module tri_agecmp(
    input [0:SIZE-1] b;
    output           a_newer_b;
 
+   // tri_agecmp
 
    wire             a_lt_b;
    wire             a_gte_b;
@@ -35,4 +39,3 @@ module tri_agecmp(
 
    assign a_newer_b = (a_lt_b & (~cmp_sel)) | (a_gte_b & cmp_sel);
 endmodule
-

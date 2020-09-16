@@ -9,6 +9,11 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_aoi22.v
+// *! DESCRIPTION : AOI22 gate
+// *!
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -20,17 +25,18 @@ module tri_aoi22(
    b1
 );
    parameter                      WIDTH = 1;
-   parameter                      BTR = "AOI22_X2M_NONE";  
+   parameter                      BTR = "AOI22_X2M_NONE";  //Specify full BTR name, else let tool select
    output [0:WIDTH-1]  y;
    input [0:WIDTH-1]   a0;
    input [0:WIDTH-1]   a1;
    input [0:WIDTH-1]   b0;
    input [0:WIDTH-1]   b1;
 
+   // tri_aoi22
    genvar 	       i;
    wire [0:WIDTH-1]    outA;
    wire [0:WIDTH-1]    outB;
-   
+
    generate
       begin : t
 	 for (i = 0; i < WIDTH; i = i + 1)
@@ -40,11 +46,9 @@ module tri_aoi22(
 	      and I1(outB[i], b0[i], b1[i]);
 	      nor I2(y[i], outA[i], outB[i]);
 
-	      
-	   end 
+
+	   end // block: w
       end
-      
+
    endgenerate
 endmodule
-
-

@@ -7,6 +7,9 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU Multiplier Top
+//
+//*****************************************************************************
 
 module tri_st_mult_boothdcd(
    i0,
@@ -37,7 +40,22 @@ module tri_st_mult_boothdcd(
    wire    i2_b;
 
 
+   // i0:2      booth recode table
+   //--------------------------------
+   // 000  add  sh1=0 sh2=0  sub_adj=0
+   // 001  add  sh1=1 sh2=0  sub_adj=0
+   // 010  add  sh1=1 sh2=0  sub_adj=0
+   // 011  add  sh1=0 sh2=1  sub_adj=0
+   // 100  sub  sh1=0 sh2=1  sub_adj=1
+   // 101  sub  sh1=1 sh2=0  sub_adj=1
+   // 110  sub  sh1=1 sh2=0  sub_adj=1
+   // 111  sub  sh1=0 sh2=0  sub_adj=0
 
+   // logically correct
+   //----------------------------------
+   //  s_neg <= (i0);
+   //  s_x   <= (       not i1 and     i2) or (           i1 and not i2);
+   //  s_x2  <= (i0 and not i1 and not i2) or (not i0 and i1 and     i2);
 
    assign i0_b = (~(i0));
    assign i1_b = (~(i1));
@@ -57,5 +75,5 @@ module tri_st_mult_boothdcd(
    assign sx2_t = (~(sx2_a0_b & sx2_a1_b));
    assign sx2_i = (~(sx2_t));
    assign s_x2 = (~(sx2_i));
-      
+
 endmodule

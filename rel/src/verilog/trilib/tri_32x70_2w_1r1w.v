@@ -9,6 +9,12 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_32x70_2w_1r1w.v
+// *! DESCRIPTION : 32 entry x 70 bit x 2 way array,
+// *!               1 read & 1 write port
+// *!
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -78,14 +84,16 @@ module tri_32x70_2w_1r1w(
    rd_addr,
    data_out
 );
-parameter                         addressable_ports = 32;		
-parameter                         addressbus_width = 5;		
-parameter                         port_bitwidth = 70;		
-parameter                         ways = 2;		
+parameter                         addressable_ports = 32;		// number of addressable register in this array
+parameter                         addressbus_width = 5;		// width of the bus to address all ports (2^addressbus_width >= addressable_ports)
+parameter                         port_bitwidth = 70;		// bitwidth of ports
+parameter                         ways = 2;		// number of ways
 
+// POWER PINS
 inout                             gnd;
 inout                             vdd;
 inout                             vcs;
+// CLOCK and CLOCKCONTROL ports
 input [0:`NCLK_WIDTH-1]           nclk;
 input [0:1]                       rd_act;
 input [0:1]                       wr_act;
@@ -109,6 +117,7 @@ input                             mpw1_dc_b;
 input                             mpw2_dc_b;
 input                             delay_lclkr_dc;
 
+// ABIST
 input                             wr_abst_act;
 input                             rd0_abst_act;
 input [0:3]                       abist_di;
@@ -122,6 +131,7 @@ input                             abist_g8t_rd0_comp_ena;
 input                             abist_raw_dc_b;
 input [0:3]                       obs0_abist_cmp;
 
+// Scan
 input [0:1]                       abst_scan_in;
 input                             time_scan_in;
 input                             repr_scan_in;
@@ -131,14 +141,15 @@ output                            time_scan_out;
 output                            repr_scan_out;
 output                            func_scan_out;
 
+// BOLT-ON
 input                             lcb_bolt_sl_thold_0;
-input                             pc_bo_enable_2;		
-input                             pc_bo_reset;		
-input                             pc_bo_unload;		
-input                             pc_bo_repair;		
-input                             pc_bo_shdata;		
-input [0:1]                       pc_bo_select;		
-output [0:1]                      bo_pc_failout;		
+input                             pc_bo_enable_2;		// general bolt-on enable
+input                             pc_bo_reset;		// reset
+input                             pc_bo_unload;		// unload sticky bits
+input                             pc_bo_repair;		// execute sticky bit decode
+input                             pc_bo_shdata;		// shift data for timing write and diag loop
+input [0:1]                       pc_bo_select;		// select for mask and hier writes
+output [0:1]                      bo_pc_failout;		// fail/no-fix reg
 output [0:1]                      bo_pc_diagloop;
 input                             tri_lcb_mpw1_dc_b;
 input                             tri_lcb_mpw2_dc_b;
@@ -146,18 +157,22 @@ input                             tri_lcb_delay_lclkr_dc;
 input                             tri_lcb_clkoff_dc_b;
 input                             tri_lcb_act_dis_dc;
 
+// Write Ports
 input [0:ways-1]                  wr_way;
 input [0:addressbus_width-1]      wr_addr;
 input [0:port_bitwidth-1]         data_in;
 
+// Read Ports
 input [0:addressbus_width-1]      rd_addr;
 output [0:port_bitwidth*ways-1]   data_out;
 
+// tri_32x70_2w_1r1w
 
 parameter                         ramb_base_width = 36;
 parameter                         ramb_base_addr = 9;
 
-
+// Configuration Statement for NCsim
+//for all:RAMB16_S36_S36 use entity unisim.RAMB16_S36_S36;
 parameter                          rd_act_offset = 0;
 parameter                          data_out0_offset = rd_act_offset + 2;
 parameter                          data_out1_offset = data_out0_offset + port_bitwidth - 1;
@@ -211,11 +226,11 @@ wire                              unused;
 
 assign unused = | {ramb_data_p1_outA[0], ramb_data_p1_outA[35], ramb_data_p1_outB[35], ramb_data_p1_outC[0], ramb_data_p1_outC[35], ramb_data_p1_outD[35],
                    ramb_data_p0_outA, ramb_data_p0_outB, ramb_data_p0_outC, ramb_data_p0_outD, gnd, vdd, vcs,
-                   sg_0, abst_sl_thold_0, ary_nsl_thold_0, time_sl_thold_0, repr_sl_thold_0, g8t_clkoff_dc_b, ccflush_dc, scan_dis_dc_b, 
-                   scan_diag_dc, g8t_d_mode_dc, g8t_mpw1_dc_b, g8t_mpw2_dc_b, g8t_delay_lclkr_dc, wr_abst_act, rd0_abst_act, abist_di, abist_bw_odd, 
-                   abist_bw_even, abist_wr_adr, abist_rd0_adr, tc_lbist_ary_wrt_thru_dc, abist_ena_1, abist_g8t_rd0_comp_ena, abist_raw_dc_b, 
-                   obs0_abist_cmp, abst_scan_in, time_scan_in, repr_scan_in, lcb_bolt_sl_thold_0, pc_bo_enable_2, pc_bo_reset, pc_bo_unload, 
-                   pc_bo_repair, pc_bo_shdata, pc_bo_select, tri_lcb_mpw1_dc_b, tri_lcb_mpw2_dc_b, tri_lcb_delay_lclkr_dc, tri_lcb_clkoff_dc_b, 
+                   sg_0, abst_sl_thold_0, ary_nsl_thold_0, time_sl_thold_0, repr_sl_thold_0, g8t_clkoff_dc_b, ccflush_dc, scan_dis_dc_b,
+                   scan_diag_dc, g8t_d_mode_dc, g8t_mpw1_dc_b, g8t_mpw2_dc_b, g8t_delay_lclkr_dc, wr_abst_act, rd0_abst_act, abist_di, abist_bw_odd,
+                   abist_bw_even, abist_wr_adr, abist_rd0_adr, tc_lbist_ary_wrt_thru_dc, abist_ena_1, abist_g8t_rd0_comp_ena, abist_raw_dc_b,
+                   obs0_abist_cmp, abst_scan_in, time_scan_in, repr_scan_in, lcb_bolt_sl_thold_0, pc_bo_enable_2, pc_bo_reset, pc_bo_unload,
+                   pc_bo_repair, pc_bo_shdata, pc_bo_select, tri_lcb_mpw1_dc_b, tri_lcb_mpw2_dc_b, tri_lcb_delay_lclkr_dc, tri_lcb_clkoff_dc_b,
                    tri_lcb_act_dis_dc, arrA_bit0_scanout, arrC_bit0_scanout, arrA_bit0_out_scanout, arrC_bit0_out_scanout};
 
 assign tiup = 1'b1;
@@ -223,6 +238,7 @@ assign tidn = 36'b0;
 assign act = rd_act | wr_act;
 assign rd_act_d = rd_act;
 
+// Data Generate
 assign array_wr_data = data_in;
 
 assign ramb_data_in_l = {array_wr_data[0:34], 1'b0};
@@ -231,6 +247,7 @@ assign ramb_data_in_r = {array_wr_data[35:69], 1'b0};
 assign write_enable_AB = wr_act[0] & wr_way[0];
 assign write_enable_CD = wr_act[1] & wr_way[1];
 
+// Read/Write Port Address Generate
 generate
 begin
   genvar  t;
@@ -250,6 +267,8 @@ begin
 end
 endgenerate
 
+// Writing on PortA
+// Reading on PortB
 assign ramb_addr_rd1 = rd_addr0;
 assign ramb_addr_wr_rd0 = wr_addr1;
 
@@ -264,9 +283,9 @@ generate
            wire [0:addressbus_width-1]         iDummy=i;
            assign arrA_bit0_wen[i] = write_enable_AB & (wr_addr == iDummy);
            assign arrC_bit0_wen[i] = write_enable_CD & (wr_addr == iDummy);
-           assign arrA_bit0_d[i] = (arrA_bit0_wen[i] == 1'b1) ? array_wr_data[0] : 
+           assign arrA_bit0_d[i] = (arrA_bit0_wen[i] == 1'b1) ? array_wr_data[0] :
            	                                                   arrA_bit0_q[i];
-           assign arrC_bit0_d[i] = (arrC_bit0_wen[i] == 1'b1) ? array_wr_data[0] : 
+           assign arrC_bit0_d[i] = (arrC_bit0_wen[i] == 1'b1) ? array_wr_data[0] :
            	                                                   arrC_bit0_q[i];
         end
    end
@@ -366,7 +385,7 @@ tri_regk #(.WIDTH(1), .INIT(0), .NEEDS_SRESET(1)) arrC_bit0_out_latch(
 
 
 RAMB16_S36_S36
-    #(.SIM_COLLISION_CHECK("NONE"))   
+    #(.SIM_COLLISION_CHECK("NONE"))   // all, none, warning_only, generate_x_only
 arr0_A(
    .DOA(ramb_data_p0_outA[0:31]),
    .DOB(ramb_data_p1_outA[0:31]),
@@ -382,14 +401,14 @@ arr0_A(
    .DIPB(tidn[32:35]),
    .ENA(act[0]),
    .ENB(act[0]),
-   .SSRA(nclk[1]),   
-   .SSRB(nclk[1]),   
+   .SSRA(nclk[1]),   //sreset
+   .SSRB(nclk[1]),   //sreset
    .WEA(write_enable_AB),
    .WEB(tidn[0])
 );
 
 RAMB16_S36_S36
-    #(.SIM_COLLISION_CHECK("NONE"))   
+    #(.SIM_COLLISION_CHECK("NONE"))   // all, none, warning_only, generate_x_only
 arr1_B(
    .DOA(ramb_data_p0_outB[0:31]),
    .DOB(ramb_data_p1_outB[0:31]),
@@ -412,7 +431,7 @@ arr1_B(
 );
 
 RAMB16_S36_S36
-    #(.SIM_COLLISION_CHECK("NONE"))   
+    #(.SIM_COLLISION_CHECK("NONE"))   // all, none, warning_only, generate_x_only
 arr2_C(
    .DOA(ramb_data_p0_outC[0:31]),
    .DOB(ramb_data_p1_outC[0:31]),
@@ -435,7 +454,7 @@ arr2_C(
 );
 
 RAMB16_S36_S36
-    #(.SIM_COLLISION_CHECK("NONE"))   
+    #(.SIM_COLLISION_CHECK("NONE"))   // all, none, warning_only, generate_x_only
 arr3_D(
    .DOA(ramb_data_p0_outD[0:31]),
    .DOB(ramb_data_p1_outD[0:31]),
@@ -457,6 +476,9 @@ arr3_D(
    .WEB(tidn[0])
 );
 
+// ####################################################
+// Registers
+// ####################################################
 
 tri_rlmreg_p #(.WIDTH(2), .INIT(0), .NEEDS_SRESET(1)) rd_act_reg(
    .vd(vdd),
@@ -521,4 +543,3 @@ assign repr_scan_out = tidn[0];
 assign bo_pc_failout = tidn[0:1];
 assign bo_pc_diagloop = tidn[0:1];
 endmodule
-

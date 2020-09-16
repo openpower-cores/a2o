@@ -7,6 +7,10 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//*****************************************************************************
+//  Description:  XU Population Count - Word Phase
+//
+//*****************************************************************************
 
 module tri_st_popcnt_word(
    b0,
@@ -24,7 +28,7 @@ module tri_st_popcnt_word(
    output [0:5] y;
    inout        vdd;
    inout        gnd;
-   
+
    wire [0:0]   s0;
    wire [0:1]   c1;
    wire [0:1]   s1;
@@ -34,6 +38,7 @@ module tri_st_popcnt_word(
    wire [0:1]   s3;
    wire [0:2]   c4;
 
+   // Level 0
 
    tri_csa32 csa_l0_0(
       .vd(vdd),
@@ -53,6 +58,7 @@ module tri_st_popcnt_word(
       .car(c1[1])
    );
 
+   // Level 1
 
    tri_csa32 csa_l1_0(
       .vd(vdd),
@@ -83,6 +89,7 @@ module tri_st_popcnt_word(
       .car(c2[2])
    );
 
+   // Level 2
 
    tri_csa32 csa_l2_0(
       .vd(vdd),
@@ -116,6 +123,7 @@ module tri_st_popcnt_word(
       .car(c3[2])
    );
 
+   // Level 3
 
    tri_csa32 csa_l3_0(
       .vd(vdd),
@@ -149,6 +157,7 @@ module tri_st_popcnt_word(
       .car(c4[2])
    );
 
+   // Level 4
 
    tri_csa32 csa_l4_0(
       .vd(vdd),
@@ -159,5 +168,5 @@ module tri_st_popcnt_word(
       .sum(y[1]),
       .car(y[0])
    );
-      
+
 endmodule

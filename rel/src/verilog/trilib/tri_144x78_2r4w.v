@@ -9,14 +9,24 @@
 
 `timescale 1 fs / 1 fs
 
+//*****************************************************************************
+//  Description:  Tri-Lam Array Wrapper
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
 
 module tri_144x78_2r4w(
+   // Inputs
+   // Power
    inout                    vdd,
    inout                    gnd,
+   // Clock & Scan
    input [0:`NCLK_WIDTH-1]  nclk,
 
+   //-------------------------------------------------------------------
+   // Pervasive
+   //-------------------------------------------------------------------
    input                    delay_lclkr_dc,
    input                    mpw1_dc_b,
    input                    mpw2_dc_b,
@@ -28,6 +38,9 @@ module tri_144x78_2r4w(
    input                    scan_in,
    output                   scan_out,
 
+   //-------------------------------------------------------------------
+   // Read Port
+   //-------------------------------------------------------------------
    input                     r_late_en_1,
    input [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1] r_addr_in_1,
    output [64-`GPR_WIDTH:77] r_data_out_1,
@@ -35,6 +48,9 @@ module tri_144x78_2r4w(
    input [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1] r_addr_in_2,
    output [64-`GPR_WIDTH:77] r_data_out_2,
 
+   //-------------------------------------------------------------------
+   // Write Port
+   //-------------------------------------------------------------------
    input                     w_late_en_1,
    input [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1] w_addr_in_1,
    input [64-`GPR_WIDTH:77]  w_data_in_1,
@@ -49,17 +65,25 @@ module tri_144x78_2r4w(
    input [64-`GPR_WIDTH:77]  w_data_in_4
 );
 
+   // Configuration Statement for NCsim
+   //for all:RAM64X1D use entity unisim.RAM64X1D;
 
    parameter                tiup = 1'b1;
    parameter                tidn = 1'b0;
 
+   //-------------------------------------------------------------------
+   // Signals
+   //-------------------------------------------------------------------
    reg                       write_en;
    reg [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1]   write_addr;
    reg [64-`GPR_WIDTH:77]    write_data;
    wire [0:(`GPR_POOL*`THREADS-1)/64] write_en_arr;
    wire [0:5]                write_addr_arr;
    wire [0:1]                wr_mux_ctrl;
-      
+
+   //-------------------------------------------------------------------
+   // Latch Signals
+   //-------------------------------------------------------------------
    wire                      w1e_q;
    wire [0:`GPR_POOL_ENC+`THREADS_POOL_ENC-1]  w1a_q;
    wire [64-`GPR_WIDTH:77]   w1d_q;
@@ -92,6 +116,9 @@ module tri_144x78_2r4w(
    wire [64-`GPR_WIDTH:77]   unused_port;
    wire [64-`GPR_WIDTH:77]   unused_port2;
 
+   //-------------------------------------------------------------------
+   // Scanchain
+   //-------------------------------------------------------------------
    parameter                w1e_offset = 0;
    parameter                w1a_offset = w1e_offset + 1;
    parameter                w1d_offset = w1a_offset + `GPR_POOL_ENC+`THREADS_POOL_ENC;
@@ -114,34 +141,43 @@ module tri_144x78_2r4w(
 
    generate
    begin
-            
+
+     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+     // Read Control
+     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+     // BYPASS
 
      assign r1d_d = read1_data;
 
      assign r2d_d = read2_data;
 
-            
      assign r_data_out_1 = r1d_q;
      assign r_data_out_2 = r2d_q;
 
+     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+     // Write Control
+     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
      assign wr_mux_ctrl = {nclk[0], nclk[2]};
 
      always @ ( * )
      begin
-       write_addr <= #10 ((wr_mux_ctrl == 2'b00) ? w_addr_in_1 : 
-                        (wr_mux_ctrl == 2'b01) ? w_addr_in_2 : 
-                        (wr_mux_ctrl == 2'b10) ? w_addr_in_3 : 
+       write_addr <= #10 ((wr_mux_ctrl == 2'b00) ? w_addr_in_1 :
+                        (wr_mux_ctrl == 2'b01) ? w_addr_in_2 :
+                        (wr_mux_ctrl == 2'b10) ? w_addr_in_3 :
                                                  w_addr_in_4);
 
-       write_en <= #10 ((wr_mux_ctrl == 2'b00) ? w_late_en_1 : 
-                      (wr_mux_ctrl == 2'b01) ? w_late_en_2 : 
-                      (wr_mux_ctrl == 2'b10) ? w_late_en_3 : 
+       write_en <= #10 ((wr_mux_ctrl == 2'b00) ? w_late_en_1 :
+                      (wr_mux_ctrl == 2'b01) ? w_late_en_2 :
+                      (wr_mux_ctrl == 2'b10) ? w_late_en_3 :
                                                w_late_en_4);
-            
 
-       write_data <= #10 ((wr_mux_ctrl == 2'b00) ? w_data_in_1 : 
-                        (wr_mux_ctrl == 2'b01) ? w_data_in_2 : 
-                        (wr_mux_ctrl == 2'b10) ? w_data_in_3 : 
+       // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+       // Depth Control
+       // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+       write_data <= #10 ((wr_mux_ctrl == 2'b00) ? w_data_in_1 :
+                        (wr_mux_ctrl == 2'b01) ? w_data_in_2 :
+                        (wr_mux_ctrl == 2'b10) ? w_data_in_3 :
                                                  w_data_in_4);
      end
 
@@ -161,7 +197,7 @@ module tri_144x78_2r4w(
        assign read1_en_arr[0] = 1'b1;
        assign read2_en_arr[0] = 1'b1;
      end
-      
+
      if (((`GPR_POOL*`THREADS - 1)/64) != 0)
      begin : depthMulti
        assign write_addr_arr = write_addr[`GPR_POOL_ENC+`THREADS_POOL_ENC - 6:`GPR_POOL_ENC+`THREADS_POOL_ENC - 1];
@@ -177,7 +213,7 @@ module tri_144x78_2r4w(
          assign read2_en_arr[wen] = r2a_q[0:(`GPR_POOL_ENC+`THREADS_POOL_ENC - 6) - 1] == wen_match;
        end
      end
-   
+
      always @( * )
      begin: rdDataMux
        reg [64-`GPR_WIDTH:77]      rd1_data;
@@ -195,7 +231,7 @@ module tri_144x78_2r4w(
        read1_data <= rd1_data;
        read2_data <= rd2_data;
      end
-   
+
      genvar  depth;
      for (depth = 0; depth <= ((`GPR_POOL*`THREADS - 1)/64); depth = depth + 1)
      begin : depth_loop
@@ -204,52 +240,56 @@ module tri_144x78_2r4w(
        begin : r1
          RAM64X1D #(.INIT(64'h0000000000000000)) RAM64X1D_1(
                   .SPO(unused_port[i]),
-                  .DPO(r1d_array[depth][i]),		
-                  .A0(write_addr_arr[5]),		
+                  .DPO(r1d_array[depth][i]),		// Port A 1-bit data output
+                  .A0(write_addr_arr[5]),		// Port A - Write Address (A0-A5)
                   .A1(write_addr_arr[4]),
                   .A2(write_addr_arr[3]),
                   .A3(write_addr_arr[2]),
                   .A4(write_addr_arr[1]),
                   .A5(write_addr_arr[0]),
-                  .D(write_data[i]),                    
-                  .DPRA0(read1_addr_arr[5]),		
+                  .D(write_data[i]),                    // Port A 1-bit data input
+                  .DPRA0(read1_addr_arr[5]),		// Port B - Read Address (DPRA0-DPRA5)
                   .DPRA1(read1_addr_arr[4]),
                   .DPRA2(read1_addr_arr[3]),
                   .DPRA3(read1_addr_arr[2]),
                   .DPRA4(read1_addr_arr[1]),
                   .DPRA5(read1_addr_arr[0]),
-                  .WCLK(nclk[3]),                       
-                  .WE(write_en_arr[depth])		
+                  .WCLK(nclk[3]),                       // Port A write clock input : clk4x
+                  .WE(write_en_arr[depth])		// Port A write enable input
                );
        end
 
+       //genvar  i;
        for (i = 64 - `GPR_WIDTH; i < 78; i = i + 1)
        begin : r2
          RAM64X1D #(.INIT(64'h0000000000000000)) RAM64X1D_2(
                   .SPO(unused_port2[i]),
-                  .DPO(r2d_array[depth][i]),		
-                  .A0(write_addr_arr[5]),		
+                  .DPO(r2d_array[depth][i]),		// Port A 1-bit data output
+                  .A0(write_addr_arr[5]),		// Port A - Write Address (A0-A5)
                   .A1(write_addr_arr[4]),
                   .A2(write_addr_arr[3]),
                   .A3(write_addr_arr[2]),
                   .A4(write_addr_arr[1]),
                   .A5(write_addr_arr[0]),
-                  .D(write_data[i]),		
-                  .DPRA0(read2_addr_arr[5]),		
+                  .D(write_data[i]),		// Port A 1-bit data input
+                  .DPRA0(read2_addr_arr[5]),		// Port B - Read Address (DPRA0-DPRA5)
                   .DPRA1(read2_addr_arr[4]),
                   .DPRA2(read2_addr_arr[3]),
                   .DPRA3(read2_addr_arr[2]),
                   .DPRA4(read2_addr_arr[1]),
                   .DPRA5(read2_addr_arr[0]),
-                  .WCLK(nclk[3]),		
-                  .WE(write_en_arr[depth])		
+                  .WCLK(nclk[3]),		// Port A write clock input : clk4x
+                  .WE(write_en_arr[depth])		// Port A write enable input
                );
        end
      end
    end
    endgenerate
 
-   
+   //----------------------------------------------------------------------------------------------------------------------------------------
+   // Latches
+   //----------------------------------------------------------------------------------------------------------------------------------------
+
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) w1e_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -267,7 +307,7 @@ module tri_144x78_2r4w(
       .din(w_late_en_1),
       .dout(w1e_q)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`GPR_POOL_ENC+`THREADS_POOL_ENC), .INIT(0), .NEEDS_SRESET(1)) w1a_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -285,7 +325,7 @@ module tri_144x78_2r4w(
       .din(w_addr_in_1),
       .dout(w1a_q)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`GPR_WIDTH+14), .INIT(0), .NEEDS_SRESET(1)) w1d_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -303,7 +343,7 @@ module tri_144x78_2r4w(
       .din(w_data_in_1[64 - `GPR_WIDTH:77]),
       .dout(w1d_q)
    );
-   
+
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) w2e_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -321,7 +361,7 @@ module tri_144x78_2r4w(
       .din(w_late_en_2),
       .dout(w2e_q)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`GPR_POOL_ENC+`THREADS_POOL_ENC), .INIT(0), .NEEDS_SRESET(1)) w2a_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -339,7 +379,7 @@ module tri_144x78_2r4w(
       .din(w_addr_in_2),
       .dout(w2a_q)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`GPR_WIDTH+14), .INIT(0), .NEEDS_SRESET(1)) w2d_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -357,7 +397,7 @@ module tri_144x78_2r4w(
       .din(w_data_in_2[64 - `GPR_WIDTH:77]),
       .dout(w2d_q)
    );
-   
+
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) w3e_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -375,7 +415,7 @@ module tri_144x78_2r4w(
       .din(w_late_en_3),
       .dout(w3e_q)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`GPR_POOL_ENC+`THREADS_POOL_ENC), .INIT(0), .NEEDS_SRESET(1)) w3a_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -393,7 +433,7 @@ module tri_144x78_2r4w(
       .din(w_addr_in_3),
       .dout(w3a_q)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`GPR_WIDTH+14), .INIT(0), .NEEDS_SRESET(1)) w3d_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -411,7 +451,7 @@ module tri_144x78_2r4w(
       .din(w_data_in_3[64 - `GPR_WIDTH:77]),
       .dout(w3d_q)
    );
-   
+
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) w4e_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -429,7 +469,7 @@ module tri_144x78_2r4w(
       .din(w_late_en_4),
       .dout(w4e_q)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`GPR_POOL_ENC+`THREADS_POOL_ENC), .INIT(0), .NEEDS_SRESET(1)) w4a_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -447,7 +487,7 @@ module tri_144x78_2r4w(
       .din(w_addr_in_4),
       .dout(w4a_q)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`GPR_WIDTH+14), .INIT(0), .NEEDS_SRESET(1)) w4d_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -465,7 +505,7 @@ module tri_144x78_2r4w(
       .din(w_data_in_4[64 - `GPR_WIDTH:77]),
       .dout(w4d_q)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`GPR_POOL_ENC+`THREADS_POOL_ENC), .INIT(0), .NEEDS_SRESET(1)) r1a_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -483,7 +523,7 @@ module tri_144x78_2r4w(
       .din(r_addr_in_1),
       .dout(r1a_q)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`GPR_POOL_ENC+`THREADS_POOL_ENC), .INIT(0), .NEEDS_SRESET(1)) r2a_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -501,7 +541,7 @@ module tri_144x78_2r4w(
       .din(r_addr_in_2),
       .dout(r2a_q)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`GPR_WIDTH+14), .INIT(0), .NEEDS_SRESET(1)) r1d_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -519,7 +559,7 @@ module tri_144x78_2r4w(
       .din(r1d_d),
       .dout(r1d_q)
    );
-   
+
    tri_rlmreg_p #(.WIDTH(`GPR_WIDTH+14), .INIT(0), .NEEDS_SRESET(1)) r2d_latch(
       .nclk(nclk),
       .vd(vdd),
@@ -537,7 +577,7 @@ module tri_144x78_2r4w(
       .din(r2d_d),
       .dout(r2d_q)
    );
-   
+
    assign siv[0:scan_right-1] = {sov[1:scan_right-1], scan_in};
    assign scan_out = sov[0];
 

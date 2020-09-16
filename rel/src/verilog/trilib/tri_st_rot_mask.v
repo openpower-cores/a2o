@@ -9,6 +9,9 @@
 
 `timescale 1 ns / 1 ns
 
+//  Description:  XU Rotate - Mask Component
+//
+//*****************************************************************************
 
 module tri_st_rot_mask(
    mb,
@@ -17,12 +20,12 @@ module tri_st_rot_mask(
    mb_gt_me,
    mask
 );
-   input [0:5]   mb;		
-   input [0:5]   me_b;		
-   input         zm;		
+   input [0:5]   mb;		// where the mask begins
+   input [0:5]   me_b;		// where the mask ends
+   input         zm;		// set mask to all zeroes. ... not a rot/sh op ... all bits are shifted out
    input         mb_gt_me;
-   output [0:63] mask;		
-         
+   output [0:63] mask;		// mask shows which rotator bits to keep in the result.
+
    wire          mask_en_and;
    wire          mask_en_mb;
    wire          mask_en_me;
@@ -53,7 +56,17 @@ module tri_st_rot_mask(
    wire [1:3]    me_msk01bbb;
    wire [1:3]    me_msk01bb;
 
+   // -----------------------------------------------------------------------------------------
+   // generate the MB mask
+   // -----------------------------------------------------------------------------------------
+   //        0123
+   //       ------
+   //  00 => 1111  (ge)
+   //  01 => 0111
+   //  10 => 0011
+   //  11 => 0001
 
+   // level 1 (4 bit results) ------------ <3 loads on input>
 
    assign mb_msk45[0] = (~(mb[4] | mb[5]));
    assign mb_msk45[1] = (~(mb[4]));
@@ -68,13 +81,14 @@ module tri_st_rot_mask(
    assign mb_msk45_b[0] = (~(mb_msk45[0]));
    assign mb_msk45_b[1] = (~(mb_msk45[1]));
    assign mb_msk45_b[2] = (~(mb_msk45[2]));
-   assign mb_msk23_b[0] = (~(mb_msk23[0]));		
+   assign mb_msk23_b[0] = (~(mb_msk23[0]));		// 7 loads on output
    assign mb_msk23_b[1] = (~(mb_msk23[1]));
    assign mb_msk23_b[2] = (~(mb_msk23[2]));
    assign mb_msk01_b[0] = (~(mb_msk01[0]));
    assign mb_msk01_b[1] = (~(mb_msk01[1]));
    assign mb_msk01_b[2] = (~(mb_msk01[2]));
 
+   // level 2 (16 bit results) -------------
 
    assign mb_msk25[0] = (~(mb_msk23_b[0] | mb_msk45_b[0]));
    assign mb_msk25[1] = (~(mb_msk23_b[0] | mb_msk45_b[1]));
@@ -116,6 +130,7 @@ module tri_st_rot_mask(
    assign mb_msk01bbb[1] = (~(mb_msk01bb[1]));
    assign mb_msk01bbb[2] = (~(mb_msk01bb[2]));
 
+   // level 3 -------------------------------------------------------
    assign mb_mask[0] = (~(mb_msk01bbb[0] | mb_msk25_b[0]));
    assign mb_mask[1] = (~(mb_msk01bbb[0] | mb_msk25_b[1]));
    assign mb_mask[2] = (~(mb_msk01bbb[0] | mb_msk25_b[2]));
@@ -181,7 +196,11 @@ module tri_st_rot_mask(
    assign mb_mask[62] = (~(mb_msk01bbb[2] & mb_msk25_b[14]));
    assign mb_mask[63] = 1;
 
+   // -----------------------------------------------------------------------------------------
+   // generate the ME mask
+   // -----------------------------------------------------------------------------------------
 
+   // level 1 (4 bit results) ------------ <3 loads on input>
 
    assign me_msk45[1] = (~(me_b[4] & me_b[5]));
    assign me_msk45[2] = (~(me_b[4]));
@@ -198,29 +217,30 @@ module tri_st_rot_mask(
    assign me_msk45_b[1] = (~(me_msk45[1]));
    assign me_msk45_b[2] = (~(me_msk45[2]));
    assign me_msk45_b[3] = (~(me_msk45[3]));
-   assign me_msk23_b[1] = (~(me_msk23[1]));		
+   assign me_msk23_b[1] = (~(me_msk23[1]));		// 7 loads on output
    assign me_msk23_b[2] = (~(me_msk23[2]));
    assign me_msk23_b[3] = (~(me_msk23[3]));
    assign me_msk01_b[1] = (~(me_msk01[1]));
    assign me_msk01_b[2] = (~(me_msk01[2]));
    assign me_msk01_b[3] = (~(me_msk01[3]));
 
+   // level 2 (16 bit results) -------------
 
-   assign me_msk25[1] = (~(me_msk23_b[1] & me_msk45_b[1]));		
-   assign me_msk25[2] = (~(me_msk23_b[1] & me_msk45_b[2]));		
-   assign me_msk25[3] = (~(me_msk23_b[1] & me_msk45_b[3]));		
-   assign me_msk25[4] = (~(me_msk23_b[1]));		
-   assign me_msk25[5] = (~(me_msk23_b[2] & (me_msk23_b[1] | me_msk45_b[1])));		
-   assign me_msk25[6] = (~(me_msk23_b[2] & (me_msk23_b[1] | me_msk45_b[2])));		
-   assign me_msk25[7] = (~(me_msk23_b[2] & (me_msk23_b[1] | me_msk45_b[3])));		
-   assign me_msk25[8] = (~(me_msk23_b[2]));		
-   assign me_msk25[9] = (~(me_msk23_b[3] & (me_msk23_b[2] | me_msk45_b[1])));		
-   assign me_msk25[10] = (~(me_msk23_b[3] & (me_msk23_b[2] | me_msk45_b[2])));		
-   assign me_msk25[11] = (~(me_msk23_b[3] & (me_msk23_b[2] | me_msk45_b[3])));		
-   assign me_msk25[12] = (~(me_msk23_b[3]));		
-   assign me_msk25[13] = (~(me_msk23_b[3] | me_msk45_b[1]));		
-   assign me_msk25[14] = (~(me_msk23_b[3] | me_msk45_b[2]));		
-   assign me_msk25[15] = (~(me_msk23_b[3] | me_msk45_b[3]));		
+   assign me_msk25[1] = (~(me_msk23_b[1] & me_msk45_b[1]));		// amt >=  1    4:15 + 1:3
+   assign me_msk25[2] = (~(me_msk23_b[1] & me_msk45_b[2]));		// amt >=  2    4:15 + 2:3
+   assign me_msk25[3] = (~(me_msk23_b[1] & me_msk45_b[3]));		// amt >=  3    4:15 + 3:3
+   assign me_msk25[4] = (~(me_msk23_b[1]));		// amt >=  4    4:15
+   assign me_msk25[5] = (~(me_msk23_b[2] & (me_msk23_b[1] | me_msk45_b[1])));		// amt >=  5    8:15 + (4:15 * 1:3)
+   assign me_msk25[6] = (~(me_msk23_b[2] & (me_msk23_b[1] | me_msk45_b[2])));		// amt >=  6    8:15 + (4:15 * 2:3)
+   assign me_msk25[7] = (~(me_msk23_b[2] & (me_msk23_b[1] | me_msk45_b[3])));		// amt >=  7    8:15 + (4:15 * 3:3)
+   assign me_msk25[8] = (~(me_msk23_b[2]));		// amt >=  8    8:15
+   assign me_msk25[9] = (~(me_msk23_b[3] & (me_msk23_b[2] | me_msk45_b[1])));		// amt >=  9   12:15 + (8:15 * 1:3)
+   assign me_msk25[10] = (~(me_msk23_b[3] & (me_msk23_b[2] | me_msk45_b[2])));		// amt >= 10   12:15 + (8:15 * 2:3)
+   assign me_msk25[11] = (~(me_msk23_b[3] & (me_msk23_b[2] | me_msk45_b[3])));		// amt >= 11   12:15 + (8:15 * 3:3)
+   assign me_msk25[12] = (~(me_msk23_b[3]));		// amt >= 12   12:15
+   assign me_msk25[13] = (~(me_msk23_b[3] | me_msk45_b[1]));		// amt >= 13   12:15 & 1:3
+   assign me_msk25[14] = (~(me_msk23_b[3] | me_msk45_b[2]));		// amt >= 14   12:15 & 2:3
+   assign me_msk25[15] = (~(me_msk23_b[3] | me_msk45_b[3]));		// amt >= 15   12:15 & 3:3
 
    assign me_msk01bb[1] = (~(me_msk01_b[1]));
    assign me_msk01bb[2] = (~(me_msk01_b[2]));
@@ -246,6 +266,7 @@ module tri_st_rot_mask(
    assign me_msk01bbb[2] = (~(me_msk01bb[2]));
    assign me_msk01bbb[3] = (~(me_msk01bb[3]));
 
+   // level 3 (16 bit results) -------------
 
    assign me_mask[0] = 1;
    assign me_mask[1] = (~(me_msk01bbb[1] & me_msk25_b[1]));
@@ -312,16 +333,24 @@ module tri_st_rot_mask(
    assign me_mask[62] = (~(me_msk01bbb[3] | me_msk25_b[14]));
    assign me_mask[63] = (~(me_msk01bbb[3] | me_msk25_b[15]));
 
+   // ------------------------------------------------------------------------------------------
+   // Generally the mask starts at bit MB[] and ends at bit ME[] ... (MB[] and ME[])
+   // For non-rotate/shift operations the mask is forced to zero by the ZM control.
+   // There are 3 rotate-word operations where MB could be greater than ME.
+   // in that case the mask is speced to be  (MB[] or ME[]).
+   // For those cases, the mask always comes from the instruction bits, is always word mode,
+   // and the MB>ME compare can be done during the instruction decode cycle.
+   // -------------------------------------------------------------------------------------------
 
-   assign mask_en_and = (~mb_gt_me) & (~zm);		
-   assign mask_en_mb = mb_gt_me & (~zm);		
-   assign mask_en_me = mb_gt_me & (~zm);		
+   assign mask_en_and = (~mb_gt_me) & (~zm);		// could restrict this to only rotates if shifts included below
+   assign mask_en_mb = mb_gt_me & (~zm);		// could alternatively include shift right
+   assign mask_en_me = mb_gt_me & (~zm);		// could alternatively include shift left
 
    assign mask0_b[0:63] = (~(mb_mask[0:63] & me_mask[0:63] & {64{mask_en_and}}));
    assign mask1_b[0:63] = (~(mb_mask[0:63] & {64{mask_en_mb}}));
    assign mask2_b[0:63] = (~(me_mask[0:63] & {64{mask_en_me}}));
 
    assign mask[0:63] = (~(mask0_b[0:63] & mask1_b[0:63] & mask2_b[0:63]));
-      
+
 
 endmodule

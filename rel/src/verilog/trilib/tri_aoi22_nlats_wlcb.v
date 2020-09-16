@@ -9,6 +9,11 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_aoi22_nlats_wlcb.v
+// *! DESCRIPTION : Multi-bit aoi22-latch, LCB included
+// *!
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -34,27 +39,29 @@ module tri_aoi22_nlats_wlcb(
 );
 
    parameter                      WIDTH = 4;
-   parameter                      OFFSET = 0;		
-   parameter                      INIT = 0;		
-   parameter                      IBUF = 1'b0;		
-   parameter                      DUALSCAN = "";		
-   parameter                      NEEDS_SRESET = 1;		
-   parameter                      L2_LATCH_TYPE = 2;            
+   parameter                      OFFSET = 0;		//starting bit
+   parameter                      INIT = 0;		// will be converted to the least signficant
+                                                        // 31 bits of init_v
+   parameter                      IBUF = 1'b0;		//inverted latch IOs, if set to true.
+   parameter                      DUALSCAN = "";		// if "S", marks data ports as scan for Moebius
+   parameter                      NEEDS_SRESET = 1;		// for inferred latches
+   parameter                      L2_LATCH_TYPE = 2;            //L2_LATCH_TYPE = slave_latch;
+                                                                //0=master_latch,1=L1,2=slave_latch,3=L2,4=flush_latch,5=L4
    parameter                      SYNTHCLONEDLATCH = "";
    parameter                      BTR = "NLL0001_X2_A12TH";
 
    inout                          vd;
    inout                          gd;
    input [0:`NCLK_WIDTH-1]        nclk;
-   input                          act;		
-   input                          force_t;		
-   input                          thold_b;		
-   input                          d_mode;		
-   input                          sg;		
-   input                          delay_lclkr;		
-   input                          mpw1_b;		
-   input                          mpw2_b;		
-   input [OFFSET:OFFSET+WIDTH-1]  scin;		
+   input                          act;		// 1: functional, 0: no clock
+   input                          force_t;		// 1: force LCB active
+   input                          thold_b;		// 1: functional, 0: no clock
+   input                          d_mode;		// 1: disable pulse mode, 0: pulse mode
+   input                          sg;		// 0: functional, 1: scan
+   input                          delay_lclkr;		// 0: functional
+   input                          mpw1_b;		// pulse width control bit
+   input                          mpw2_b;		// pulse width control bit
+   input [OFFSET:OFFSET+WIDTH-1]  scin;		// scan in
    output [OFFSET:OFFSET+WIDTH-1] scout;
    input [OFFSET:OFFSET+WIDTH-1]  a1;
    input [OFFSET:OFFSET+WIDTH-1]  a2;
@@ -62,6 +69,7 @@ module tri_aoi22_nlats_wlcb(
    input [OFFSET:OFFSET+WIDTH-1]  b2;
    output [OFFSET:OFFSET+WIDTH-1] qb;
 
+   // tri_aoi22_nlats_wlcb
 
    parameter [0:WIDTH-1]          init_v = INIT;
    parameter [0:WIDTH-1]          ZEROS = {WIDTH{1'b0}};
@@ -93,7 +101,7 @@ module tri_aoi22_nlats_wlcb(
       assign vsreset = {WIDTH{sreset}};
       assign vsreset_b = {WIDTH{~sreset}};
 
-      assign din = (a1 & a2) | (b1 & b2);		
+      assign din = (a1 & a2) | (b1 & b2);		// Output is inverted, so just AND-OR here
       assign int_din = (vsreset_b & din) | (vsreset & init_v);
 
       assign vact = {WIDTH{act | force_t}};
@@ -116,5 +124,3 @@ module tri_aoi22_nlats_wlcb(
    end
    endgenerate
 endmodule
-
-

@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_lcbcntl_mac.v
+// *! DESCRIPTION : Used to generate control signals for LCBs
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -43,6 +47,7 @@ module tri_lcbcntl_mac(
    output       mpw2_dc_b;
    output       scan_out;
 
+   // tri_lcbcntl_mac
 
     (* analysis_not_referenced="true" *)
    wire         unused;
@@ -57,5 +62,3 @@ module tri_lcbcntl_mac(
 
    assign unused = vdd | gnd | sg | (|nclk) | scan_in | scan_diag_dc | thold;
 endmodule
-
-

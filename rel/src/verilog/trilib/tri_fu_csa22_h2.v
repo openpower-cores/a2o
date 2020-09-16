@@ -9,12 +9,8 @@
 
 `timescale 1 ns / 1 ns
 
-
-
-
-
    `include "tri_a2o.vh"
-   
+
 
 module tri_fu_csa22_h2(
    a,
@@ -26,14 +22,13 @@ module tri_fu_csa22_h2(
    input   b;
    output  car;
    output  sum;
-   
-   
+
    wire    car_b;
    wire    sum_b;
-   
+
    assign car_b = (~(a & b));
-   assign sum_b = (~(car_b & (a | b)));		
+   assign sum_b = (~(car_b & (a | b)));		// this is equiv to an xnor
    assign car = (~car_b);
    assign sum = (~sum_b);
-   
+
 endmodule

@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_nand2.v
+// *! DESCRIPTION : Two input NAND gate
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -18,24 +22,23 @@ module tri_nand2(
    b
 );
    parameter                      WIDTH = 1;
-   parameter                      BTR = "NAND2_X2M_NONE";  
+   parameter                      BTR = "NAND2_X2M_NONE";  //Specify full BTR name, else let tool select
    output [0:WIDTH-1]  y;
    input [0:WIDTH-1]   a;
    input [0:WIDTH-1]   b;
 
+   // tri_nand2
    genvar 	       i;
-   
+
    generate
       begin : t
 	 for (i = 0; i < WIDTH; i = i + 1)
 	   begin : w
-	      
+
 	      nand I0(y[i], a[i], b[i]);
-	      
-	   end 
+
+	   end // block: w
       end
-      
+
    endgenerate
 endmodule
-
-

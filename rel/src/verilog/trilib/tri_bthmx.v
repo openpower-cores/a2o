@@ -7,6 +7,9 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU Multiplier Top
+//
+//*****************************************************************************
 module tri_bthmx(x, sneg, sx, sx2, right, left, q, vd, gd);
 
 input          x;
@@ -33,15 +36,10 @@ assign spos    = ~sneg;
 assign center  = ~(( xn & spos ) |
                    ( x  & sneg ));
 
-assign left    = center; 
+assign left    = center; // output
 
 
-assign q       = ( center &  sx  ) | 
+assign q       = ( center &  sx  ) |
                  ( right  &  sx2 ) ;
 
 endmodule
-
-
-
-
-

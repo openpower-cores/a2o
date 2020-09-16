@@ -9,8 +9,11 @@
 
 `timescale 1 ns / 1 ns
 
-
-
+// *********************************************************************
+//
+// This is the ENTITY for tri_bht_1024x8_1r1w
+//
+// *********************************************************************
 
 (* block_type="soft" *)
 (* recursive_synthesis="2" *)
@@ -19,7 +22,7 @@
 
 `include "tri_a2o.vh"
 
-module tri_bht_1024x8_1r1w(		
+module tri_bht_1024x8_1r1w(
    gnd,
    vdd,
    vcs,
@@ -84,10 +87,12 @@ module tri_bht_1024x8_1r1w(
    data_out3,
    pc_iu_init_reset
 );
+   // power pins
    inout               gnd;
    inout               vdd;
    inout               vcs;
-   
+
+   // clock and clockcontrol ports
    input [0:`NCLK_WIDTH-1]              nclk;
    input               pc_iu_func_sl_thold_2;
    input               pc_iu_sg_2;
@@ -118,7 +123,7 @@ module tri_bht_1024x8_1r1w(
    output              time_scan_out;
    output              abst_scan_out;
    output              repr_scan_out;
-   
+
    input [0:3]         pc_iu_abist_di_0;
    input               pc_iu_abist_g8t_bw_1;
    input               pc_iu_abist_g8t_bw_0;
@@ -131,16 +136,18 @@ module tri_bht_1024x8_1r1w(
    input               pc_iu_abist_wl128_comp_ena;
    input               pc_iu_abist_raw_dc_b;
    input [0:3]         pc_iu_abist_g8t_dcomp;
-   
-   input               pc_iu_bo_enable_2;		
-   input               pc_iu_bo_reset;		
-   input               pc_iu_bo_unload;		
-   input               pc_iu_bo_repair;		
-   input               pc_iu_bo_shdata;		
-   input               pc_iu_bo_select;		
-   output              iu_pc_bo_fail;		
+
+   // BOLT-ON
+   input               pc_iu_bo_enable_2;		// general bolt-on enable
+   input               pc_iu_bo_reset;		// reset
+   input               pc_iu_bo_unload;		// unload sticky bits
+   input               pc_iu_bo_repair;		// execute sticky bit decode
+   input               pc_iu_bo_shdata;		// shift data for timing write and diag loop
+   input               pc_iu_bo_select;		// select for mask and hier writes
+   output              iu_pc_bo_fail;		// fail/no-fix reg
    output              iu_pc_bo_diagout;
-   
+
+   // ports
    input               r_act;
    input [0:3]         w_act;
    input [0:9]         r_addr;
@@ -149,18 +156,15 @@ module tri_bht_1024x8_1r1w(
    output [0:1]        data_out0;
    output [0:1]        data_out1;
    output [0:1]        data_out2;
-   
+
    output [0:1]        data_out3;
 
-   input               pc_iu_init_reset;		
+   input               pc_iu_init_reset;
 
-   
-   
-   
-   
-   
-   
-   
+   //--------------------------
+   // constants
+   //--------------------------
+
 
       parameter           data_in_offset = 0;
       parameter           w_act_offset = data_in_offset + 2;
@@ -171,9 +175,11 @@ module tri_bht_1024x8_1r1w(
       parameter           reset_w_addr_offset = data_out_offset + 8;
       parameter           array_offset = reset_w_addr_offset + 9;
       parameter           scan_right = array_offset + 1 - 1;
-      
-      
-      
+
+      //--------------------------
+      // signals
+      //--------------------------
+
       wire                pc_iu_func_sl_thold_1;
       wire                pc_iu_func_sl_thold_0;
       wire                pc_iu_func_sl_thold_0_b;
@@ -190,27 +196,27 @@ module tri_bht_1024x8_1r1w(
       wire                pc_iu_sg_1;
       wire                pc_iu_sg_0;
       wire                force_t;
-      
+
       wire [0:scan_right] siv;
       wire [0:scan_right] sov;
-      
+
       wire                tiup;
-      
+
       wire [0:7]          data_out_d;
       wire [0:7]          data_out_q;
-      
+
       wire                ary_w_en;
       wire [0:8]          ary_w_addr;
       wire [0:15]         ary_w_sel;
       wire [0:15]         ary_w_data;
-      
+
       wire                ary_r_en;
       wire [0:8]          ary_r_addr;
       wire [0:15]         ary_r_data;
-      
+
       wire [0:7]          data_out;
       wire [0:3]          write_thru;
-      
+
       wire [0:1]          data_in_d;
       wire [0:1]          data_in_q;
       wire [0:3]          w_act_d;
@@ -221,7 +227,7 @@ module tri_bht_1024x8_1r1w(
       wire [0:9]          w_addr_q;
       wire [0:9]          r_addr_d;
       wire [0:9]          r_addr_q;
-      
+
       wire                lat_wi_act;
       wire                lat_ri_act;
       wire                lat_ro_act;
@@ -230,21 +236,21 @@ module tri_bht_1024x8_1r1w(
       wire [0:8]	  reset_w_addr_d;
       wire [0:8]	  reset_w_addr_q;
 
-      
+
       assign tiup = 1'b1;
 
       assign reset_act			= pc_iu_init_reset;
       assign reset_w_addr_d[0:8]	= reset_w_addr_q[0:8] + 9'b000000001;
-      
+
       assign data_out0[0:1] = data_out_q[0:1];
       assign data_out1[0:1] = data_out_q[2:3];
       assign data_out2[0:1] = data_out_q[4:5];
       assign data_out3[0:1] = data_out_q[6:7];
-      
+
       assign ary_w_en = reset_act | (|(w_act[0:3]) & (~((w_addr[1:9] == r_addr[1:9]) & r_act == 1'b1)));
-      
+
       assign ary_w_addr[0:8] = reset_act ? reset_w_addr_q[0:8] : w_addr[1:9];
-      
+
       assign ary_w_sel[0] = reset_act ? 1'b1 : w_act[0] & w_addr[0] == 1'b0;
       assign ary_w_sel[1] = reset_act ? 1'b1 : w_act[0] & w_addr[0] == 1'b0;
       assign ary_w_sel[2] = reset_act ? 1'b1 : w_act[1] & w_addr[0] == 1'b0;
@@ -261,51 +267,56 @@ module tri_bht_1024x8_1r1w(
       assign ary_w_sel[13] = reset_act ? 1'b1 : w_act[2] & w_addr[0] == 1'b1;
       assign ary_w_sel[14] = reset_act ? 1'b1 : w_act[3] & w_addr[0] == 1'b1;
       assign ary_w_sel[15] = reset_act ? 1'b1 : w_act[3] & w_addr[0] == 1'b1;
-      
+
       assign ary_w_data[0:15] = reset_act ? 16'b0000000000000000:
                                             {(data_in[0:1] ^ `INIT_MASK), (data_in[0:1] ^ `INIT_MASK), (data_in[0:1] ^ `INIT_MASK), (data_in[0:1] ^ `INIT_MASK), (data_in[0:1] ^ `INIT_MASK), (data_in[0:1] ^ `INIT_MASK), (data_in[0:1] ^ `INIT_MASK), (data_in[0:1] ^ `INIT_MASK)};
-      
+
       assign ary_r_en = r_act;
-      
+
       assign ary_r_addr[0:8] = r_addr[1:9];
-      
+
       assign data_out[0:7] = (r_addr_q[0] == 1'b0 ? ary_r_data[0:7] ^ ({`INIT_MASK, `INIT_MASK, `INIT_MASK, `INIT_MASK}) : 8'b00000000 ) | (r_addr_q[0] == 1'b1 ? ary_r_data[8:15] ^ ({`INIT_MASK, `INIT_MASK, `INIT_MASK, `INIT_MASK}) : 8'b00000000 );
-      
-      
+
+      //write through support
+
       assign data_in_d[0:1] = data_in[0:1];
       assign w_act_d[0:3] = w_act[0:3];
       assign r_act_d = r_act;
       assign w_addr_d[0:9] = w_addr[0:9];
       assign r_addr_d[0:9] = r_addr[0:9];
-      
-      assign write_thru[0:3] = ((w_addr_q[0:9] == r_addr_q[0:9]) & r_act_q == 1'b1) ? w_act_q[0:3] : 
+
+      assign write_thru[0:3] = ((w_addr_q[0:9] == r_addr_q[0:9]) & r_act_q == 1'b1) ? w_act_q[0:3] :
                                4'b0000;
-      
-      assign data_out_d[0:1] = (write_thru[0] == 1'b1) ? data_in_q[0:1] : 
+
+      assign data_out_d[0:1] = (write_thru[0] == 1'b1) ? data_in_q[0:1] :
                                data_out[0:1];
-      assign data_out_d[2:3] = (write_thru[1] == 1'b1) ? data_in_q[0:1] : 
+      assign data_out_d[2:3] = (write_thru[1] == 1'b1) ? data_in_q[0:1] :
                                data_out[2:3];
-      assign data_out_d[4:5] = (write_thru[2] == 1'b1) ? data_in_q[0:1] : 
+      assign data_out_d[4:5] = (write_thru[2] == 1'b1) ? data_in_q[0:1] :
                                data_out[4:5];
-      assign data_out_d[6:7] = (write_thru[3] == 1'b1) ? data_in_q[0:1] : 
+      assign data_out_d[6:7] = (write_thru[3] == 1'b1) ? data_in_q[0:1] :
                                data_out[6:7];
-      
+
+      //latch acts
       assign lat_wi_act = |(w_act[0:3]);
       assign lat_ri_act = r_act;
       assign lat_ro_act = r_act_q;
-      
+
+      //-----------------------------------------------
+      // array
+      //-----------------------------------------------
 
 
- 
+
             tri_512x16_1r1w_1  bht0(
                .gnd(gnd),
                .vdd(vdd),
                .vcs(vcs),
                .nclk(nclk),
-               
+
                .rd_act(ary_r_en),
                .wr_act(ary_w_en),
-               
+
                .lcb_d_mode_dc(g8t_d_mode),
                .lcb_clkoff_dc_b(g8t_clkoff_b),
                .lcb_mpw1_dc_b(g8t_mpw1_b),
@@ -316,7 +327,7 @@ module tri_bht_1024x8_1r1w(
                .scan_diag_dc(scan_diag_dc),
                .func_scan_in(siv[array_offset]),
                .func_scan_out(sov[array_offset]),
-               
+
                .lcb_sg_0(pc_iu_sg_0),
                .lcb_sl_thold_0_b(pc_iu_func_sl_thold_0_b),
                .lcb_time_sl_thold_0(pc_iu_time_sl_thold_0),
@@ -329,7 +340,7 @@ module tri_bht_1024x8_1r1w(
                .abst_scan_out(abst_scan_out),
                .repr_scan_in(repr_scan_in),
                .repr_scan_out(repr_scan_out),
-               
+
                .abist_di(pc_iu_abist_di_0),
                .abist_bw_odd(pc_iu_abist_g8t_bw_1),
                .abist_bw_even(pc_iu_abist_g8t_bw_0),
@@ -342,7 +353,7 @@ module tri_bht_1024x8_1r1w(
                .abist_g8t_rd0_comp_ena(pc_iu_abist_wl128_comp_ena),
                .abist_raw_dc_b(pc_iu_abist_raw_dc_b),
                .obs0_abist_cmp(pc_iu_abist_g8t_dcomp),
-               
+
                .lcb_bolt_sl_thold_0(pc_iu_bolt_sl_thold_0),
                .pc_bo_enable_2(pc_iu_bo_enable_2),
                .pc_bo_reset(pc_iu_bo_reset),
@@ -352,22 +363,25 @@ module tri_bht_1024x8_1r1w(
                .pc_bo_select(pc_iu_bo_select),
                .bo_pc_failout(iu_pc_bo_fail),
                .bo_pc_diagloop(iu_pc_bo_diagout),
-               
+
                .tri_lcb_mpw1_dc_b(mpw1_b),
                .tri_lcb_mpw2_dc_b(mpw2_b),
                .tri_lcb_delay_lclkr_dc(delay_lclkr),
                .tri_lcb_clkoff_dc_b(clkoff_b),
                .tri_lcb_act_dis_dc(act_dis),
-               
+
                .bw(ary_w_sel),
                .wr_adr(ary_w_addr),
                .rd_adr(ary_r_addr),
                .di(ary_w_data),
                .do(ary_r_data)
             );
-      
-      
-      
+
+      //-----------------------------------------------
+      // latches
+      //-----------------------------------------------
+
+
       tri_rlmreg_p #(.WIDTH(2), .INIT(0)) data_in_reg(
          .vd(vdd),
          .gd(gnd),
@@ -385,8 +399,8 @@ module tri_bht_1024x8_1r1w(
          .din(data_in_d),
          .dout(data_in_q)
       );
-      
-      
+
+
       tri_rlmreg_p #(.WIDTH(4), .INIT(0)) w_act_reg(
          .vd(vdd),
          .gd(gnd),
@@ -404,8 +418,8 @@ module tri_bht_1024x8_1r1w(
          .din(w_act_d),
          .dout(w_act_q)
       );
-      
-      
+
+
       tri_rlmlatch_p #(.INIT(0)) r_act_reg(
          .vd(vdd),
          .gd(gnd),
@@ -423,8 +437,8 @@ module tri_bht_1024x8_1r1w(
          .din(r_act_d),
          .dout(r_act_q)
       );
-      
-      
+
+
       tri_rlmreg_p #(.WIDTH(10), .INIT(0)) w_addr_reg(
          .vd(vdd),
          .gd(gnd),
@@ -442,8 +456,8 @@ module tri_bht_1024x8_1r1w(
          .din(w_addr_d),
          .dout(w_addr_q)
       );
-      
-      
+
+
       tri_rlmreg_p #(.WIDTH(10), .INIT(0)) r_addr_reg(
          .vd(vdd),
          .gd(gnd),
@@ -461,8 +475,8 @@ module tri_bht_1024x8_1r1w(
          .din(r_addr_d),
          .dout(r_addr_q)
       );
-      
-      
+
+
       tri_rlmreg_p #(.WIDTH(8), .INIT(0)) data_out_reg(
          .vd(vdd),
          .gd(gnd),
@@ -498,9 +512,12 @@ module tri_bht_1024x8_1r1w(
          .din(reset_w_addr_d),
          .dout(reset_w_addr_q)
       );
-      
-      
-      
+
+      //-----------------------------------------------
+      // pervasive
+      //-----------------------------------------------
+
+
       tri_plat #(.WIDTH(7)) perv_2to1_reg(
          .vd(vdd),
          .gd(gnd),
@@ -509,8 +526,8 @@ module tri_bht_1024x8_1r1w(
          .din({pc_iu_func_sl_thold_2, pc_iu_sg_2, pc_iu_time_sl_thold_2, pc_iu_abst_sl_thold_2, pc_iu_ary_nsl_thold_2, pc_iu_repr_sl_thold_2, pc_iu_bolt_sl_thold_2}),
          .q({pc_iu_func_sl_thold_1, pc_iu_sg_1, pc_iu_time_sl_thold_1, pc_iu_abst_sl_thold_1, pc_iu_ary_nsl_thold_1, pc_iu_repr_sl_thold_1, pc_iu_bolt_sl_thold_1})
       );
-      
-      
+
+
       tri_plat #(.WIDTH(7)) perv_1to0_reg(
          .vd(vdd),
          .gd(gnd),
@@ -519,8 +536,8 @@ module tri_bht_1024x8_1r1w(
          .din({pc_iu_func_sl_thold_1, pc_iu_sg_1, pc_iu_time_sl_thold_1, pc_iu_abst_sl_thold_1, pc_iu_ary_nsl_thold_1, pc_iu_repr_sl_thold_1, pc_iu_bolt_sl_thold_1}),
          .q({pc_iu_func_sl_thold_0, pc_iu_sg_0, pc_iu_time_sl_thold_0, pc_iu_abst_sl_thold_0, pc_iu_ary_nsl_thold_0, pc_iu_repr_sl_thold_0, pc_iu_bolt_sl_thold_0})
       );
-      
-      
+
+
       tri_lcbor  perv_lcbor(
          .clkoff_b(clkoff_b),
          .thold(pc_iu_func_sl_thold_0),
@@ -529,10 +546,13 @@ module tri_bht_1024x8_1r1w(
          .force_t(force_t),
          .thold_b(pc_iu_func_sl_thold_0_b)
       );
-      
-      
+
+      //-----------------------------------------------
+      // scan
+      //-----------------------------------------------
+
       assign siv[0:scan_right] = {func_scan_in, sov[0:scan_right - 1]};
       assign func_scan_out = sov[scan_right];
-      
+
 
 endmodule

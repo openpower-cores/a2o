@@ -7,6 +7,9 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU Rotate/Logical Unit
+//
+//*****************************************************************************
 
 `include "tri_a2o.vh"
 
@@ -47,74 +50,81 @@ module tri_st_rot(
    input                 sg_0;
    input                 scan_in;
    output                scan_out;
-   
+
    input                 ex1_act;
    input [0:31]          ex1_instr;
-   
+
    input [0:3]           ex2_isel_fcn;
    output                ex2_sel_rot_log;
-   
-   input [0:63]          ex2_rs0_b;		
-   input [0:63]          ex2_rs1_b;		
-   
+
+   // Source Inputs
+   input [0:63]          ex2_rs0_b;		//rb/ra
+   input [0:63]          ex2_rs1_b;		//rs
+
+   // Other ALU Inputs for muxing
    input [0:63]          ex2_alu_rt;
-   
+
+   // EX2 Bypass Tap
    output [0:63]         ex3_rt;
+   // EX1 Bypass Tap (logicals only)
    output [0:63]         ex2_log_rt;
-   
+
    output                ex3_xer_ca;
-   
+
    output [0:1]          ex3_cr_eq;
 
+   //!! bugspray include: tri_st_rot
 
 
-   wire                  ex2_act_q;		
-   wire [0:5]            ex2_mb_ins_q;		
-   wire [0:5]            ex2_me_ins_b_q;		
-   wire [0:5]            ex2_sh_amt_q;		
-   wire [0:2]            ex2_sh_right_q;		
+   // Latches
+   wire                  ex2_act_q;		// input=>ex1_act                      ,act=>1
+   wire [0:5]            ex2_mb_ins_q;		// input=>ex1_mb_ins                   ,act=>ex1_act
+   wire [0:5]            ex2_me_ins_b_q;		// input=>ex1_me_ins_b                 ,act=>ex1_act
+   wire [0:5]            ex2_sh_amt_q;		// input=>ex1_sh_amt                   ,act=>ex1_act
+   wire [0:2]            ex2_sh_right_q;		// input=>ex1_sh_rgt_vec               ,act=>ex1_act
    wire [0:2]            ex1_sh_right_vec;
-   wire [0:1]            ex2_sh_word_q;		
+   wire [0:1]            ex2_sh_word_q;		// input=>ex1_sh_word_vec              ,act=>ex1_act
    wire [0:1]            ex1_sh_word_vec;
-   wire                  ex2_zm_ins_q;		
-   wire                  ex2_chk_shov_wd_q;		
-   wire                  ex2_chk_shov_dw_q;		
-   wire                  ex2_use_sh_amt_hi_q;		
+   wire                  ex2_zm_ins_q;		// input=>ex1_zm_ins                   ,act=>ex1_act
+   wire                  ex2_chk_shov_wd_q;		// input=>ex1_chk_shov_wd              ,act=>ex1_act
+   wire                  ex2_chk_shov_dw_q;		// input=>ex1_chk_shov_dw              ,act=>ex1_act
+   wire                  ex2_use_sh_amt_hi_q;		//                                      act=>ex1_act
    wire                  ex1_use_sh_amt_hi;
-   wire                  ex2_use_sh_amt_lo_q;		
+   wire                  ex2_use_sh_amt_lo_q;		//                                      act=>ex1_act
    wire                  ex1_use_sh_amt_lo;
-   wire                  ex2_use_rb_amt_hi_q;		
-   wire                  ex2_use_rb_amt_lo_q;		
-   wire                  ex2_use_me_rb_hi_q;		
-   wire                  ex2_use_me_rb_lo_q;		
-   wire                  ex2_use_mb_rb_hi_q;		
-   wire                  ex2_use_mb_rb_lo_q;		
-   wire                  ex2_use_me_ins_hi_q;		
-   wire                  ex2_use_me_ins_lo_q;		
-   wire                  ex2_use_mb_ins_hi_q;		
-   wire                  ex2_use_mb_ins_lo_q;		
-   wire                  ex2_ins_prtyw_q;		
-   wire                  ex2_ins_prtyd_q;		
-   wire                  ex2_mb_gt_me_q;		
-   wire                  ex2_cmp_byte_q;		
-   wire                  ex2_sgnxtd_byte_q;		
-   wire                  ex2_sgnxtd_half_q;		
-   wire                  ex2_sgnxtd_wd_q;		
-   wire                  ex2_sra_wd_q;		
-   wire                  ex2_sra_dw_q;		
-   wire [0:3]            ex2_log_fcn_q;		
+   wire                  ex2_use_rb_amt_hi_q;		// input=>ex1_use_rb_amt_hi            ,act=>ex1_act
+   wire                  ex2_use_rb_amt_lo_q;		// input=>ex1_use_rb_amt_lo            ,act=>ex1_act
+   wire                  ex2_use_me_rb_hi_q;		// input=>ex1_use_me_rb_hi             ,act=>ex1_act
+   wire                  ex2_use_me_rb_lo_q;		// input=>ex1_use_me_rb_lo             ,act=>ex1_act
+   wire                  ex2_use_mb_rb_hi_q;		// input=>ex1_use_mb_rb_hi             ,act=>ex1_act
+   wire                  ex2_use_mb_rb_lo_q;		// input=>ex1_use_mb_rb_lo             ,act=>ex1_act
+   wire                  ex2_use_me_ins_hi_q;		// input=>ex1_use_me_ins_hi            ,act=>ex1_act
+   wire                  ex2_use_me_ins_lo_q;		// input=>ex1_use_me_ins_lo            ,act=>ex1_act
+   wire                  ex2_use_mb_ins_hi_q;		// input=>ex1_use_mb_ins_hi            ,act=>ex1_act
+   wire                  ex2_use_mb_ins_lo_q;		// input=>ex1_use_mb_ins_lo            ,act=>ex1_act
+   wire                  ex2_ins_prtyw_q;		// input=>ex1_ins_prtyw                ,act=>ex1_act
+   wire                  ex2_ins_prtyd_q;		// input=>ex1_ins_prtyd                ,act=>ex1_act
+   wire                  ex2_mb_gt_me_q;		// input=>ex1_mb_gt_me                 ,act=>ex1_act
+   wire                  ex2_cmp_byte_q;		// input=>ex1_cmp_byt                  ,act=>ex1_act
+   wire                  ex2_sgnxtd_byte_q;		// input=>ex1_sgnxtd_byte              ,act=>ex1_act
+   wire                  ex2_sgnxtd_half_q;		// input=>ex1_sgnxtd_half              ,act=>ex1_act
+   wire                  ex2_sgnxtd_wd_q;		// input=>ex1_sgnxtd_wd                ,act=>ex1_act
+   wire                  ex2_sra_wd_q;		// input=>ex1_sra_wd                   ,act=>ex1_act
+   wire                  ex2_sra_dw_q;		// input=>ex1_sra_dw                   ,act=>ex1_act
+   wire [0:3]            ex2_log_fcn_q;		// input=>ex2_log_fcn_d                ,act=>ex1_act
    wire [0:3]            ex2_log_fcn_d;
-   wire                  ex2_sel_rot_log_q;		
-   wire                  ex3_sh_word_q;		
-   wire [0:63]           ex3_rotate_b_q;		
+   wire                  ex2_sel_rot_log_q;		// input=>ex1_sel_rot_log              ,act=>ex1_act
+   wire                  ex3_sh_word_q;		// input=>ex2_sh_word_q(1)             ,act=>ex2_act_q
+   wire [0:63]           ex3_rotate_b_q;		//                                      act=>ex2_act_q
    wire [0:63]           ex2_result;
-   wire [0:63]           ex3_result_b_q;		
+   wire [0:63]           ex3_result_b_q;		//                                      act=>ex2_act_q
    wire [0:63]           ex2_rotate;
-   wire [0:63]           ex3_mask_b_q;		
+   wire [0:63]           ex3_mask_b_q;		//                                      act=>ex2_act_q
    wire [0:63]           ex2_mask;
-   wire [0:0]            ex3_sra_se_q;		
+   wire [0:0]            ex3_sra_se_q;		//                                      act=>ex2_act_q
    wire [0:0]            ex2_sra_se;
    wire [0:0]            dummy_q;
+   // Scanchains
    localparam            ex2_act_offset = 0;
    localparam            ex2_mb_ins_offset = ex2_act_offset + 1;
    localparam            ex2_me_ins_b_offset = ex2_mb_ins_offset + 6;
@@ -226,11 +236,17 @@ module tri_st_rot(
    wire [0:3]            ex2_log_fcn;
    wire                  ex1_sel_rot_log;
 
+   //-------------------------------------------------------------------
+   // Source Buffering
+   //-------------------------------------------------------------------
    assign ex2_ins_rs0 = (~ex2_rs0_b);
    assign ex2_ins_rs1 = (~ex2_rs1_b);
    assign ex2_rot_rs0 = (~ex2_rs0_b);
    assign ex2_rot_rs1 = (~ex2_rs1_b[57:63]);
 
+   //-------------------------------------------------------------------
+   // Rotator / merge control generation
+   //-------------------------------------------------------------------
 
    tri_st_rot_dec dec(
       .i(ex1_instr),
@@ -277,7 +293,9 @@ module tri_st_rot(
    assign ex2_use_me_ins = {ex2_use_me_ins_hi_q, {5{ex2_use_me_ins_lo_q}}};
    assign ex2_use_mb_ins = {ex2_use_mb_ins_hi_q, {5{ex2_use_mb_ins_lo_q}}};
 
-   assign ex2_zm = (ex2_zm_ins_q) | (ex2_chk_shov_wd_q & ex2_rot_rs1[58]) | (ex2_chk_shov_dw_q & ex2_rot_rs1[57]);		
+   // instr does not use the rotator (dont care if adder used)
+   assign ex2_zm = (ex2_zm_ins_q) | (ex2_chk_shov_wd_q & ex2_rot_rs1[58]) | (ex2_chk_shov_dw_q & ex2_rot_rs1[57]);		//       word shift with amount from RB <amount shifts out all the bits>
+   // doubleword shift with amount from RB <amount shifts out all the bits>
 
    assign ex2_sh_amt0_b = ~(ex2_rot_rs1[58:63] & ex2_use_rb_amt);
    assign ex2_sh_amt1_b = ~(ex2_sh_amt_q & ex2_use_sh_amt);
@@ -294,6 +312,9 @@ module tri_st_rot(
 
    assign ex2_me_b = ~(ex2_me0 & ex2_me1);
 
+   //-------------------------------------------------------------------
+   // Mask unit
+   //-------------------------------------------------------------------
 
    tri_st_rot_mask msk(
       .mb(ex2_mb),
@@ -303,6 +324,9 @@ module tri_st_rot(
       .mask(ex2_mask)
    );
 
+   //-------------------------------------------------------------------
+   // Insert data (includes logicals, sign extend, cmpb)
+   //-------------------------------------------------------------------
    assign ex2_log_fcn_d = ex1_log_fcn;
    assign ex2_log_fcn = ex2_log_fcn_q | ex2_isel_fcn;
 
@@ -323,6 +347,9 @@ module tri_st_rot(
       .res_ins(ex2_insert)
    );
 
+   //-------------------------------------------------------------------
+   // Rotate unit
+   //-------------------------------------------------------------------
 
    tri_st_rot_rol64 rol64(
       .word(ex2_sh_word_q),
@@ -332,6 +359,9 @@ module tri_st_rot(
       .res_rot(ex2_rotate)
    );
 
+   //-------------------------------------------------------------------
+   // Final muxing
+   //-------------------------------------------------------------------
    assign ex2_mask_b = (~ex2_mask);
    assign ex2_sel_add = (~ex2_sel_rot_log_q);
 
@@ -350,6 +380,9 @@ module tri_st_rot(
 
    assign ex3_rt = ex3_result_q;
 
+   //-------------------------------------------------------------------
+   // CA Generation
+   //-------------------------------------------------------------------
 
    tri_st_or3232_b or3232(
       .d_b(ca_root_b),
@@ -368,8 +401,12 @@ module tri_st_rot(
 
    assign ex2_sel_rot_log = ex2_sel_rot_log_q;
 
+   // To generate a unique LCB for placement
    assign ex2_act_unqiue = ex2_act_q | dummy_q[0];
 
+   //-------------------------------------------------------------------
+   // Latch Instances
+   //-------------------------------------------------------------------
 
    tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) ex2_act_latch(
       .nclk(nclk),
@@ -964,6 +1001,9 @@ module tri_st_rot(
       .din(ex2_sh_word_q[1]),
       .dout(ex3_sh_word_q)
    );
+   //-------------------------------------------------------------------
+   // Placed Latches
+   //-------------------------------------------------------------------
 
    tri_lcbnd ex3_mrg_lcb(
       .vd(vdd),
@@ -1017,6 +1057,9 @@ module tri_st_rot(
       .d(ex2_mask),
       .qb(ex3_mask_b_q)
    );
+   //-------------------------------------------------------------------
+   // End Placed Latches
+   //-------------------------------------------------------------------
 
    tri_rlmreg_p #(.WIDTH(1), .INIT(0), .NEEDS_SRESET(1)) ex3_sra_se_latch(
       .nclk(nclk),
@@ -1057,7 +1100,7 @@ module tri_st_rot(
 
    assign siv[0:scan_right - 1] = {sov[1:scan_right - 1], scan_in};
    assign scan_out = sov[0];
-      
+
 
 
 endmodule

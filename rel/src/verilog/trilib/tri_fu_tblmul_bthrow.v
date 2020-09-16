@@ -9,9 +9,8 @@
 
 `timescale 1 ns / 1 ns
 
-
    `include "tri_a2o.vh"
-   
+
 module tri_fu_tblmul_bthrow(
    x,
    s_neg,
@@ -19,210 +18,212 @@ module tri_fu_tblmul_bthrow(
    s_x2,
    q
 );
-   
-   input [0:15]  x;		
-   input         s_neg;		
-   input         s_x;		
-   input         s_x2;		
-   output [0:16] q;		
-   
-   
-   
-   
+
+   input [0:15]  x;		//
+   input         s_neg;		// negate the row
+   input         s_x;		// shift by 1
+   input         s_x2;		// shift by 2
+   output [0:16] q;		// final output
+
+   // ENTITY
+
+
    parameter     tiup = 1'b1;
    parameter     tidn = 1'b0;
-   
-   wire [0:16]   left;		
+
+   wire [0:16]   left;
    wire          unused;
-   
-   
+
+   ////################################################################
+   ////# A row of the repeated part of the booth_mux row
+   ////################################################################
+
    assign unused = left[0];
-   
-   
+
    tri_fu_mul_bthmux u00(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(tidn),		
-      .left(left[0]),		
-      .right(left[1]),		
-      .q(q[0])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(tidn),		//i--  ********
+      .left(left[0]),		//o--  [n]
+      .right(left[1]),		//i--  [n+1]
+      .q(q[0])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u01(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[0]),		
-      .left(left[1]),		
-      .right(left[2]),		
-      .q(q[1])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[0]),		//i--  [n-1]
+      .left(left[1]),		//o--  [n]
+      .right(left[2]),		//i--  [n+1]
+      .q(q[1])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u02(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[1]),		
-      .left(left[2]),		
-      .right(left[3]),		
-      .q(q[2])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[1]),		//i--
+      .left(left[2]),		//o--
+      .right(left[3]),		//i--
+      .q(q[2])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u03(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[2]),		
-      .left(left[3]),		
-      .right(left[4]),		
-      .q(q[3])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[2]),		//i--
+      .left(left[3]),		//o--
+      .right(left[4]),		//i--
+      .q(q[3])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u04(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[3]),		
-      .left(left[4]),		
-      .right(left[5]),		
-      .q(q[4])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[3]),		//i--
+      .left(left[4]),		//o--
+      .right(left[5]),		//i--
+      .q(q[4])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u05(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[4]),		
-      .left(left[5]),		
-      .right(left[6]),		
-      .q(q[5])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[4]),		//i--
+      .left(left[5]),		//o--
+      .right(left[6]),		//i--
+      .q(q[5])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u06(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[5]),		
-      .left(left[6]),		
-      .right(left[7]),		
-      .q(q[6])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[5]),		//i--
+      .left(left[6]),		//o--
+      .right(left[7]),		//i--
+      .q(q[6])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u07(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[6]),		
-      .left(left[7]),		
-      .right(left[8]),		
-      .q(q[7])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[6]),		//i--
+      .left(left[7]),		//o--
+      .right(left[8]),		//i--
+      .q(q[7])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u08(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[7]),		
-      .left(left[8]),		
-      .right(left[9]),		
-      .q(q[8])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[7]),		//i--
+      .left(left[8]),		//o--
+      .right(left[9]),		//i--
+      .q(q[8])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u09(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[8]),		
-      .left(left[9]),		
-      .right(left[10]),		
-      .q(q[9])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[8]),		//i--
+      .left(left[9]),		//o--
+      .right(left[10]),		//i--
+      .q(q[9])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u10(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[9]),		
-      .left(left[10]),		
-      .right(left[11]),		
-      .q(q[10])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[9]),		//i--
+      .left(left[10]),		//o--
+      .right(left[11]),		//i--
+      .q(q[10])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u11(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[10]),		
-      .left(left[11]),		
-      .right(left[12]),		
-      .q(q[11])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[10]),		//i--
+      .left(left[11]),		//o--
+      .right(left[12]),		//i--
+      .q(q[11])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u12(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[11]),		
-      .left(left[12]),		
-      .right(left[13]),		
-      .q(q[12])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[11]),		//i--
+      .left(left[12]),		//o--
+      .right(left[13]),		//i--
+      .q(q[12])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u13(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[12]),		
-      .left(left[13]),		
-      .right(left[14]),		
-      .q(q[13])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[12]),		//i--
+      .left(left[13]),		//o--
+      .right(left[14]),		//i--
+      .q(q[13])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u14(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[13]),		
-      .left(left[14]),		
-      .right(left[15]),		
-      .q(q[14])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[13]),		//i--
+      .left(left[14]),		//o--
+      .right(left[15]),		//i--
+      .q(q[14])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u15(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[14]),		
-      .left(left[15]),		
-      .right(left[16]),		
-      .q(q[15])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[14]),		//i--
+      .left(left[15]),		//o--
+      .right(left[16]),		//i--
+      .q(q[15])		//o--
    );
-   
-   
+
+
    tri_fu_mul_bthmux u16(
-      .sneg(s_neg),		
-      .sx(s_x),		
-      .sx2(s_x2),		
-      .x(x[15]),		
-      .left(left[16]),		
-      .right(s_neg),		
-      .q(q[16])		
+      .sneg(s_neg),		//i--
+      .sx(s_x),		//i--
+      .sx2(s_x2),		//i--
+      .x(x[15]),		//i--
+      .left(left[16]),		//o--
+      .right(s_neg),		//i--
+      .q(q[16])		//o--
    );
-   
+
 endmodule

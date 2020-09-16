@@ -9,13 +9,17 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_plat.v
+// *! DESCRIPTION : Non-scannable pipeline latch
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
 module tri_plat(vd, gd, nclk, flush, din, q);
    parameter                      WIDTH = 1;
    parameter                      OFFSET = 0;
-   parameter                      INIT = 0;		
+   parameter                      INIT = 0;		// will be converted to the least signficant 31 bits of init_v
    parameter                      SYNTHCLONEDLATCH = "";
 
    inout                          vd;
@@ -25,14 +29,15 @@ module tri_plat(vd, gd, nclk, flush, din, q);
    input  [OFFSET:OFFSET+WIDTH-1] din;
    output [OFFSET:OFFSET+WIDTH-1] q;
 
+   // tri_plat
    reg  [OFFSET:OFFSET+WIDTH-1]  int_dout;
 
    (* analysis_not_referenced="true" *)
    wire                          unused;
    assign unused = | {vd, gd, nclk[1:`NCLK_WIDTH-1]};
-   
 
-   always @ (posedge nclk[0]) 
+
+   always @ (posedge nclk[0])
      begin
  	int_dout <= din;
      end
@@ -40,4 +45,3 @@ module tri_plat(vd, gd, nclk, flush, din, q);
    assign q = (flush == 1'b1) ? din : int_dout ;
 
 endmodule
-

@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_lcbnd.v
+// *! DESCRIPTION : Wrapper for nlat LCB - will not run in pulsed mode
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -43,6 +47,7 @@ module tri_lcbnd(
    output     d2clk;
    output[0:`NCLK_WIDTH-1]  lclk;
 
+   // tri_lcbnd
    wire       gate_b;
     (* analysis_not_referenced="true" *)
    wire       unused;
@@ -55,5 +60,3 @@ module tri_lcbnd(
    assign d2clk = thold_b;
    assign lclk = nclk;
 endmodule
-
-

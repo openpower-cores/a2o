@@ -9,6 +9,13 @@
 
 `timescale 1 ns / 1 ns
 
+//********************************************************************
+//*
+//* TITLE: D-ERAT CAM Match Line Logic for Functional Model
+//*
+//* NAME: tri_cam_32x143_1r1w1c_matchline
+//*
+//*********************************************************************
 
 module tri_cam_32x143_1r1w1c_matchline(
    addr_in,
@@ -45,6 +52,7 @@ module tri_cam_32x143_1r1w1c_matchline(
    parameter                 HAVE_CMPMASK = 1;
    parameter                 CMPMASK_WIDTH = 4;
 
+   // @{default:nclk}@
    input [0:51]              addr_in;
    input [0:1]               addr_enable;
    input [0:2]               comp_pgsize;
@@ -75,7 +83,11 @@ module tri_cam_32x143_1r1w1c_matchline(
 
    output                    match;
 
+   // tri_cam_32x143_1r1w1c_matchline
 
+   //----------------------------------------------------------------------
+   // Signals
+   //----------------------------------------------------------------------
 
    wire [34:51]              entry_epn_b;
    wire                      function_50_51;
@@ -127,6 +139,7 @@ module tri_cam_32x143_1r1w1c_matchline(
    begin
      if (NUM_PGSIZES == 8)
      begin : numpgsz8
+       // tie off unused signals
        assign comp_or_34_39 = 1'b0;
        assign comp_or_44_47 = 1'b0;
        assign comp_or_48_51 = 1'b0;
@@ -157,6 +170,15 @@ module tri_cam_32x143_1r1w1c_matchline(
 
        if (HAVE_CMPMASK == 1)
        begin
+         //  size           entry_cmpmask: 0123456
+         //    1GB                         0000000
+         //  256MB                         1000000
+         //   16MB                         1100000
+         //    1MB                         1110000
+         //  256KB                         1111000
+         //   64KB                         1111100
+         //   16KB                         1111110
+         //    4KB                         1111111
          assign pgsize_gte_1G   = (~entry_cmpmask[0]);
          assign pgsize_gte_256M = (~entry_cmpmask[1]);
          assign pgsize_gte_16M  = (~entry_cmpmask[2]);
@@ -165,6 +187,15 @@ module tri_cam_32x143_1r1w1c_matchline(
          assign pgsize_gte_64K  = (~entry_cmpmask[5]);
          assign pgsize_gte_16K  = (~entry_cmpmask[6]);
 
+         //  size          entry_xbitmask: 0123456
+         //    1GB                         1000000
+         //  256MB                         0100000
+         //   16MB                         0010000
+         //    1MB                         0001000
+         //  256KB                         0000100
+         //   64KB                         0000010
+         //   16KB                         0000001
+         //    4KB                         0000000
          assign pgsize_eq_1G   = entry_xbitmask[0];
          assign pgsize_eq_256M = entry_xbitmask[1];
          assign pgsize_eq_16M  = entry_xbitmask[2];
@@ -213,43 +244,48 @@ module tri_cam_32x143_1r1w1c_matchline(
 
        if (HAVE_XBIT == 0)
        begin
-         assign addr_match = (comp_or_34_35 &		
+         assign addr_match = (comp_or_34_35 &		//  Ignore functions based on page size
                               comp_or_36_39 &
                               comp_or_40_43 &
                               comp_or_44_45 &
                               comp_or_46_47 &
                               comp_or_48_49 &
                               comp_or_50_51 &
-                              (&(match_line[31:33])) &		
-                              ((&(match_line[0:30])) | (~(addr_enable[1])))) |         
-                            (~(addr_enable[0]));       
+                              (&(match_line[31:33])) &		//  Regular compare largest page size
+                              ((&(match_line[0:30])) | (~(addr_enable[1])))) |         // ignored part of epn
+                            (~(addr_enable[0]));       //  Include address as part of compare,
+                                                       //  should never ignore for regular compare/read.
+                                                       //  Could ignore for compare/invalidate
        end
 
        if (HAVE_XBIT != 0)
        begin
-         assign addr_match = (function_50_51 &		
+         assign addr_match = (function_50_51 &		//  Exclusion functions
                               function_48_51 &
                               function_46_51 &
                               function_44_51 &
                               function_40_51 &
                               function_36_51 &
                               function_34_51 &
-                              comp_or_34_35 &		
+                              comp_or_34_35 &		//  Ignore functions based on page size
                               comp_or_36_39 &
                               comp_or_40_43 &
                               comp_or_44_45 &
                               comp_or_46_47 &
                               comp_or_48_49 &
                               comp_or_50_51 &
-                              (&(match_line[31:33])) &         
-                              (&(match_line[0:30]) | (~(addr_enable[1])))) |         
-                            (~(addr_enable[0]));           
+                              (&(match_line[31:33])) &         //  Regular compare largest page size
+                              (&(match_line[0:30]) | (~(addr_enable[1])))) |         // ignored part of epn
+                            (~(addr_enable[0]));           //  Include address as part of compare,
+                                                           //  should never ignore for regular compare/read.
+                                                           //  Could ignore for compare/invalidate
        end
-     end  
+     end  // numpgsz8: NUM_PGSIZES = 8
 
 
      if (NUM_PGSIZES == 5)
      begin : numpgsz5
+       // tie off unused signals
        assign function_50_51 = 1'b0;
        assign function_46_51 = 1'b0;
        assign function_36_51 = 1'b0;
@@ -275,9 +311,13 @@ module tri_cam_32x143_1r1w1c_matchline(
 
        if (HAVE_CMPMASK == 0)
        begin
+         // 110
          assign pgsize_eq_1G  = (   entry_size[0]   &    entry_size[1]   & (~(entry_size[2])));
+         // 111
          assign pgsize_eq_16M = (   entry_size[0]   &    entry_size[1]   &    entry_size[2]);
+         // 101
          assign pgsize_eq_1M  = (   entry_size[0]   & (~(entry_size[1])) &    entry_size[2]);
+         // 011
          assign pgsize_eq_64K = ((~(entry_size[0])) &    entry_size[1]   &    entry_size[2]);
 
          assign pgsize_gte_1G  = (   entry_size[0]   &    entry_size[1]   & (~(entry_size[2])));
@@ -290,11 +330,23 @@ module tri_cam_32x143_1r1w1c_matchline(
 
        if (HAVE_CMPMASK == 1)
        begin
+         //  size           entry_cmpmask: 0123
+         //    1GB                         0000
+         //   16MB                         1000
+         //    1MB                         1100
+         //   64KB                         1110
+         //    4KB                         1111
          assign pgsize_gte_1G  = (~entry_cmpmask[0]);
          assign pgsize_gte_16M = (~entry_cmpmask[1]);
          assign pgsize_gte_1M  = (~entry_cmpmask[2]);
          assign pgsize_gte_64K = (~entry_cmpmask[3]);
 
+         //  size          entry_xbitmask: 0123
+         //    1GB                         1000
+         //   16MB                         0100
+         //    1MB                         0010
+         //   64KB                         0001
+         //    4KB                         0000
          assign pgsize_eq_1G  = entry_xbitmask[0];
          assign pgsize_eq_16M = entry_xbitmask[1];
          assign pgsize_eq_1M  = entry_xbitmask[2];
@@ -316,9 +368,13 @@ module tri_cam_32x143_1r1w1c_matchline(
 
        if (HAVE_XBIT != 0)
        begin
+         // 1G
          assign function_34_51 = (~(entry_xbit)) | (~(pgsize_eq_1G))  | (|(entry_epn_b[34:51] & addr_in[34:51]));
+         // 16M
          assign function_40_51 = (~(entry_xbit)) | (~(pgsize_eq_16M)) | (|(entry_epn_b[40:51] & addr_in[40:51]));
+         // 1M
          assign function_44_51 = (~(entry_xbit)) | (~(pgsize_eq_1M))  | (|(entry_epn_b[44:51] & addr_in[44:51]));
+         // 64K
          assign function_48_51 = (~(entry_xbit)) | (~(pgsize_eq_64K)) | (|(entry_epn_b[48:51] & addr_in[48:51]));
          assign unused[2] = 1'b0;
        end
@@ -330,13 +386,15 @@ module tri_cam_32x143_1r1w1c_matchline(
 
        if (HAVE_XBIT == 0)
        begin
-         assign addr_match = (comp_or_34_39 &		
+         assign addr_match = (comp_or_34_39 &		//  Ignore functions based on page size
                               comp_or_40_43 &
                               comp_or_44_47 &
                               comp_or_48_51 &
-                              (&(match_line[31:33])) &		
-                              ((&(match_line[0:30])) | (~(addr_enable[1])))) |         
-                            (~(addr_enable[0]));       
+                              (&(match_line[31:33])) &		//  Regular compare largest page size
+                              ((&(match_line[0:30])) | (~(addr_enable[1])))) |         // ignored part of epn
+                            (~(addr_enable[0]));       //  Include address as part of compare,
+                                                       //  should never ignore for regular compare/read.
+                                                       //  Could ignore for compare/invalidate
        end
 
        if (HAVE_XBIT != 0)
@@ -345,15 +403,17 @@ module tri_cam_32x143_1r1w1c_matchline(
                               function_44_51 &
                               function_40_51 &
                               function_34_51 &
-                              comp_or_34_39 &		
+                              comp_or_34_39 &		//  Ignore functions based on page size
                               comp_or_40_43 &
                               comp_or_44_47 &
                               comp_or_48_51 &
-                              (&(match_line[31:33])) &         
-                              ((&(match_line[0:30])) | (~(addr_enable[1])))) |         
-                            (~(addr_enable[0]));             
+                              (&(match_line[31:33])) &         //  Regular compare largest page size
+                              ((&(match_line[0:30])) | (~(addr_enable[1])))) |         // ignored part of epn
+                            (~(addr_enable[0]));             //  Include address as part of compare,
+                                                             //  should never ignore for regular compare/read.
+                                                             //  Could ignore for compare/invalidate
        end
-     end 
+     end // numpgsz5: NUM_PGSIZES = 5
 
 
      assign pgsize_match = (&(match_line[52:54])) | (~(pgsize_enable));
@@ -361,31 +421,32 @@ module tri_cam_32x143_1r1w1c_matchline(
      assign class_match = (match_line[55] | (~(class_enable[0]))) &
                           (match_line[56] | (~(class_enable[1]))) &
                           ((&(match_line[55:56])) | (~(class_enable[2])) |
-                           ((~(entry_extclass[1])) & (~comp_invalidate)));		
+                           ((~(entry_extclass[1])) & (~comp_invalidate)));		// pid_nz bit
 
-     assign extclass_match = (match_line[57] | (~(extclass_enable[0]))) &               
-                             (match_line[58] | (~(extclass_enable[1])));		
+     assign extclass_match = (match_line[57] | (~(extclass_enable[0]))) &               // iprot bit
+                             (match_line[58] | (~(extclass_enable[1])));		// pid_nz bit
 
      assign state_match = (match_line[59] | (~(state_enable[0]))) &
                           (match_line[60] | (~(state_enable[1])));
 
      assign thdid_match = (|(entry_thdid[0:3] & comp_thdid[0:3]) | (~(thdid_enable[0]))) &
                           (&(match_line[69:72]) | (~(thdid_enable[1])) |
-                           ((~(entry_extclass[1])) & (~comp_invalidate)));		
+                           ((~(entry_extclass[1])) & (~comp_invalidate)));		// pid_nz bit
 
      assign pid_match = (&(match_line[61:68])) |
-                        ((~(entry_extclass[1])) & (~comp_invalidate)) |		
+                        // entry_pid=0 ignores pid match for compares,
+                        //  but not for invalidates.
+                        ((~(entry_extclass[1])) & (~comp_invalidate)) |		// pid_nz bit
                         (~(pid_enable));
 
-     assign match = addr_match &        
-                    pgsize_match &      
-                    class_match &       
-                    extclass_match &    
-                    state_match &       
-                    thdid_match &       
-                    pid_match &         
-                    entry_v;            
+     assign match = addr_match &        //  Address compare
+                    pgsize_match &      //  Size compare
+                    class_match &       //  Class compare
+                    extclass_match &    //  ExtClass compare
+                    state_match &       //  State compare
+                    thdid_match &       //  ThdID compare
+                    pid_match &         //  PID compare
+                    entry_v;            //  Valid
    end
    endgenerate
 endmodule
-

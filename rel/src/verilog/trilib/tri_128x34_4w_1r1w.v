@@ -9,6 +9,12 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_128x34_4w_1r1w.v
+// *! DESCRIPTION : 128 entry x 34 bit x 4 way array,
+// *!               1 read & 1 write port
+// *!
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -74,15 +80,17 @@ module tri_128x34_4w_1r1w(
    rd_addr,
    data_out
 );
-   parameter                                    addressable_ports = 128;        
-   parameter                                    addressbus_width = 7;		
-   parameter                                    port_bitwidth = 34;		
-   parameter                                    ways = 4;                       
+   parameter                                    addressable_ports = 128;        // number of addressable register in this array
+   parameter                                    addressbus_width = 7;		// width of the bus to address all ports (2^addressbus_width >= addressable_ports)
+   parameter                                    port_bitwidth = 34;		// bitwidth of ports
+   parameter                                    ways = 4;                       // number of ways
 
+   // POWER PINS
    inout                                        gnd;
    inout                                        vdd;
    (* analysis_not_referenced="true" *)
    inout                                        vcs;
+   // CLOCK and CLOCKCONTROL ports
    input [0:`NCLK_WIDTH-1]                      nclk;
    input                                        rd_act;
    input                                        wr_act;
@@ -101,6 +109,7 @@ module tri_128x34_4w_1r1w(
    input [0:4]                                  mpw1_dc_b;
    input                                        mpw2_dc_b;
    input [0:4]                                  delay_lclkr_dc;
+   // ABIST
    input                                        wr_abst_act;
    input                                        rd0_abst_act;
    input [0:3]                                  abist_di;
@@ -113,6 +122,7 @@ module tri_128x34_4w_1r1w(
    input                                        abist_g8t_rd0_comp_ena;
    input                                        abist_raw_dc_b;
    input [0:3]                                  obs0_abist_cmp;
+   // Scan
    input [0:1]                                  abst_scan_in;
    input                                        time_scan_in;
    input                                        repr_scan_in;
@@ -121,32 +131,38 @@ module tri_128x34_4w_1r1w(
    output                                       time_scan_out;
    output                                       repr_scan_out;
    output                                       func_scan_out;
+   // BOLT-ON
    input                                        lcb_bolt_sl_thold_0;
-   input                                        pc_bo_enable_2;		
-   input                                        pc_bo_reset;		
-   input                                        pc_bo_unload;		
-   input                                        pc_bo_repair;		
-   input                                        pc_bo_shdata;		
-   input [0:1]                                  pc_bo_select;		
-   output [0:1]                                 bo_pc_failout;		
+   input                                        pc_bo_enable_2;		// general bolt-on enable
+   input                                        pc_bo_reset;		// reset
+   input                                        pc_bo_unload;		// unload sticky bits
+   input                                        pc_bo_repair;		// execute sticky bit decode
+   input                                        pc_bo_shdata;		// shift data for timing write and diag loop
+   input [0:1]                                  pc_bo_select;		// select for mask and hier writes
+   output [0:1]                                 bo_pc_failout;		// fail/no-fix reg
    output [0:1]                                 bo_pc_diagloop;
    input                                        tri_lcb_mpw1_dc_b;
    input                                        tri_lcb_mpw2_dc_b;
    input                                        tri_lcb_delay_lclkr_dc;
    input                                        tri_lcb_clkoff_dc_b;
    input                                        tri_lcb_act_dis_dc;
+   // Write Ports
    input [0:ways-1]                             wr_way;
    input [0:addressbus_width-1]                 wr_addr;
    input [0:port_bitwidth*ways-1]               data_in;
+   // Read Ports
    input [0:addressbus_width-1]                 rd_addr;
    output [0:port_bitwidth*ways-1]              data_out;
 
+   // tri_128x34_4w_1r1w
 
    parameter                                    ramb_base_width = 36;
    parameter                                    ramb_base_addr = 9;
-   parameter                                    ramb_width_mult = (port_bitwidth - 1)/ramb_base_width + 1;		
+   parameter                                    ramb_width_mult = (port_bitwidth - 1)/ramb_base_width + 1;		// # of RAMB's per way
 
 
+   // Configuration Statement for NCsim
+   //for all:RAMB16_S36_S36 use entity unisim.RAMB16_S36_S36;
 
    localparam          rd_act_offset = 0;
    localparam          data_out_offset = rd_act_offset + 1;
@@ -203,6 +219,7 @@ module tri_128x34_4w_1r1w(
        end
      end
 
+     //genvar  w;
      for (w = 0; w < ways; w = w + 1)
      begin : aw
        genvar  x;
@@ -210,7 +227,7 @@ module tri_128x34_4w_1r1w(
        begin : ax
 
          RAMB16_S36_S36
-            #(.SIM_COLLISION_CHECK("NONE"))     
+            #(.SIM_COLLISION_CHECK("NONE"))     // all, none, warning_only, generate_x_only
          arr(
                .DOA(ramb_data_out[w][x * ramb_base_width:x * ramb_base_width + 31]),
                .DOB(dob),
@@ -231,9 +248,9 @@ module tri_128x34_4w_1r1w(
                .WEA(tidn),
                .WEB(wr_way[w])
             );
-       end  
+       end  //ax
        assign data_out_d[w * port_bitwidth:((w + 1) * port_bitwidth) - 1] = ramb_data_out[w][0:port_bitwidth - 1];
-     end  
+     end  //aw
    end
    endgenerate
 
@@ -286,4 +303,3 @@ module tri_128x34_4w_1r1w(
    assign unused = | ({nclk[2:`NCLK_WIDTH-1], sg_0, abst_sl_thold_0, ary_nsl_thold_0, time_sl_thold_0, repr_sl_thold_0, clkoff_dc_b, ccflush_dc, scan_dis_dc_b, scan_diag_dc, d_mode_dc, mpw1_dc_b, mpw2_dc_b, delay_lclkr_dc, wr_abst_act, rd0_abst_act, abist_di, abist_bw_odd, abist_bw_even, abist_wr_adr, abist_rd0_adr, tc_lbist_ary_wrt_thru_dc, abist_ena_1, abist_g8t_rd0_comp_ena, abist_raw_dc_b, obs0_abist_cmp, abst_scan_in, time_scan_in, repr_scan_in, func_scan_in, lcb_bolt_sl_thold_0, pc_bo_enable_2, pc_bo_reset, pc_bo_unload, pc_bo_repair, pc_bo_shdata, pc_bo_select, tri_lcb_mpw1_dc_b, tri_lcb_mpw2_dc_b, tri_lcb_delay_lclkr_dc, tri_lcb_clkoff_dc_b, tri_lcb_act_dis_dc, dob, dopb, func_sov, ramb_data_out[0][34:35], ramb_data_out[1][34:35], ramb_data_out[2][34:35], ramb_data_out[3][34:35]});
 
 endmodule
-

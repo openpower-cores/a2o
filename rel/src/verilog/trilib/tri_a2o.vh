@@ -12,6 +12,7 @@
 
 `include "tri.vh"
 
+// Use this line for 1 thread.  Comment out for 2 thread design.
 `define THREADS1
 
 `define  gpr_t  3'b000
@@ -66,10 +67,10 @@
 `define  LDSTQ_ENTRIES_ENC  4
 `define  STQ_ENTRIES  12
 `define  STQ_ENTRIES_ENC  4
-`define  STQ_FWD_ENTRIES  4		
-`define  STQ_DATA_SIZE  64		
-`define  DC_SIZE  15			
-`define  CL_SIZE  6			
+`define  STQ_FWD_ENTRIES  4		// number of stq entries that can be forwarded from
+`define  STQ_DATA_SIZE  64		// 64 or 128 Bit store data sizes supported
+`define  DC_SIZE  15			// 14 => 16K L1D$, 15 => 32K L1D$
+`define  CL_SIZE  6			// 6 => 64B CLINE, 7 => 128B CLINE
 `define  LMQ_ENTRIES  8
 `define  LMQ_ENTRIES_ENC  3
 `define  LGQ_ENTRIES  8
@@ -91,7 +92,7 @@
 `define  IBUFF_INSTR_WIDTH  70
 `define  IBUFF_IFAR_WIDTH  20
 `define  IBUFF_DEPTH  16
-`define  PF_IAR_BITS  12		
+`define  PF_IAR_BITS  12		// number of IAR bits used by prefetch
 `define  FXU0_PIPE_START 1
 `define  FXU0_PIPE_END 8
 `define  FXU1_PIPE_START 1
@@ -100,45 +101,48 @@
 `define  LQ_LOAD_PIPE_END 8
 `define  LQ_REL_PIPE_START 2
 `define  LQ_REL_PIPE_END 4
-`define  LOAD_CREDITS   8 
+`define  LOAD_CREDITS   8
 `define  STORE_CREDITS 4
-`define  IUQ_ENTRIES   4 		
-`define  MMQ_ENTRIES   2 		
+`define  IUQ_ENTRIES   4 		// Instruction Fetch Queue Size
+`define  MMQ_ENTRIES   2 		// MMU Queue Size
 `define  CR_WIDTH 4
-`define  BUILD_PFETCH  1		
+`define  BUILD_PFETCH  1		// 1=> include pfetch in the build, 0=> build without pfetch
 `define  PF_IFAR_WIDTH  12
-`define  PFETCH_INITIAL_DEPTH  0	
-`define  PFETCH_Q_SIZE_ENC  3		
-`define  PFETCH_Q_SIZE  8		
-`define  INCLUDE_IERAT_BYPASS  1	
+`define  PFETCH_INITIAL_DEPTH  0	// the initial value for the SPR that determines how many lines to prefetch
+`define  PFETCH_Q_SIZE_ENC  3		// number of bits to address queue size (3 => 8 entries, 4 => 16 entries)
+`define  PFETCH_Q_SIZE  8		// number of entries in prefetch queue
+`define  INCLUDE_IERAT_BYPASS  1	// 0 => Removes IERAT Bypass logic, 1=> includes (power savings)
 `define  XER_WIDTH  10
-`define  INIT_BHT  1			
-`define  INIT_IUCR0  16'h4000	
-`define  INIT_MASK  2'b10		 
-`define  RELQ_INCLUDE  0		
+`define  INIT_BHT  1			// 0=> array init time set to 16 clocks, 1=> increased to 512 to init BHT
+`define  INIT_IUCR0  16'h4000	//changed for FPGA, was 251
+`define  INIT_MASK  2'b10
+`define  RELQ_INCLUDE  0		// Reload Queue Included
 
 `define  G_BRANCH_LEN  `EFF_IFAR_WIDTH + 1 + 1 + `EFF_IFAR_WIDTH + 3 + 18 + 1
 
+// IERAT boot config entry values
 `define  IERAT_BCFG_EPN_0TO15      0
 `define  IERAT_BCFG_EPN_16TO31     0
-`define  IERAT_BCFG_EPN_32TO47     (2 ** 16) - 1   
-`define  IERAT_BCFG_EPN_48TO51     (2 ** 4) - 1    
-`define  IERAT_BCFG_RPN_22TO31     0               
-`define  IERAT_BCFG_RPN_32TO47     (2 ** 16) - 1   
-`define  IERAT_BCFG_RPN_48TO51     (2 ** 4) - 1    
-`define  IERAT_BCFG_RPN2_32TO47    0               
-`define  IERAT_BCFG_RPN2_48TO51    0               
-`define  IERAT_BCFG_ATTR    0                      
-   
+`define  IERAT_BCFG_EPN_32TO47     (2 ** 16) - 1   // 1 for 64K, 65535 for 4G
+`define  IERAT_BCFG_EPN_48TO51     (2 ** 4) - 1    // 15 for 64K or 4G
+`define  IERAT_BCFG_RPN_22TO31     0               // (2 ** 10) - 1  for x3ff
+`define  IERAT_BCFG_RPN_32TO47     (2 ** 16) - 1   // 1 for 64K, 8181 for 512M, 65535 for 4G
+`define  IERAT_BCFG_RPN_48TO51     (2 ** 4) - 1    // 15 for 64K or 4G
+`define  IERAT_BCFG_RPN2_32TO47    0               // 0 to match dd1 hardwired value; (2**16)-1 for same 64K page
+`define  IERAT_BCFG_RPN2_48TO51    0               // 0 to match dd1 hardwired value;  (2**4)-2 for adjacent 4K page
+`define  IERAT_BCFG_ATTR    0                      // u0-u3, endian
+
+// DERAT boot config entry values
 `define  DERAT_BCFG_EPN_0TO15      0
 `define  DERAT_BCFG_EPN_16TO31     0
-`define  DERAT_BCFG_EPN_32TO47     (2 ** 16) - 1   
-`define  DERAT_BCFG_EPN_48TO51     (2 ** 4) - 1    
-`define  DERAT_BCFG_RPN_22TO31     0               
-`define  DERAT_BCFG_RPN_32TO47     (2 ** 16) - 1   
-`define  DERAT_BCFG_RPN_48TO51     (2 ** 4) - 1    
-`define  DERAT_BCFG_RPN2_32TO47    0               
-`define  DERAT_BCFG_RPN2_48TO51    0               
-`define  DERAT_BCFG_ATTR    0                      
-   
-`endif  
+`define  DERAT_BCFG_EPN_32TO47     (2 ** 16) - 1   // 1 for 64K, 65535 for 4G
+`define  DERAT_BCFG_EPN_48TO51     (2 ** 4) - 1    // 15 for 64K or 4G
+`define  DERAT_BCFG_RPN_22TO31     0               // (2 ** 10) - 1  for x3ff
+`define  DERAT_BCFG_RPN_32TO47     (2 ** 16) - 1   // 1 for 64K, 8191 for 512M, 65535 for 4G
+`define  DERAT_BCFG_RPN_48TO51     (2 ** 4) - 1    // 15 for 64K or 4G
+`define  DERAT_BCFG_RPN2_32TO47    0               // 0 to match dd1 hardwired value; (2**16)-1 for same 64K page
+`define  DERAT_BCFG_RPN2_48TO51    0               // 0 to match dd1 hardwired value;  (2**4)-2 for adjacent 4K page
+`define  DERAT_BCFG_ATTR    0                      // u0-u3, endian
+
+// Do NOT add any defines below this line
+`endif  //_tri_a2o_vh_

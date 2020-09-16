@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_nlat.v
+// *! DESCRIPTION : Basic n-bit latch w/ internal scan
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -25,14 +29,16 @@ module tri_nlat(
    scan_out
 );
    parameter                      OFFSET = 0;
-   parameter                      SCAN = 0;                     
+   parameter                      SCAN = 0;                     //SCAN = normal;
+                                                                //0=normal,1=interleaved,2=reversed,3=reverse_interleaved
    parameter                      RESET_INVERTS_SCAN = 1'b1;
    parameter                      WIDTH = 1;
    parameter                      INIT = 0;
-   parameter                      L2_LATCH_TYPE = 2;            
+   parameter                      L2_LATCH_TYPE = 2;            //L2_LATCH_TYPE = slave_latch;
+                                                                //0=master_latch,1=L1,2=slave_latch,3=L2,4=flush_latch,5=L4
    parameter                      SYNTHCLONEDLATCH = "";
-   parameter                      NEEDS_SRESET = 1;		
-   parameter                      DOMAIN_CROSSING = 0;		
+   parameter                      NEEDS_SRESET = 1;		// for inferred latches
+   parameter                      DOMAIN_CROSSING = 0;		// 0 - Internal Flop, 1 - Domain Crossing Input Flop (requires extra logic for ASICs)
 
    inout                          vd;
    inout                          gd;
@@ -45,6 +51,7 @@ module tri_nlat(
    output [OFFSET:OFFSET+WIDTH-1] q_b;
    output                         scan_out;
 
+   // tri_nlat
 
    parameter [0:WIDTH-1]          init_v = INIT;
 
@@ -94,5 +101,3 @@ module tri_nlat(
    end
    endgenerate
 endmodule
-
-

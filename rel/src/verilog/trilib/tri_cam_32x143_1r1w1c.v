@@ -9,8 +9,13 @@
 
 `timescale 1 ns / 1 ns
 
+// VHDL 1076 Macro Expander C version 07/11/00
+// job was run on Mon Nov  8 10:36:46 2010
 
-
+//********************************************************************
+//* TITLE: I-ERAT CAM Tri-Library Model
+//* NAME: tri_cam_32x143_1r1w1c
+//********************************************************************
 
 `include "tri_a2o.vh"
 
@@ -86,10 +91,12 @@ module tri_cam_32x143_1r1w1c(
    parameter                     NUM_ENTRY = 32;
    parameter                     NUM_ENTRY_LOG2 = 5;
 
+   // Power Pins
    inout                         gnd;
    inout                         vdd;
    inout                         vcs;
 
+   // Clocks and Scan Cntls
    input [0:`NCLK_WIDTH-1]       nclk;
    input                         tc_ccflush_dc;
    input                         tc_scan_dis_dc_b;
@@ -113,21 +120,24 @@ module tri_cam_32x143_1r1w1c(
 
    input                         func_scan_in;
    output                        func_scan_out;
-   input [0:6]                   regfile_scan_in;       
+   input [0:6]                   regfile_scan_in;       // 0:2 -> CAM, 3:6 -> RAM
    output [0:6]                  regfile_scan_out;
    input                         time_scan_in;
    output                        time_scan_out;
 
+   // Read Port
    input                         rd_val;
    input                         rd_val_late;
    input [0:NUM_ENTRY_LOG2-1]    rw_entry;
 
+   // Write Port
    input [0:ARRAY_DATA_WIDTH-1]  wr_array_data;
    input [0:CAM_DATA_WIDTH-1]    wr_cam_data;
    input [0:1]                   wr_array_val;
    input [0:1]                   wr_cam_val;
    input                         wr_val_early;
 
+   // CAM Port
    input                         comp_request;
    input [0:51]                  comp_addr;
    input [0:1]                   addr_enable;
@@ -146,9 +156,12 @@ module tri_cam_32x143_1r1w1c(
    input                         comp_invalidate;
    input                         flash_invalidate;
 
+   // Outputs
+   // Data Out
    output [0:ARRAY_DATA_WIDTH-1] array_cmp_data;
    output [0:ARRAY_DATA_WIDTH-1] rd_array_data;
 
+   // CAM Output
    output [0:CAM_DATA_WIDTH-1]   cam_cmp_data;
    output                        cam_hit;
    output [0:NUM_ENTRY_LOG2-1]   cam_hit_entry;
@@ -156,13 +169,19 @@ module tri_cam_32x143_1r1w1c(
    output [0:NUM_ENTRY-1]        entry_valid;
    output [0:CAM_DATA_WIDTH-1]   rd_cam_data;
 
+   //--- new ports for IO plus -----------------------
    input                         bypass_mux_enab_np1;
    input [0:20]                  bypass_attr_np1;
    output [0:20]                 attr_np2;
 
    output [22:51]                rpn_np2;
 
+   // tri_cam_32x143_1r1w1c
 
+   // Configuration Statement for NCsim
+   //for all:RAMB16_S9_S9 use entity unisim.RAMB16_S9_S9;
+   //for all:RAMB16_S18_S18 use entity unisim.RAMB16_S18_S18;
+   //for all:RAMB16_S36_S36 use entity unisim.RAMB16_S36_S36;
 
    wire                          clk;
    wire                          clk2x;
@@ -178,16 +197,18 @@ module tri_cam_32x143_1r1w1c(
    wire [0:55]                   array_cmp_data_bram;
    wire [66:72]                  array_cmp_data_bramp;
 
+   // Latches
    reg                           sreset_q;
    reg                           gate_fq;
    wire                          gate_d;
    wire [52-RPN_WIDTH:51]        comp_addr_np1_d;
-   reg [52-RPN_WIDTH:51]         comp_addr_np1_q;  
+   reg [52-RPN_WIDTH:51]         comp_addr_np1_q;  // the internal latched np1 phase epn(22:51) from com_addr input
    wire [52-RPN_WIDTH:51]        rpn_np2_d;
    reg [52-RPN_WIDTH:51]         rpn_np2_q;
    wire [0:20]                   attr_np2_d;
    reg [0:20]                    attr_np2_q;
 
+   // CAM entry signals
    wire [0:51]                   entry0_epn_d;
    reg [0:51]                    entry0_epn_q;
    wire                          entry0_xbit_d;
@@ -1093,6 +1114,7 @@ module tri_cam_32x143_1r1w1c(
    wire [0:55]                   array_cmp_data_bram_std;
    wire [66:72]                  array_cmp_data_bramp_std;
 
+   // latch signals
    wire [0:ARRAY_DATA_WIDTH-1]   rd_array_data_d;
    reg [0:ARRAY_DATA_WIDTH-1]    rd_array_data_q;
    wire [0:CAM_DATA_WIDTH-1]     cam_cmp_data_d;
@@ -1125,6 +1147,9 @@ module tri_cam_32x143_1r1w1c(
      sreset_q <= nclk[1];
    end
 
+   //
+   //  NEW clk2x gate logic start
+   //
 
    always @(posedge nclk[0])
    begin: tlatch
@@ -1143,12 +1168,16 @@ module tri_cam_32x143_1r1w1c(
    assign toggle_d = (~toggle_q);
    assign toggle2x_d = toggle_q;
 
+   // should force gate_fq to be on during odd 2x clock (second half of 1x clock).
    assign gate_d = toggle_q ^ toggle2x_q;
+   // if you want the first half do the following
+   //assign gate_d <= ~(toggle_q ^ toggle2x_q);
 
+   //
+   //  NEW clk2x gate logic end
+   //
 
-
-
-
+   // Slow Latches (nclk)
    always @(posedge nclk[0])
    begin: slatch
      if (sreset_q == 1'b1)
@@ -1947,6 +1976,9 @@ module tri_cam_32x143_1r1w1c(
      end
    end
 
+   //---------------------------------------------------------------------
+   // latch input logic
+   //---------------------------------------------------------------------
    assign comp_addr_np1_d = comp_addr[52 - RPN_WIDTH:51];
 
    assign cam_hit_d = ((match_vec != 32'b00000000000000000000000000000000) & (comp_request == 1'b1)) ? 1'b1 :
@@ -1988,6 +2020,7 @@ module tri_cam_32x143_1r1w1c(
    assign entry_match_d = ((comp_request == 1'b1)) ? match_vec :
                           {NUM_ENTRY{1'b0}};
 
+   // entry write next state logic
    assign wr_entry0_sel[0] = ((wr_cam_val[0] == 1'b1) & (rw_entry == 5'b00000)) ? 1'b1 :
                              1'b0;
    assign wr_entry0_sel[1] = ((wr_cam_val[1] == 1'b1) & (rw_entry == 5'b00000)) ? 1'b1 :
@@ -2012,6 +2045,7 @@ module tri_cam_32x143_1r1w1c(
                          entry0_pid_q[0:7];
    assign entry0_cmpmask_d = (wr_entry0_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                              entry0_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry0_parity_d[0:3] = (wr_entry0_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                  entry0_parity_q[0:3];
    assign entry0_parity_d[4:6] = (wr_entry0_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2046,6 +2080,7 @@ module tri_cam_32x143_1r1w1c(
                          entry1_pid_q[0:7];
    assign entry1_cmpmask_d = (wr_entry1_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                              entry1_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry1_parity_d[0:3] = (wr_entry1_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                  entry1_parity_q[0:3];
    assign entry1_parity_d[4:6] = (wr_entry1_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2080,6 +2115,7 @@ module tri_cam_32x143_1r1w1c(
                          entry2_pid_q[0:7];
    assign entry2_cmpmask_d = (wr_entry2_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                              entry2_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry2_parity_d[0:3] = (wr_entry2_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                  entry2_parity_q[0:3];
    assign entry2_parity_d[4:6] = (wr_entry2_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2114,6 +2150,7 @@ module tri_cam_32x143_1r1w1c(
                          entry3_pid_q[0:7];
    assign entry3_cmpmask_d = (wr_entry3_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                              entry3_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry3_parity_d[0:3] = (wr_entry3_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                  entry3_parity_q[0:3];
    assign entry3_parity_d[4:6] = (wr_entry3_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2148,6 +2185,7 @@ module tri_cam_32x143_1r1w1c(
                          entry4_pid_q[0:7];
    assign entry4_cmpmask_d = (wr_entry4_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                              entry4_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry4_parity_d[0:3] = (wr_entry4_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                  entry4_parity_q[0:3];
    assign entry4_parity_d[4:6] = (wr_entry4_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2182,6 +2220,7 @@ module tri_cam_32x143_1r1w1c(
                          entry5_pid_q[0:7];
    assign entry5_cmpmask_d = (wr_entry5_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                              entry5_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry5_parity_d[0:3] = (wr_entry5_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                  entry5_parity_q[0:3];
    assign entry5_parity_d[4:6] = (wr_entry5_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2216,6 +2255,7 @@ module tri_cam_32x143_1r1w1c(
                          entry6_pid_q[0:7];
    assign entry6_cmpmask_d = (wr_entry6_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                              entry6_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry6_parity_d[0:3] = (wr_entry6_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                  entry6_parity_q[0:3];
    assign entry6_parity_d[4:6] = (wr_entry6_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2250,6 +2290,7 @@ module tri_cam_32x143_1r1w1c(
                          entry7_pid_q[0:7];
    assign entry7_cmpmask_d = (wr_entry7_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                              entry7_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry7_parity_d[0:3] = (wr_entry7_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                  entry7_parity_q[0:3];
    assign entry7_parity_d[4:6] = (wr_entry7_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2284,6 +2325,7 @@ module tri_cam_32x143_1r1w1c(
                          entry8_pid_q[0:7];
    assign entry8_cmpmask_d = (wr_entry8_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                              entry8_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry8_parity_d[0:3] = (wr_entry8_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                  entry8_parity_q[0:3];
    assign entry8_parity_d[4:6] = (wr_entry8_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2318,6 +2360,7 @@ module tri_cam_32x143_1r1w1c(
                          entry9_pid_q[0:7];
    assign entry9_cmpmask_d = (wr_entry9_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                              entry9_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry9_parity_d[0:3] = (wr_entry9_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                  entry9_parity_q[0:3];
    assign entry9_parity_d[4:6] = (wr_entry9_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2352,6 +2395,7 @@ module tri_cam_32x143_1r1w1c(
                           entry10_pid_q[0:7];
    assign entry10_cmpmask_d = (wr_entry10_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry10_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry10_parity_d[0:3] = (wr_entry10_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry10_parity_q[0:3];
    assign entry10_parity_d[4:6] = (wr_entry10_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2386,6 +2430,7 @@ module tri_cam_32x143_1r1w1c(
                           entry11_pid_q[0:7];
    assign entry11_cmpmask_d = (wr_entry11_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry11_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry11_parity_d[0:3] = (wr_entry11_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry11_parity_q[0:3];
    assign entry11_parity_d[4:6] = (wr_entry11_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2420,6 +2465,7 @@ module tri_cam_32x143_1r1w1c(
                           entry12_pid_q[0:7];
    assign entry12_cmpmask_d = (wr_entry12_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry12_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry12_parity_d[0:3] = (wr_entry12_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry12_parity_q[0:3];
    assign entry12_parity_d[4:6] = (wr_entry12_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2454,6 +2500,7 @@ module tri_cam_32x143_1r1w1c(
                           entry13_pid_q[0:7];
    assign entry13_cmpmask_d = (wr_entry13_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry13_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry13_parity_d[0:3] = (wr_entry13_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry13_parity_q[0:3];
    assign entry13_parity_d[4:6] = (wr_entry13_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2488,6 +2535,7 @@ module tri_cam_32x143_1r1w1c(
                           entry14_pid_q[0:7];
    assign entry14_cmpmask_d = (wr_entry14_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry14_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry14_parity_d[0:3] = (wr_entry14_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry14_parity_q[0:3];
    assign entry14_parity_d[4:6] = (wr_entry14_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2522,6 +2570,7 @@ module tri_cam_32x143_1r1w1c(
                           entry15_pid_q[0:7];
    assign entry15_cmpmask_d = (wr_entry15_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry15_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry15_parity_d[0:3] = (wr_entry15_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry15_parity_q[0:3];
    assign entry15_parity_d[4:6] = (wr_entry15_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2556,6 +2605,7 @@ module tri_cam_32x143_1r1w1c(
                           entry16_pid_q[0:7];
    assign entry16_cmpmask_d = (wr_entry16_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry16_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry16_parity_d[0:3] = (wr_entry16_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry16_parity_q[0:3];
    assign entry16_parity_d[4:6] = (wr_entry16_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2590,6 +2640,7 @@ module tri_cam_32x143_1r1w1c(
                           entry17_pid_q[0:7];
    assign entry17_cmpmask_d = (wr_entry17_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry17_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry17_parity_d[0:3] = (wr_entry17_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry17_parity_q[0:3];
    assign entry17_parity_d[4:6] = (wr_entry17_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2624,6 +2675,7 @@ module tri_cam_32x143_1r1w1c(
                           entry18_pid_q[0:7];
    assign entry18_cmpmask_d = (wr_entry18_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry18_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry18_parity_d[0:3] = (wr_entry18_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry18_parity_q[0:3];
    assign entry18_parity_d[4:6] = (wr_entry18_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2658,6 +2710,7 @@ module tri_cam_32x143_1r1w1c(
                           entry19_pid_q[0:7];
    assign entry19_cmpmask_d = (wr_entry19_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry19_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry19_parity_d[0:3] = (wr_entry19_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry19_parity_q[0:3];
    assign entry19_parity_d[4:6] = (wr_entry19_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2692,6 +2745,7 @@ module tri_cam_32x143_1r1w1c(
                           entry20_pid_q[0:7];
    assign entry20_cmpmask_d = (wr_entry20_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry20_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry20_parity_d[0:3] = (wr_entry20_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry20_parity_q[0:3];
    assign entry20_parity_d[4:6] = (wr_entry20_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2726,6 +2780,7 @@ module tri_cam_32x143_1r1w1c(
                           entry21_pid_q[0:7];
    assign entry21_cmpmask_d = (wr_entry21_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry21_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry21_parity_d[0:3] = (wr_entry21_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry21_parity_q[0:3];
    assign entry21_parity_d[4:6] = (wr_entry21_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2760,6 +2815,7 @@ module tri_cam_32x143_1r1w1c(
                           entry22_pid_q[0:7];
    assign entry22_cmpmask_d = (wr_entry22_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry22_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry22_parity_d[0:3] = (wr_entry22_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry22_parity_q[0:3];
    assign entry22_parity_d[4:6] = (wr_entry22_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2794,6 +2850,7 @@ module tri_cam_32x143_1r1w1c(
                           entry23_pid_q[0:7];
    assign entry23_cmpmask_d = (wr_entry23_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry23_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry23_parity_d[0:3] = (wr_entry23_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry23_parity_q[0:3];
    assign entry23_parity_d[4:6] = (wr_entry23_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2828,6 +2885,7 @@ module tri_cam_32x143_1r1w1c(
                           entry24_pid_q[0:7];
    assign entry24_cmpmask_d = (wr_entry24_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry24_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry24_parity_d[0:3] = (wr_entry24_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry24_parity_q[0:3];
    assign entry24_parity_d[4:6] = (wr_entry24_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2862,6 +2920,7 @@ module tri_cam_32x143_1r1w1c(
                           entry25_pid_q[0:7];
    assign entry25_cmpmask_d = (wr_entry25_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry25_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry25_parity_d[0:3] = (wr_entry25_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry25_parity_q[0:3];
    assign entry25_parity_d[4:6] = (wr_entry25_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2896,6 +2955,7 @@ module tri_cam_32x143_1r1w1c(
                           entry26_pid_q[0:7];
    assign entry26_cmpmask_d = (wr_entry26_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry26_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry26_parity_d[0:3] = (wr_entry26_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry26_parity_q[0:3];
    assign entry26_parity_d[4:6] = (wr_entry26_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2930,6 +2990,7 @@ module tri_cam_32x143_1r1w1c(
                           entry27_pid_q[0:7];
    assign entry27_cmpmask_d = (wr_entry27_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry27_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry27_parity_d[0:3] = (wr_entry27_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry27_parity_q[0:3];
    assign entry27_parity_d[4:6] = (wr_entry27_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2964,6 +3025,7 @@ module tri_cam_32x143_1r1w1c(
                           entry28_pid_q[0:7];
    assign entry28_cmpmask_d = (wr_entry28_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry28_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry28_parity_d[0:3] = (wr_entry28_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry28_parity_q[0:3];
    assign entry28_parity_d[4:6] = (wr_entry28_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -2998,6 +3060,7 @@ module tri_cam_32x143_1r1w1c(
                           entry29_pid_q[0:7];
    assign entry29_cmpmask_d = (wr_entry29_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry29_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry29_parity_d[0:3] = (wr_entry29_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry29_parity_q[0:3];
    assign entry29_parity_d[4:6] = (wr_entry29_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -3032,6 +3095,7 @@ module tri_cam_32x143_1r1w1c(
                           entry30_pid_q[0:7];
    assign entry30_cmpmask_d = (wr_entry30_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry30_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry30_parity_d[0:3] = (wr_entry30_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry30_parity_q[0:3];
    assign entry30_parity_d[4:6] = (wr_entry30_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -3066,6 +3130,7 @@ module tri_cam_32x143_1r1w1c(
                           entry31_pid_q[0:7];
    assign entry31_cmpmask_d = (wr_entry31_sel[0] == 1'b1) ? wr_cam_data[75:83] :
                               entry31_cmpmask_q;
+   // the cam parity bits.. some wr_array_data bits contain parity for cam
    assign entry31_parity_d[0:3] = (wr_entry31_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 21:RPN_WIDTH + 24] :
                                   entry31_parity_q[0:3];
    assign entry31_parity_d[4:6] = (wr_entry31_sel[0] == 1'b1) ? wr_array_data[RPN_WIDTH + 25:RPN_WIDTH + 27] :
@@ -3078,6 +3143,7 @@ module tri_cam_32x143_1r1w1c(
                                 entry31_parity_q[9];
 
 
+   // entry valid and thdid next state logic
    assign entry0_inval = (comp_invalidate & match_vec[0]) | flash_invalidate;
    assign entry0_v_muxsel[0:1] = ({entry0_inval, wr_entry0_sel[0]});
    assign entry0_v_d = (entry0_v_muxsel[0:1] == 2'b10) ? 1'b0 :
@@ -3336,6 +3402,7 @@ module tri_cam_32x143_1r1w1c(
                                  entry31_thdid_q[0:3];
 
 
+   // CAM compare data out mux
    assign entry0_cam_vec = {entry0_epn_q, entry0_xbit_q, entry0_size_q, entry0_v_q, entry0_thdid_q, entry0_class_q, entry0_extclass_q, entry0_hv_q, entry0_ds_q, entry0_pid_q, entry0_cmpmask_q};
    assign entry1_cam_vec = {entry1_epn_q, entry1_xbit_q, entry1_size_q, entry1_v_q, entry1_thdid_q, entry1_class_q, entry1_extclass_q, entry1_hv_q, entry1_ds_q, entry1_pid_q, entry1_cmpmask_q};
    assign entry2_cam_vec = {entry2_epn_q, entry2_xbit_q, entry2_size_q, entry2_v_q, entry2_thdid_q, entry2_class_q, entry2_extclass_q, entry2_hv_q, entry2_ds_q, entry2_pid_q, entry2_cmpmask_q};
@@ -3407,6 +3474,7 @@ module tri_cam_32x143_1r1w1c(
 
    assign cam_cmp_data_np1 = cam_cmp_data_q;
 
+   // CAM read data out mux
    assign rd_cam_data_muxsel = {(~(rd_val)), rw_entry};
 
    assign rd_cam_data_d = (rd_cam_data_muxsel == 6'b000000) ? entry0_cam_vec :
@@ -3443,6 +3511,7 @@ module tri_cam_32x143_1r1w1c(
                           (rd_cam_data_muxsel == 6'b011111) ? entry31_cam_vec :
                           rd_cam_data_q;
 
+   // CAM compare parity out mux
    assign cam_cmp_parity_d = (cam_cmp_data_muxsel == 6'b000000) ? entry0_parity_q :
                              (cam_cmp_data_muxsel == 6'b000001) ? entry1_parity_q :
                              (cam_cmp_data_muxsel == 6'b000010) ? entry2_parity_q :
@@ -3483,6 +3552,7 @@ module tri_cam_32x143_1r1w1c(
 
    assign array_cmp_data = array_cmp_data_np1;
 
+   // CAM read parity out mux
    assign rd_array_data_d[51:60] = (rd_cam_data_muxsel == 6'b000000) ? entry0_parity_q :
                                    (rd_cam_data_muxsel == 6'b000001) ? entry1_parity_q :
                                    (rd_cam_data_muxsel == 6'b000010) ? entry2_parity_q :
@@ -3517,27 +3587,38 @@ module tri_cam_32x143_1r1w1c(
                                    (rd_cam_data_muxsel == 6'b011111) ? entry31_parity_q :
                                    rd_array_data_q[51:60];
 
+   // internal bypass latch input for rpn
+   // using cam_cmp_data(75:78) cmpmask bits for mux selects
    assign rpn_np2_d[22:33] = (comp_addr_np1_q[22:33] & {12{bypass_mux_enab_np1}}) |
-                             (array_cmp_data_np1[0:11] & {12{~(bypass_mux_enab_np1)}});   
+                             (array_cmp_data_np1[0:11] & {12{~(bypass_mux_enab_np1)}});   // real page from cam-array
 
+   //CAM_PgSize_1GB
    assign rpn_np2_d[34:39] = (comp_addr_np1_q[34:39] & {6{(~(cam_cmp_data_np1[75])) | bypass_mux_enab_np1}}) |
                              (array_cmp_data_np1[12:17] & {6{cam_cmp_data_np1[75] & (~bypass_mux_enab_np1)}});
 
+   //CAM_PgSize_1GB or CAM_PgSize_16MB
    assign rpn_np2_d[40:43] = (comp_addr_np1_q[40:43] & {4{(~(cam_cmp_data_np1[76])) | bypass_mux_enab_np1}}) |
                              (array_cmp_data_np1[18:21] & {4{cam_cmp_data_np1[76] & (~bypass_mux_enab_np1)}});
 
+   //CAM_PgSize_1GB or CAM_PgSize_16MB or CAM_PgSize_1MB
    assign rpn_np2_d[44:47] = (comp_addr_np1_q[44:47] & {4{(~(cam_cmp_data_np1[77])) | bypass_mux_enab_np1}}) |
                              (array_cmp_data_np1[22:25] & {4{cam_cmp_data_np1[77] & (~bypass_mux_enab_np1)}});
 
+   //CAM_PgSize_Larger_than_4K
    assign rpn_np2_d[48:51] = (comp_addr_np1_q[48:51] & {4{(~(cam_cmp_data_np1[78])) | bypass_mux_enab_np1}}) |
                              (array_cmp_data_np1[26:29] & {4{cam_cmp_data_np1[78] & (~bypass_mux_enab_np1)}});
 
+   // internal bypass latch input for attributes
    assign attr_np2_d[0:20] = (bypass_attr_np1[0:20] & {21{bypass_mux_enab_np1}}) |
                              (array_cmp_data_np1[30:50] & {21{~bypass_mux_enab_np1}});
 
+   // new port output assignments
    assign rpn_np2[22:51] = rpn_np2_q[22:51];
    assign attr_np2[0:20] = attr_np2_q[0:20];
 
+   //---------------------------------------------------------------------
+   // matchline component instantiations
+   //---------------------------------------------------------------------
 
    tri_cam_32x143_1r1w1c_matchline #(.HAVE_XBIT(1), .NUM_PGSIZES(5), .HAVE_CMPMASK(1), .CMPMASK_WIDTH(4)) matchline_comb0(
       .addr_in(comp_addr),
@@ -4564,6 +4645,9 @@ module tri_cam_32x143_1r1w1c(
    );
 
 
+   //---------------------------------------------------------------------
+   // BRAM signal assignments
+   //---------------------------------------------------------------------
    assign bram0_wea = wr_array_val[0] & gate_fq;
    assign bram1_wea = wr_array_val[1] & gate_fq;
    assign bram2_wea = wr_array_val[1] & gate_fq;
@@ -4576,6 +4660,7 @@ module tri_cam_32x143_1r1w1c(
    assign bram1_addrb[11 - NUM_ENTRY_LOG2:10] = cam_hit_entry_q;
    assign bram2_addrb[10 - NUM_ENTRY_LOG2:9]  = cam_hit_entry_q;
 
+   // Unused Address Bits
    assign bram0_addra[0:8 - NUM_ENTRY_LOG2] = {9-NUM_ENTRY_LOG2{1'b0}};
    assign bram0_addrb[0:8 - NUM_ENTRY_LOG2] = {9-NUM_ENTRY_LOG2{1'b0}};
    assign bram1_addra[0:10 - NUM_ENTRY_LOG2] = {11-NUM_ENTRY_LOG2{1'b0}};
@@ -4583,8 +4668,10 @@ module tri_cam_32x143_1r1w1c(
    assign bram2_addra[0:9 - NUM_ENTRY_LOG2] = {10-NUM_ENTRY_LOG2{1'b0}};
    assign bram2_addrb[0:9 - NUM_ENTRY_LOG2] = {10-NUM_ENTRY_LOG2{1'b0}};
 
+   // This ram houses the RPN(20:51) bits, wr_array_data_bram(0:31)
+   //   uses wr_array_val(0), parity is wr_array_data_bram(66:69)
    RAMB16_S36_S36
-       #(.SIM_COLLISION_CHECK("NONE"))   
+       #(.SIM_COLLISION_CHECK("NONE"))   // all, none, warning_only, generate_x_only
    bram0(
       .CLKA(clk2x),
       .CLKB(clk2x),
@@ -4606,8 +4693,10 @@ module tri_cam_32x143_1r1w1c(
       .WEB(1'b0)
    );
 
+   // This ram houses the RPN(18:19),R,C,4xResv bits, wr_array_data_bram(32:39)
+   //   uses wr_array_val(1), parity is wr_array_data_bram(70)
    RAMB16_S9_S9
-       #(.SIM_COLLISION_CHECK("NONE"))   
+       #(.SIM_COLLISION_CHECK("NONE"))   // all, none, warning_only, generate_x_only
    bram1(
       .CLKA(clk2x),
       .CLKB(clk2x),
@@ -4629,8 +4718,10 @@ module tri_cam_32x143_1r1w1c(
       .WEB(1'b0)
    );
 
+   // This ram houses the 1xResv,U0-U3,WIMGE,UX,UW,UR,SX,SW,SR bits, wr_array_data_bram(40:55)
+   //   uses wr_array_val(2), parity is wr_array_data_bram(71:72)
    RAMB16_S18_S18
-       #(.SIM_COLLISION_CHECK("NONE"))   
+       #(.SIM_COLLISION_CHECK("NONE"))   // all, none, warning_only, generate_x_only
    bram2(
       .CLKA(clk2x),
       .CLKB(clk2x),
@@ -4652,9 +4743,26 @@ module tri_cam_32x143_1r1w1c(
       .WEB(1'b0)
    );
 
+   // array write data swizzle -> convert 68-bit data to 73-bit bram data
+   // 32x143 version, 42b RA
+   // wr_array_data
+   //  0:29  - RPN
+   //  30:31  - R,C
+   //  32:35  - ResvAttr
+   //  36:39  - U0-U3
+   //  40:44  - WIMGE
+   //  45:47  - UX,UW,UR
+   //  48:50  - SX,SW,SR
+   //  51:60  - CAM parity
+   //  61:67  - Array parity
+   //
+   // RTX layout in A2_AvpEratHelper.C
+   //  ram0(0:31):  00  & RPN(0:29)
+   //  ram1(0:7) :  00  & R,C,ResvAttr(0:3)
+   //  ram2(0:15): '0' & U(0:3),WIMGE,UX,UW,UR,SX,SW,SR
    assign wr_array_data_bram[0:72] = {2'b00, wr_array_data[0:29], 2'b00, wr_array_data[30:35], 1'b0, wr_array_data[36:50], wr_array_data[51:60], wr_array_data[61:67]};
 
-   assign rd_array_data_d_std[56:65] = 10'b0;  
+   assign rd_array_data_d_std[56:65] = 10'b0;  // tie off unused bits
 
    assign rd_array_data_d[0:29]  = rd_array_data_d_std[2:31];
    assign rd_array_data_d[30:35] = rd_array_data_d_std[34:39];
@@ -4663,6 +4771,9 @@ module tri_cam_32x143_1r1w1c(
    assign array_cmp_data_bram = array_cmp_data_bram_std;
    assign array_cmp_data_bramp = array_cmp_data_bramp_std;
 
+   //---------------------------------------------------------------------
+   // entity output assignments
+   //---------------------------------------------------------------------
    assign rd_array_data = rd_array_data_q;
    assign cam_cmp_data = cam_cmp_data_q;
    assign rd_cam_data = rd_cam_data_q;
@@ -4719,4 +4830,3 @@ module tri_cam_32x143_1r1w1c(
                      rd_array_data_d_std[0:1], rd_array_data_d_std[32:33],
                      rd_array_data_d_std[40], rd_array_data_d_std[56:65], rd_val_late, wr_val_early};
 endmodule
-

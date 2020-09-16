@@ -9,17 +9,22 @@
 
 `timescale 1 fs / 1 fs
 
+// *!****************************************************************
+// *! FILENAME    : tri_iuq_cpl_arr.v
+// *! DESCRIPTION : iuq completion array (fpga model)
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
 module tri_iuq_cpl_arr(gnd, vdd, nclk, delay_lclkr_dc, mpw1_dc_b, mpw2_dc_b, force_t, thold_0_b, sg_0, scan_in, scan_out, re0, ra0, do0, re1, ra1, do1, we0, wa0, di0, we1, wa1, di1, perr);
-   parameter                    ADDRESSABLE_PORTS = 64;         
-   parameter                    ADDRESSBUS_WIDTH = 6;		
-   parameter                    PORT_BITWIDTH = 64;		
+   parameter                    ADDRESSABLE_PORTS = 64;         // number of addressable register in this array
+   parameter                    ADDRESSBUS_WIDTH = 6;		// width of the bus to address all ports (2^ADDRESSBUS_WIDTH >= addressable_ports)
+   parameter                    PORT_BITWIDTH = 64;		// bitwidth of ports
    parameter                    LATCHED_READ = 1'b1;
    parameter                    LATCHED_READ_DATA = 1'b1;
    parameter                    LATCHED_WRITE = 1'b1;
 
+   // POWER PINS
    (* ground_pin=1 *)
    inout                        gnd;
    (* power_pin=1 *)
@@ -27,6 +32,9 @@ module tri_iuq_cpl_arr(gnd, vdd, nclk, delay_lclkr_dc, mpw1_dc_b, mpw2_dc_b, for
 
    input [0:`NCLK_WIDTH-1]      nclk;
 
+   //-------------------------------------------------------------------
+   // Pervasive
+   //-------------------------------------------------------------------
    input                        delay_lclkr_dc;
    input                        mpw1_dc_b;
    input                        mpw2_dc_b;
@@ -36,22 +44,25 @@ module tri_iuq_cpl_arr(gnd, vdd, nclk, delay_lclkr_dc, mpw1_dc_b, mpw2_dc_b, for
    input                        scan_in;
    output                       scan_out;
 
+   //-------------------------------------------------------------------
+   // Functional
+   //-------------------------------------------------------------------
    input                        re0;
    input [0:ADDRESSBUS_WIDTH-1] ra0;
    output [0:PORT_BITWIDTH-1]   do0;
-   
+
    input                        re1;
    input [0:ADDRESSBUS_WIDTH-1] ra1;
    output [0:PORT_BITWIDTH-1]   do1;
-   
+
    input                        we0;
    input [0:ADDRESSBUS_WIDTH-1] wa0;
    input [0:PORT_BITWIDTH-1]    di0;
-   
+
    input                        we1;
    input [0:ADDRESSBUS_WIDTH-1] wa1;
    input [0:PORT_BITWIDTH-1]    di1;
-   
+
    output                       perr;
 
    reg                          re0_q;
@@ -75,37 +86,38 @@ module tri_iuq_cpl_arr(gnd, vdd, nclk, delay_lclkr_dc, mpw1_dc_b, mpw2_dc_b, for
    wire                         reset_hi;
    reg                          reset_q;
 
-   wire [0:PORT_BITWIDTH-1]     dout0;		
-   wire                         wen0;		
-   wire [0:ADDRESSBUS_WIDTH-1]  addr_w0;        
-   wire [0:ADDRESSBUS_WIDTH-1]  addr_r0;	
-   wire [0:PORT_BITWIDTH-1]     din0;		
+   wire [0:PORT_BITWIDTH-1]     dout0;		//std
+   wire                         wen0;		//std
+   wire [0:ADDRESSBUS_WIDTH-1]  addr_w0;        //std
+   wire [0:ADDRESSBUS_WIDTH-1]  addr_r0;	//std
+   wire [0:PORT_BITWIDTH-1]     din0;		//std
 
-   wire [0:PORT_BITWIDTH-1]     dout1;		
-   wire                         wen1;		
-   wire [0:ADDRESSBUS_WIDTH-1]  addr_w1;	
-   wire [0:ADDRESSBUS_WIDTH-1]  addr_r1;	
-   wire [0:PORT_BITWIDTH-1]     din1;		
+   wire [0:PORT_BITWIDTH-1]     dout1;		//std
+   wire                         wen1;		//std
+   wire [0:ADDRESSBUS_WIDTH-1]  addr_w1;	//std
+   wire [0:ADDRESSBUS_WIDTH-1]  addr_r1;	//std
+   wire [0:PORT_BITWIDTH-1]     din1;		//std
 
    reg                          we1_latch_q;
    reg [0:ADDRESSBUS_WIDTH-1]   wa1_latch_q;
    reg [0:PORT_BITWIDTH-1]      di1_latch_q;
-   
+
 
    (* analysis_not_referenced="true" *)
-   wire 								  unused_SPO_0;                   
+   wire 								  unused_SPO_0;
    (* analysis_not_referenced="true" *)
-   wire 								  unused_SPO_1;                   
+   wire 								  unused_SPO_1;
 
-   
+
    generate
       assign reset = nclk[1];
       assign correct_clk = nclk[0];
-          
+
       assign reset_hi = reset;
-         
-         
-         
+
+
+      // Slow Latches (nclk)
+
       always @(posedge correct_clk or posedge reset)
       begin: slatch
          begin
@@ -119,13 +131,17 @@ module tri_iuq_cpl_arr(gnd, vdd, nclk, delay_lclkr_dc, mpw1_dc_b, mpw2_dc_b, for
             end
          end
       end
-         
-         
+
+
+      // repower latches for resets
       always @(posedge correct_clk)
       begin: rlatch
          reset_q <= reset_hi;
       end
-         
+
+      // need to select which array to write based on the lowest order bit of the address which will indicate odd or even itag
+      // when both we0 and we1 are both asserted it is assumed that the low order bit of wa0 will not be equal to the low order
+      // bit of wa1
       assign addr_w0 = (wa0_q[ADDRESSBUS_WIDTH-1]) ? {wa1_q[0:ADDRESSBUS_WIDTH-2], 1'b0 } : {wa0_q[0:ADDRESSBUS_WIDTH-2], 1'b0 };
       assign wen0    = (wa0_q[ADDRESSBUS_WIDTH-1]) ?  we1_q  : we0_q;
       assign din0    = (wa0_q[ADDRESSBUS_WIDTH-1]) ?  di1_q  : di0_q;
@@ -137,7 +153,7 @@ module tri_iuq_cpl_arr(gnd, vdd, nclk, delay_lclkr_dc, mpw1_dc_b, mpw2_dc_b, for
       assign addr_r1 = (ra1_q[ADDRESSBUS_WIDTH-1]) ? {ra1_q[0:ADDRESSBUS_WIDTH-2], 1'b0 } : {ra0_q[0:ADDRESSBUS_WIDTH-2], 1'b0 };
 
       assign perr = 1'b0;
-        
+
       begin : xhdl0
          genvar i;
          for (i = 0; i <= PORT_BITWIDTH - 1; i = i + 1)
@@ -145,7 +161,7 @@ module tri_iuq_cpl_arr(gnd, vdd, nclk, delay_lclkr_dc, mpw1_dc_b, mpw2_dc_b, for
             RAM64X1D #(.INIT(64'h0000000000000000)) RAM64X1D0(
                .DPO(dout0[i]),
                .SPO(unused_SPO_0),
-                  
+
                .A0(addr_w0[0]),
                .A1(addr_w0[1]),
                .A2(addr_w0[2]),
@@ -166,7 +182,7 @@ module tri_iuq_cpl_arr(gnd, vdd, nclk, delay_lclkr_dc, mpw1_dc_b, mpw2_dc_b, for
             RAM64X1D #(.INIT(64'h0000000000000000)) RAM64X1D1(
                .DPO(dout1[i]),
                .SPO(unused_SPO_1),
-                  
+
                .A0(addr_w1[0]),
                .A1(addr_w1[1]),
                .A2(addr_w1[2]),
@@ -202,7 +218,7 @@ module tri_iuq_cpl_arr(gnd, vdd, nclk, delay_lclkr_dc, mpw1_dc_b, mpw2_dc_b, for
             re1_q <= re1;
             ra1_q <= ra1;
          end
-      end	
+      end
       if (LATCHED_READ == 1'b1)
       begin : read_latched_true
          always @(posedge correct_clk)
@@ -296,4 +312,3 @@ module tri_iuq_cpl_arr(gnd, vdd, nclk, delay_lclkr_dc, mpw1_dc_b, mpw2_dc_b, for
       end
    endgenerate
 endmodule
-

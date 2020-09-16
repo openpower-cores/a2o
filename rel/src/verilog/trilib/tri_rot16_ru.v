@@ -9,11 +9,17 @@
 
 `timescale 1 ns / 1 ns
 
+//
+//  Description:  XU LSU Load Data Rotator
+//*****************************************************************************
 
+// ##########################################################################################
+// Contents
+// 1) 16 bit Unaligned Rotate to the Right Rotator
+// 2) Little/Big Endian Support
+// ##########################################################################################
 
 `include "tri_a2o.vh"
-
-
 
 module tri_rot16_ru(
    opsize,
@@ -41,24 +47,24 @@ module tri_rot16_ru(
    scan_out
 );
 
-input [0:4]         opsize;		    
+input [0:4]         opsize;		    // (0)16B (1)8B (2)4B (3)2B (4)1B
 input               le;
 input [0:3]         le_rotate_sel;
 input [0:3]         be_rotate_sel;
 
-input [0:15]        arr_data;	    
+input [0:15]        arr_data;	    // data to rotate
 input               stq7_byp_val;
 input               stq_byp_val;
 input [0:15]        stq7_rmw_data;
 input [0:15]        stq8_rmw_data;
-output [0:15]       data_latched;	
+output [0:15]       data_latched;	// latched data, not rotated
 
-output [0:15]       data_rot;	    
+output [0:15]       data_rot;	    // rotated data out
 
-(* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)  
+(* pin_data="PIN_FUNCTION=/G_CLK/CAP_LIMIT=/99999/" *)
 input  [0:`NCLK_WIDTH-1] nclk;
 
-inout               vdd;   
+inout               vdd;
 inout               gnd;
 input               delay_lclkr_dc;
 input               mpw1_dc_b;
@@ -68,11 +74,12 @@ input               func_sl_thold_0_b;
 input               sg_0;
 input               act;
 
-(* pin_data="PIN_FUNCTION=/SCAN_IN/" *)   
-input               scan_in;   
-(* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)   
-output              scan_out;   
+(* pin_data="PIN_FUNCTION=/SCAN_IN/" *)
+input               scan_in;
+(* pin_data="PIN_FUNCTION=/SCAN_OUT/" *)
+output              scan_out;
 
+// tri_rot16_ru
 
 wire                my_d1clk;
 wire                my_d2clk;
@@ -81,6 +88,7 @@ wire [0:`NCLK_WIDTH-1]  my_lclk;
 
 wire [0:15]         data_latched_b;
 
+//signal bele_gp0_q_b, bele_gp0_q, bele_gp0_din      :std_ulogic_vector(0 to 1);
 wire [0:0]          bele_gp0_q_b;
 
 wire [0:0]          bele_gp0_q;
@@ -158,6 +166,9 @@ wire [0:3]          le_shx01_sel;
 wire [0:15]         stq_byp_data;
 wire [0:15]         rotate_data;
 
+//--------------------------
+// constants
+//--------------------------
 
 parameter           bele_gp0_din_offset = 0;
 parameter           be_shx04_gp0_din_offset = bele_gp0_din_offset + 1;
@@ -171,9 +182,50 @@ wire [0:scan_right] siv;
 wire [0:scan_right] sov;
 
 
+// #############################################################################################
+// Little Endian Rotate Support
+//         Optype2                      Optype4                       Optype8
+//                                                              B31 => rot_data(248:255)
+//                                                              B30 => rot_data(240:247)
+//                                                              B29 => rot_data(232:239)
+//                                                              B28 => rot_data(224:231)
+//                              B31    => rot_data(248:255)     B27 => rot_data(216:223)
+//                              B30    => rot_data(240:247)     B26 => rot_data(208:215)
+// B15    => rot_data(248:255)  B29    => rot_data(232:239)     B25 => rot_data(200:207)
+// B14    => rot_data(240:247)  B28    => rot_data(224:231)     B24 => rot_data(192:199)
+//
+//                        Optype16
+// B31 => rot_data(248:255)     B23 => rot_data(184:191)
+// B30 => rot_data(240:247)     B22 => rot_data(176:183)
+// B29 => rot_data(232:239)     B21 => rot_data(168:175)
+// B28 => rot_data(224:231)     B20 => rot_data(160:167)
+// B27 => rot_data(216:223)     B19 => rot_data(152:159)
+// B26 => rot_data(208:215)     B18 => rot_data(144:151)
+// B25 => rot_data(200:207)     B17 => rot_data(136:143)
+// B24 => rot_data(192:199)     B16 => rot_data(128:135)
+//
+// #############################################################################################
 
+//-- 0,1,2,3 byte rotation
+//with rot_sel(2 to 3) select
+//    rot3210 <= rot_data(104 to 127) & rot_data(0 to 103) when "11",
+//               rot_data(112 to 127) & rot_data(0 to 111) when "10",
+//               rot_data(120 to 127) & rot_data(0 to 119) when "01",
+//                                      rot_data(0 to 127) when others;
+//
+//-- 0-3,4,8,12 byte rotation
+//with rot_sel(0 to 1) select
+//    rotC840 <= rot3210(32 to 127) & rot3210(0 to 31) when "11",
+//               rot3210(64 to 127) & rot3210(0 to 63) when "10",
+//               rot3210(96 to 127) & rot3210(0 to 95) when "01",
+//                                   rot3210(0 to 127) when others;
 
+// ######################################################################
+// ## BEFORE ROTATE CYCLE
+// ######################################################################
 
+// Rotate Control
+// ----------------------------------
 
 assign be_shx04_sel[0] = (~be_rotate_sel[0]) & (~be_rotate_sel[1]);
 assign be_shx04_sel[1] = (~be_rotate_sel[0]) &   be_rotate_sel[1];
@@ -195,20 +247,29 @@ assign le_shx01_sel[1] = (~le_rotate_sel[2]) &   le_rotate_sel[3];
 assign le_shx01_sel[2] =   le_rotate_sel[2]  & (~le_rotate_sel[3]);
 assign le_shx01_sel[3] =   le_rotate_sel[2]  &   le_rotate_sel[3];
 
-assign mask_din[0] = opsize[0];		
-assign mask_din[1] = opsize[0] | opsize[1];		
-assign mask_din[2] = opsize[0] | opsize[1] | opsize[2];		
-assign mask_din[3] = opsize[0] | opsize[1] | opsize[2] | opsize[3];		
-assign mask_din[4] = opsize[0] | opsize[1] | opsize[2] | opsize[3] | opsize[4];	
+// Opsize Mask Generation
+// ----------------------------------
+assign mask_din[0] = opsize[0];		// for 16:23
+assign mask_din[1] = opsize[0] | opsize[1];		// for 24:27
+assign mask_din[2] = opsize[0] | opsize[1] | opsize[2];		// for 28:29
+assign mask_din[3] = opsize[0] | opsize[1] | opsize[2] | opsize[3];		// for 30
+assign mask_din[4] = opsize[0] | opsize[1] | opsize[2] | opsize[3] | opsize[4];	// for 31
 
+// Latch Inputs
+// ----------------------------------
 assign bele_gp0_din[0] = le;
 assign be_shx04_gp0_din[0:3] = be_shx04_sel[0:3];
 assign le_shx04_gp0_din[0:3] = le_shx04_sel[0:3];
 assign be_shx01_gp0_din[0:3] = be_shx01_sel[0:3];
 assign le_shx01_gp0_din[0:3] = le_shx01_sel[0:3];
 
+// ######################################################################
+// ## BIG-ENDIAN ROTATE CYCLE
+// ######################################################################
 
-
+// -------------------------------------------------------------------
+// local latch inputs
+// -------------------------------------------------------------------
 
 tri_inv bele_gp0_q_0 (.y(bele_gp0_q), .a(bele_gp0_q_b));
 
@@ -222,9 +283,15 @@ tri_inv #(.WIDTH(4)) le_shx01_gp0_q_0 (.y(le_shx01_gp0_q[0:3]), .a(le_shx01_gp0_
 
 assign mask_q[0:4] = (~mask_q_b[0:4]);
 
+// ----------------------------------------------------------------------------------------
+// Read-Modify-Write Bypass Data Muxing
+// ----------------------------------------------------------------------------------------
 assign stq_byp_data = ({16{stq7_byp_val}} & stq7_rmw_data) | ({16{~stq7_byp_val}} & stq8_rmw_data);
 assign rotate_data  = ({16{stq_byp_val}}  & stq_byp_data)  | ({16{~stq_byp_val}}  & arr_data);
 
+// ----------------------------------------------------------------------------------------
+// Little/Big Endian Muxing
+// ----------------------------------------------------------------------------------------
 assign bele_s0[0:15] = {16{~bele_gp0_q[0]}};
 assign bele_s1[0:15] = {16{ bele_gp0_q[0]}};
 
@@ -255,6 +322,9 @@ tri_aoi22 #(.WIDTH(16)) mxbele_b_0 (.y(mxbele_b[0:15]), .a0(mxbele_d0[0:15]), .a
 
 tri_inv #(.WIDTH(16)) mxbele_0 (.y(mxbele[0:15]), .a(mxbele_b[0:15]));
 
+// ----------------------------------------------------------------------------------------
+// First level of muxing <0,4,8,12 bytes>
+// ----------------------------------------------------------------------------------------
 
 assign mx1_s0[0:15] = {16{shx04_gp0_sel[0]}};
 assign mx1_s1[0:15] = {16{shx04_gp0_sel[1]}};
@@ -284,12 +354,15 @@ tri_aoi22 #(.WIDTH(16)) mx1_1_b_0 (.y(mx1_1_b[0:15]), .a0(mx1_s2[0:15]), .a1(mx1
 
 tri_nand2 #(.WIDTH(16)) mx1_0 (.y(mx1[0:15]), .a(mx1_0_b[0:15]), .b(mx1_1_b[0:15]));
 
+// ----------------------------------------------------------------------------------------
+// third level of muxing <0,1,2,3 bytes> , include mask on selects
+// ----------------------------------------------------------------------------------------
 
-assign mask_en[0:7]   = {8{mask_q[0]}};	
-assign mask_en[8:11]  = {4{mask_q[1]}};	
-assign mask_en[12:13] = {2{mask_q[2]}};	
-assign mask_en[14]    = mask_q[3];           
-assign mask_en[15]    = mask_q[4];           
+assign mask_en[0:7]   = {8{mask_q[0]}};	// 128
+assign mask_en[8:11]  = {4{mask_q[1]}};	// 128,64
+assign mask_en[12:13] = {2{mask_q[2]}};	// 128,64,32
+assign mask_en[14]    = mask_q[3];           // 128,64,32,16
+assign mask_en[15]    = mask_q[4];           // 128,64,32,16,8 <not sure you really need this one>
 
 assign mx2_s0[0:7]  = {8{shx01_gp0_sel[0]}} & mask_en[0:7];
 assign mx2_s1[0:7]  = {8{shx01_gp0_sel[1]}} & mask_en[0:7];
@@ -331,7 +404,31 @@ tri_inv #(.WIDTH(16)) data_latched_b_0 (.y(data_latched_b), .a(arr_data));
 
 tri_inv #(.WIDTH(16)) data_latched_0 (.y(data_latched), .a(data_latched_b));
 
+// top   funny physical placement to minimize wrap wires ... also nice for LE adjust
+//---------
+//  0  31
+//  1  30
+//  2  29
+//  3  28
+//  4  27
+//  5  26
+//  6  25
+//  7  24
+//---------
+//  8  23
+//  9  22
+// 10  21
+// 11  20
+// 12  19
+// 13  18
+// 14  17
+// 15  16
+//---------
+// bot
 
+// ###############################################################
+// ## LCBs
+// ###############################################################
 tri_lcbnd  my_lcb(
    .delay_lclkr(delay_lclkr_dc),
    .mpw1_b(mpw1_dc_b),
@@ -348,6 +445,9 @@ tri_lcbnd  my_lcb(
    .lclk(my_lclk)
 );
 
+// ###############################################################
+// ## Latches
+// ###############################################################
 tri_inv_nlats #(.WIDTH(1), .INIT(1'b0), .BTR("NLI0001_X2_A12TH"), .NEEDS_SRESET(0)) bele_gp0_lat(
    .vd(vdd),
    .gd(gnd),
@@ -424,4 +524,3 @@ assign siv[0:scan_right] = {sov[1:scan_right], scan_in};
 assign scan_out = sov[0];
 
 endmodule
-

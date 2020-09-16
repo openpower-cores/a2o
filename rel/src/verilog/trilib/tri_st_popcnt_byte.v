@@ -7,6 +7,10 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//*****************************************************************************
+//  Description:  XU Population Count - Byte Phase
+//
+//*****************************************************************************
 
 module tri_st_popcnt_byte(
    b0,
@@ -18,12 +22,13 @@ module tri_st_popcnt_byte(
    output [0:3] y;
    inout        vdd;
    inout        gnd;
-   
+
    wire [0:2]   s0;
    wire [0:3]   c1;
    wire [0:0]   s1;
    wire [0:1]   c2;
 
+   // Level 0
 
    tri_csa32 csa_l0_0(
       .vd(vdd),
@@ -65,6 +70,7 @@ module tri_st_popcnt_byte(
       .car(c1[3])
    );
 
+   // Level 1
 
    tri_csa32 csa_l1_0(
       .vd(vdd),
@@ -84,6 +90,7 @@ module tri_st_popcnt_byte(
       .car(c2[1])
    );
 
+   // Level 2/3
 
    tri_csa22 csa_l2_0(
       .a(c2[0]),
@@ -91,6 +98,6 @@ module tri_st_popcnt_byte(
       .sum(y[1]),
       .car(y[0])
    );
-      
+
 
 endmodule

@@ -7,6 +7,9 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU Multiplier Top
+//
+//*****************************************************************************
 
 module tri_st_mult_boothrow(
    s_neg,
@@ -17,16 +20,20 @@ module tri_st_mult_boothrow(
    q,
    hot_one
 );
-   input         s_neg;		
-   input         s_x;		
-   input         s_x2;		
+   input         s_neg;		// negate the row
+   input         s_x;		// shift by 0
+   input         s_x2;		// shift by 1
    input         sign_bit_adj;
-   input [0:31]  x;		
-   output [0:32] q;		
+   input [0:31]  x;		// input (multiplicand)
+   output [0:32] q;		// final output
+   // lsb term for row below
    output        hot_one;
-        
+
    wire [1:32]   left;
 
+   //-------------------------------------------------------------------
+   // Build the booth mux row bit by bit
+   //-------------------------------------------------------------------
 
    tri_bthmx u00(
       .sneg(s_neg),
@@ -391,6 +398,5 @@ module tri_st_mult_boothrow(
    );
 
    assign hot_one = s_neg & (s_x | s_x2);
-      
-endmodule
 
+endmodule

@@ -30,15 +30,17 @@ module tri_csa32(
    inout   gd;
 
    wire    carn1;
-   wire    carn2;   
+   wire    carn2;
    wire    carn3;
-   
+
+//   assign sum = a ^ b ^ c;
    tri_xor3 CSA42_XOR3_1(sum, a, b, c);
-      
+
+//   assign car = (a & b) | (a & c) | (b & c);
    tri_nand2 CSA42_NAND2_1(carn1, a, b);
    tri_nand2 CSA42_NAND2_2(carn2, a, c);
    tri_nand2 CSA42_NAND2_3(carn3, b, c);
    tri_nand3 CSA42_NAND3_4(car, carn1, carn2, carn3);
-   
-   
+
+
 endmodule

@@ -9,11 +9,12 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILE NAME    :  tri_fu_mul_bthdcd.vhdl
+// *! DESCRIPTION  :  Booth Decode
+// *!****************************************************************
 
    `include "tri_a2o.vh"
-
-
-
 
 module tri_fu_mul_bthmux(
    x,
@@ -25,31 +26,22 @@ module tri_fu_mul_bthmux(
    q
 );
    input   x;
-   input   sneg;		
-   input   sx;		
-   input   sx2;		
-   input   right;		
-   output  left;		
-   output  q;		
-   
-   
+   input   sneg;		// do not flip the input (add)
+   input   sx;		// shift by 1
+   input   sx2;		// shift by 2
+   input   right;		// bit from the right (lsb)
+   output  left;		// bit from the left
+   output  q;		// final output
+
    wire    center;
    wire    q_b;
 
    assign center = x ^ sneg;
-   
-   assign left = center;		
- 
+
+   assign left = center;		//output-- rename, no gate
+
    assign q_b = (~((sx & center) | (sx2 & right)));
 
-   assign q = (~q_b);		
+   assign q = (~q_b);		// output--
 
-
-
-
-
-
-
-
-   
 endmodule

@@ -7,7 +7,12 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  Adder Component
+//
+//*****************************************************************************
 
+// input phase is important
+// (change X (B) by switching xor/xnor )
 
 module tri_st_add_glbloc(
    g01,
@@ -15,11 +20,11 @@ module tri_st_add_glbloc(
    g08,
    t08
 );
-   input [0:7] g01;		
+   input [0:7] g01;		// after xor
    input [0:7] t01;
    output      g08;
    output      t08;
-      
+
    wire [0:3]  g02_b;
    wire [0:3]  t02_b;
    wire [0:1]  g04;
@@ -47,10 +52,9 @@ module tri_st_add_glbloc(
 
    assign t08_b = (~((t04[0] & t04[1])));
 
-   assign g08 = (~(g08_b));		
+   assign g08 = (~(g08_b));		// output
 
-   assign t08 = (~(t08_b));		
-      
+   assign t08 = (~(t08_b));		// output
+
 
 endmodule
-

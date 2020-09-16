@@ -7,6 +7,10 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//*****************************************************************************
+//  Description:  XU Population Count
+//
+//*****************************************************************************
 
 module tri_csa22(
    a,
@@ -18,12 +22,12 @@ module tri_csa22(
    input   b;
    output  car;
    output  sum;
-   
+
    wire    car_b;
    wire    sum_b;
 
    assign car_b = (~(a & b));
-   assign sum_b = (~(car_b & (a | b)));      
+   assign sum_b = (~(car_b & (a | b)));      // this is equiv to an xnor
    assign car = (~car_b);
    assign sum = (~sum_b);
 

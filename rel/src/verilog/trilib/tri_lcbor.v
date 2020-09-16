@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_lcbor.v
+// *! DESCRIPTION : Used to generate LCB controls
+// *!****************************************************************
 
 module tri_lcbor(clkoff_b, thold, sg, act_dis, force_t, thold_b);
    input      clkoff_b;
@@ -26,4 +30,3 @@ module tri_lcbor(clkoff_b, thold, sg, act_dis, force_t, thold_b);
    assign force_t = 1'b0;
    assign thold_b = (~thold);
 endmodule
-

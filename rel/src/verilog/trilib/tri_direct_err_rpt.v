@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_direct_err_rpt.v
+// *! DESCRIPTION : Error Reporting Component
+// *!****************************************************************
 
 module tri_direct_err_rpt(
    vd,
@@ -16,13 +20,14 @@ module tri_direct_err_rpt(
    err_in,
    err_out
 );
-   parameter          WIDTH = 1;		
+   parameter          WIDTH = 1;		// use to bundle error reporting checkers of the same exact type
    inout              vd;
    inout              gd;
 
    input [0:WIDTH-1]  err_in;
    output [0:WIDTH-1] err_out;
 
+   // tri_direct_err_rpt
 
     (* analysis_not_referenced="true" *)
    wire               unused;
@@ -31,5 +36,3 @@ module tri_direct_err_rpt(
 
    assign err_out = err_in;
 endmodule
-
-

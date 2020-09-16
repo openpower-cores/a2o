@@ -7,16 +7,19 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU ALU or reduce component
+//
+//*****************************************************************************
 module tri_st_or3232(
    d,
    or_hi_b,
    or_lo_b
 );
-   input [0:63] d;		
-   output       or_hi_b;		
-   output       or_lo_b;                
+   input [0:63] d;		//data
+   output       or_hi_b;		// upper 32 ORed together
+   output       or_lo_b;                // lower 32 ORed together
 
-   
+
    wire [0:31]  or_lv1_b;
    wire [0:15]  or_lv2;
    wire [0:7]   or_lv3_b;
@@ -90,7 +93,7 @@ module tri_st_or3232(
    assign or_lv5_b[0] = (~(or_lv4[0] | or_lv4[1]));
    assign or_lv5_b[1] = (~(or_lv4[2] | or_lv4[3]));
 
-   assign or_hi_b = or_lv5_b[0];		
-   assign or_lo_b = or_lv5_b[1];		
+   assign or_hi_b = or_lv5_b[0];		// rename --output--
+   assign or_lo_b = or_lv5_b[1];		// rename --output--
 
 endmodule

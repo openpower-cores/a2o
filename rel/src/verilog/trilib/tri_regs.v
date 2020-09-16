@@ -9,6 +9,10 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_regs.v
+// *! DESCRIPTION : Multi-bit scan-only latch, LCB included
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -24,26 +28,28 @@ module tri_regs(
    dout
 );
    parameter                      WIDTH = 4;
-   parameter                      OFFSET = 0;		
-   parameter                      INIT = 0;		
-   parameter                      IBUF = 1'b0;		
-   parameter                      DUALSCAN = "";		
-   parameter                      NEEDS_SRESET = 1;		
+   parameter                      OFFSET = 0;		//starting bit
+   parameter                      INIT = 0;		// will be converted to the least signficant
+                                                        // 31 bits of init_v
+   parameter                      IBUF = 1'b0;		//inverted latch IOs, if set to true.
+   parameter                      DUALSCAN = "";		// if "S", marks data ports as scan for Moebius
+   parameter                      NEEDS_SRESET = 1;		// for inferred latches
    parameter                      DOMAIN_CROSSING = 0;
 
    inout                          vd;
    inout                          gd;
    input [0:`NCLK_WIDTH-1]        nclk;
-   input                          force_t;		
-   input                          thold_b;		
-   input                          delay_lclkr;		
-   input [OFFSET:OFFSET+WIDTH-1]  scin;		
+   input                          force_t;		// 1: force LCB active
+   input                          thold_b;		// 1: functional, 0: no clock
+   input                          delay_lclkr;		// 0: functional
+   input [OFFSET:OFFSET+WIDTH-1]  scin;		// scan in
    output [OFFSET:OFFSET+WIDTH-1] scout;
    output [OFFSET:OFFSET+WIDTH-1] dout;
 
    parameter [0:WIDTH-1]          init_v = INIT;
    parameter [0:WIDTH-1]          ZEROS = {WIDTH{1'b0}};
 
+   // tri_regs
 
    generate
    begin
@@ -101,5 +107,3 @@ module tri_regs(
    end
    endgenerate
 endmodule
-
-

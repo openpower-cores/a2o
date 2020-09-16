@@ -7,10 +7,14 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+// *!****************************************************************
+// *! FILENAME    : tri_serial_scom2.v
+// *! DESCRIPTION : SCOM Satellite
+// *!               Only supports 1:1 ratio
+// *!
+// *!****************************************************************
 
 `include "tri_a2o.vh"
-
-
 
 module tri_serial_scom2(
    nclk,
@@ -53,13 +57,22 @@ module tri_serial_scom2(
 );
 
 
-   parameter         	  WIDTH = 64;		      
+//=====================================================================
+// I/O Definition
+//=====================================================================
+   parameter         	  WIDTH = 64;		      // 64 is the maximum allowed
    parameter         	  INTERNAL_ADDR_DECODE = 1'b0;
-   parameter         	  PIPELINE_PARITYCHK = 1'b0;  
-   parameter         	  SATID_NOBITS = 4;	      
+   // Made these parameters local (they don't play nice with vhdl wrapper)
+   //parameter [0:WIDTH-1]  USE_ADDR	  = 64'b1000000000000000000000000000000000000000000000000000000000000000;
+   //parameter [0:WIDTH-1]  ADDR_IS_RDABLE  = 64'b1000000000000000000000000000000000000000000000000000000000000000;
+   //parameter [0:WIDTH-1]  ADDR_IS_WRABLE  = 64'b1000000000000000000000000000000000000000000000000000000000000000;
+   //parameter [0:WIDTH-1]  PIPELINE_ADDR_V = 64'b0000000000000000000000000000000000000000000000000000000000000000;
+   parameter         	  PIPELINE_PARITYCHK = 1'b0;  // pipeline parcheck for timing
+   parameter         	  SATID_NOBITS = 4;	      // should not be set by user
    parameter         	  REGID_NOBITS = 6;
    parameter         	  RINGID_NOBITS = 3;
 
+   // clock, scan and misc interfaces
    input  [0:`NCLK_WIDTH-1]               		     nclk;
    inout                            			     vdd;
    inout                               			     gnd;
@@ -72,55 +85,92 @@ module tri_serial_scom2(
    input                             			     d_mode_dc;
    input                           			     delay_lclkr_dc;
 
+   //lcb_align_0          : in  std_ulogic;
 
+   //! scan chain should evaluate to 0:176 for WIDTH=64 and 6 REGID_NOBITS (=64 SCOM addresses)
+   //! scan chain vector is longer than number of latches being used due to
+   //! vhdl generics formulation and shortings
    input  [0:WIDTH+2*((WIDTH-1)/16+1)+(2**REGID_NOBITS)+40] func_scan_in;
    output [0:WIDTH+2*((WIDTH-1)/16+1)+(2**REGID_NOBITS)+40] func_scan_out;
 
+   // for mask slat inside of c_err_rpt
    input                                                    dcfg_scan_dclk;
    input  [0:`NCLK_WIDTH-1]                                 dcfg_scan_lclk;
 
-   input                                                    dcfg_d1clk;	
-   input                                                    dcfg_d2clk;	
-   input  [0:`NCLK_WIDTH-1]                                 dcfg_lclk;	
+   //! for nlats inside of c_err_rpt
+   input                                                    dcfg_d1clk;	// needed for one bit only, always or scom_local_act clocked dcfg
+   input                                                    dcfg_d2clk;	// needed for one bit only, always or scom_local_act clocked dcfg
+   input  [0:`NCLK_WIDTH-1]                                 dcfg_lclk;	// needed for one bit only, always or scom_local_act clocked dcfg
 
+   // contains mask slat and hold nlat of c_err_rpt
    input  [0:1]                                             dcfg_scan_in;
    output [0:1]                                             dcfg_scan_out;
 
+   // denotes SCOM sat active if set to '1', can be used for local clock gating
    output                                                   scom_local_act;
 
+   //---------------------------------------------------------------------
+   // SCOM Interface
+   //---------------------------------------------------------------------
+   // SCOM satellite ID tied to a specific pattern
    input  [0:SATID_NOBITS-1]                                sat_id;
 
+   // SCOM Data Channel input (carry both address and data)
    input                                                    scom_dch_in;
 
+   // SCOM Control Channel input
    input                                                    scom_cch_in;
 
+   // SCOM Data Channel output
    output                                                   scom_dch_out;
 
+   // SCOM Control Channel output
    output                                                   scom_cch_out;
 
+   //---------------------------------------------------------------------
+   // Interface between SCOM satellite and internal macro logic
+   //---------------------------------------------------------------------
+   // denotes a request if asserted to '1', level
    output                                                   sc_req;
 
+   // acknowledge a pending request with sc_ack_info+sc_rdata+sc_rparity
+   // being valid
    input                                                    sc_ack;
 
+   // acknowledge information
+   // 0: '1' if access violation, otherwise '0'
+   // 1: '1' if register address invalid
    input  [0:1]                                             sc_ack_info;
 
+   // '1' if read access, '0' write access
    output                                                   sc_r_nw;
 
+   // Register address, default 6 bits for up to 64 register addresses
    output [0:REGID_NOBITS-1]                                sc_addr;
 
+   // one-hot address, valid only if INTERNAL_ADDR_DECODE=TRUE, else zeros
    output [0:WIDTH-1]                                       addr_v;
 
+   // Read data delivered by macro logic as response to a read request
    input  [0:WIDTH-1]                                       sc_rdata;
 
+   // Write data delivered from SCOM satellite for a write request
    output [0:WIDTH-1]                                       sc_wdata;
 
+   // Write data parity bit over sc_wdata, optional usage
    output                                                   sc_wparity;
 
+   //---------------------------------------------------------------------
+   // parity error of fsm state vector, wire to next local fir
    output                                                   scom_err;
 
+   // reset fsm (optional), tie to '0' if unused
    input                                                    fsm_reset;
 
 
+//=====================================================================
+// Signal Declarations
+//=====================================================================
    parameter [0:WIDTH-1]  USE_ADDR	  = 64'b1000000000000000000000000000000000000000000000000000000000000000;
    parameter [0:WIDTH-1]  ADDR_IS_RDABLE  = 64'b1000000000000000000000000000000000000000000000000000000000000000;
    parameter [0:WIDTH-1]  ADDR_IS_WRABLE  = 64'b1000000000000000000000000000000000000000000000000000000000000000;
@@ -135,23 +185,25 @@ module tri_serial_scom2(
    parameter                                                HEAD_WIDTH = PARBIT_INDEX + 1;
    parameter [0:HEAD_WIDTH-1]                               HEAD_INIT = 13'b0000000000000;
 
-   parameter [0:STATE_WIDTH-1]                              IDLE 	= 5'b00000;	
-   parameter [0:STATE_WIDTH-1]                              REC_HEAD 	= 5'b00011;	
-   parameter [0:STATE_WIDTH-1]                              CHECK_BEFORE= 5'b00101;	
-   parameter [0:STATE_WIDTH-1]                              REC_WDATA 	= 5'b00110;	
-   parameter [0:STATE_WIDTH-1]                              REC_WPAR 	= 5'b01001;	
-   parameter [0:STATE_WIDTH-1]                              EXE_CMD 	= 5'b01010;	
-   parameter [0:STATE_WIDTH-1]                              FILLER0 	= 5'b01100;	
-   parameter [0:STATE_WIDTH-1]                              FILLER1 	= 5'b01111;	
-   parameter [0:STATE_WIDTH-1]                              GEN_ULINFO 	= 5'b10001;	
-   parameter [0:STATE_WIDTH-1]                              SEND_ULINFO = 5'b10010;	
-   parameter [0:STATE_WIDTH-1]                              SEND_RDATA 	= 5'b10100;	
-   parameter [0:STATE_WIDTH-1]                              SEND_0 	= 5'b10111;	
-   parameter [0:STATE_WIDTH-1]                              SEND_1 	= 5'b11000;	
-   parameter [0:STATE_WIDTH-1]                              CHECK_WPAR 	= 5'b11011;	
-   parameter [0:STATE_WIDTH-1]                              NOT_SELECTED= 5'b11110;	
+   									//   0123Parity
+   parameter [0:STATE_WIDTH-1]                              IDLE 	= 5'b00000;	// 0  = x00
+   parameter [0:STATE_WIDTH-1]                              REC_HEAD 	= 5'b00011;	// 1  = x03
+   parameter [0:STATE_WIDTH-1]                              CHECK_BEFORE= 5'b00101;	// 2  = x05
+   parameter [0:STATE_WIDTH-1]                              REC_WDATA 	= 5'b00110;	// 3  = x06
+   parameter [0:STATE_WIDTH-1]                              REC_WPAR 	= 5'b01001;	// 4  = x09
+   parameter [0:STATE_WIDTH-1]                              EXE_CMD 	= 5'b01010;	// 5  = x0A
+   parameter [0:STATE_WIDTH-1]                              FILLER0 	= 5'b01100;	// 6  = x0C
+   parameter [0:STATE_WIDTH-1]                              FILLER1 	= 5'b01111;	// 7  = x0F
+   parameter [0:STATE_WIDTH-1]                              GEN_ULINFO 	= 5'b10001;	// 8  = x11
+   parameter [0:STATE_WIDTH-1]                              SEND_ULINFO = 5'b10010;	// 9  = x12
+   parameter [0:STATE_WIDTH-1]                              SEND_RDATA 	= 5'b10100;	// 10 = x14
+   parameter [0:STATE_WIDTH-1]                              SEND_0 	= 5'b10111;	// 11 = x17
+   parameter [0:STATE_WIDTH-1]                              SEND_1 	= 5'b11000;	// 12 = x18
+   parameter [0:STATE_WIDTH-1]                              CHECK_WPAR 	= 5'b11011;	// 13 = x1B
+                                                                                        // 14 = x1D
+   parameter [0:STATE_WIDTH-1]                              NOT_SELECTED= 5'b11110;	// 15 = x1E
 
-   parameter                                                EOF_WDATA = PARBIT_INDEX - 1 + 64;	
+   parameter                                                EOF_WDATA = PARBIT_INDEX - 1 + 64;	// here max width, it is 64
    parameter                                                EOF_WPAR = EOF_WDATA + 4;
 
    parameter                                                EOF_WDATA_N = PARBIT_INDEX - 1 + WIDTH;
@@ -201,7 +253,7 @@ module tri_serial_scom2(
    wire [0:HEAD_WIDTH-1]                                    head_lt;
    wire [0:4]                                               tail_in;
    wire [0:4]                                               tail_lt;
- 
+
    wire [0:1]                                               sc_ack_info_in;
    wire [0:1]                                               sc_ack_info_lt;
    wire                                                     head_mux;
@@ -248,9 +300,10 @@ module tri_serial_scom2(
    wire                                                     spare_latch1_lt;
    wire                                                     spare_latch2_in;
    wire                                                     spare_latch2_lt;
-(* analysis_not_referenced="true" *)  
+// Don't reference unused inputs:
+(* analysis_not_referenced="true" *)
    wire [0:1]                                               unused;
-(* analysis_not_referenced="true" *)  
+(* analysis_not_referenced="true" *)
    wire                                                     unused_signals;
 
    tri_lcbor lcbor_func(
@@ -273,15 +326,17 @@ module tri_serial_scom2(
       .force_t(func_force),
       .sg(sg),
       .thold_b(func_thold_b),
+      //--------------------------
       .d1clk(d1clk),
       .d2clk(d2clk),
       .lclk(lclk)
    );
 
-   tri_err_rpt #(.WIDTH(1), 			
-   		 .INLINE(1'b0), 		
-		 .MASK_RESET_VALUE(1'b0), 	
-		 .NEEDS_SRESET(1)		
+   //-----------------------------------------------------------------------------
+   tri_err_rpt #(.WIDTH(1), 			// use to bundle error reporting checkers of the same exact type
+   		 .INLINE(1'b0), 		// make hold latch be inline
+		 .MASK_RESET_VALUE(1'b0), 	// do not report address and data parity errors by default
+		 .NEEDS_SRESET(1)		// since already reported to PCB through error reply
 		) parity_err(
       .vd(vdd),
       .gd(gnd),
@@ -294,28 +349,32 @@ module tri_serial_scom2(
       .mode_lclk(dcfg_scan_lclk),
       .mode_scan_in(dcfg_scan_in[1:1]),
       .mode_scan_out(dcfg_scan_out[1:1]),
+      //--------------------------
       .err_in(state_par_error),
       .err_out(scom_err_in)
    );
 
-   assign scom_err = scom_err_lt;		
+   assign scom_err = scom_err_lt;		// drive this output with a latch / 1.35
 
-   assign func_scan_out[STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22+(2**REGID_NOBITS):WIDTH+(2*((WIDTH-1)/16+1))+(2**REGID_NOBITS)+40] = 
+   //-----------------------------------------------------------------------------
+   // fill spares of scan vector
+   assign func_scan_out[STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22+(2**REGID_NOBITS):WIDTH+(2*((WIDTH-1)/16+1))+(2**REGID_NOBITS)+40] =
           func_scan_in[ STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22+(2**REGID_NOBITS):WIDTH+(2*((WIDTH-1)/16+1))+(2**REGID_NOBITS)+40];
 
+   //-----------------------------------------------------------------------------
    assign sat_id_net = sat_id;
 
    assign cch_in = {scom_cch_in, cch_lt[0]};
-   
-   assign reset = (cch_lt[0] & (~scom_cch_in)) 	| 	 
-   		   fsm_reset 			| 	 
-		   scom_err_lt;				 
-   
-   assign local_act = (|{scom_cch_in, cch_lt});		 
 
-   assign local_act_int = local_act | scom_local_act_lt; 
+   assign reset = (cch_lt[0] & (~scom_cch_in)) 	| 	 // with falling edge of scom_cch_in
+   		   fsm_reset 			| 	 // or with fsm_reset
+		   scom_err_lt;				 // MP timing fix -- or state_par_error;
 
-   assign scom_local_act_in = local_act;		 
+   assign local_act = (|{scom_cch_in, cch_lt});		 // active with scom_cch_in and as long as cch_lt
+
+   assign local_act_int = local_act | scom_local_act_lt; // MP... and scom_local_act_lt is cleared
+
+   assign scom_local_act_in = local_act;		 // drive this output with a latch / 1.35
    assign scom_local_act = scom_local_act_lt;
 
    assign scom_cch_out = cch_lt[0];
@@ -334,8 +393,11 @@ module tri_serial_scom2(
    assign sc_wdata = data_shifter_lt;
    assign sc_wparity = (^datapar_shifter_lt);
 
-   always @(state_lt or got_head or gor_eofwdata or got_eofwpar or got_ulhead or sent_rdata or 
-   	    p0_err or any_ack_error or match or do_write or do_read or cch_lt[0] or dch_lt  or 
+   //-----------------------------------------------------------------------------
+   // FSM: serial => parallel => serial state machine
+   //
+   always @(state_lt or got_head or gor_eofwdata or got_eofwpar or got_ulhead or sent_rdata or
+   	    p0_err or any_ack_error or match or do_write or do_read or cch_lt[0] or dch_lt  or
 	    sc_ack or wpar_err or read_nvld)
 
    begin: fsm_transition
@@ -366,6 +428,7 @@ module tri_serial_scom2(
 
        REC_WPAR :
           if ((got_eofwpar & (~p0_err)) == 1'b1)
+            // next_state <= EXE_CMD;
             next_state <= CHECK_WPAR;
           else if ((got_eofwpar & p0_err) == 1'b1)
             next_state <= FILLER0;
@@ -420,6 +483,7 @@ module tri_serial_scom2(
 
    assign state_par_error = (^state_lt);
 
+   //-----------------------------------------------------------------------------
    assign is_idle 	    = (state_lt == IDLE);
    assign is_rec_head 	    = (state_lt == REC_HEAD);
    assign is_check_before   = (state_lt == CHECK_BEFORE);
@@ -434,27 +498,32 @@ module tri_serial_scom2(
    assign is_filler_0 	    = (state_lt == FILLER0);
    assign is_filler_1 	    = (state_lt == FILLER1);
 
+   //-----------------------------------------------------------------------------
    assign cnt_in = ((is_idle | is_gen_ulinfo) == 1'b1) 			? 7'b0000000 :
-                   ((is_rec_head | is_check_before | is_rec_wdata | 
-		     is_rec_wpar | is_send_ulinfo | is_send_rdata | 
+                   ((is_rec_head | is_check_before | is_rec_wdata |
+		     is_rec_wpar | is_send_ulinfo | is_send_rdata |
 		     is_send_0   | is_send_1) == 1'b1) 			? cnt_lt + 7'b0000001 :
                    							  cnt_lt;
-									  
 
+   // downlink head (command) has been received when start bit, satellite id and register id have been received
    assign got_head = ({{32-CNT_SIZE{1'b0}},cnt_lt} == (1 + SATID_NOBITS + REGID_NOBITS));
 
+   // uplink head (response) has been received when start bit, satellite id, register id and 4 ack bits have been received
    assign got_ulhead = ({{32-CNT_SIZE{1'b0}},cnt_lt} == (1 + SATID_NOBITS + REGID_NOBITS + 4));
 
    assign gor_eofwdata = ({{32-CNT_SIZE{1'b0}},cnt_lt} == EOF_WDATA);
    assign got_eofwpar  = ({{32-CNT_SIZE{1'b0}},cnt_lt} == EOF_WPAR);
 
+   // for sent_rdata: 1 start, 10 sat_id + reg, 4 ack, 1 p, 64 data = 84, but count from 0 is 1st bit => 83 is end
    assign sent_rdata   = (cnt_lt == 7'd83);
 
    assign cntgtheadpluswidth      = ({{32-CNT_SIZE{1'b0}},cnt_lt} > EOF_WDATA_N);
    assign cntgteofwdataplusparity = ({{32-CNT_SIZE{1'b0}},cnt_lt} > EOF_WPAR_M);
 
-   assign do_send_par = ({{32-CNT_SIZE{1'b0}},cnt_lt} > 79);	 
+   assign do_send_par = ({{32-CNT_SIZE{1'b0}},cnt_lt} > 79);	 // 78 bits=15 ulhead + 64 data
 
+   //-----------------------------------------------------------------------------
+   // shift downlink command (for this or any subsequent satellite) or uplink response (from previous satellite)
    assign head_in[HEAD_WIDTH-2:HEAD_WIDTH-1] = ((is_rec_head | (is_idle & dch_lt)) == 1'b1) ? {head_lt[HEAD_WIDTH-1], dch_lt} :
                                                                                                head_lt[HEAD_WIDTH-2:HEAD_WIDTH-1];
 
@@ -464,50 +533,67 @@ module tri_serial_scom2(
    assign head_mux = (is_rec_head == 1'b1) ? head_lt[RW_BIT_INDEX] :
                                              tail_lt[0];
 
+   // calculate parity P0 of uplink frame
    assign tail_in[4] = (is_gen_ulinfo == 1'b1 & (INTERNAL_ADDR_DECODE == 1'b0)) ? (^({parity_satid_regaddr, tail_lt[0], (wpar_err & do_write), sc_ack_info_lt[0:1]})) :
                        (is_gen_ulinfo == 1'b1 & (INTERNAL_ADDR_DECODE == 1'b1)) ? (^({parity_satid_regaddr, tail_lt[0], (wpar_err & do_write), (write_nvld | read_nvld), addr_nvld})) :
                                                                                   tail_lt[4];
 
+   // copy sampled ack_info coming from logic
    assign tail_in[2:3] = (is_gen_ulinfo == 1'b1 & INTERNAL_ADDR_DECODE == 1'b0) ? sc_ack_info_lt[0:1] :
                          (is_gen_ulinfo == 1'b1 & INTERNAL_ADDR_DECODE == 1'b1) ? {(write_nvld | read_nvld), addr_nvld} :
-                                                       (is_send_ulinfo == 1'b1) ? tail_lt[3:4] : 		
+                                                       (is_send_ulinfo == 1'b1) ? tail_lt[3:4] : 		// shift out
                                                                                   tail_lt[2:3];
 
-   assign tail_in[1] = (is_gen_ulinfo == 1'b1) ? (wpar_err & do_write) : 
-                      (is_send_ulinfo == 1'b1) ? tail_lt[2] : 		 
+   // Write Data Parity error
+   assign tail_in[1] = (is_gen_ulinfo == 1'b1) ? (wpar_err & do_write) : // parity error on write operation
+                      (is_send_ulinfo == 1'b1) ? tail_lt[2] : 		 // shift out
                                                  tail_lt[1];
 
-   assign tail_in[0] = (is_check_before == 1'b1) ? (~p0_err) : 		 
-                        (is_send_ulinfo == 1'b1) ? tail_lt[1] :          
+   // parity check of of downlink P0 yields error
+   assign tail_in[0] = (is_check_before == 1'b1) ? (~p0_err) : 		 // set to '1' if a downlink parity error is detected by satellite, otherwise '0'
+                        (is_send_ulinfo == 1'b1) ? tail_lt[1] :          // shift out
                                                    tail_lt[0];
 
+   // sample and hold ack_info, one spare bit
    assign sc_ack_info_in = ((is_exe_cmd & sc_ack) == 1'b1) ? sc_ack_info :
                                          (is_idle == 1'b1) ? 2'b00 :
                                                              sc_ack_info_lt;
 
+   //-----------------------------------------------------------------------------
    assign do_write = (~do_read);
    assign do_read = head_lt[RW_BIT_INDEX];
    assign match = (head_lt[1:SATID_NOBITS] == sat_id_net);
 
+   // if downlink parity error then set p0_err
    assign p0_err = (is_check_before & (^(head_lt[1:PARBIT_INDEX])));
-   assign parity_satid_regaddr = (^{sat_id_net, head_lt[SATID_NOBITS+1:SATID_REGID_NOBITS]});		
+   // why constant 11 here: ???
+   // first part sat id; second part reg address (curr. 6 bits) => 10 instead of 11
+   // now new constant SATID_REGID_NOBITS
+   assign parity_satid_regaddr = (^{sat_id_net, head_lt[SATID_NOBITS+1:SATID_REGID_NOBITS]});
 
    assign any_ack_error = (|sc_ack_info_lt);
 
+   //-----------------------------------------------------------------------------
    assign data_mux = ((is_check_before | is_rec_wdata) == 1'b1) ? dch_lt : 1'b0;
 
    assign data_shifter_in = ((is_check_before | (is_rec_wdata & (~cntgtheadpluswidth)) | is_send_rdata) == 1'b1) ? {data_shifter_lt[1:WIDTH-1], data_mux} :
                             ((is_exe_cmd & sc_ack & do_read) == 1'b1) ? sc_rdata :
                             data_shifter_lt;
 
+   //-----------------------------------------------------------------------------
+   // parity handling
    assign par_mux = ((is_rec_wpar) == 1'b1) ? dch_lt :  1'b0;
 
+   // receiving parity: shift when receiving write data parity
+   // sending parity of read data: shift when sending read data parity
+   // latch generated parity of read data when read data is accepted
    assign datapar_shifter_in = (((is_rec_wpar & (~cntgteofwdataplusparity)) | (is_send_rdata & do_send_par)) == 1'b1) ? {datapar_shifter_lt[1:PAR_NOBITS-1], par_mux} :
-                               ((is_filler_1 == 1'b1)) 				? sc_rparity : 		
+                               ((is_filler_1 == 1'b1)) 				? sc_rparity :
                                datapar_shifter_lt;
 
+   //----------------------------------------------------------------------------
    assign data_shifter_lt_tmp[0:WIDTH-1] = data_shifter_lt;
-   
+
    generate
    if (WIDTH < 64)
    begin : data_shifter_padding
@@ -546,13 +632,14 @@ module tri_serial_scom2(
    if (PIPELINE_PARITYCHK == 1'b0)
    begin : wdata_par_check_nopipe
      assign par_data_lt = par_data_in;
-     assign func_scan_out[STATE_WIDTH+WIDTH+PAR_NOBITS+HEAD_WIDTH+22:STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+21] = 
+     assign func_scan_out[STATE_WIDTH+WIDTH+PAR_NOBITS+HEAD_WIDTH+22:STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+21] =
             func_scan_in[ STATE_WIDTH+WIDTH+PAR_NOBITS+HEAD_WIDTH+22:STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+21];
    end
    endgenerate
 
    assign wpar_err = (^{par_data_lt, datapar_shifter_lt});
 
+   //-----------------------------------------------------------------------------
    generate
    begin : xhdl1
       genvar    i;
@@ -562,10 +649,17 @@ module tri_serial_scom2(
       end
    end
    endgenerate
+   //-----------------------------------------------------------------------------
 
+   //-----------------------------------------------------------------
+   // address decoding section
+   // Generate onehot Address (binary to one-hot)
+   //-----------------------------------------------------------------
+   //-----------------------------------------------------------------------------
    generate
    if (INTERNAL_ADDR_DECODE == 1'b1)
    begin : internal_addr_decoding
+   //-----------------------------------------------------------------------------
      genvar    i;
      for (i=0; i<WIDTH; i=i+1)
      begin : foralladdresses
@@ -573,6 +667,7 @@ module tri_serial_scom2(
        begin : addr_bit_set
          assign dec_addr_in[i] = (head_lt[SATID_NOBITS+1:SATID_REGID_NOBITS] == i);
 
+         // generate latch to hold addr_v only if required
          if ( PIPELINE_ADDR_V[i] == 1'b1)
          begin : latch_for_onehot
            tri_nlat #(.WIDTH(1), .NEEDS_SRESET(1)) dec_addr(
@@ -588,22 +683,26 @@ module tri_serial_scom2(
            );
          end
 
+         // otherwise no latch
          if ( PIPELINE_ADDR_V[i] == 1'b0)
          begin : no_latch_for_onehot
-           assign func_scan_out[STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22 +i] = 
+           assign func_scan_out[STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22 +i] =
 	          func_scan_in[ STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22 +i];
            assign dec_addr_q[i] = dec_addr_in[i];
          end
        end
 
-       if ( USE_ADDR[i] != 1'b1)		
+       //----------------------------------------------------------------------
+       if ( USE_ADDR[i] != 1'b1)		// do not generate hardware for unused addresses
        begin : addr_bit_notset
-         assign func_scan_out[STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22 +i] = 
+         assign func_scan_out[STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22 +i] =
 	        func_scan_in[ STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22 +i];
          assign dec_addr_in[i] = 1'b0;
          assign dec_addr_q[i] = dec_addr_in[i];
        end
      end
+     //------------------------------------------------------------------------
+     // check writable and/or readable
      assign read_valid  = (|(dec_addr_q & ADDR_IS_RDABLE));
      assign write_valid = (|(dec_addr_q & ADDR_IS_WRABLE));
      assign addr_nvld   = (~(|dec_addr_q));
@@ -620,13 +719,13 @@ module tri_serial_scom2(
      genvar    i;
      for (i=0; i<WIDTH ; i=i+1)
      begin : foralladdresses
-       assign func_scan_out[STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22 +i] = 
+       assign func_scan_out[STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22 +i] =
               func_scan_in[ STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22 +i];
        assign dec_addr_in[i] = 1'b0;
        assign dec_addr_q[i]  = dec_addr_in[i];
      end
-     assign read_valid  = 1'b1;		
-     assign write_valid = 1'b1;		
+     assign read_valid  = 1'b1;		// suppressing wrong error generation
+     assign write_valid = 1'b1;		// suppressing wrong error generation
      assign addr_nvld   = 1'b0;
      assign write_nvld  = 1'b0;
      assign read_nvld   = 1'b0;
@@ -635,12 +734,15 @@ module tri_serial_scom2(
    end
    endgenerate
 
+   // This was for unused addresses if USE_ADDR was smaller than the 64 bit width.
+   // From VHDL: short_unused_addr_range: for i in use_addr'high+1 to 63 generate
+   // Shouldn't be needed for A2, since we always define 64 SCOM addresses.
    generate
    begin : xhdl4
     genvar  i;
      for (i=WIDTH; i<64; i=i+1)
      begin : short_unused_addr_range
-       assign func_scan_out[STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22 +i] = 
+       assign func_scan_out[STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22 +i] =
               func_scan_in[ STATE_WIDTH+WIDTH+(2*PAR_NOBITS)+HEAD_WIDTH+22 +i];
      end
    end
@@ -648,6 +750,7 @@ module tri_serial_scom2(
 
    assign addr_v = dec_addr_q[0:WIDTH-1];
 
+//-----------------------------------------------------------------------------
 
 
    tri_nlat_scan #(.WIDTH(STATE_WIDTH), .INIT(IDLE), .NEEDS_SRESET(1)) state(
@@ -720,7 +823,7 @@ module tri_serial_scom2(
       .vd(vdd),
       .gd(gnd),
       .lclk(lclk),
-      .d2clk(d2clk),  
+      .d2clk(d2clk),
       .scan_in(func_scan_in[  STATE_WIDTH+WIDTH+PAR_NOBITS+HEAD_WIDTH+7:STATE_WIDTH+WIDTH+PAR_NOBITS+HEAD_WIDTH+11]),
       .scan_out(func_scan_out[STATE_WIDTH+WIDTH+PAR_NOBITS+HEAD_WIDTH+7:STATE_WIDTH+WIDTH+PAR_NOBITS+HEAD_WIDTH+11]),
       .din(tail_in),
@@ -831,11 +934,10 @@ module tri_serial_scom2(
       .q(spare_latch2_lt)
    );
 
+//-----------------------------------------------------------------------------
    assign unused_signals = |({is_filler_0, is_filler_1, spare_latch1_lt, spare_latch2_lt, d_mode_dc});
 
    assign spare_latch1_in = 1'b0;
    assign spare_latch2_in = 1'b0;
 
 endmodule
-
-

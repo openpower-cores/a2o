@@ -7,6 +7,9 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU Rotate/Logical Unit
+//
+//*****************************************************************************
 
 module tri_st_rot_dec(
    i,
@@ -41,14 +44,14 @@ module tri_st_rot_dec(
    ex1_sel_rot_log
 );
    input [0:31] i;
-   
+
    output       ex1_zm_ins;
    output [0:5] ex1_mb_ins;
    output [0:5] ex1_me_ins_b;
    output [0:5] ex1_sh_amt;
    output       ex1_sh_right;
    output       ex1_sh_word;
-   
+
    output       ex1_use_rb_amt_hi;
    output       ex1_use_rb_amt_lo;
    output       ex1_use_me_rb_hi;
@@ -61,23 +64,23 @@ module tri_st_rot_dec(
    output       ex1_use_mb_ins_lo;
    output       ex1_ins_prtyw;
    output       ex1_ins_prtyd;
-   
+
    output       ex1_chk_shov_wd;
    output       ex1_chk_shov_dw;
    output       ex1_mb_gt_me;
-   
+
    output       ex1_cmp_byt;
-   
+
    output       ex1_sgnxtd_byte;
    output       ex1_sgnxtd_half;
    output       ex1_sgnxtd_wd;
    output       ex1_sra_dw;
    output       ex1_sra_wd;
-   
+
    output [0:3] ex1_log_fcn;
-   
+
    output       ex1_sel_rot_log;
-      
+
    wire         cmp_byt;
    wire         rotlw;
    wire         imm_log;
@@ -188,29 +191,36 @@ module tri_st_rot_dec(
    wire         prtyw;
    wire         prtyd;
 
+   //--------------------------------------------------
+   // decode primary field opcode bits [0:5]        ---
+   //--------------------------------------------------
    assign ex1_ins_prtyw = prtyw;
    assign ex1_ins_prtyd = prtyd;
 
-   assign isel = (x31 == 1'b1 & i[26:30] == 5'b01111) ? 1'b1 : 
+   assign isel = (x31 == 1'b1 & i[26:30] == 5'b01111) ? 1'b1 :
                  1'b0;
 
-   assign cmp_byt = (x31 == 1'b1 & i[21:30] == 10'b0111111100) ? 1'b1 : 		
+   assign cmp_byt = (x31 == 1'b1 & i[21:30] == 10'b0111111100) ? 1'b1 : 		// 31/508
                     1'b0;
-   assign prtyw = (x31 == 1'b1 & i[21:30] == 10'b0010011010) ? 1'b1 : 		
+   assign prtyw = (x31 == 1'b1 & i[21:30] == 10'b0010011010) ? 1'b1 : 		// 31/154
                   1'b0;
-   assign prtyd = (x31 == 1'b1 & i[21:30] == 10'b0010111010) ? 1'b1 : 		
+   assign prtyd = (x31 == 1'b1 & i[21:30] == 10'b0010111010) ? 1'b1 : 		// 31/186
                   1'b0;
 
-   assign rotlw = (~i[0]) & i[1] & (~i[2]) & i[3];		
-   assign imm_log = (~i[0]) & i[1] & i[2] & ((~i[3]) | (~i[4]));		
-   assign rotld = (~i[0]) & i[1] & i[2] & i[3] & i[4] & (~i[5]);		
-   assign x31 = (~i[0]) & i[1] & i[2] & i[3] & i[4] & i[5];		
+   assign rotlw = (~i[0]) & i[1] & (~i[2]) & i[3];		//0101xx (20:23)
+   assign imm_log = (~i[0]) & i[1] & i[2] & ((~i[3]) | (~i[4]));		//0110xx (24:27)
+   //01110x (28,29)
+   assign rotld = (~i[0]) & i[1] & i[2] & i[3] & i[4] & (~i[5]);		//011110 (30)
+   assign x31 = (~i[0]) & i[1] & i[2] & i[3] & i[4] & i[5];		//011111 (31)
 
    assign f0_xxxx00 = (~i[4]) & (~i[5]);
    assign f0_xxx0xx = (~i[3]);
    assign f0_xxxx0x = (~i[4]);
    assign f0_xxxx11 = i[4] & i[5];
 
+   //---------------------------------------------------
+   // decode i(21:25)
+   //---------------------------------------------------
 
    assign f1_0xxxx = (~i[21]);
    assign f1_110xx = i[21] & i[22] & (~i[23]);
@@ -229,9 +239,12 @@ module tri_st_rot_dec(
    assign f1_xxx00 = (~i[24]) & (~i[25]);
    assign f1_xxx10 = i[24] & (~i[25]);
 
+   //---------------------------------------------------
+   // decode i(26:30)
+   //---------------------------------------------------
 
-   assign f2_11xxx = i[26] & i[27];		
-   assign f2_xxx0x = (~i[29]);		
+   assign f2_11xxx = i[26] & i[27];		// shifts / logicals / sign_xtd
+   assign f2_xxx0x = (~i[29]);		// word / double
    assign f2_111xx = i[26] & i[27] & i[28];
    assign f2_xx01x = (~i[28]) & i[29];
    assign f2_xx00x = (~i[28]) & (~i[29]);
@@ -254,7 +267,7 @@ module tri_st_rot_dec(
    assign sh_rb = x31 & f1_xxxx0;
    assign sh_rb_dw = x31 & f1_xxxx0 & f2_xxx1x;
    assign sh_rb_wd = x31 & f1_xxxx0 & f2_xxx0x;
-   assign x31_sh_log_sgn = x31 & f2_11xxx & (f2_xx0xx | f2_xxx00);		
+   assign x31_sh_log_sgn = x31 & f2_11xxx & (f2_xx0xx | f2_xxx00);		// Exclude loads/stores
    assign op_sgn_xtd = x31 & f1_111xx;
    assign op_sra = x31 & f1_110xx;
    assign wd_if_sh = x31 & f2_xxx0x;
@@ -265,16 +278,25 @@ module tri_st_rot_dec(
    assign sh_rgt_imm_dw = x31 & i[21] & i[25] & i[29];
    assign sh_rgt_imm = x31 & i[21] & i[25];
 
+   //---------------------------------------------------
+   // output signal
+   //---------------------------------------------------
    assign ex1_cmp_byt = cmp_byt;
 
+   // (select to rot/log result instead of the adder result)
    assign ex1_sel_rot_log = (cmp_byt) | (rotlw) | (imm_log) | (rotld) | (isel) | (x31_sh_log_sgn);
+   // prtyw, prtyd already included here....
 
-   assign ex1_zm_ins = (isel) | (cmp_byt) | (xtd_log) | (imm_log) | (op_sgn_xtd) | (prtyw) | (prtyd);		
+   // (zero out the mask to pass "insert_data" as the result)
+   // This latched, full decode ok.
+   assign ex1_zm_ins = (isel) | (cmp_byt) | (xtd_log) | (imm_log) | (op_sgn_xtd) | (prtyw) | (prtyd);		// sgn extends
 
+   // (only needs to be correct when shifting)
    assign ex1_sh_right = sh_rgt;
 
    assign sh_word_int = (rotlw) | (wd_if_sh);
 
+   // (only needs to be correct when shifting)
    assign ex1_sh_word = sh_word_int;
 
    assign ex1_sgnxtd_byte = op_sgn_xtd & f1_xxx01 & (~isel);
@@ -294,23 +316,36 @@ module tri_st_rot_dec(
    assign xtd_or_orc = f1_xx10x;
    assign xtd_xor_or = f1_x1xx1;
 
-   assign ex1_log_fcn = (cmp_byt == 1'b1) ? 4'b1001 : 		
+   assign ex1_log_fcn = (cmp_byt == 1'b1) ? 4'b1001 : 		// xtd_log nor
                         rf1_log_fcn;
-   assign rf1_log_fcn[0] = (xtd_log & xtd_nor) | (xtd_log & xtd_eqv_orc_nand) | (cmp_byt);		
+   assign rf1_log_fcn[0] = (xtd_log & xtd_nor) | (xtd_log & xtd_eqv_orc_nand) | (cmp_byt);		// xtd_log eqv,orc,nand
+   // xnor
 
-   assign rf1_log_fcn[1] = (xtd_log & xtd_xor_or) | (xtd_log & xtd_nand) | (imm_log & imm_xor_or) | (rotlw_pass) | (rotld_pass);		
+   // xtd_log xor,or
+   // xor,or
+   // pass  rlwimi
+   assign rf1_log_fcn[1] = (xtd_log & xtd_xor_or) | (xtd_log & xtd_nand) | (imm_log & imm_xor_or) | (rotlw_pass) | (rotld_pass);		// xtd_log nand
+   // pass  rldimi
 
-   assign rf1_log_fcn[2] = (xtd_log & xtd_andc_xor_or) | (xtd_log & xtd_nand_or_orc) | (imm_log & imm_xor_or);		
+   // xtd_log andc,xor,or
+   assign rf1_log_fcn[2] = (xtd_log & xtd_andc_xor_or) | (xtd_log & xtd_nand_or_orc) | (imm_log & imm_xor_or);		// xtd_log nand_or_orc
+   // xor,or
 
-   assign rf1_log_fcn[3] = (cmp_byt) | (xtd_log & xtd_and_eqv_orc) | (xtd_log & xtd_or_orc) | (imm_log & imm_and_or) | (rotlw_pass) | (rotld_pass);		
+   // xnor
+   // xtd_log or,orc
+   // and,or
+   // pass  rlwimi
+   assign rf1_log_fcn[3] = (cmp_byt) | (xtd_log & xtd_and_eqv_orc) | (xtd_log & xtd_or_orc) | (imm_log & imm_and_or) | (rotlw_pass) | (rotld_pass);		// xtd_log and,eqv_orc
+   // pass  rldimi
 
    assign ex1_chk_shov_dw = (sh_rb_dw);
    assign ex1_chk_shov_wd = (sh_rb_wd);
 
+   //---------------------------------------------
 
    assign ex1_me_ins_b[0:5] = (~me_ins[0:5]);
 
-   assign me_ins[0] = (rotlw) | (i[26] & sel_ins_me_hi) | ((~i[30]) & sel_ins_amt_hi);		
+   assign me_ins[0] = (rotlw) | (i[26] & sel_ins_me_hi) | ((~i[30]) & sel_ins_amt_hi);		// force_msb
 
    assign me_ins[1:5] = (i[26:30] & {5{sel_ins_me_lo_wd}}) | (i[21:25] & {5{sel_ins_me_lo_dw}}) | ((~i[16:20]) & {5{sel_ins_amt_lo}});
 
@@ -334,8 +369,10 @@ module tri_st_rot_dec(
    assign rld_cl = rotld & i[27] & (~i[30]);
    assign rld_cr = rotld & i[27] & i[30];
 
+   //---------------------------------------------
 
-   assign ex1_mb_ins[0] = (i[26] & rot_imm_mb) | (i[30] & shift_imm) | (rotlw) | (wd_if_sh);		
+   assign ex1_mb_ins[0] = (i[26] & rot_imm_mb) | (i[30] & shift_imm) | (rotlw) | (wd_if_sh);		// force_msb
+   // force_msb
 
    assign ex1_mb_ins[1:5] = (i[21:25] & {5{rot_imm_mb}}) | (i[16:20] & {5{shift_imm}});
 
@@ -346,27 +383,30 @@ module tri_st_rot_dec(
    assign ex1_use_mb_ins_hi = rld_cl | rld_icl | rld_imi | rld_ic | rotlw | sh_rgt_imm_dw | wd_if_sh;
    assign ex1_use_mb_ins_lo = rld_cl | rld_icl | rld_imi | rld_ic | rotlw | sh_rgt_imm;
 
+   //---------------------------------------------
 
    assign ex1_use_rb_amt_hi = (rld_cr) | (rld_cl) | (sh_rb_dw);
 
-   assign ex1_use_rb_amt_lo = (rld_cr) | (rld_cl) | (rotlw_nm) | (sh_rb);		
+   assign ex1_use_rb_amt_lo = (rld_cr) | (rld_cl) | (rotlw_nm) | (sh_rb);		// rlwnm
 
    assign ex1_sh_amt[0] = i[30] & (~sh_word_int);
    assign ex1_sh_amt[1:5] = i[16:20];
 
-
+   //---------------------------------------------
 
    assign rotld_en_mbgtme = rld_imi | rld_ic;
 
-   assign ex1_mb_gt_me = (mb_gt_me_cmp_wd & rotlw) | (mb_gt_me_cmp_dw & rotld_en_mbgtme);		
+   assign ex1_mb_gt_me = (mb_gt_me_cmp_wd & rotlw) | (mb_gt_me_cmp_dw & rotld_en_mbgtme);		// rldic,rldimi
 
+   //-------------------------------------------
 
-   assign gt5_in1[1:5] = i[21:25];		
-   assign gt5_in0[1:5] = (~i[26:30]);		
+   assign gt5_in1[1:5] = i[21:25];		// mb
+   assign gt5_in0[1:5] = (~i[26:30]);		// me
 
-   assign gt6_in1[0:5] = {i[26], i[21:25]};		
-   assign gt6_in0[0:5] = {i[30], i[16:20]};		
+   assign gt6_in1[0:5] = {i[26], i[21:25]};		// mb
+   assign gt6_in0[0:5] = {i[30], i[16:20]};		// me not( not amt )
 
+   //------------------------------------------
 
    assign gt5_g_b[1:5] = (~(gt5_in0[1:5] & gt5_in1[1:5]));
    assign gt5_t_b[1:4] = (~(gt5_in0[1:4] | gt5_in1[1:4]));
@@ -384,6 +424,7 @@ module tri_st_rot_dec(
 
    assign mb_gt_me_cmp_wd = (~(mb_gt_me_cmp_wd0_b & mb_gt_me_cmp_wd1_b & mb_gt_me_cmp_wd2_b));
 
+   //--------------------------------------------
 
    assign gt6_g_b[0:5] = (~(gt6_in0[0:5] & gt6_in1[0:5]));
    assign gt6_t_b[0:4] = (~(gt6_in0[0:4] | gt6_in1[0:4]));
@@ -400,6 +441,6 @@ module tri_st_rot_dec(
    assign mb_gt_me_cmp_dw2_b = (~(gt6_g_45 & gt6_t_01 & gt6_t_23));
 
    assign mb_gt_me_cmp_dw = (~(mb_gt_me_cmp_dw0_b & mb_gt_me_cmp_dw1_b & mb_gt_me_cmp_dw2_b));
-      
+
 
 endmodule

@@ -7,6 +7,9 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//  Description:  XU Rotate - Insert Component
+//
+//*****************************************************************************
 
 module tri_st_rot_ins(
    ins_log_fcn,
@@ -23,25 +26,42 @@ module tri_st_rot_ins(
    mrg_byp_log,
    res_ins
 );
-   input [0:3]   ins_log_fcn;		
-   
+   input [0:3]   ins_log_fcn;		// use pass ra for rlwimi
+   // rs, ra/rb
+   // 0000 => "0"
+   // 0001 => rs AND  rb
+   // 0010 => rs AND !rb
+   // 0011 => rs
+   // 0100 => !rs and RB
+   // 0101 =>         RB
+   // 0110 => rs xor  RB
+   // 0111 => rs or   RB
+   // 1000 => rs nor  RB
+   // 1001 => rs xnor RB (use for cmp-byt)
+   // 1010 =>        !RB
+   // 1011 => rs or  !rb
+   // 1100 => !rs
+   // 1101 => rs nand !rb, !rs or rb
+   // 1110 => rs nand rb   ...
+   // 1111 => "1"
+
    input         ins_cmp_byt;
    input         ins_sra_wd;
    input         ins_sra_dw;
-   
-   input         ins_xtd_byte;		
-   input         ins_xtd_half;		
-   input         ins_xtd_wd;		
-   
+
+   input         ins_xtd_byte;		// use with xtd
+   input         ins_xtd_half;		// use with xtd
+   input         ins_xtd_wd;		// use with xtd, sra
+
    input         ins_prtyw;
    input         ins_prtyd;
-   
-   input [0:63]  data0_i;		
-   input [0:63]  data1_i;		
+
+   input [0:63]  data0_i;		//data input (rs)
+   input [0:63]  data1_i;		//data input (ra|rb)
    output [0:63] mrg_byp_log;
-   output [0:63] res_ins;		
-   
-    
+   output [0:63] res_ins;		//insert data (also result of logicals)
+
+
    wire [0:63]   mrg_byp_log_b;
 
    wire [0:63]   res_log;
@@ -218,8 +238,8 @@ module tri_st_rot_ins(
    assign xtd_half_bus[0:63] = {{49{data0[48]}}, data0[49:63]};
 
    assign xtd_wd_bus[0:63] = {{33{data0[32]}}, data0[33:63]};
-   assign sra_wd_bus[0:63] = {64{data0[32]}};		
-   assign sra_dw_bus[0:63] = {64{data0[0]}};		
+   assign sra_wd_bus[0:63] = {64{data0[32]}};		// all the bits for sra
+   assign sra_dw_bus[0:63] = {64{data0[0]}};		// all the bits for sra
 
    assign sign_xtd_bus[0:63] = ({64{ins_xtd_byte}} & xtd_byte_bus[0:63]) |
                                ({64{ins_xtd_half}} & xtd_half_bus[0:63]) |
@@ -234,8 +254,8 @@ module tri_st_rot_ins(
    assign res_ins1_b[0:63] = (~(sel_cmp_byt_b & res_log2[0:63]));
    assign res_ins2_b[0:63] = (~(sign_xtd_bus[0:63]));
 
-   assign res_ins[0:63] = (~(res_ins0_b[0:63] & res_ins1_b[0:63] & res_ins2_b[0:63]));		
-      
+   assign res_ins[0:63] = (~(res_ins0_b[0:63] & res_ins1_b[0:63] & res_ins2_b[0:63]));		//output--
+
 
 
 endmodule

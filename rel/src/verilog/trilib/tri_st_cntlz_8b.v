@@ -7,6 +7,10 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//*****************************************************************************
+//  Description:  XU 8 bit Count Leading Zeros Macro
+//
+//*****************************************************************************
 
 module tri_st_cntlz_8b(
    a,
@@ -16,7 +20,7 @@ module tri_st_cntlz_8b(
    input [0:7]  a;
    output [0:2] y;
    output       z_b;
-   
+
    wire [0:7]   a0;
    wire [0:7]   a1;
    wire [0:7]   a2;
@@ -37,5 +41,5 @@ module tri_st_cntlz_8b(
    assign y[0] = ~(ax[3] & ax[4]) | ~(ax[5] & ax[6]);
    assign y[1] = ~(ax[1] & ax[2]) | ~(ax[5] & ax[6]);
    assign y[2] = ~(ax[0] & ax[2]) | ~(ax[4] & ax[6]);
-      
+
 endmodule

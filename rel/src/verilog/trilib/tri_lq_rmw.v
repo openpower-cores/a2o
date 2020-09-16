@@ -9,10 +9,17 @@
 
 `timescale 1 ns / 1 ns
 
+//  Description:  XU LSU Load Data Rotator
+//
+//*****************************************************************************
 
+// ##########################################################################################
+// Contents
+// 1) 16 bit Unaligned Rotate to the Right Rotator
+// 2) Little/Big Endian Support
+// ##########################################################################################
 
 `include "tri_a2o.vh"
-
 
 
 module tri_lq_rmw(
@@ -60,9 +67,11 @@ module tri_lq_rmw(
    scan_out
 );
 
+// EX2/STQ4 Read Operation
 input               ex2_stq4_rd_stg_act;
 input [52:59]       ex2_stq4_rd_addr;
 
+// Read data for Read-Modify-Write
 input [0:143]       stq6_rd_data_wa;
 input [0:143]       stq6_rd_data_wb;
 input [0:143]       stq6_rd_data_wc;
@@ -72,6 +81,7 @@ input [0:143]       stq6_rd_data_wf;
 input [0:143]       stq6_rd_data_wg;
 input [0:143]       stq6_rd_data_wh;
 
+// Write Data for Read-Modify-Write
 input               stq5_stg_act;
 input               stq5_arr_wren;
 input [0:7]         stq5_arr_wr_way;
@@ -79,6 +89,7 @@ input [52:59]       stq5_arr_wr_addr;
 input [0:15]        stq5_arr_wr_bytew;
 input [0:143]       stq5_arr_wr_data;
 
+// EX4 Load Bypass Data for Read/Write Collision detected in EX2
 output [0:3]        stq7_byp_val_wabcd;
 output [0:3]        stq7_byp_val_wefgh;
 output [0:143]      stq7_byp_data_wabcd;
@@ -88,6 +99,7 @@ output [0:143]      stq8_byp_data_wefgh;
 output [0:3]        stq_byp_val_wabcd;
 output [0:3]        stq_byp_val_wefgh;
 
+// Data Cache Array Write
 output [0:7]        dcarr_rd_stg_act;
 output [0:7]        dcarr_wr_stg_act;
 output [0:7]        dcarr_wr_way;
@@ -122,10 +134,10 @@ wire                stq6_wren_d;
 wire                stq6_wren_q;
 wire                stq7_wren_d;
 wire                stq7_wren_q;
-wire [0:7]          stq6_way_en_d;    
-wire [0:7]          stq6_way_en_q;    
-wire [0:7]          stq7_way_en_d;    
-wire [0:7]          stq7_way_en_q;    
+wire [0:7]          stq6_way_en_d;
+wire [0:7]          stq6_way_en_q;
+wire [0:7]          stq7_way_en_d;
+wire [0:7]          stq7_way_en_q;
 wire [0:7]          stq6_wr_way;
 wire [52:59]        stq6_addr_d;
 wire [52:59]        stq6_addr_q;
@@ -225,6 +237,10 @@ assign stq6_wr_way        = {8{stq6_wren_q}} & stq6_way_en_q;
 assign stq6_addr_d        = stq5_arr_wr_addr;
 assign stq7_addr_d        = stq6_addr_q;
 
+// #############################################################################################
+// Data Cache Read/Write Merge
+// #############################################################################################
+// Gate Way that is being updated
 assign stq6_gate_rd_data_wa = {144{stq6_way_en_q[0]}} & stq6_rd_data_wa;
 assign stq6_gate_rd_data_wb = {144{stq6_way_en_q[1]}} & stq6_rd_data_wb;
 assign stq6_gate_rd_data_wc = {144{stq6_way_en_q[2]}} & stq6_rd_data_wc;
@@ -234,27 +250,35 @@ assign stq6_gate_rd_data_wf = {144{stq6_way_en_q[5]}} & stq6_rd_data_wf;
 assign stq6_gate_rd_data_wg = {144{stq6_way_en_q[6]}} & stq6_rd_data_wg;
 assign stq6_gate_rd_data_wh = {144{stq6_way_en_q[7]}} & stq6_rd_data_wh;
 
+// Merge Data Way A,B,C,D
 assign stq6_rd_data_wabcd   = stq6_gate_rd_data_wa | stq6_gate_rd_data_wb |
                               stq6_gate_rd_data_wc | stq6_gate_rd_data_wd;
 assign stq6_wr_data_wabcd   = (stq6_wr_bit_wabcd & stq6_byp_wr_data_wabcd_q) | (stq6_msk_bit_wabcd & stq6_rd_data_wabcd);
 assign stq7_wr_data_wabcd_d = stq6_wr_data_wabcd;
 assign stq8_wr_data_wabcd_d = stq7_wr_data_wabcd_q;
 
+// Merge Data Way E,F,G,H
 assign stq6_rd_data_wefgh   = stq6_gate_rd_data_we | stq6_gate_rd_data_wf |
                               stq6_gate_rd_data_wg | stq6_gate_rd_data_wh;
 assign stq6_wr_data_wefgh   = (stq6_wr_bit_wefgh & stq6_byp_wr_data_wefgh_q) | (stq6_msk_bit_wefgh & stq6_rd_data_wefgh);
 assign stq7_wr_data_wefgh_d = stq6_wr_data_wefgh;
 assign stq8_wr_data_wefgh_d = stq7_wr_data_wefgh_q;
 
+// #############################################################################################
+// Data Cache Write Data Bypass
+// #############################################################################################
+// Read/Write Address Match
 assign ex2_stq4_addr_coll = (ex2_stq4_rd_addr == stq6_addr_q);
 assign ex2_stq4_way_coll  = {8{ex2_stq4_addr_coll}} & stq6_wr_way;
 
+// Bypass Select Control
 assign stq6_rd_byp_val = (ex3_stq5_rd_addr_q == stq6_addr_q) & stq6_wren_q;
 assign stq7_rd_byp_val = (ex3_stq5_rd_addr_q == stq7_addr_q) & stq7_wren_q;
 assign stq6_wr_byp_val = stq6_rd_byp_val & |(stq5_arr_wr_way & stq6_way_en_q);
 assign stq7_wr_byp_val = stq7_rd_byp_val & |(stq5_arr_wr_way & stq7_way_en_q);
 assign stq5_byp_val    = stq6_wr_byp_val | stq7_wr_byp_val;
 
+// Byte Enable and Byte Mask generation
 assign stq5_wr_bit          = {9{ stq5_arr_wr_bytew}};
 assign stq5_msk_bit         = {9{~stq5_arr_wr_bytew}};
 assign stq5_byte_en         = stq5_arr_wr_bytew | {16{stq5_byp_val}};
@@ -265,27 +289,37 @@ assign stq6_byte_en_wefgh_d = stq5_byte_en;
 assign stq6_wr_bit_wefgh    = {9{ stq6_byte_en_wefgh_q}};
 assign stq6_msk_bit_wefgh   = {9{~stq6_byte_en_wefgh_q}};
 
+// Need to add bypass logic with merged data from stq6 and stq7 for Way A,B,C,D groups
 assign stq6_stq7_byp_data_wabcd = ({144{~stq6_wr_byp_val}} & stq7_wr_data_wabcd_q) | ({144{stq6_wr_byp_val}} & stq6_wr_data_wabcd);
 assign stq5_byp_wr_data_wabcd   = (stq5_wr_bit & stq5_arr_wr_data) | (stq5_msk_bit & stq6_stq7_byp_data_wabcd);
 assign stq6_byp_wr_data_wabcd_d = stq5_byp_wr_data_wabcd;
 
+// Need to add bypass logic with merged data from stq6 and stq7 for Way E,F,G,H groups
 assign stq6_stq7_byp_data_wefgh = ({144{~stq6_wr_byp_val}} & stq7_wr_data_wefgh_q) | ({144{stq6_wr_byp_val}} & stq6_wr_data_wefgh);
 assign stq5_byp_wr_data_wefgh   = (stq5_wr_bit & stq5_arr_wr_data) | (stq5_msk_bit & stq6_stq7_byp_data_wefgh);
 assign stq6_byp_wr_data_wefgh_d = stq5_byp_wr_data_wefgh;
 
+// Data that needs to be bypassed between EX2 Load Pipe Read collision detected with STQ6 Store Pipe Write
 assign stq7_byp_val_wabcd_d = {4{stq6_rd_byp_val}} & stq6_way_en_q[0:3];
 assign stq7_byp_val_wefgh_d = {4{stq6_rd_byp_val}} & stq6_way_en_q[4:7];
+//assign stq7_byp_data_wefgh = stq7_wr_data_wefgh_q;
 assign stq_byp_val_wabcd_d  = ({4{stq7_rd_byp_val}} & stq7_way_en_q[0:3]) | ({4{stq6_rd_byp_val}} & stq6_way_en_q[0:3]);
 assign stq_byp_val_wefgh_d  = ({4{stq7_rd_byp_val}} & stq7_way_en_q[4:7]) | ({4{stq6_rd_byp_val}} & stq6_way_en_q[4:7]);
 
-assign dcarr_rd_stg_act    = {8{ex2_stq4_rd_stg_act}} & ~ex2_stq4_way_coll; 
+// #############################################################################################
+// Outputs
+// #############################################################################################
+// Data Cache Array Read ACT
+assign dcarr_rd_stg_act    = {8{ex2_stq4_rd_stg_act}} & ~ex2_stq4_way_coll;
 
+// Data Cache Array Update
 assign dcarr_wr_stg_act    = stq6_wr_way;
 assign dcarr_wr_way        = stq6_wr_way;
 assign dcarr_wr_addr       = stq6_addr_q;
 assign dcarr_wr_data_wabcd = stq6_wr_data_wabcd;
 assign dcarr_wr_data_wefgh = stq6_wr_data_wefgh;
 
+// EX4 Load Data Bypass
 assign stq7_byp_val_wabcd  = stq7_byp_val_wabcd_q;
 assign stq7_byp_val_wefgh  = stq7_byp_val_wefgh_q;
 assign stq7_byp_data_wabcd = stq7_wr_data_wabcd_q;
@@ -295,6 +329,9 @@ assign stq8_byp_data_wefgh = stq8_wr_data_wefgh_q;
 assign stq_byp_val_wabcd   = stq_byp_val_wabcd_q;
 assign stq_byp_val_wefgh   = stq_byp_val_wefgh_q;
 
+// #############################################################################################
+// Registers
+// #############################################################################################
 tri_rlmlatch_p #(.INIT(0), .NEEDS_SRESET(1)) stq6_stg_act_latch(
    .nclk(nclk),
    .vd(vdd),
@@ -677,4 +714,3 @@ assign siv[0:scan_right] = {sov[1:scan_right], scan_in};
 assign scan_out = sov[0];
 
 endmodule
-

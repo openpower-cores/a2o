@@ -7,9 +7,18 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+// *!****************************************************************
+// *! FILENAME    : tri_a2o.param
+// *! DESCRIPTION : Constants for use throughout core
+// *! CONTENTS    :
+// *!
+// *!****************************************************************
+
 `ifndef _tri_vh_
 `define _tri_vh_
 
-`define  NCLK_WIDTH  6   
+`define  NCLK_WIDTH  6   // 0  1xClk, 1  Reset, 2  2xClk, 3  4xClk,  4  Even .5xClk,  5 Odd .5x Clk
+//`define  EXPAND_TYPE  1
 
-`endif  
+// Do NOT add any defines below this line
+`endif  //_tri_vh_

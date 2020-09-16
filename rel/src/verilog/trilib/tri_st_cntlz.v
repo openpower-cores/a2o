@@ -7,6 +7,10 @@
 // This README will be updated with additional information when OpenPOWER's 
 // license is available.
 
+//*****************************************************************************
+//  Description:  XU 64 bit Count Leading Zeros Macro
+//
+//*****************************************************************************
 
 module tri_st_cntlz(
    dword,
@@ -16,7 +20,7 @@ module tri_st_cntlz(
    input        dword;
    input [0:63] a;
    output [0:6] y;
-   
+
    wire [0:23]  ys;
    wire [0:7]   z;
    wire [0:7]   zh;
@@ -24,23 +28,25 @@ module tri_st_cntlz(
    wire [0:2]   yh_sel;
    wire         zero_b;
 
-   assign y[0] = (dword == 1'b1) ? (~zero_b) : 
+   assign y[0] = (dword == 1'b1) ? (~zero_b) :
                  1'b0;
 
-   assign y[1] = (dword == 1'b1) ? yh[0] : 
+   assign y[1] = (dword == 1'b1) ? yh[0] :
                  (~zero_b);
    assign y[2:3] = yh[1:2];
 
+   // Force the select to the lower half for word ops
    assign yh_sel[0] = yh[0] | (~dword);
    assign yh_sel[1:2] = yh[1:2];
 
-   assign y[4:6] = (yh_sel[0:2] == 3'b000) ? ys[0:2] : 
-                   (yh_sel[0:2] == 3'b001) ? ys[3:5] : 
-                   (yh_sel[0:2] == 3'b010) ? ys[6:8] : 
-                   (yh_sel[0:2] == 3'b011) ? ys[9:11] : 
-                   (yh_sel[0:2] == 3'b100) ? ys[12:14] : 
-                   (yh_sel[0:2] == 3'b101) ? ys[15:17] : 
-                   (yh_sel[0:2] == 3'b110) ? ys[18:20] : 
+   // Force the select to be in the lower half for word
+   assign y[4:6] = (yh_sel[0:2] == 3'b000) ? ys[0:2] :
+                   (yh_sel[0:2] == 3'b001) ? ys[3:5] :
+                   (yh_sel[0:2] == 3'b010) ? ys[6:8] :
+                   (yh_sel[0:2] == 3'b011) ? ys[9:11] :
+                   (yh_sel[0:2] == 3'b100) ? ys[12:14] :
+                   (yh_sel[0:2] == 3'b101) ? ys[15:17] :
+                   (yh_sel[0:2] == 3'b110) ? ys[18:20] :
                    ys[21:23];
    assign zh[0:3] = z[0:3] & {4{dword}};
    assign zh[4:7] = z[4:7];
@@ -107,5 +113,5 @@ module tri_st_cntlz(
       .y(ys[21:23]),
       .z_b(z[7])
    );
-      
+
 endmodule

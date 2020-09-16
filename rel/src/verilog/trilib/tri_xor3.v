@@ -9,6 +9,11 @@
 
 `timescale 1 ns / 1 ns
 
+// *!****************************************************************
+// *! FILENAME    : tri_xor3.v
+// *! DESCRIPTION : Three input XOR gate
+// *!
+// *!****************************************************************
 
 `include "tri_a2o.vh"
 
@@ -19,24 +24,22 @@ module tri_xor3(
    c
 );
    parameter                      WIDTH = 1;
-   parameter                      BTR = "XOR2_X2M_NONE";  
+   parameter                      BTR = "XOR2_X2M_NONE";  //Specify full BTR name, else let tool select
    output [0:WIDTH-1]  y;
    input [0:WIDTH-1]   a;
    input [0:WIDTH-1]   b;
    input [0:WIDTH-1]   c;
    genvar 	       i;
-   
+
    generate
       begin : t
 	 for (i = 0; i < WIDTH; i = i + 1)
 	   begin : w
-	      
+
 	      xor I0(y[i], a[i], b[i], c[i]);
-	      
-	   end 
+
+	   end // block: w
       end
-      
+
    endgenerate
 endmodule
-
-
