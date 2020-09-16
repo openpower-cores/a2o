@@ -58,8 +58,6 @@ remain errors vis a vis the RTL (especially likely in implementation-specific SP
 
       Please use 'issues' to report errors. 
 
-2. The 'commented' RTL source will be released soon.  
-
 ## Errata
 
 1. There is a problem that is being circumvented by setting LSUCR0.DFWD=1, AND limiting the store queue size (currently at 4).  While it appears 
