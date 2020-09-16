@@ -51,13 +51,12 @@ module c_wrapper(
    an_ac_reld_crit_qw,
    an_ac_reld_l1_dump,
 
-
    an_ac_req_ld_pop,
    an_ac_req_st_pop,
    an_ac_req_st_gather,
    an_ac_sync_ack,
 
-
+   ac_an_req_pwr_token,
    ac_an_req,
    ac_an_req_ra,
    ac_an_req_ttype,
@@ -75,7 +74,7 @@ module c_wrapper(
    ac_an_st_data_pwr_token
 );
 
-           input clk;
+        input clk;
         input clk2x;
         input clk4x;
         input reset;

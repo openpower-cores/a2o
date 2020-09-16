@@ -1817,7 +1817,7 @@ module fu_pic(
    assign ex3_compo = ex3_compare & ex3_ordered;
 
    assign ex3_pass_en = (ex3_a_nan | ex3_c_nan | ex3_b_nan);
-   assign ex3_pass_nan = ex3_nan_op_grp1 & ex3_pass_en
+   assign ex3_pass_nan = ex3_nan_op_grp1 & ex3_pass_en;
 
    //(1)
    assign ex3_vxsnan = (ex3_a_snan & ex3_nan_op_grp1) | (ex3_c_snan & ex3_nan_op_grp1) | (ex3_b_snan & ex3_nan_op_grp2) | (f_dcd_ex3_uc_vxsnan);
