@@ -103,20 +103,20 @@
 `define  LQ_REL_PIPE_END 4
 `define  LOAD_CREDITS   8
 `define  STORE_CREDITS 4
-`define  IUQ_ENTRIES   4 		// Instruction Fetch Queue Size
-`define  MMQ_ENTRIES   2 		// MMU Queue Size
+`define  IUQ_ENTRIES   4 		   // Instruction Fetch Queue Size
+`define  MMQ_ENTRIES   2 		   // MMU Queue Size
 `define  CR_WIDTH 4
-`define  BUILD_PFETCH  1		// 1=> include pfetch in the build, 0=> build without pfetch
+`define  BUILD_PFETCH  1		   // 1=> include pfetch in the build, 0=> build without pfetch
 `define  PF_IFAR_WIDTH  12
 `define  PFETCH_INITIAL_DEPTH  0	// the initial value for the SPR that determines how many lines to prefetch
 `define  PFETCH_Q_SIZE_ENC  3		// number of bits to address queue size (3 => 8 entries, 4 => 16 entries)
-`define  PFETCH_Q_SIZE  8		// number of entries in prefetch queue
+`define  PFETCH_Q_SIZE  8		   // number of entries
 `define  INCLUDE_IERAT_BYPASS  1	// 0 => Removes IERAT Bypass logic, 1=> includes (power savings)
 `define  XER_WIDTH  10
-`define  INIT_BHT  1			// 0=> array init time set to 16 clocks, 1=> increased to 512 to init BHT
-`define  INIT_IUCR0  16'h4000	//changed for FPGA, was 251
+`define  INIT_BHT  1			      // 0=> array init time set to 16 clocks, 1=> increased to 512 to init BHT
+`define  INIT_IUCR0  16'h00FA	   // BP enabled 
 `define  INIT_MASK  2'b10
-`define  RELQ_INCLUDE  0		// Reload Queue Included
+`define  RELQ_INCLUDE  0		   // Reload Queue Included
 
 `define  G_BRANCH_LEN  `EFF_IFAR_WIDTH + 1 + 1 + `EFF_IFAR_WIDTH + 3 + 18 + 1
 
