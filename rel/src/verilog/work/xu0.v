@@ -550,7 +550,7 @@ module xu0
    generate begin : bperm
       genvar i;
       for (i=0;i<=7;i=i+1) begin : bprm_bit
-         xu0_bprm bit(
+         xu0_bprm bperm_bit(
             .a(byp_alu_ex2_rs2),
             .s(byp_alu_ex2_rs1[8 * i + 0:8 * i + 7]),
             .y(prm_byp_ex2_rt[56 + i])

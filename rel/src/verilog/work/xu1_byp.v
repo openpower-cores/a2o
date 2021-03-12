@@ -503,9 +503,9 @@ module xu1_byp(
    //------------------------------------------------------------------------------------------
    // Parity Gen
    //------------------------------------------------------------------------------------------
-   generate begin : parity
+   generate begin : ex3ParGen
       genvar i;
-         for (i=8-`GPR_WIDTH/8;i<=7;i=i+1) begin : byte
+         for (i=8-`GPR_WIDTH/8;i<=7;i=i+1) begin : ex3ParGen
             assign ex3_parity[i] = ^(alu_byp_ex3_rt[8*i:8*i+7]);
          end
       end

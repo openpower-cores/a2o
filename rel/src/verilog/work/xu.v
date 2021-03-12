@@ -841,7 +841,7 @@ module xu(
    generate begin : parGen
       genvar b;
       for (b=0;b<=`GPR_WIDTH/8-1;b=b+1)
-      begin : byte
+      begin : parGen
          assign lq_xu_gpr_ex6_par[b] = ^(lq_xu_gpr_ex6_wd_q[(64 - `GPR_WIDTH) + b * 8:(64 - `GPR_WIDTH) + (b * 8) + 7]);
       end
    end

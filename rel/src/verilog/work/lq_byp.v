@@ -608,9 +608,9 @@ assign ex4_req_aborted_d  = ex3_req_aborted_q;
 assign ex5_req_aborted_d  = ex4_req_aborted_q;
 
 generate begin : ex5ParGen
-    genvar byte;
-    for (byte=0; byte<=((2**`GPR_WIDTH_ENC)-1)/8; byte=byte+1) begin : ex5ParGen
-        assign ex5_fx_ld_data_par[byte] = ^(ex5_fx_ld_data[(64-(2**`GPR_WIDTH_ENC))+(byte*8):(64-(2**`GPR_WIDTH_ENC))+(byte*8)+7]);
+    genvar b;
+    for (b=0; b<=((2**`GPR_WIDTH_ENC)-1)/8; b=b+1) begin : ex5ParGen
+        assign ex5_fx_ld_data_par[b] = ^(ex5_fx_ld_data[(64-(2**`GPR_WIDTH_ENC))+(b*8):(64-(2**`GPR_WIDTH_ENC))+(b*8)+7]);
     end
   end
 endgenerate
@@ -891,9 +891,9 @@ assign lq_pc_ram_data = lq_pc_ram_data_q;
 // Reload Data Parity Generation
 //----------------------------------------------------------------------------------------------------------------------------------------
 generate begin : relParGen
-  genvar byte;
-  for (byte = 0; byte <= (`STQ_DATA_SIZE- 1)/8; byte=byte+1) begin : relParGen
-    assign rel2_data_par[byte] = ^(lsq_ctl_rel2_data[(128-`STQ_DATA_SIZE) + byte*8:((128-`STQ_DATA_SIZE))+(byte*8)+7]);
+  genvar b;
+  for (b = 0; b <= (`STQ_DATA_SIZE- 1)/8; b=b+1) begin : relParGen
+    assign rel2_data_par[b] = ^(lsq_ctl_rel2_data[(128-`STQ_DATA_SIZE) + b*8:((128-`STQ_DATA_SIZE))+(b*8)+7]);
   end
 end
 endgenerate
