@@ -1,5 +1,15 @@
 # A2O
 
+## ----------------------------------------------------------------------------------------------------------
+
+The license has been modified (see the LICENSE file for details) , and the repository is moving soon to an OpenPower Foundation location.
+
+The new repo will be accessible through both Github and Gitlab.
+
+After the move is completed, this readme will be updated, and the repo will be changed to 'archived' state.
+
+## ----------------------------------------------------------------------------------------------------------
+
 ## The Project
 This is the release of the A2O POWER processor core RTL and associated FPGA implementation (using ADM-PCIE-9V3 FPGA).
 
